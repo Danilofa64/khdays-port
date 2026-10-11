@@ -1,5 +1,7 @@
 # khdays-port
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/rVeTPhPbsx)
+
 Experimental native PC runtime and source port for **Kingdom Hearts 358/2 Days**, developed alongside [`khdays-decomp`](https://github.com/Yokimitsuro/khdays-decomp).
 
 > [!WARNING]
