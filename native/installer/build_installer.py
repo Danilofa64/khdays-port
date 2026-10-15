@@ -31,6 +31,7 @@ OUT = ROOT / "build" / "installer"
 CACHE = OUT / "cache"
 STAGE = OUT / "stage"
 RELEASE = ROOT / "build" / "native" / "obj-release-x64"
+STUDIO_RELEASE = ROOT / "build" / "studio" / "release"  # khdays-studio, the optional mod tool
 
 sys.path.insert(0, str(ROOT / "native"))
 import build  # noqa: E402
@@ -178,9 +179,14 @@ def main() -> int:
     if not args.no_build:
         subprocess.run([sys.executable, str(ROOT / "native" / "build.py"), "--config", "Release"], cwd=ROOT,
                        check=True)
+        subprocess.run([sys.executable, str(ROOT / "studio" / "build.py"), "--config", "Release"], cwd=ROOT,
+                       check=True)
     exe = RELEASE / "khdays-native.exe"
     if not exe.is_file():
         sys.exit(f"build_installer: {exe} is not built")
+    studio_exe = STUDIO_RELEASE / "khdays-studio.exe"
+    if not studio_exe.is_file():
+        sys.exit(f"build_installer: {studio_exe} is not built (studio/build.py --config Release)")
     env = build.msvc_env()
     ver = version()
 
@@ -191,10 +197,14 @@ def main() -> int:
     copy(exe, STAGE / exe.name, packed)
     for dll in runtime_dlls(exe, env):
         copy(dll, STAGE / dll.name, packed)
+    # the mod studio and its runtime, in studio/ so the installer can make it an optional task
+    copy(studio_exe, STAGE / "studio" / studio_exe.name, packed)
+    for dll in runtime_dlls(studio_exe, env):
+        copy(dll, STAGE / "studio" / dll.name, packed)
     for rel in TOOLS:
         copy(ROOT / rel, STAGE / rel, packed)
     for source in sorted(HERE.iterdir()):
-        if source.is_file() and source.suffix in (".py", ".json", ".txt") and source.name not in INSTALLER_KEEP:
+        if source.is_file() and source.suffix in (".py", ".json", ".txt", ".ini") and source.name not in INSTALLER_KEEP:
             copy(source, STAGE / "native" / "installer" / source.name, packed)
     stage_python(packed)
     (STAGE / "setup").mkdir(exist_ok=True)

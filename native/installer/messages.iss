@@ -146,3 +146,62 @@ es.HdFailed=No se han podido hacer las piezas HD; el juego funciona con el aspec
 fr.HdFailed=Les éléments HD n'ont pas pu être créés ; le jeu fonctionne avec l'aspect DS. Relancez l'installateur pour réessayer.
 de.HdFailed=Die HD-Teile konnten nicht erstellt werden; das Spiel läuft im DS-Aussehen. Starte das Installationsprogramm erneut, um es noch einmal zu versuchen.
 it.HdFailed=Non è stato possibile creare i pezzi HD; il gioco funziona con l'aspetto DS. Esegui di nuovo l'installazione per riprovare.
+
+en.SteamPageCaption=Add to Steam (optional)
+es.SteamPageCaption=Añadir a Steam (opcional)
+fr.SteamPageCaption=Ajouter à Steam (facultatif)
+de.SteamPageCaption=Zu Steam hinzufügen (optional)
+it.SteamPageCaption=Aggiungere a Steam (facoltativo)
+
+en.SteamPageDescription=Start the port from Steam, like any other game.
+es.SteamPageDescription=Iniciar el port desde Steam, como cualquier otro juego.
+fr.SteamPageDescription=Lancer le portage depuis Steam, comme n'importe quel jeu.
+de.SteamPageDescription=Die Portierung aus Steam starten, wie jedes andere Spiel.
+it.SteamPageDescription=Avviare il port da Steam, come qualunque altro gioco.
+
+en.SteamPageText=The installer can add the port to your Steam library as a non-Steam game, with its name and icon. Nothing of the collection is changed; the entry is removed when the port is uninstalled. On a Steam Deck it then appears in Game Mode and uses the same Proton as your collection.
+es.SteamPageText=El instalador puede añadir el port a tu biblioteca de Steam como juego ajeno a Steam, con su nombre e icono. No cambia nada de la colección; la entrada se quita al desinstalar el port. En una Steam Deck aparecerá en el modo juego y usará el mismo Proton que tu colección.
+fr.SteamPageText=L'installateur peut ajouter le portage à votre bibliothèque Steam comme jeu tiers, avec son nom et son icône. Rien de la collection n'est modifié ; l'entrée est retirée lors de la désinstallation. Sur un Steam Deck, il apparaît alors en mode Jeu et utilise le même Proton que votre collection.
+de.SteamPageText=Das Installationsprogramm kann die Portierung als Nicht-Steam-Spiel zu deiner Steam-Bibliothek hinzufügen, mit Namen und Symbol. Nichts an der Sammlung wird geändert; der Eintrag wird beim Deinstallieren entfernt. Auf einem Steam Deck erscheint sie dann im Spielmodus und nutzt dasselbe Proton wie deine Sammlung.
+it.SteamPageText=L'installazione può aggiungere il port alla tua libreria Steam come gioco non Steam, con nome e icona. Nulla della raccolta viene modificato; la voce viene rimossa quando il port viene disinstallato. Su una Steam Deck appare poi in modalità Gioco e usa lo stesso Proton della tua raccolta.
+
+en.SteamAddLabel=Add the port to Steam as a non-Steam game
+es.SteamAddLabel=Añadir el port a Steam como juego ajeno a Steam
+fr.SteamAddLabel=Ajouter le portage à Steam comme jeu tiers
+de.SteamAddLabel=Die Portierung als Nicht-Steam-Spiel zu Steam hinzufügen
+it.SteamAddLabel=Aggiungere il port a Steam come gioco non Steam
+
+en.SteamAlready=The port is already in Steam. Leave this on to keep it, or turn it off to take it out.
+es.SteamAlready=El port ya está en Steam. Déjalo marcado para mantenerlo, o desmárcalo para quitarlo.
+fr.SteamAlready=Le portage est déjà dans Steam. Laissez coché pour le garder, ou décochez pour le retirer.
+de.SteamAlready=Die Portierung ist bereits in Steam. Lass das an, um sie zu behalten, oder aus, um sie zu entfernen.
+it.SteamAlready=Il port è già in Steam. Lascia attivo per tenerlo, o disattiva per rimuoverlo.
+
+en.SteamClosePrompt=Steam must be closed to change its games. Close Steam now?
+es.SteamClosePrompt=Hay que cerrar Steam para cambiar sus juegos. ¿Cerrar Steam ahora?
+fr.SteamClosePrompt=Steam doit être fermé pour modifier ses jeux. Fermer Steam maintenant ?
+de.SteamClosePrompt=Steam muss geschlossen werden, um seine Spiele zu ändern. Steam jetzt schließen?
+it.SteamClosePrompt=Steam va chiuso per modificare i suoi giochi. Chiudere Steam ora?
+
+en.SteamReopen=Done. Open Steam now?
+es.SteamReopen=Hecho. ¿Abrir Steam ahora?
+fr.SteamReopen=Terminé. Ouvrir Steam maintenant ?
+de.SteamReopen=Fertig. Steam jetzt öffnen?
+it.SteamReopen=Fatto. Aprire Steam ora?
+
+en.SteamAdding=Adding the port to Steam...
+es.SteamAdding=Añadiendo el port a Steam...
+fr.SteamAdding=Ajout du portage à Steam...
+de.SteamAdding=Die Portierung wird zu Steam hinzugefügt...
+it.SteamAdding=Aggiunta del port a Steam...
+
+en.SteamCancelled=The port was not added to Steam. You can add it later by running the installer again.
+es.SteamCancelled=El port no se ha añadido a Steam. Puedes añadirlo más tarde volviendo a ejecutar el instalador.
+fr.SteamCancelled=Le portage n'a pas été ajouté à Steam. Vous pourrez l'ajouter plus tard en relançant l'installateur.
+de.SteamCancelled=Die Portierung wurde nicht zu Steam hinzugefügt. Du kannst sie später hinzufügen, indem du das Installationsprogramm erneut ausführst.
+it.SteamCancelled=Il port non è stato aggiunto a Steam. Puoi aggiungerlo più tardi eseguendo di nuovo l'installazione.
+en.StudioTask=Also install KH Studio (the mod authoring tool)
+es.StudioTask=Instalar también KH Studio (la herramienta para crear mods)
+fr.StudioTask=Installer aussi KH Studio (l'outil de création de mods)
+de.StudioTask=Auch KH Studio installieren (das Werkzeug zum Erstellen von Mods)
+it.StudioTask=Installa anche KH Studio (lo strumento per creare mod)

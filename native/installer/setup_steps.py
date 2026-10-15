@@ -667,6 +667,211 @@ def compare_hd(args: argparse.Namespace) -> dict[str, Any]:
     return {"equal": not differences, "files": len(reference), "differences": differences}
 
 
+# ---- The installed game's starting settings ----------------------------------------------------
+
+DEFAULT_SETTINGS = HERE / "default_settings.ini"
+MESSAGES["settings-seeded"] = {
+    "en": "The starting settings are in place.",
+    "es": "Los ajustes iniciales están puestos.",
+    "fr": "Les réglages de départ sont en place.",
+    "de": "Die Anfangseinstellungen sind gesetzt.",
+    "it": "Le impostazioni iniziali sono a posto.",
+}
+
+
+@command("seed-settings", "the install's starting settings.ini (the maintainer's, without a nickname), when it has none",
+         lambda p: p.add_argument("install", type=Path))
+def seed_settings(args: argparse.Namespace) -> dict[str, Any]:
+    target = args.install.resolve() / "saves" / "settings.ini"
+    if target.exists():  # a player's own settings are kept (an update or a repair)
+        return {"seeded": False, "message": words("settings-seeded", args.language)}
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with making(target) as work:
+        shutil.copyfile(DEFAULT_SETTINGS, work)
+    return {"seeded": True, "message": words("settings-seeded", args.language)}
+
+
+# ---- The port as a non-Steam game --------------------------------------------------------------
+
+MESSAGES["steam-running"] = {
+    "en": "Steam is running. It must be closed to change its games, or the change would be lost.",
+    "es": "Steam está abierto. Hay que cerrarlo para cambiar sus juegos, o el cambio se perdería.",
+    "fr": "Steam est en cours d'exécution. Il faut le fermer pour modifier ses jeux, sinon la modification serait perdue.",
+    "de": "Steam läuft. Es muss geschlossen werden, um seine Spiele zu ändern, sonst ginge die Änderung verloren.",
+    "it": "Steam è in esecuzione. Va chiuso per modificare i suoi giochi, altrimenti la modifica andrebbe persa.",
+}
+MESSAGES["steam-missing"] = {
+    "en": "Steam was not found on this computer.",
+    "es": "No se ha encontrado Steam en este equipo.",
+    "fr": "Steam est introuvable sur cet ordinateur.",
+    "de": "Steam wurde auf diesem Computer nicht gefunden.",
+    "it": "Steam non è stato trovato su questo computer.",
+}
+MESSAGES["steam-added"] = {
+    "en": "Added the port to Steam.",
+    "es": "Se ha añadido el port a Steam.",
+    "fr": "Le portage a été ajouté à Steam.",
+    "de": "Die Portierung wurde zu Steam hinzugefügt.",
+    "it": "Il port è stato aggiunto a Steam.",
+}
+
+
+def _steam_arguments(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--install", type=Path, required=True, help="the installed port's folder")
+
+
+def _steam_setup(install: Path):
+    """Steam, the installed port's executable, and the shortcut module; raises if Steam is absent."""
+    import steam_library
+    import steam_shortcut
+    steam = steam_library.steam_folder()
+    if steam is None:
+        raise Refusal("steam-missing")
+    exe = install.resolve() / steam_shortcut.EXE_NAME
+    return steam, exe, steam_library, steam_shortcut
+
+
+@command("steam-status", "whether Steam is here, is running, and already has the port", _steam_arguments)
+def steam_status(args: argparse.Namespace) -> dict[str, Any]:
+    import steam_library
+    import steam_shortcut
+    steam = steam_library.steam_folder()
+    if steam is None:
+        return {"steam": None, "running": False, "accounts": 0, "present": False}
+    exe = args.install.resolve() / steam_shortcut.EXE_NAME
+    present = False
+    configs = steam_shortcut.user_configs(steam)
+    for config in configs:
+        try:
+            entries, _ = steam_shortcut.read_shortcuts(config / "shortcuts.vdf")
+        except (OSError, ValueError):
+            continue
+        present = present or steam_shortcut.port_present(entries, exe)
+    return {"steam": str(steam), "steam_exe": str(steam / "steam.exe"),
+            "running": steam_shortcut.steam_running(), "accounts": len(configs), "present": present}
+
+
+@command("add-to-steam", "add the port to Steam as a non-Steam game (exit 1 if Steam is open)",
+         lambda p: (_steam_arguments(p),
+                    p.add_argument("--proton", help="the Proton tool to map (a Windows game on Linux/Deck)"),
+                    p.add_argument("--proton-from-collection", action="store_true",
+                                   help="map whatever Proton the 1.5+2.5 collection already uses")))
+def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
+    steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
+    if steam_shortcut.steam_running():
+        raise Refusal("steam-running")
+    appid = 0
+    written = 0
+    for config in steam_shortcut.user_configs(steam):
+        entries, tail = steam_shortcut.read_shortcuts(config / "shortcuts.vdf")
+        appid = steam_shortcut.set_port_shortcut(entries, exe)
+        steam_shortcut.write_shortcuts(config / "shortcuts.vdf", entries, tail)
+        written += 1
+
+    # The port is a Windows game; on a Steam Deck / Linux it runs through Proton. Reusing the
+    # Proton the 1.5+2.5 collection already uses means the same tool with no guessing; when the
+    # collection has no mapping (plain Windows), Proton is not in use here and none is set.
+    proton = args.proton
+    proton_note = False
+    if args.proton_from_collection and not proton:
+        proton = _collection_proton(steam, steam_library, steam_shortcut)
+    if proton:
+        config_vdf = steam / "config" / "config.vdf"
+        try:
+            text = config_vdf.read_text(encoding="utf-8")
+            new_text = steam_shortcut.set_compat_tool(text, appid, proton)
+            _write_text_atomic(config_vdf, new_text)
+        except (OSError, ValueError):
+            # an explicit --proton that has no mapping block to go in: the player sets it by hand
+            proton, proton_note = None, bool(args.proton)
+
+    result = {"written": written, "appid": appid, "proton": proton, "proton_note": proton_note,
+              "message": words("steam-added", args.language)}
+    _record_steam(args.install, appid, written, proton)
+    return result
+
+
+@command("remove-from-steam", "take the port out of Steam (exit 1 if Steam is open)", _steam_arguments)
+def remove_from_steam(args: argparse.Namespace) -> dict[str, Any]:
+    steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
+    appid = steam_shortcut.shortcut_appid(f'"{exe}"', steam_shortcut.APP_NAME)  # deterministic, no state needed
+    if not _port_in_steam(steam, exe, appid, steam_shortcut):
+        _clear_steam(args.install)
+        return {"removed": 0}  # nothing to take out: Steam need not be closed
+    if steam_shortcut.steam_running():
+        raise Refusal("steam-running")
+    removed = 0
+    for config in steam_shortcut.user_configs(steam):
+        try:
+            entries, tail = steam_shortcut.read_shortcuts(config / "shortcuts.vdf")
+        except (OSError, ValueError):
+            continue
+        n = steam_shortcut.remove_port_shortcut(entries, exe)
+        if n:
+            steam_shortcut.write_shortcuts(config / "shortcuts.vdf", entries, tail)
+            removed += n
+    if appid:
+        config_vdf = steam / "config" / "config.vdf"
+        try:
+            text = config_vdf.read_text(encoding="utf-8")
+            new_text = steam_shortcut.remove_compat_tool(text, appid)
+            if new_text != text:
+                _write_text_atomic(config_vdf, new_text)
+        except OSError:
+            pass
+    _clear_steam(args.install)
+    return {"removed": removed}
+
+
+def _port_in_steam(steam: Path, exe: Path, appid: int, steam_shortcut) -> bool:
+    """Whether any user's shortcuts or config.vdf's Proton mapping still has the port."""
+    for config in steam_shortcut.user_configs(steam):
+        try:
+            entries, _ = steam_shortcut.read_shortcuts(config / "shortcuts.vdf")
+        except (OSError, ValueError):
+            continue
+        if steam_shortcut.port_present(entries, exe):
+            return True
+    try:
+        text = (steam / "config" / "config.vdf").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return steam_shortcut.read_compat_tool(text, appid) is not None
+
+
+def _collection_proton(steam: Path, steam_library, steam_shortcut) -> str | None:
+    """The Proton tool the 1.5+2.5 collection is already mapped to in config.vdf, to give the port
+    the same (so a Windows game runs the same way on the Deck); None when it has none."""
+    try:
+        text = (steam / "config" / "config.vdf").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return steam_shortcut.read_compat_tool(text, steam_library.APP_1525)
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    """Write `text`, keeping a one-time backup of the first file replaced (config.vdf is Steam's)."""
+    backup = path.with_name(path.name + ".khdays-backup")
+    if path.exists() and not backup.exists():
+        shutil.copy2(path, backup)
+    work = partial_name(path)
+    work.write_text(text, encoding="utf-8")
+    os.replace(work, path)
+
+
+def _record_steam(install: Path, appid: int, written: int, proton: str | None) -> None:
+    state = load_state(install)
+    state["steam"] = {"appid": appid, "accounts": written, "proton": proton}
+    save_state(install, state)
+
+
+def _clear_steam(install: Path) -> None:
+    state = load_state(install)
+    if "steam" in state:
+        del state["steam"]
+        save_state(install, state)
+
+
 def write_result(path: Path | None, result: dict[str, Any]) -> None:
     # ASCII only (other characters as \u escapes): what the installer's script reads back
     text = json.dumps(result, indent=2, ensure_ascii=True)

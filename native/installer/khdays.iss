@@ -22,10 +22,14 @@ AppId={{68af474f-87b5-4746-a4e2-f339c94450df}
 AppName={#AppName}
 AppVersion={#Version}
 AppVerName={#AppName} {#Version}
-DefaultDirName={localappdata}\Programs\KH 358-2 Days Port
+DefaultDirName={commonpf}\Kingdom Hearts 3582 Days
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+; in Program Files, so administrator once to install; the install folder is then made writable by
+; the player (the [Run] icacls below) so the port keeps its saves and data beside itself.
+; /PRIVILEGESREQUIRED=lowest on the command line installs per-user without administrator instead.
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputBaseFilename=KH358-2-Days-Port-Setup-{#Version}
@@ -36,6 +40,7 @@ ShowLanguageDialog=yes
 LanguageDetectionMethod=uilanguage
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
+SetupIconFile=..\resources\game.ico
 ; the game's data made from the ROM after the files (measured: 262 MB extracted, 64 MB decompressed)
 ExtraDiskSpaceRequired=329000000
 
@@ -54,14 +59,25 @@ Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
 Source: "{#Stage}\setup\python\*"; DestDir: "{tmp}\helper\setup\python"; Excludes: "Lib\site-packages\*"; Flags: dontcopy recursesubdirs
 Source: "{#Stage}\native\installer\*"; DestDir: "{tmp}\helper\native\installer"; Flags: dontcopy recursesubdirs
 Source: "{#Stage}\tools\verify_rom\*"; DestDir: "{tmp}\helper\tools\verify_rom"; Flags: dontcopy recursesubdirs
-; the port, its tools and its Python
-Source: "{#Stage}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; the port, its tools and its Python (the studio is apart, installed only when chosen)
+Source: "{#Stage}\*"; DestDir: "{app}"; Excludes: "studio\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+; the mod studio, beside the port so it shares the game's data, only if the player chose it
+Source: "{#Stage}\studio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: studio
+
+[Tasks]
+; off by default: the installer asks whether to install the mod studio too
+Name: "studio"; Description: "{cm:StudioTask}"; Flags: unchecked
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"
+Name: "{autoprograms}\KH Studio"; Filename: "{app}\khdays-studio.exe"; WorkingDir: "{app}"; Tasks: studio
 
 [Run]
-Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "{cm:StartPort}"; Flags: nowait postinstall skipifsilent; Check: DataReady
+; make the install folder writable by the player (the SID is the Users group, name-independent),
+; so the port keeps its saves, settings and game data beside itself even under Program Files
+Filename: "{sys}\icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)M /T /C /Q"; Flags: runhidden waituntilterminated; Check: NeedsWriteGrant
+; started as the player (not the administrator that installed it), so its saves are the player's
+Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "{cm:StartPort}"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: DataReady
 
 [UninstallDelete]
 ; what the installer made on this computer (the player's saves and own mods are kept)
@@ -84,6 +100,11 @@ var
   HdPage: TInputDirWizardPage;
   HdMenus, HdVideos: TNewCheckBox;
   HdStatus: TNewStaticText;
+  SteamPage: TWizardPage;
+  SteamAdd: TNewCheckBox;
+  SteamStatus: TNewStaticText;
+  SteamFound, SteamPresent: Boolean;
+  SteamExe: String;      { steam.exe, to close and reopen Steam }
 
 { ---- The helper's results: JSON written in ASCII (other characters as \u escapes) ---- }
 
@@ -168,6 +189,67 @@ begin
     HelperReady := True;
   end;
   Result := RunHelperIn(ExpandConstant('{tmp}\helper'), Command, Json);
+end;
+
+{ The bytes under a folder, its sub-folders counted too. }
+function DirSize(const Dir: String): Int64;
+var
+  FR: TFindRec;
+begin
+  Result := 0;
+  if FindFirst(AddBackslash(Dir) + '*', FR) then begin
+    try
+      repeat
+        if (FR.Name <> '.') and (FR.Name <> '..') then
+          if FR.Attributes and 16 <> 0 then  { FILE_ATTRIBUTE_DIRECTORY }
+            Result := Result + DirSize(AddBackslash(Dir) + FR.Name)
+          else
+            Result := Result + (Int64(FR.SizeHigh) shl 32) + FR.SizeLow;
+      until not FindNext(FR);
+    finally
+      FindClose(FR);
+    end;
+  end;
+end;
+
+{ Runs a long helper command (the data extraction) without blocking the wizard, moving the progress
+  bar by how much `WatchDir` has grown toward `ExpectedBytes`; the result JSON is the done signal. }
+function RunHelperProgress(const Command, WatchDir: String; ExpectedBytes: Int64; var Json: String): Integer;
+var
+  ResultFile: String;
+  Raw: AnsiString;
+  Code, Guard, Percent: Integer;
+begin
+  ResultFile := AddBackslash(GetTempDir) + 'khdays-setup-result.json';
+  DeleteFile(ResultFile);
+  WizardForm.ProgressGauge.Min := 0;
+  WizardForm.ProgressGauge.Max := 100;
+  WizardForm.ProgressGauge.Position := 0;
+  if not Exec(ExpandConstant('{app}') + '\setup\python\python.exe',
+              '-I "' + ExpandConstant('{app}') + '\native\installer\setup_steps.py" ' + Command +
+              ' --result "' + ResultFile + '" --language ' + HelperLanguage,
+              ExpandConstant('{app}'), SW_HIDE, ewNoWait, Code) then begin
+    Result := 2;
+    Exit;
+  end;
+  Guard := 0;
+  repeat
+    Sleep(500);
+    Guard := Guard + 1;
+    if (ExpectedBytes > 0) and (WatchDir <> '') then begin
+      Percent := Integer((DirSize(WatchDir) * 99) div ExpectedBytes);
+      if Percent > 99 then Percent := 99;
+      WizardForm.ProgressGauge.Position := Percent;
+      WizardForm.Refresh;
+    end;
+  until (FileExists(ResultFile) and LoadStringFromFile(ResultFile, Raw)) or (Guard > 4200);  { ~35 min cap }
+  WizardForm.ProgressGauge.Position := 100;
+  WizardForm.Refresh;
+  Json := String(Raw);
+  if JsonValue(Json, 'ok') = 'true' then
+    Result := 0
+  else
+    Result := 2;
 end;
 
 { ---- The ROM page ---- }
@@ -276,6 +358,89 @@ begin
   HdStatus.Caption := '';
 end;
 
+{ ---- Add to Steam (optional) ---- }
+
+{ The port as a non-Steam game: a page with one checkbox (off), shown only when Steam is found.
+  The entry is written while Steam is closed (the installer asks before closing it), so it is not
+  lost when Steam next writes its files. }
+procedure CreateSteamPage;
+var
+  Json: String;
+begin
+  // the app folder is not known this early (it is not chosen yet); the install dir the wizard
+  // shows is enough to find Steam, and "already added" is re-checked when the page is shown
+  SteamFound := False;
+  SteamPresent := False;
+  SteamExe := '';
+  if RunHelper('steam-status --install "' + WizardDirValue + '"', Json) = 0 then begin
+    SteamFound := (JsonValue(Json, 'steam') <> '') and (JsonValue(Json, 'steam') <> 'null');
+    SteamPresent := JsonValue(Json, 'present') = 'true';
+    SteamExe := JsonValue(Json, 'steam_exe');
+  end;
+
+  SteamPage := CreateCustomPage(HdPage.ID, CustomMessage('SteamPageCaption'), CustomMessage('SteamPageDescription'));
+  SteamAdd := TNewCheckBox.Create(SteamPage);
+  SteamAdd.Parent := SteamPage.Surface;
+  SteamAdd.Top := ScaleY(8);
+  SteamAdd.Width := SteamPage.SurfaceWidth;
+  SteamAdd.Height := ScaleY(20);
+  SteamAdd.Caption := CustomMessage('SteamAddLabel');
+  SteamAdd.Checked := SteamPresent or (ExpandConstant('{param:STEAM|}') = 'yes');
+
+  SteamStatus := TNewStaticText.Create(SteamPage);
+  SteamStatus.Parent := SteamPage.Surface;
+  SteamStatus.Top := SteamAdd.Top + SteamAdd.Height + ScaleY(12);
+  SteamStatus.Width := SteamPage.SurfaceWidth;
+  SteamStatus.AutoSize := False;
+  SteamStatus.WordWrap := True;
+  SteamStatus.Height := ScaleY(96);
+  if SteamPresent then
+    SteamStatus.Caption := CustomMessage('SteamAlready')
+  else
+    SteamStatus.Caption := CustomMessage('SteamPageText');
+end;
+
+{ Close Steam (it rewrites its files on exit) and wait until it is gone, up to about twenty seconds. }
+procedure CloseSteamAndWait(const AppDir: String);
+var
+  Json, Exe: String;
+  I, Code: Integer;
+begin
+  if RunHelperIn(AppDir, 'steam-status --install "' + AppDir + '"', Json) <> 0 then
+    Exit;
+  Exe := JsonValue(Json, 'steam_exe');
+  if Exe = '' then
+    Exit;
+  { -shutdown only tells the running Steam to close (it is not a lasting process), so a plain Exec
+    is right in both the installer and the uninstaller (ExecAsOriginalUser is setup-only) }
+  Exec(Exe, '-shutdown', '', SW_HIDE, ewNoWait, Code);
+  for I := 0 to 40 do begin
+    if RunHelperIn(AppDir, 'steam-status --install "' + AppDir + '"', Json) = 0 then
+      if JsonValue(Json, 'running') <> 'true' then
+        Exit;
+    Sleep(500);
+  end;
+end;
+
+{ Run an add/remove step; if Steam is open, ask to close it (unless silent), close it, and retry. }
+function DoSteam(const Verb, AppDir: String; Interactive: Boolean): Boolean;
+var
+  Json: String;
+  Code: Integer;
+begin
+  Code := RunHelperIn(AppDir, Verb + ' --install "' + AppDir + '"', Json);
+  if (Code <> 0) and (JsonValue(Json, 'refused') = 'steam-running') then begin
+    if Interactive then
+      if SuppressibleMsgBox(CustomMessage('SteamClosePrompt'), mbConfirmation, MB_YESNO, IDYES) <> IDYES then begin
+        Result := False;
+        Exit;
+      end;
+    CloseSteamAndWait(AppDir);
+    Code := RunHelperIn(AppDir, Verb + ' --install "' + AppDir + '"', Json);
+  end;
+  Result := Code = 0;
+end;
+
 procedure InitializeWizard;
 var
   Json, Found: String;
@@ -302,6 +467,7 @@ begin
       RomPage.Values[0] := Found;
   end;
   CreateHdPage;
+  CreateSteamPage;
 end;
 
 procedure RegisterPreviousData(PreviousDataKey: Integer);
@@ -309,6 +475,30 @@ begin
   SetPreviousData(PreviousDataKey, 'RomPath', RomChecked);
   SetPreviousData(PreviousDataKey, 'Hd1525', HdPage.Values[0]);
   SetPreviousData(PreviousDataKey, 'Hd28', HdPage.Values[1]);
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := (PageID = SteamPage.ID) and not SteamFound;
+end;
+
+{ When the Steam page is shown the folder is chosen, so re-check whether the port is already in
+  Steam (a repair or an update), with that folder. }
+procedure CurPageChanged(CurPageID: Integer);
+var
+  Json: String;
+begin
+  if (SteamPage <> nil) and (CurPageID = SteamPage.ID) then begin
+    if RunHelper('steam-status --install "' + WizardDirValue + '"', Json) = 0 then begin
+      SteamPresent := JsonValue(Json, 'present') = 'true';
+      if SteamExe = '' then
+        SteamExe := JsonValue(Json, 'steam_exe');
+    end;
+    if SteamPresent then begin
+      SteamAdd.Checked := True;
+      SteamStatus.Caption := CustomMessage('SteamAlready');
+    end;
+  end;
 end;
 
 { ---- The folder: the player must be able to write there ---- }
@@ -332,7 +522,9 @@ begin
   if CurPageID = RomPage.ID then
     Result := CheckRom(RomPage.Values[0])
   else if CurPageID = wpSelectDir then begin
-    Result := FolderWritable(WizardDirValue);
+    { an administrator install (Program Files) writes elevated and then grants the player write;
+      only a per-user install must be to a folder the player can already write }
+    Result := IsAdminInstallMode or FolderWritable(WizardDirValue);
     if not Result then
       SuppressibleMsgBox(FmtMessage(CustomMessage('FolderNotWritable'), [WizardDirValue]), mbError, MB_OK, IDOK);
   end
@@ -356,15 +548,25 @@ begin
   Result := DataOk;
 end;
 
+{ Program Files (an administrator install) needs the folder made writable for the player; a
+  per-user install (/PRIVILEGESREQUIRED=lowest) is already writable, so the grant is skipped. }
+function NeedsWriteGrant: Boolean;
+begin
+  Result := IsAdminInstallMode;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Json, Args: String;
+  Code: Integer;
 begin
   if CurStep = ssPostInstall then begin
     WizardForm.StatusLabel.Caption := CustomMessage('DataPreparing');
     WizardForm.Refresh;
-    DataOk := RunHelperIn(ExpandConstant('{app}'), 'prepare-data "' + RomChecked + '" "' +
-                          ExpandConstant('{app}') + '"', Json) = 0;
+    { the extraction is long: run it without freezing the wizard, the bar moving by the bytes
+      written under data\extracted (about 329 MB extracted and decompressed) }
+    DataOk := RunHelperProgress('prepare-data "' + RomChecked + '" "' + ExpandConstant('{app}') + '"',
+                                ExpandConstant('{app}') + '\data\extracted', 329000000, Json) = 0;
     if not DataOk then
       SuppressibleMsgBox(CustomMessage('DataFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
     if DataOk and (HdMenus.Checked or HdVideos.Checked) then begin
@@ -378,6 +580,21 @@ begin
       if RunHelperIn(ExpandConstant('{app}'), Args, Json) <> 0 then
         SuppressibleMsgBox(CustomMessage('HdFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
     end;
+    { the starting settings, when the install has none yet (a player's own are kept on an update);
+      if it does not run, the port writes its own defaults on first start, so no error is shown }
+    RunHelperIn(ExpandConstant('{app}'), 'seed-settings "' + ExpandConstant('{app}') + '"', Json);
+    { the port as a non-Steam game: added when chosen, taken out when a re-run turns it off }
+    if SteamFound and SteamAdd.Checked then begin
+      WizardForm.StatusLabel.Caption := CustomMessage('SteamAdding');
+      WizardForm.Refresh;
+      if DoSteam('add-to-steam --proton-from-collection', ExpandConstant('{app}'), not WizardSilent) then begin
+        if (not WizardSilent) and (SteamExe <> '') then
+          if SuppressibleMsgBox(CustomMessage('SteamReopen'), mbConfirmation, MB_YESNO, IDYES) = IDYES then
+            ShellExecAsOriginalUser('open', SteamExe, '', '', SW_SHOWNORMAL, ewNoWait, Code);
+      end else
+        SuppressibleMsgBox(CustomMessage('SteamCancelled'), mbInformation, MB_OK, IDOK);
+    end else if SteamFound and SteamPresent and not SteamAdd.Checked then
+      DoSteam('remove-from-steam', ExpandConstant('{app}'), not WizardSilent);
   end;
 end;
 
@@ -388,6 +605,8 @@ var
   Json: String;
 begin
   if CurUninstallStep = usUninstall then begin
+    { take the port out of Steam if it was added (the helper and Python are still here) }
+    DoSteam('remove-from-steam', ExpandConstant('{app}'), not UninstallSilent);
     { silent: the default, keep them }
     if SuppressibleMsgBox(CustomMessage('RemoveSaves'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
       if RunHelperIn(ExpandConstant('{app}'), 'remove-user-files "' + ExpandConstant('{app}') + '"', Json) <> 0 then
