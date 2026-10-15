@@ -733,6 +733,7 @@ static const char *const texts[TXT_COUNT][5] = {
          "Los datos del juego en\n%s\nestán incompletos o dañados: %s\n\nVuelve a extraerlos de tu propia "
          "copia del juego con tools/extract_data/extract_data.py."},
     [TXT_PAUSE_RETRY] = {"Retry", "Réessayer", "Wiederholen", "Riprova", "Reintentar"},
+    [TXT_SAVE_AUTOSAVE_TAG] = {"AUTO", "AUTO", "AUTO", "AUTO", "AUTO"},
     [TXT_CAMP_BACK_TO_MENU] = {"Return to the main menu?", "Revenir au menu principal ?", "Zum Hauptmenü zurückkehren?",
                                "Tornare al menu principale?", "¿Volver al menú principal?"},
     [TXT_HINTS_TEXT_KEYBOARD] = {"Type it   Backspace: erase   Enter: done   Esc: cancel",

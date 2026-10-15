@@ -402,6 +402,7 @@ add_executable(khdays-native
     ui/badges.c                    # the badges' icons on the mission panel
     ui/crowns.c                    # the crowns on the story's day list
     ui/mission_list.c              # the camp's mission list from the game's files
+    ui/save_numbers.cpp            # the file numbers on the game's own save lists in pages
     ui/player_names.cpp            # the players' names in multiplayer
     ui/pause.cpp                   # the pause's Retry line in Mission Mode
     ui/text.c

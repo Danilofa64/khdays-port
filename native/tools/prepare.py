@@ -208,6 +208,27 @@ HOOKS = {
         "              if (khdays_retry_take()) { Scene_RequestPending(SCENE_FIELD, 0); break; } }\n"
         "            Ov002_FillMissionResult();\n",
     )],
+    # The save lists in pages (runtime/menus/savelist.c): the game's questions (load, delete,
+    # overwrite, create) name the file as its row + 1; with the page view the row's file is the
+    # page's first + the row, so the number is the port's (khdays_savelist_file_number; the game's
+    # own row + 1 without the pages).
+    "ov000@020508a0": [  # Ov000_DrawLoadPageText
+        ("void Ov000_DrawLoadPageText(void)\n",
+         "extern int khdays_savelist_file_number(int slot);\nvoid Ov000_DrawLoadPageText(void)\n"),
+        ("data_ov000_0205ac24->pageIndex + 1", "khdays_savelist_file_number(data_ov000_0205ac24->pageIndex)"),
+    ],
+    "ov025@0209b7a4": [  # Ov025_SaveMenuDrawPrompt
+        ("void Ov025_SaveMenuDrawPrompt(Ov008SaveMenu *pMenu, int nPhase)\n",
+         "extern int khdays_savelist_file_number(int slot);\n"
+         "void Ov025_SaveMenuDrawPrompt(Ov008SaveMenu *pMenu, int nPhase)\n"),
+        ("pMenu->nSlot + 1", "khdays_savelist_file_number(pMenu->nSlot)"),
+    ],
+    "ov008@020693c4": [  # Ov008_SaveMenuDrawPrompt
+        ("void Ov008_SaveMenuDrawPrompt(Ov008SaveMenu *pMenu, int nPhase)\n",
+         "extern int khdays_savelist_file_number(int slot);\n"
+         "void Ov008_SaveMenuDrawPrompt(Ov008SaveMenu *pMenu, int nPhase)\n"),
+        ("pMenu->nSlot + 1", "khdays_savelist_file_number(pMenu->nSlot)"),
+    ],
     "ov006@02051884": [(  # Ov006_MissionInitVideoScene
         "            case 3:\n                break;\n",
         "            case 3:\n                { extern void khdays_wait_point(void); khdays_wait_point(); }\n"

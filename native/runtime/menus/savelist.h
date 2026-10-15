@@ -61,4 +61,14 @@ void khdays_savelist_view(KhdaysSaveView *out);
  * layouts/save/<lang>/save.txt. */
 int khdays_savelist_available(int language);
 
+/* The [save] settings (host/app/profile.h KhdaysSave) for the game's thread: whether the game's own
+ * lists page through the 99 files (without the list's pieces) or show the DS's three, and the
+ * autosave's mode (KHDAYS_AUTOSAVE_*'s values). The window's thread gives them at its start and when
+ * the settings change; without a window the defaults (the 99 files, the autosave into file 99). */
+void khdays_savelist_set_settings(int files, int autosave);
+
+/* The number the game's questions show for its slot `slot` (0-2): the file's in the page view, the
+ * game's own (slot + 1) otherwise. Called from the game's text (native/tools/prepare.py HOOKS). */
+int khdays_savelist_file_number(int slot);
+
 #endif

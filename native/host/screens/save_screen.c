@@ -14,6 +14,7 @@
 #include "save_screen.h"
 
 #include "layout_screen.h"
+#include "ui_text.h"
 #include "../../runtime/core/rom.h"
 #include "../../runtime/menus/savelist.h"
 
@@ -223,6 +224,12 @@ static void draw_row(const KhdaysLayoutFrame *fr, const KhdaysSaveView *v, int i
     snprintf(digits, sizeof(digits), "%02d", index + 1);
     ascii(digits, line, 128);
     draw_text(fr, "number", line, x, y);
+    if (index == KHDAYS_SLOT_COUNT - 1) {
+        /* the autosave's file: its tag over the number in the number's own letters, a third of the
+         * row higher (the game's own lists' tag, ui/save_numbers.cpp); the tag's words are ASCII */
+        ascii(khdays_text_in(TXT_SAVE_AUTOSAVE_TAG, v->language), line, 128);
+        draw_text(fr, "number", line, x, y - s.rows[3] / 3.0f);
+    }
     switch (v->rows[index].state) {
     case KHDAYS_SLOT_SAVED: {
         const KhdaysSaveRow *r = &v->rows[index];

@@ -21,6 +21,7 @@
 #include "../movies/movie_hd.h"
 #include "profile.h"
 #include "../../runtime/menus/newgame.h"
+#include "../../runtime/menus/savelist.h"
 #include "../settings/settings_model.h"
 #include "../settings/settings_sample.h"
 #include "../settings/settings_ui.h"
@@ -358,6 +359,7 @@ static void close_settings(void)
         khdays_present_set_video(&khdays_settings_profile()->video);
         khdays_sound_output_set(&khdays_settings_profile()->sound);
         khdays_log_want(khdays_settings_profile()->session_log);
+        khdays_savelist_set_settings(khdays_settings_profile()->save.all_files, khdays_settings_profile()->save.autosave);
         khdays_boot_owner_name(); /* the nickname, for the next multiplayer session */
         tell_game();
     }
@@ -427,6 +429,7 @@ static int host_thread(void *unused)
         khdays_ui_set_language(khdays_language_choose(profile.language));
         khdays_sound_output_set(&profile.sound);
         khdays_log_want(profile.session_log);
+        khdays_savelist_set_settings(profile.save.all_files, profile.save.autosave);
     }
     window = open_window(&profile);
     host_window = window;

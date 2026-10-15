@@ -210,6 +210,17 @@ void khdays_network_default(KhdaysNetwork *network);
 int khdays_nickname_char(int c);
 int khdays_server_char(int c);
 
+/* The saves ([save] in the settings file): whether the game's own save lists page through the
+ * port's 99 files or show the DS's three, and where the autosave goes after a completed mission. */
+enum { KHDAYS_AUTOSAVE_OFF, KHDAYS_AUTOSAVE_FILE99, KHDAYS_AUTOSAVE_PLAYED, KHDAYS_AUTOSAVE_MODES };
+typedef struct KhdaysSave {
+    int all_files; /* the game's own lists: the 99 files (1) or the DS's three (0) */
+    int autosave;  /* KHDAYS_AUTOSAVE_* */
+} KhdaysSave;
+
+/* The 99 files, the autosave into file 99. */
+void khdays_save_default(KhdaysSave *save);
+
 typedef struct KhdaysProfile {
     int version;         /* 1 */
     int language;        /* the game's and this screen's language: 0 the system's, else 1..5 (ui_text.h) */
@@ -222,6 +233,7 @@ typedef struct KhdaysProfile {
     KhdaysVideo video;
     KhdaysSound sound;
     KhdaysNetwork network;
+    KhdaysSave save;
 } KhdaysProfile;
 
 /* The faithful default: today's keyboard layout, the DS layout on the

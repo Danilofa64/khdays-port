@@ -178,12 +178,19 @@ void khdays_profile_default(KhdaysProfile *p)
     khdays_video_default(&p->video);
     khdays_sound_default(&p->sound);
     khdays_network_default(&p->network);
+    khdays_save_default(&p->save);
 }
 
 void khdays_sound_default(KhdaysSound *s)
 {
     s->volume = s->music = s->effects = s->voices = s->movies = 100;
     s->ds_exact = 0;
+}
+
+void khdays_save_default(KhdaysSave *s)
+{
+    s->all_files = 1;
+    s->autosave = KHDAYS_AUTOSAVE_FILE99;
 }
 
 void khdays_network_default(KhdaysNetwork *n)
@@ -603,7 +610,8 @@ static void cut_comment(char *value)
     }
 }
 
-enum Section { SEC_TOP, SEC_KEYS, SEC_STICKS, SEC_ENHANCEMENTS, SEC_VIDEO, SEC_SOUND, SEC_NETWORK, SEC_UNKNOWN };
+enum Section { SEC_TOP, SEC_KEYS, SEC_STICKS, SEC_ENHANCEMENTS, SEC_VIDEO, SEC_SOUND, SEC_NETWORK, SEC_SAVE,
+               SEC_UNKNOWN };
 
 typedef struct Reader {
     KhdaysProfile *profile;
@@ -649,6 +657,8 @@ static void enter_section(Reader *r, const char *name)
         r->section = SEC_SOUND;
     } else if (SDL_strcasecmp(name, "network") == 0) {
         r->section = SEC_NETWORK;
+    } else if (SDL_strcasecmp(name, "save") == 0) {
+        r->section = SEC_SAVE;
     } else {
         r->section = SEC_UNKNOWN;
         say(r->notice, "settings: section [%s] is not understood by this version; kept as it is", name);
@@ -1090,6 +1100,34 @@ static void read_network(Reader *r, const char *key, const char *value, const ch
     }
 }
 
+/* [save]: files, autosave. */
+static void read_save(Reader *r, const char *key, const char *value, const char *line)
+{
+    KhdaysSave *s = &r->profile->save;
+    if (SDL_strcasecmp(key, "files") == 0) {
+        if (strcmp(value, "99") == 0 || strcmp(value, "3") == 0) {
+            s->all_files = strcmp(value, "99") == 0;
+        } else {
+            say(r->notice, "settings: [save] files = \"%s\" is neither 99 nor 3; 99 is used", value);
+            s->all_files = 1;
+        }
+    } else if (SDL_strcasecmp(key, "autosave") == 0) {
+        if (SDL_strcasecmp(value, "file99") == 0) {
+            s->autosave = KHDAYS_AUTOSAVE_FILE99;
+        } else if (SDL_strcasecmp(value, "played") == 0) {
+            s->autosave = KHDAYS_AUTOSAVE_PLAYED;
+        } else if (SDL_strcasecmp(value, "off") == 0) {
+            s->autosave = KHDAYS_AUTOSAVE_OFF;
+        } else {
+            say(r->notice, "settings: [save] autosave = \"%s\" is not file99, played or off; file99 is used", value);
+            s->autosave = KHDAYS_AUTOSAVE_FILE99;
+        }
+    } else {
+        say(r->notice, "settings: [save] has no setting \"%s\"; kept as it is", key);
+        keep_unknown("save", line);
+    }
+}
+
 static void read_top(Reader *r, const char *key, const char *value, const char *line)
 {
     if (SDL_strcasecmp(key, "version") == 0) {
@@ -1175,6 +1213,7 @@ static int read_text(Reader *r, char *text, size_t size)
         case SEC_VIDEO: read_video(r, key, value, original); break;
         case SEC_SOUND: read_sound(r, key, value, original); break;
         case SEC_NETWORK: read_network(r, key, value, original); break;
+        case SEC_SAVE: read_save(r, key, value, original); break;
         case SEC_UNKNOWN: keep_unknown(r->section_name, original); break;
         }
         SDL_free(original);
@@ -1428,11 +1467,26 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
             n->nickname, n->online ? "on" : "off", n->server, n->show_ping ? "on" : "off");
     }
     add_unknown(&t, "network");
+    {
+        static const char *const autosaves[KHDAYS_AUTOSAVE_MODES] = {"off", "file99", "played"};
+        const KhdaysSave *s = &p->save;
+        add(&t, "\n[save]\n"
+                "# files: 99, the game's own save lists page through the port's 99 files; 3, the DS's three\n"
+                "files = %s\n"
+                "# autosave: after each completed mission, where the game lets you save next --\n"
+                "# file99 (file 99, \"Autosave\" in the lists), played (the file being played; a new game\n"
+                "# the first file without a save) or off\n"
+                "autosave = %s\n",
+            s->all_files ? "99" : "3",
+            autosaves[s->autosave >= 0 && s->autosave < KHDAYS_AUTOSAVE_MODES ? s->autosave : KHDAYS_AUTOSAVE_FILE99]);
+    }
+    add_unknown(&t, "save");
     for (int i = 0; i < unknown_count; ++i) {
         /* whole sections this version does not know, written back as they were */
         const char *s = unknown[i].section;
         if (*s == '\0' || SDL_strcasecmp(s, "sticks") == 0 || SDL_strcasecmp(s, "enhancements") == 0 ||
             SDL_strcasecmp(s, "video") == 0 || SDL_strcasecmp(s, "sound") == 0 || SDL_strcasecmp(s, "network") == 0 ||
+            SDL_strcasecmp(s, "save") == 0 ||
             SDL_strncasecmp(s, "keyboard", 8) == 0 || SDL_strncasecmp(s, "gamepad", 7) == 0) {
             continue;
         }

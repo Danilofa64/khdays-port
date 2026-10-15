@@ -387,6 +387,11 @@ Files 1-3 are the DS's three, in `saves/khdays.sav` as always; files 4-99 go
 to `saves/slots/slotNN.sav`. The save after the story's ending still shows the
 DS's three.
 
+Without those pieces the game's own lists reach the 99 files as well, in pages
+of three: past the first or last row the list moves on, each row numbered, file
+99 tagged AUTO (the autosave's), the game's questions naming the file. In
+`saves/settings.ini`, `[save] files = 3` keeps the DS's three.
+
 **THEATER MODE as the HD collection's theater.** `native/tools/theater_cine.py`
 makes, from the same copy of the collection and the port's extracted game
 data, the theater's chapter list -- its heading, its rows (the selected one

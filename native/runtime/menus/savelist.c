@@ -71,6 +71,25 @@ extern int Ov008_LookupTypeCode(int which);
 static const Counting mission_counting = {Ov008_InitRecordContext, Ov008_BuildMenuGrid, Ov008_RebuildViewAndCountCells,
                                           Ov008_ReleaseHandleGridAndList, func_ov008_02053464, Ov008_LookupTypeCode};
 
+/* The game's own redraws of its lists' rows after a record changes, and its cursors' moves (see "The
+ * game's own lists in pages") */
+extern void Ov000_RefreshSelectionGroupDraw(void);
+extern void Ov000_UpdateNumberDisplays(void);
+extern void Ov000_PlaceCursorByMode(int enabled, int mode);
+extern void Ov025_SaveMenu_RefreshRows(KhdaysRef menu);
+extern void Ov025_RefreshSaveRowDigits(void);
+extern void Ov025_PlaceElementByVariant(KhdaysRef menu, int old, int now);
+extern void Ov008_SaveMenu_RefreshRows(KhdaysRef menu);
+extern void Ov008_RefreshSaveRowDigits(KhdaysRef menu);
+extern void Ov008_PlaceElementByVariant(KhdaysRef menu, int old, int now);
+extern int GameState_GetField(int field, int bits);
+
+static void story_row_digits(KhdaysRef menu)
+{
+    (void)menu; /* ov025's takes none (Ov025_RefreshSaveRowDigits) */
+    Ov025_RefreshSaveRowDigits();
+}
+
 /* The camps whose save screens the port's list stands for: ov025's (the story's, the Grey
  * Area's camp menu) and ov008's (Mission Mode's camp, scene 19), the same code in each
  * (Ov025_SaveMenuConfirm is Ov008_SaveMenuConfirm's copy). Their addresses: the word naming the
@@ -82,10 +101,17 @@ typedef struct Camp {
     int overlay;
     u32 running, table, save_screen, context;
     const Counting *counting;
+    /* its save screen's redraw of its rows and their digits after a save (SaveMenuTick), and its
+     * cursor's placing (StepSelectionForward) */
+    void (*refresh_rows)(KhdaysRef menu);
+    void (*refresh_digits)(KhdaysRef menu);
+    void (*place)(KhdaysRef menu, int old, int now);
 } Camp;
 static const Camp camps[] = {
-    {25, 0x020b574cu, 0x020b4ab0u, 0x020b4e2cu, 0x020b5748u, &story_counting},
-    {8, 0x02090f0cu, 0x0209009cu, 0x02090460u, 0x02090f08u, &mission_counting},
+    {25, 0x020b574cu, 0x020b4ab0u, 0x020b4e2cu, 0x020b5748u, &story_counting, Ov025_SaveMenu_RefreshRows,
+     story_row_digits, Ov025_PlaceElementByVariant},
+    {8, 0x02090f0cu, 0x0209009cu, 0x02090460u, 0x02090f08u, &mission_counting, Ov008_SaveMenu_RefreshRows,
+     Ov008_RefreshSaveRowDigits, Ov008_PlaceElementByVariant},
 };
 #define CAMPS ((int)(sizeof(camps) / sizeof(camps[0])))
 
@@ -104,6 +130,7 @@ static const Camp camps[] = {
 #define CHECK_STEP 0x4ae0u
 #define PAGE 0x4b08u
 #define RECORDS 0x4b10u
+#define RECORD_SIZE 0x20u
 #define RECORD_HOLDS 0x10u
 #define YES 0x4b70u
 #define CARD_ERROR 0x6a48u
@@ -119,7 +146,10 @@ static const Camp camps[] = {
 #define SAVE_OPENING_SLOT 0x8u
 #define SAVE_OPENING 0xcu
 #define SAVE_ENTRIES 0x10u
+#define SAVE_ENTRY_SIZE 0x1cu
 #define SAVE_ENTRY_HOLDS 0x10u
+#define SAVE_COUNTER 0x1ef8u           /* the highest save counter of the slots read */
+#define FIELD_SAVE_SLOT 0xc98          /* the slot saved to last: the camp's cursor starts there */
 #define SAVE_YES 0x64u
 #define SAVE_ERROR 0x23cu
 #define SAVE_ERROR_KIND 0x240u
@@ -164,6 +194,11 @@ static u32 rd32(u32 address)
 static void wr32(u32 address, u32 value)
 {
     *(volatile u32 *)KHDAYS_W(address) = value;
+}
+
+static void wr16(u32 address, u16 value)
+{
+    *(volatile u16 *)KHDAYS_W(address) = value;
 }
 
 static int in_ram(u32 address)
@@ -573,6 +608,287 @@ static void camp_view(u32 menu, KhdaysSaveView *v)
     }
 }
 
+/* ---- The game's own lists in pages -------------------------------------------------------------- */
+
+/* Without the list's pieces and with [save] files = 99, the game's own lists run as they are and page
+ * through the files: game slot g is file page_top + g (khdays_slots_show_page). The game draws its
+ * rows from its records of its three slots every frame (Ov000_DrawSaveSlotText, the camps'
+ * DrawSaveSlotTexts) and redraws their plates and digits when a record changes
+ * (Ov000_RefreshSelectionGroupDraw and Ov000_UpdateNumberDisplays, as Ov000_PollSaveCheckState after
+ * a delete; the camps' SaveMenu_RefreshRows and RefreshSaveRowDigits, as SaveMenuTick after a save):
+ * the port writes the records of the files a page shows, as the game's own reads fill them
+ * (Ov000_RecordLoadResult, BuildSaveSlotEntry), and calls those. The cursor's moves inside a page are
+ * the game's; at its edges the port moves the page, with the game's sound and key repeat, and past the
+ * last file it goes on from the first (and back), the title's guest's row between them as the game
+ * has it. docs/RUNTIME_MAP.md section 15.4. */
+
+static volatile LONG all_files = 1;     /* [save] files: the 99 (1) or the DS's three (0) */
+static volatile LONG autosave_mode = 1; /* [save] autosave (host/app/profile.h KHDAYS_AUTOSAVE_*: 1 file 99) */
+static int page_top = -1;               /* the first file of the page shown, -1 none */
+static int counted;                     /* the camp's save counter given the highest of all the files */
+static u16 taken;                       /* the direction keys the port took at a page's edge (page_step) */
+
+void khdays_savelist_set_settings(int files, int autosave)
+{
+    InterlockedExchange(&all_files, files != 0);
+    InterlockedExchange(&autosave_mode, autosave);
+}
+
+int khdays_savelist_file_number(int slot)
+{
+    const int top = khdays_slots_page();
+    return (top >= 0 ? top : 0) + slot + 1;
+}
+
+/* The highest save counter of all the files (fields 0xc77 and 0xc87, BeginSaveToSlot), 0 when none
+ * is a save. */
+static u32 highest_counter(void)
+{
+    u32 best = 0;
+    for (int f = 0; f < KHDAYS_SLOT_COUNT; ++f) {
+        const u8 *state;
+        if (khdays_slots_state(f, &state) == KHDAYS_SLOT_SAVED) {
+            const u32 c = khdays_slots_field(state, 0xc77, 16) << 16 | khdays_slots_field(state, 0xc87, 16);
+            best = c > best ? c : best;
+        }
+    }
+    return best;
+}
+
+/* The page with `file` on row `row`, where the files allow. */
+static int page_for(int file, int row)
+{
+    const int last = KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS, top = file - row;
+    return top < 0 ? 0 : top > last ? last : top;
+}
+
+static void show_page(int top)
+{
+    page_top = top;
+    khdays_slots_show_page(top);
+}
+
+/* The title's three records from the page's files, and the game's redraw. */
+static void title_records(u32 ctx)
+{
+    for (u32 g = 0; g < KHDAYS_GAME_SLOTS; ++g) {
+        const KhdaysSaveRow *r = &rows[page_top + (int)g];
+        const u32 at = ctx + RECORDS + g * RECORD_SIZE;
+        wr16(at, r->day);
+        wr16(at + 2u, r->level);
+        wr32(at + 4u, r->munny);
+        wr32(at + 8u, r->difficulty);
+        wr32(at + 0xcu, r->seconds);
+        wr32(at + RECORD_HOLDS, r->state);
+        wr32(at + RECORD_HOLDS + 4u, r->state); /* its latched copy, the one the row's text reads */
+        wr32(at + 0x18u, r->crown);
+        wr32(at + 0x1cu, r->face);
+    }
+    Ov000_RefreshSelectionGroupDraw();
+    Ov000_UpdateNumberDisplays();
+}
+
+/* A camp's three entries from the page's files (its crown and face the other way round), and its redraw. */
+static void camp_entries(const Camp *camp, u32 menu)
+{
+    for (u32 g = 0; g < KHDAYS_GAME_SLOTS; ++g) {
+        const KhdaysSaveRow *r = &rows[page_top + (int)g];
+        const u32 at = menu + SAVE_ENTRIES + g * SAVE_ENTRY_SIZE;
+        wr16(at, r->day);
+        wr16(at + 2u, r->level);
+        wr32(at + 4u, r->munny);
+        wr32(at + 8u, r->difficulty);
+        wr32(at + 0xcu, r->seconds);
+        wr32(at + SAVE_ENTRY_HOLDS, r->state);
+        wr32(at + 0x14u, r->crown);
+        wr32(at + 0x18u, r->face);
+    }
+    camp->refresh_rows(menu);
+    camp->refresh_digits(menu);
+}
+
+/* Where a step `dir` at the page's edge takes the page and the cursor from row `row` (the guest's
+ * row after the files' when `guest`: the title's in Mission Mode); *to_row -1 when the cursor stays. */
+static int edge_step(int row, int dir, int guest, int *to_row)
+{
+    const int last = KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS;
+    *to_row = -1;
+    if (row == KHDAYS_GAME_SLOTS) {         /* the guest's row: on to the first file, or back to the last */
+        *to_row = dir > 0 ? 0 : KHDAYS_GAME_SLOTS - 1;
+        return dir > 0 ? 0 : last;
+    }
+    if (dir > 0) {
+        if (page_top < last) {
+            return page_top + 1;
+        }
+        *to_row = guest ? KHDAYS_GAME_SLOTS : 0;
+        return guest ? page_top : 0;
+    }
+    if (page_top > 0) {
+        return page_top - 1;
+    }
+    *to_row = guest ? KHDAYS_GAME_SLOTS : KHDAYS_GAME_SLOTS - 1;
+    return guest ? page_top : last;
+}
+
+/* The keys the port takes from the game this frame on a list whose cursor is on row `row` (the
+ * guest's after the files' when `guest`): a press at the page's edge is the port's, and every step of
+ * that hold until the key is let go (the game, given the key again while it is held, would take it as
+ * a new press). *step 1 when this frame steps: *to_top and *to_row (-1: stays) where to. */
+static u16 page_step(u16 buttons, int row, int guest, int dir, int *step, int *to_top, int *to_row)
+{
+    const u16 keys = KHDAYS_KEY_UP | KHDAYS_KEY_DOWN;
+    const u16 edge = (u16)((row == KHDAYS_GAME_SLOTS - 1 ? KHDAYS_KEY_DOWN : 0) | (row == 0 ? KHDAYS_KEY_UP : 0) |
+                           (row == KHDAYS_GAME_SLOTS ? keys : 0));
+    *step = 0;
+    *to_top = page_top;
+    *to_row = -1;
+    taken = (u16)((taken & buttons) | (buttons & edge & keys));
+    if (dir == 0 || !((dir > 0 ? KHDAYS_KEY_DOWN : KHDAYS_KEY_UP) & taken)) {
+        return taken;
+    }
+    *step = 1;
+    if (row < KHDAYS_GAME_SLOTS && row + dir >= 0 && row + dir < KHDAYS_GAME_SLOTS) {
+        *to_row = row + dir;
+    } else {
+        *to_top = edge_step(row, dir, guest, to_row);
+    }
+    return taken;
+}
+
+static u16 title_page_buttons(u32 ctx, u16 buttons)
+{
+    const int state = (int)rd32(ctx + STATE);
+    const int guest = (*(volatile u8 *)KHDAYS_W(ctx + GUEST_SHOWN)) != 0;
+    const int row = (int)rd32(ctx + PAGE);
+    const u32 title = title_context();
+    const int dir = direction(buttons, title != 0 ? title + TITLE_REPEAT : 0);
+    int step, to_top, to_row;
+    u16 take;
+    if (active != KHDAYS_SAVELIST_LOAD) {
+        active = KHDAYS_SAVELIST_LOAD;
+        make_rows(&title_counting);
+    } else if (state == 2 && khdays_slots_generation() != rows_generation) {
+        make_rows(&title_counting); /* a file deleted */
+    }
+    if (state == 6 && last_state != 6) {
+        current_file = page_top + (row < KHDAYS_GAME_SLOTS ? row : 0); /* the file being loaded */
+    }
+    last_state = state;
+    if (state != 2 || (short)rd32(ctx + CARD_ERROR) != 0) {
+        taken = 0;
+        return buttons;
+    }
+    if (guest && ((buttons & ~held) & KHDAYS_KEY_Y)) {
+        /* the port's, as on its HD list: Y (the list takes none) plays as the guest from anywhere --
+         * the cursor on the guest's row, then the game's A */
+        wr32(ctx + PAGE, (u32)KHDAYS_GAME_SLOTS);
+        Ov000_PlaceCursorByMode(1, KHDAYS_GAME_SLOTS);
+        PlaySound(0, 0);
+        return (u16)((buttons & ~KHDAYS_KEY_Y) | KHDAYS_KEY_A);
+    }
+    take = page_step(buttons, row, guest, dir, &step, &to_top, &to_row);
+    if (step) {
+        if (to_top != page_top) {
+            show_page(to_top);
+            title_records(ctx);
+        }
+        if (to_row >= 0) {
+            wr32(ctx + PAGE, (u32)to_row);
+            Ov000_PlaceCursorByMode(1, to_row);
+        }
+        PlaySound(0, 0);
+    }
+    return (u16)(buttons & ~take);
+}
+
+static u16 camp_page_buttons(const Camp *camp, u32 ctx, u32 menu, u16 buttons)
+{
+    const int phase = (int)rd32(menu + SAVE_PHASE);
+    const int opening = (int)rd32(menu + SAVE_OPENING);
+    const int row = (int)rd32(menu + SAVE_SLOT);
+    const int dir = direction(buttons, ctx + CAMP_REPEAT);
+    int step, to_top, to_row;
+    u16 take;
+    if (active != KHDAYS_SAVELIST_SAVE) {
+        active = KHDAYS_SAVELIST_SAVE;
+        counted = 0;
+        make_rows(camp->counting);
+    } else if ((phase == SAVE_PICK || phase == SAVE_DONE) && khdays_slots_generation() != rows_generation) {
+        make_rows(camp->counting); /* a file saved */
+    }
+    if (opening >= 2 && !counted) {
+        /* the counter the game's next save goes on from: the highest of all the files, not only of
+         * the three it read (Ov025_SaveMenuInitStep, BeginSaveToSlot) */
+        const u32 highest = highest_counter();
+        if (highest > rd32(menu + SAVE_COUNTER)) {
+            wr32(menu + SAVE_COUNTER, highest);
+        }
+        counted = 1;
+    }
+    if (phase == SAVE_SAVING && last_state != SAVE_SAVING) {
+        current_file = page_top + row; /* the file being saved to */
+    }
+    last_state = phase;
+    if (opening < 3 || phase != SAVE_PICK || rd32(menu + SAVE_ERROR) != 0) {
+        taken = 0;
+        return buttons;
+    }
+    /* UP steps the slot back, DOWN on (the screen's hooks: StepSelectionBackward, ...Forward) */
+    take = page_step(buttons, row, 0, dir, &step, &to_top, &to_row);
+    if (step) {
+        if (to_top != page_top) {
+            show_page(to_top);
+            camp_entries(camp, menu);
+        }
+        if (to_row >= 0) {
+            wr32(menu + SAVE_SLOT, (u32)to_row);
+            camp->place(menu, row, to_row);
+        }
+        PlaySound(0, 0);
+    }
+    return (u16)(buttons & ~take);
+}
+
+/* The page view while the title or a camp's menu runs, and the game's lists' buttons; 0 when
+ * neither runs. */
+static int pages(u16 buttons, u16 *out)
+{
+    u32 ctx = 0;
+    const int title_there = in_title();
+    const Camp *in_camp = title_there ? NULL : camp_of(&ctx);
+    const u32 title = title_there ? title_list() : 0;
+    const u32 camp = in_camp != NULL ? camp_save(in_camp, ctx) : 0;
+    if (!title_there && in_camp == NULL) {
+        if (page_top >= 0) {
+            page_top = -1;
+            khdays_slots_set_port_view(0);
+        }
+        return 0;
+    }
+    if (page_top < 0) {
+        /* the title's on the file saved last (the game's cursor starts on its three's latest); a
+         * camp's on the file being played, on the row the game's cursor starts on (field 0xc98) */
+        const int latest = khdays_slots_latest();
+        if (title_there) {
+            show_page(page_for(latest >= 0 ? latest : 0, 0));
+        } else {
+            const int file = current_file >= 0 ? current_file : latest >= 0 ? latest : 0;
+            show_page(page_for(file, GameState_GetField(FIELD_SAVE_SLOT, 2)));
+        }
+    }
+    khdays_slots_show_page(page_top);
+    if (title != 0) {
+        *out = title_page_buttons(title, buttons);
+    } else if (camp != 0) {
+        *out = camp_page_buttons(in_camp, ctx, camp, buttons);
+    } else if (active != KHDAYS_SAVELIST_NONE) {
+        active = KHDAYS_SAVELIST_NONE;
+        last_state = -1;
+    }
+    return 1;
+}
+
 /* ---- The two together ------------------------------------------------------------------------- */
 
 static void publish(u32 title, u32 camp)
@@ -609,6 +925,14 @@ void khdays_savelist_view(KhdaysSaveView *out)
 uint16_t khdays_savelist_buttons(uint16_t buttons)
 {
     const int available = khdays_savelist_available(language());
+    u16 paged = buttons;
+    if (!available && all_files != 0 && pages(buttons, &paged)) {
+        held = buttons;
+        return paged;
+    }
+    if (page_top >= 0) {
+        page_top = -1; /* the pages left (the setting or the list's pieces changed) */
+    }
     const u32 title = available ? title_list() : 0;
     u32 ctx = 0;
     const Camp *in_camp = available ? camp_of(&ctx) : NULL;

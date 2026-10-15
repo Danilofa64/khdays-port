@@ -266,6 +266,8 @@ enum {
     TXT_CAMP_BACK_TO_MENU,
     /* Mission Mode's pause: the port's Retry line (runtime/menus/retry.c, ui/pause.cpp) */
     TXT_PAUSE_RETRY,
+    /* The game's own save lists in pages: the tag over file 99's number, the autosave's (ui/save_numbers.cpp) */
+    TXT_SAVE_AUTOSAVE_TAG,
     /* The game's data missing (%s the folder searched) or broken (%s the data's folder, %s what). */
     TXT_NEEDS_GAME_DATA,
     TXT_GAME_DATA_BROKEN,

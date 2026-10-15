@@ -9,6 +9,7 @@
 #include "hud.h"
 #include "badges.h"
 #include "crowns.h"
+#include "save_numbers.h"
 #include "player_names.h"
 #include "bg.h"
 #include "elements.h"
@@ -488,6 +489,7 @@ static void emit(void)
     }
     khdays_ui_player_names_emit(party_there); /* the port's: the players' names in multiplayer */
     khdays_ui_crowns_emit();                  /* the port's: the crowns on the story's day list */
+    khdays_ui_save_numbers_emit();            /* the port's: the files' numbers on the game's save lists */
 }
 
 void khdays_ui_hud_init(void)

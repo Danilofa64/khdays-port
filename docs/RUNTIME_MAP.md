@@ -3016,6 +3016,57 @@ the row is out of sight: Y (the list takes no Y) does the same from any row,
 the help's keys saying it with the row's words (the maintainer's choice,
 2026-10-10; seen: Y on file 2, the game's question).
 
+**The game's own lists in pages (2026-10-15).** Without the HD list's pieces the
+game's own lists reach the 99 files too (`[save] files = 99`, the default; `3` the
+DS's three), drawn and run by the game: game slot g is file top + g
+(`khdays_slots_show_page`). Read in the C and seen running:
+- The rows are drawn from the game's records of its three slots: the title's at
+  its list context's +0x4b10, 0x20 each (+0 the day, +2 the level, +4 the munny,
+  +8 the difficulty, +0xc the play time, +0x10 what the slot holds, +0x14 its
+  latched copy, +0x18 the crown, +0x1c the face); the camps' at the save screen's
+  state +0x10, 0x1c each (the same to +0x10, then +0x14 the crown, +0x18 the face:
+  `BuildSaveSlotEntry`'s stores). The row text reads the latched copy
+  (`Ov000_DrawSaveSlotText`, every frame): with only +0x10 written, a row that held
+  a save when the list opened drew its details over an empty file; the plates and
+  digits read +0x10 (`Ov000_RefreshSelectionGroupDraw`,
+  `Ov000_UpdateNumberDisplays`, which the game calls after a delete). The port
+  writes a page's records from the files and calls those (the camps':
+  `SaveMenu_RefreshRows` and `RefreshSaveRowDigits`, as `SaveMenuTick` after a save).
+- The cursor: the title's `nPageIndex` (+0x4b08) steps with UP/DOWN and
+  `PlaySound(0, 0)`, wrapping over three (four with the guest's row);
+  `Ov000_PlaceCursorByMode(1, row)` places the hand. The camps' save screen steps
+  its slot (+0) with UP back and DOWN on (its hooks: `StepSelectionBackward` and
+  `StepSelectionForward` in the up/down places), `PlaceElementByVariant` placing it.
+  The port takes the press at a page's edge and every step of that hold until the
+  key is let go: given the key again while it is held, the game took it as a new
+  press and stepped once more (seen: UP from file 1 landed on 98, not 99).
+- The questions name the file as the row + 1 (`Ov000_DrawLoadPageText`'s
+  `pageIndex + 1`, the camps' `SaveMenuDrawPrompt`'s `nSlot + 1`); prepare.py's
+  HOOKS make it the file's (`khdays_savelist_file_number`). Seen: "¿Cargar archivo
+  99?", "¿Borrar archivo 50?", "¿Sobrescribir los datos de 50?" -- the save went to
+  `slot50.sav` alone, `khdays.sav` and `slot99.sav` byte for byte as before.
+- The rows' numbers ("01" to "03") are two 8x8 sprites each of `cmo_&.p2` entry 3's
+  white digits 0-3: its 8-bit characters 44, 42, 46, 48 (engine B's sprites step
+  128 bytes, DISPCNT bits 20-21 = 2, so OBJ tile 21 is character 42 and every other
+  character is unused). The sheet has 0-9 in the same shapes in cyan (characters 22
+  to 40, every other one) and in yellow (0 to 18, the day's); the white ones are
+  the cyan shapes with each cyan colour mapped row by row (fill 172 on rows 0-3, 168
+  on 4-5, 155 on 6, the outline 1), which gives the white 1, 2 and 3 exactly. The
+  port finds the game's digit sprites by their pixels on either engine (the
+  title's list is on the lower screen, the camps' on the upper), hides them and
+  draws the file's number (`ui/save_numbers.cpp`); over file 99's, the autosave's,
+  "AUTO" in the game's 8-dot font in the same colours, on the plate's free dots
+  before its day (the maintainer's choice, 2026-10-15; the HD list puts it over its
+  number circle). Seen on the title (story and Mission Mode), the story camp's
+  Save and on one screen; Mission Mode camp's Save is greyed in the saves tried.
+- The pages open on the file saved last (the title: the game's cursor starts on
+  its three's highest save counter) and, in a camp, on the file being played on
+  the row of field 0xc98 (where the game's cursor starts); after the camp's slots
+  are read the port gives its save counter (+0x1ef8) the highest of all the files,
+  so the next save goes on from it. The guest's row (Mission Mode's) comes after
+  file 99: UP from file 1, or Y from anywhere (as on the HD list); the walks reach
+  it with UP, which the DS's own list also wraps to.
+
 **Not the port's yet:** the save after the story's ending (scene 9, ov009,
 which ov011's end asks for: `Ov011_DestroyScene`, `Scene_RequestPending(9)`)
 shows the game's own three slots, the chip's own view.

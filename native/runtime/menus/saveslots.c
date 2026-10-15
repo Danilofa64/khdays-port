@@ -18,6 +18,7 @@ static u32 chip_size;
 static char folder[256];
 static int port_view;
 static int chosen = -1; /* the file game slot 0 was in the port's view, -1 before one */
+static int page = -1;   /* the page view's first file, -1 when it is not on */
 static volatile int view[KHDAYS_GAME_SLOTS];
 static u8 *files[PORT_FILES];   /* the port's files, KHDAYS_SLOT_BYTES each; NULL until there is one */
 static int changed[PORT_FILES];
@@ -51,6 +52,7 @@ void khdays_slots_attach(u8 *bytes, u32 size, const char *where)
     snprintf(folder, sizeof(folder), "%s", where);
     port_view = 0;
     chosen = -1;
+    page = -1;
     told_dropped = 0;
     memset(blank, 0xff, sizeof(blank));
     memset(blank, 0, 0x20);
@@ -80,10 +82,11 @@ void khdays_slots_attach(u8 *bytes, u32 size, const char *where)
 
 void khdays_slots_set_port_view(int on)
 {
-    if (on == port_view || chip == NULL) {
+    if ((on == port_view && page < 0) || chip == NULL) {
         return;
     }
     port_view = on;
+    page = -1;
     if (on && (chosen < 0 || khdays_slots_state(chosen, NULL) != KHDAYS_SLOT_SAVED)) {
         /* a save under game slot 0 when there is one: the list the game builds then lets its
          * cursor take slot 0 (an empty one it skips) */
@@ -169,6 +172,28 @@ int khdays_slots_commit(void)
 int khdays_slots_port_view(void)
 {
     return port_view;
+}
+
+void khdays_slots_show_page(int top)
+{
+    if (chip == NULL) {
+        return;
+    }
+    top = top < 0 ? 0 : top > KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS ? KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS : top;
+    if (page == top) {
+        return;
+    }
+    port_view = 0;
+    page = top;
+    for (int g = 0; g < KHDAYS_GAME_SLOTS; ++g) {
+        view[g] = top + g;
+    }
+    khdays_log("save files: the page view, game slots 1-3 are files %d-%d", top + 1, top + KHDAYS_GAME_SLOTS);
+}
+
+int khdays_slots_page(void)
+{
+    return page;
 }
 
 u32 khdays_slots_generation(void)

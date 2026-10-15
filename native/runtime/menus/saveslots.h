@@ -8,7 +8,8 @@
  * The game reaches its slots through a view: game slot g is file view[g]. The chip's own view is 1,
  * 2, 3. In the port's (while its save list stands for the game's), game slot 0 is the file the list
  * chose and slots 1 and 2 are blank (read as never written, writes dropped); until the list chooses,
- * slot 0 is the file saved last. Files are counted from 0 here (file 1 is 0). */
+ * slot 0 is the file saved last. In the page view (the game's own lists paging through the files),
+ * game slot g is file top + g. Files are counted from 0 here (file 1 is 0). */
 #ifndef KHDAYS_SAVESLOTS_H
 #define KHDAYS_SAVESLOTS_H
 
@@ -47,6 +48,12 @@ int khdays_slots_commit(void);
  * last. */
 void khdays_slots_set_port_view(int on);
 int khdays_slots_port_view(void);
+
+/* The page view (the game's own lists in pages, without the port's list): game slot g is file
+ * top + g, `top` kept within 0..KHDAYS_SLOT_COUNT - 3; the port's view or the chip's own
+ * (khdays_slots_set_port_view) ends it. khdays_slots_page: its top, -1 when it is not on. */
+void khdays_slots_show_page(int top);
+int khdays_slots_page(void);
 
 /* The file game slot 0 is (the port's view), and making it `file`. */
 int khdays_slots_shown(void);

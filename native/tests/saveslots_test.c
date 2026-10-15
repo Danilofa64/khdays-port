@@ -209,6 +209,33 @@ int main(int argc, char **argv)
     CHECK(khdays_slots_shown() == 0);
     CHECK(khdays_slots_commit());
 
+    /* the page view (the game's own lists in pages): game slot g is file top + g -- a save into
+     * game slot 3 is file top + 3's, the chip's own slots untouched */
+    khdays_slots_show_page(47);
+    CHECK(khdays_slots_page() == 47 && !khdays_slots_port_view() && khdays_slots_shown() == 47);
+    game_read(slot_at(0, 0), back, 32);
+    CHECK(back[0] == 0); /* file 48, never written: blank */
+    make_copy(copy, 51, 13);
+    game_write(slot_at(2, 0), copy, KHDAYS_SLOT_COPY);
+    game_write(slot_at(2, 1), copy, KHDAYS_SLOT_COPY);
+    CHECK(khdays_slots_state(49, &state) == KHDAYS_SLOT_SAVED && khdays_slots_field(state, 0, 9) == 51);
+    CHECK(khdays_slots_state(2, NULL) == KHDAYS_SLOT_BROKEN); /* the chip's file 3 as it was */
+    CHECK(khdays_slots_commit());
+    /* the first page is the chip's three; the page kept within the files */
+    khdays_slots_show_page(0);
+    game_read(slot_at(2, 0), back, KHDAYS_SLOT_COPY);
+    CHECK(memcmp(back, chip + slot_at(2, 0), KHDAYS_SLOT_COPY) == 0);
+    khdays_slots_show_page(KHDAYS_SLOT_COUNT + 5);
+    CHECK(khdays_slots_page() == KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS);
+    khdays_slots_show_page(-5);
+    CHECK(khdays_slots_page() == 0);
+    /* the port's view and the chip's own end the page */
+    khdays_slots_set_port_view(1);
+    CHECK(khdays_slots_page() == -1 && khdays_slots_port_view());
+    khdays_slots_show_page(10);
+    khdays_slots_set_port_view(0);
+    CHECK(khdays_slots_page() == -1 && !khdays_slots_port_view() && khdays_slots_shown() == 0);
+
     DeleteFileA(path);
     snprintf(path, sizeof(path), "%s/slots", folder);
     RemoveDirectoryA(path);
