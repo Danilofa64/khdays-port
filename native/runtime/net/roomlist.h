@@ -1,5 +1,6 @@
 /* The port's list of rooms (roomlist.c): Mission Mode's "Select a group to join" drawn by the
- * port (host/screens/room_screen.c, in the HD theater's pieces: layouts/rooms/<lang>/rooms.txt) with every
+ * port (host/screens/room_screen.c, in the HD theater's pieces: layouts/rooms/<lang>/rooms.txt; without
+ * them by the game's own screens, ui/rooms2d.c) with every
  * room there is -- its name, the players in it, the ping a session with it would take, whether
  * it asks for a password -- a search by name, and a room's name and password when one is
  * created (runtime/net/net_session.h's details).
@@ -37,6 +38,9 @@ typedef struct KhdaysRoomRow {
 
 typedef struct KhdaysRoomView {
     int screen;              /* KHDAYS_ROOMS_*: NONE when the game's list is not on */
+    int look_game;           /* without the HD pieces: the game's own screens draw it (ui/rooms2d.c),
+                              * the rows in the game's order, the last (an action) on its button */
+    int top;                 /* then the row on the game's first plate */
     int language;            /* the game's (1-5) */
     int cursor;              /* the row selected */
     int editing;             /* the selected field takes what is typed */

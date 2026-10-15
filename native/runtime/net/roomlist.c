@@ -2,7 +2,9 @@
  * (Ov006_UpdateMissionMenuOptionScreen in scene 7, Ov008_... in the camp, scene 19), and its members'
  * screen; the game keeps taking the buttons. The rooms the game knows are in its session context,
  * its cursor in its menu (0 "Create a Group", 1-4 the rooms). Both screens' data and the states between
- * them, also drawn so the DS's screen never shows: docs/RUNTIME_MAP.md section 16.2. */
+ * them, also drawn so the DS's screen never shows: docs/RUNTIME_MAP.md section 16.2. Without the HD
+ * screens' pieces the same list in the game's look: its rows in the game's order, drawn by the game's
+ * own screens (ui/rooms2d.c, ui/room_icons.cpp). */
 #include "roomlist.h"
 
 #include "../input/input.h"
@@ -28,10 +30,13 @@ extern void Ov008_CheckMissionMenuConfirmInput(void);
 extern void Ov008_UpdateMissionMenuConfirmScreen(void);
 extern void Ov006_MissionBuildOptionRows(void);
 extern void Ov008_MissionMenuWaitReady(void);
+#undef PlaySound /* windows.h's (winmm's), not the game's */
+extern int PlaySound(int bank, int sound);
 int khdays_language_wanted(void);  /* language.c */
 u32 khdays_events_vblank_count(void);
 
-#define SEEN_FRAMES 2u      /* the game's list is gone when its update did not run for longer */
+#define SEEN_FRAMES 2u      /* the game's list is gone when its update did not run for longer (the game's
+                             * frames: a frame the PC held up is not one without the list) */
 #define ROWS_COUNT 0x100u
 #define ROWS 0x104u
 #define ROW_SIZE 0xc0u
@@ -46,6 +51,9 @@ u32 khdays_events_vblank_count(void);
                              * of it at once on the local network, within a second online) */
 #define REPEAT_AFTER 20u    /* a held direction moves again after this many VBlanks, */
 #define REPEAT_EVERY 5u     /* then every this many (the port's) */
+#define GAME_REPEAT_AFTER 6u /* the same on the game's own screens: its list's */
+#define GAME_REPEAT_EVERY 2u /* (Ov006_UpdateMissionMenuCursor) */
+#define PLATES 4            /* the game's list's plates, its button below them */
 
 static const struct {
     void (*update)(void), (*members[4])(void); /* the members' screen, and the states before it */
@@ -70,12 +78,16 @@ typedef struct Text {
 } Text;
 
 static int on = -1;              /* screens' index whose update ran last, -1 none */
-static u32 seen_at;
+static u32 frames, seen_at; /* the game's frames (khdays_roomlist_buttons), the last with the list */
 static int members_on = -1;      /* the same for the members' screen */
 static u32 members_seen;
 static Text session_name;        /* the room's name, as chosen or joined here */
 static int host_view, self_view, proceed_view;
 static int mode = KHDAYS_ROOMS_NONE, cursor, editing, wrong_password;
+/* Without the HD screens' pieces the game's own screens draw the list (ui/rooms2d.c): its rows in
+ * the game's order, the action last on the game's button, the others on its four plates from `top` */
+static int look_game, top;
+static int cursor_kind = -1, cursor_which; /* the cursor's row when it is not a room, kept there */
 static Text search, room_name, password;
 static unsigned char selected[8], target[8];
 static int selected_room;        /* the cursor's row is a room: `selected` its id */
@@ -238,18 +250,18 @@ void khdays_roomlist_update_ran(uintptr_t update)
     for (int i = 0; i < SCREENS; ++i) {
         if (update == (uintptr_t)screens[i].update) {
             on = i;
-            seen_at = khdays_events_vblank_count();
+            seen_at = frames;
         }
         for (int k = 0; k < 4; ++k) {
             if (update == (uintptr_t)screens[i].members[k]) {
                 members_on = i;
-                members_seen = khdays_events_vblank_count();
+                members_seen = frames;
             }
         }
         if (update == (uintptr_t)screens[i].after && mode == KHDAYS_ROOMS_MEMBERS) {
             /* the host went on: the room stays while the game fades out to the character select */
             members_on = i;
-            members_seen = khdays_events_vblank_count();
+            members_seen = frames;
         }
     }
 }
@@ -325,10 +337,13 @@ static void build_rows(void)
     text_clear(&names);
     if (mode == KHDAYS_ROOMS_LIST) {
         /* Create a Group and the search first, the rooms after them: however many rooms there are,
-         * the two are as near (the screen keeps them in sight) */
+         * the two are as near (the screen keeps them in sight). On the game's screens its order:
+         * the search, the rooms, Create a Group on its button. */
         const int count = khdays_net_room_count();
         int shown_rooms = 0;
-        add_row(KHDAYS_ROOMROW_ACTION, KHDAYS_ROOMACTION_CREATE);
+        if (!look_game) {
+            add_row(KHDAYS_ROOMROW_ACTION, KHDAYS_ROOMACTION_CREATE);
+        }
         add_row(KHDAYS_ROOMROW_FIELD, KHDAYS_ROOMFIELD_SEARCH);
         for (int i = 0; i < count; ++i) {
             KhdaysNetRoomView v;
@@ -371,7 +386,9 @@ static void build_rows(void)
             }
             ++shown_rooms;
         }
-        if (shown_rooms == 0) {
+        if (look_game) {
+            add_row(KHDAYS_ROOMROW_ACTION, KHDAYS_ROOMACTION_CREATE); /* empty plates say there are none */
+        } else if (shown_rooms == 0) {
             add_row(KHDAYS_ROOMROW_NONE, 0);
         }
     } else if (mode == KHDAYS_ROOMS_CREATE) {
@@ -433,12 +450,20 @@ static int selectable(int i)
     return i >= 0 && i < row_count && rows[i].kind != KHDAYS_ROOMROW_NONE;
 }
 
-/* The cursor kept on the room it was on when the rooms change, else within the rows. */
+/* The cursor kept on the room it was on when the rooms change, else within the rows (on the game's
+ * screens also on the search or Create a Group, which the rooms move there). */
 static void keep_cursor(void)
 {
     if (selected_room) {
         for (int i = 0; i < row_count; ++i) {
             if (rows[i].kind == KHDAYS_ROOMROW_ROOM && memcmp(rows[i].room.id, selected, 6) == 0) {
+                cursor = i;
+                return;
+            }
+        }
+    } else if (look_game && cursor_kind >= 0 && cursor_kind != KHDAYS_ROOMROW_ROOM) {
+        for (int i = 0; i < row_count; ++i) {
+            if (rows[i].kind == cursor_kind && rows[i].which == cursor_which) {
                 cursor = i;
                 return;
             }
@@ -455,9 +480,34 @@ static void keep_cursor(void)
     }
 }
 
+/* The cursor's row now, to find it again in the rows rebuilt: a room by its id, another by its kind. */
+static void remember_cursor(void)
+{
+    selected_room = selectable(cursor) && rows[cursor].kind == KHDAYS_ROOMROW_ROOM;
+    if (selected_room) {
+        memcpy(selected, rows[cursor].room.id, 6);
+    }
+    cursor_kind = selectable(cursor) ? rows[cursor].kind : -1;
+    cursor_which = selectable(cursor) ? rows[cursor].which : 0;
+}
+
 static void move(int dir)
 {
     int next = cursor + dir;
+    if (look_game) {
+        /* the game's list goes round, its sound when there is more than one row */
+        for (int tries = 0; tries < row_count; ++tries, next += dir) {
+            next = (next % row_count + row_count) % row_count;
+            if (selectable(next)) {
+                if (row_count > 1) {
+                    PlaySound(0, 0);
+                }
+                cursor = next;
+                return;
+            }
+        }
+        return;
+    }
     while (next >= 0 && next < row_count && !selectable(next)) {
         next += dir;
     }
@@ -473,11 +523,40 @@ static Text *field_text(int which)
     return which == KHDAYS_ROOMFIELD_SEARCH ? &search : which == KHDAYS_ROOMFIELD_NAME ? &room_name : &password;
 }
 
+/* For a test run without a keyboard: KHDAYS_TEST_TYPE's texts, '|' between them, each typed into the
+ * next field that takes text, which then ends as with Enter. */
+static void test_typing(Text *t)
+{
+    static char *texts;
+    static size_t length, at;
+    static int read;
+    const char *end;
+    if (!read) {
+        const DWORD size = GetEnvironmentVariableA("KHDAYS_TEST_TYPE", NULL, 0); /* its end included */
+        read = 1;
+        texts = size > 1 ? (char *)malloc(size) : NULL;
+        if (texts != NULL && GetEnvironmentVariableA("KHDAYS_TEST_TYPE", texts, size) == size - 1) {
+            length = size - 1;
+        }
+    }
+    if (at >= length) {
+        return;
+    }
+    end = (const char *)memchr(texts + at, '|', length - at);
+    text_clear(t);
+    text_append(t, texts + at, end != NULL ? (size_t)(end - (texts + at)) : length - at);
+    at = end != NULL ? (size_t)(end - texts) + 1 : length;
+    editing = 0;
+}
+
 /* The window thread's typing, applied to the field being edited. */
 static void take_typing(void)
 {
     Text *t = editing && selectable(cursor) && rows[cursor].kind == KHDAYS_ROOMROW_FIELD ? field_text(rows[cursor].which)
                                                                                          : NULL;
+    if (t != NULL) {
+        test_typing(t);
+    }
     AcquireSRWLockExclusive(&edit_lock);
     if (t != NULL && typed.n > 0) {
         text_append(t, typed.s, typed.n);
@@ -547,6 +626,8 @@ static void publish(int screen, int master)
         return;
     }
     v->screen = screen;
+    v->look_game = look_game;
+    v->top = top;
     v->language = language();
     v->cursor = cursor;
     v->editing = editing;
@@ -597,13 +678,14 @@ void khdays_roomlist_release(void)
 static int repeated(u16 buttons, u16 key, int dir)
 {
     const u32 now = khdays_events_vblank_count();
+    const u32 after = look_game ? GAME_REPEAT_AFTER : REPEAT_AFTER, every = look_game ? GAME_REPEAT_EVERY : REPEAT_EVERY;
     if ((buttons & key) && !(held & key)) {
         repeat_dir = dir;
         repeat_from = now;
         repeat_count = 0;
         return 1;
     }
-    if ((buttons & key) && repeat_dir == dir && now - repeat_from >= REPEAT_AFTER + repeat_count * REPEAT_EVERY) {
+    if ((buttons & key) && repeat_dir == dir && now - repeat_from >= after + repeat_count * every) {
         ++repeat_count;
         return 1;
     }
@@ -634,6 +716,7 @@ static void reset(void)
     join_pending = create_pending = 0;
     selected_room = 0;
     cursor = 0;
+    top = 0;
     InterlockedExchange(&editing_now, 0);
     khdays_net_scan_only(NULL);
     publish(KHDAYS_ROOMS_NONE, 0);
@@ -642,15 +725,15 @@ static void reset(void)
 uint16_t khdays_roomlist_buttons(uint16_t buttons)
 {
     static const unsigned char none[8] = {0}; /* an id no room has (theirs are locally administered) */
-    const int active = on >= 0 && khdays_events_vblank_count() - seen_at <= SEEN_FRAMES &&
-                       available(language());
+    const int active = on >= 0 && frames + 1 - seen_at <= SEEN_FRAMES;
     const u16 now = (u16)(buttons & ~held);
     u16 out = 0;
     int master;
     int opened = 0, typing_ended;
+    ++frames;
+    look_game = !available(language());
     if (!active) {
-        const int members = members_on >= 0 && khdays_events_vblank_count() - members_seen <= SEEN_FRAMES &&
-                            available(language());
+        const int members = members_on >= 0 && frames - members_seen <= SEEN_FRAMES;
         if (members) {
             if (mode != KHDAYS_ROOMS_MEMBERS) {
                 editing = 0;
@@ -698,7 +781,12 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
         }
     }
     build_rows();
-    if (opened) {
+    if (opened && look_game) {
+        /* on Create a Group, as the game's list opens */
+        cursor = row_count - 1;
+        cursor_kind = -1;
+        top = 0;
+    } else if (opened) {
         /* on the first room, or on Create a Group when there is none */
         cursor = row_count > KHDAYS_ROOMS_FIXED && rows[KHDAYS_ROOMS_FIXED].kind == KHDAYS_ROOMROW_ROOM
                      ? KHDAYS_ROOMS_FIXED
@@ -712,15 +800,20 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
         typing_ended = was_editing && !editing;
     }
     if (!editing && !typing_ended && !join_pending) {
+        const int mode_before = mode;
         if (repeated(buttons, KHDAYS_KEY_UP, -1)) {
             move(-1);
         } else if (repeated(buttons, KHDAYS_KEY_DOWN, 1)) {
             move(1);
         }
         if ((now & KHDAYS_KEY_A) && selectable(cursor)) {
+            /* on the game's screens its sound for the port's own steps (the game's A plays its own) */
             const KhdaysRoomRow *r = &rows[cursor];
             if (r->kind == KHDAYS_ROOMROW_FIELD) {
                 editing = 1;
+                if (look_game) {
+                    PlaySound(0, 1);
+                }
             } else if (r->kind == KHDAYS_ROOMROW_ROOM) {
                 text_clear(&session_name);
                 text_append(&session_name, names.s + ((uintptr_t)r->text - 1), strlen(names.s + ((uintptr_t)r->text - 1)));
@@ -729,7 +822,11 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
                     text_clear(&password);
                     mode = KHDAYS_ROOMS_PASSWORD;
                     cursor = 0;
+                    top = 0;
                     editing = 1;
+                    if (look_game) {
+                        PlaySound(0, 1);
+                    }
                 } else {
                     khdays_net_join_password(NULL);
                     start_join(r->room.id);
@@ -739,7 +836,12 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
                     nickname(&room_name);
                 }
                 mode = KHDAYS_ROOMS_CREATE;
-                cursor = 0;
+                /* the game's: on its button, A again creates the room as its one A did */
+                cursor = look_game ? 2 : 0;
+                top = 0;
+                if (look_game) {
+                    PlaySound(0, 1);
+                }
             } else if (r->which == KHDAYS_ROOMACTION_CREATE) {
                 khdays_net_room_details(text_of(&room_name), text_of(&password));
                 text_clear(&session_name);
@@ -760,16 +862,39 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
                 text_clear(&password);
                 mode = KHDAYS_ROOMS_LIST;
                 cursor = 0;
+                if (look_game) {
+                    PlaySound(0, 3);
+                    cursor_kind = KHDAYS_ROOMROW_ACTION; /* back on Create a Group */
+                    cursor_which = KHDAYS_ROOMACTION_CREATE;
+                    top = 0;
+                }
             }
+        }
+        if (mode == mode_before) {
+            remember_cursor(); /* where it moved to */
+        } else {
+            selected_room = 0; /* the cursor set for the step's own rows */
         }
         build_rows();
         keep_cursor();
     }
-    /* the game is told of the room under the cursor only (or of the one being joined) */
-    selected_room = selectable(cursor) && rows[cursor].kind == KHDAYS_ROOMROW_ROOM;
-    if (selected_room) {
-        memcpy(selected, rows[cursor].room.id, 6);
+    if (look_game) {
+        /* the game's plates show the rows before its button from `top`: the cursor's among them */
+        const int plated = row_count - 1;
+        if (cursor < plated && cursor < top) {
+            top = cursor;
+        } else if (cursor < plated && cursor >= top + PLATES) {
+            top = cursor - PLATES + 1;
+        }
+        if (top > plated - PLATES) {
+            top = plated - PLATES;
+        }
+        if (top < 0) {
+            top = 0;
+        }
     }
+    /* the game is told of the room under the cursor only (or of the one being joined) */
+    remember_cursor();
     if (!join_pending) {
         khdays_net_scan_only(mode == KHDAYS_ROOMS_LIST && selected_room ? selected : none);
     }

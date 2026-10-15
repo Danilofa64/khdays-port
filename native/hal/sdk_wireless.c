@@ -769,15 +769,18 @@ static void on_event(const KhdaysNetEvent *e)
         }
         break;
     case KHDAYS_NET_REFUSED:
+        /* A full or closed room: the game goes back to its list on a failed connection with these
+         * codes (Ov006_UpdateMissionMenuConfirmScreen's state 8, Ov006_MissionSelectStateCallback's
+         * 11 and 12); in the error state it shows its connection error and restarts. */
         switch (e->reason) {
         case KHDAYS_NET_REFUSE_FULL:
             WH_SetError(WM_ERRCODE_OVER_MAX_ENTRY);
-            sSysState = WH_SYSSTATE_ERROR;
+            sSysState = WH_SYSSTATE_CONNECT_FAIL;
             break;
         case KHDAYS_NET_REFUSE_CLOSED:
         case KHDAYS_NET_REFUSE_PASSWORD: /* the game's own way back to its list (the port's says why) */
             WH_SetError(WM_ERRCODE_NO_ENTRY);
-            sSysState = WH_SYSSTATE_ERROR;
+            sSysState = WH_SYSSTATE_CONNECT_FAIL;
             break;
         case KHDAYS_NET_REFUSE_JUDGE:
             /* the DS's parent disconnects a guest its judge refuses */

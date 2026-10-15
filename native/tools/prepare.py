@@ -1250,6 +1250,72 @@ HOOKS = {
 }
 
 
+def _rooms2d_hooks(ov, draw, menu, empty, list_wrap, member_tail):
+    """The port's list of rooms on the game's own screens (ui/rooms2d.c): the game's "Select a group
+    to join" (Ovxxx_UpdateMissionMenuOptionScreen) draws each plate's label and colour, a room's
+    players on its right, its note (0x3d) and its button's word (0x3e) from the port's view, its hand
+    at the port's cursor; its members' screen (..._SelectionScreen) each member's ping and the room's
+    name. The two overlays run the same code, their text call and data named apart."""
+    # The port's strings go into buffers on the game's own stack (the game reads only its memory),
+    # alive until the screen's text is flushed at the function's end.
+    externs = ("extern void *khdays_rooms2d_label(int plate, void *game, void *empty, void *out, int units);\n"
+               "extern int khdays_rooms2d_colour(int plate, int game);\n"
+               "extern void *khdays_rooms2d_detail(int plate, void *out, int units);\n"
+               "extern int khdays_rooms2d_hand(int game);\n"
+               "extern void *khdays_rooms2d_text(int id, void *game, void *out, int units);\n"
+               f"extern u16 {empty}[];\n")
+    member_externs = ("extern void *khdays_rooms2d_title(void *out, int units);\n"
+                      "extern void *khdays_rooms2d_member_detail(int row, void *out, int units);\n")
+    record = f"Ov{ov}_GetVarRecordByIndex(&{menu}->resource, "
+    return [
+        (f"MissionState Ov{ov}_UpdateMissionMenuOptionScreen(void)\n{{\n",
+         externs + f"MissionState Ov{ov}_UpdateMissionMenuOptionScreen(void)\n{{\n"
+         "    u16 khdays_labels[4][64], khdays_details[4][16], khdays_note[256], khdays_button[64];\n"),
+        (record + "0x3d)", f"khdays_rooms2d_text(0x3d, {record}0x3d), khdays_note, 256)"),
+        (record + "0x3e)", f"khdays_rooms2d_text(0x3e, {record}0x3e), khdays_button, 64)"),
+        (f"{draw}(optionLabels[optionIndex], 0x57,",
+         f"{draw}(khdays_rooms2d_label(optionIndex, optionLabels[optionIndex], {empty}, "
+         "khdays_labels[optionIndex], 64), 0x57,"),
+        ("(u8)(optionIndex < visibleOptionCount ? 1 : 3), 1, 0, 0);\n",
+         "(u8)khdays_rooms2d_colour(optionIndex, optionIndex < visibleOptionCount ? 1 : 3), 1, 0, 0);\n"
+         "        if (khdays_rooms2d_detail(optionIndex, khdays_details[optionIndex], 16) != 0) {\n"
+         f"            {draw}(khdays_details[optionIndex], 0xb8, optionIndex * 0x18 + 0x23, (u8)1, 1, 1, 0);\n"
+         "        }\n"),
+        (f"Ov{ov}_MissionScene_SetByte95AC((u8){menu}->selection.cursorIndex);",
+         f"Ov{ov}_MissionScene_SetByte95AC((u8)khdays_rooms2d_hand((int){menu}->selection.cursorIndex));"),
+    ], [
+        (f"MissionState Ov{ov}_UpdateMissionMenuSelectionScreen(void)\n{{\n",
+         member_externs + f"MissionState Ov{ov}_UpdateMissionMenuSelectionScreen(void)\n{{\n"
+         "    u16 khdays_pings[4][16], khdays_title[64];\n"),
+        (list_wrap + member_tail,
+         list_wrap + member_tail +
+         "    { int row;\n"
+         "      for (row = 0; row < 4; row++) {\n"
+         "          if (khdays_rooms2d_member_detail(row, khdays_pings[row], 16) != 0) {\n"
+         f"              {draw}(khdays_pings[row], 0xd0, row * 0x18 + 0x23, 1, 1, 1, 0);\n"
+         "          }\n"
+         "      }\n"
+         "      if (khdays_rooms2d_title(khdays_title, 64) != 0) {\n"
+         f"          {draw}(khdays_title, 0x80, 0x18, 1, 1, 3, 0);\n"
+         "      } }\n"),
+    ]
+
+
+_ov006_list, _ov006_members = _rooms2d_hooks(
+    "006", "Ov006_MissionDrawTextRunFwd", "data_ov006_02056660", "data_ov006_020563d4",
+    "        Ov006_MissionDrawTextRunFwd(data_ov006_0205651c, 99, visibleRowIndex * 0x18 + 0x23, 1, 1, 0,\n"
+    "                                    0);\n",
+    "        visibleRowIndex = (visibleRowIndex + 1) & 0xff;\n    }\n")
+_ov008_list, _ov008_members = _rooms2d_hooks(
+    "008", "Ov008_ForwardSevenArgs", "data_ov008_02090fa0", "data_ov008_02090bc4",
+    "        Ov008_ForwardSevenArgs(data_ov008_02090d0c, 99, visibleRowIndex * 0x18 + 0x23, 1, 1, 0, 0);\n",
+    "        visibleRowIndex = (visibleRowIndex + 1) & 0xff;\n    }\n")
+HOOKS["ov006@02050360"] = _ov006_list     # Ov006_UpdateMissionMenuOptionScreen
+HOOKS["ov008@0207c248"] = _ov008_list     # Ov008_UpdateMissionMenuOptionScreen
+HOOKS["ov006@020508e0"] = _ov006_members  # Ov006_UpdateMissionMenuSelectionScreen
+HOOKS["ov008@0207c7c8"] = _ov008_members  # Ov008_UpdateMissionMenuSelectionScreen
+
+
 # Hooks by the decomp file, for functions HOOKS cannot name: DS Protect's
 # (ov028) are data in the symbols, their bodies being encrypted in the ROM,
 # and several share a file. Applied like HOOKS.

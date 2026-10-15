@@ -656,6 +656,14 @@ words those texts itself keeps its own.
   "Host" and "You", the ping; and the host's Proceed once two players are
   in. The game's own list underneath does the joining, as before; the
   server needs nothing new.
+  Without those pieces the game's own group list does the same in its own
+  look: its four rows go through every room (past the last one the list
+  moves on), each with the room's name, its players, a lock when it asks for
+  a password and the game's signal icon by its ping; the search on the
+  first row; Create a Group asks the name and password on the same rows
+  (A twice creates the room as before); a wrong password is said on the
+  upper screen. Its members' screen adds the room's name and each one's
+  ping.
 
 The connection is the PC's: what the network delays the game waits for, and
 nothing more -- a datagram lost is made good by the next one. Leaving or

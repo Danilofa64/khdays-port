@@ -403,6 +403,8 @@ add_executable(khdays-native
     ui/crowns.c                    # the crowns on the story's day list
     ui/mission_list.c              # the camp's mission list from the game's files
     ui/save_numbers.cpp            # the file numbers on the game's own save lists in pages
+    ui/rooms2d.c                   # the port's list of rooms on the game's own screens (prepare.py's hooks)
+    ui/room_icons.cpp              # each room's signal and lock on the game's own list
     ui/player_names.cpp            # the players' names in multiplayer
     ui/pause.cpp                   # the pause's Retry line in Mission Mode
     ui/text.c
@@ -419,6 +421,8 @@ add_executable(khdays-native
     ../src/assets/gltf.cpp         # a mod's models (runtime/mods/models.cpp)
     ../src/assets/fbx.cpp          # ... as FBX (specs/014)
     ../src/assets/image.cpp        # their textures in PNG, JPEG, TGA, BMP (its own stb_image)
+    ../src/assets/graphics2d.cpp   # the game's 2D sheets, for the rooms' signal
+    ../src/assets/cell.cpp         # their cells
     ../src/assets/png.cpp          # their textures (stb_image kept to itself: STB_IMAGE_STATIC)
     ../src/vfs/filesystem.cpp)  # the port's VFS: files and mods
 target_include_directories(khdays-native PRIVATE ../include)

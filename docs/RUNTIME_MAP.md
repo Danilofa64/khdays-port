@@ -3525,7 +3525,12 @@ creates, another commits room cursor - 1 (`Ov006_MissionCommitRowSelection`
 words are `UI/mlt/mlt_&.s.z`'s: 0x3c "Elige un grupo para unirte.", 0x3d the
 note, 0x3e "Crear un grupo", 0x3f its keys (the DS's A and B), 0x40 on the
 members' screen. A join refused for a full room (`WM_ERRCODE_OVER_MAX_ENTRY`)
-or a closed one (`WM_ERRCODE_NO_ENTRY`) takes the game back to its list.
+or a closed one (`WM_ERRCODE_NO_ENTRY`) takes the game back to its list -- when the wireless
+layer's state is 8, a failed connection: `Ov006_UpdateMissionMenuConfirmScreen` goes back to
+`Ov006_MissionMenuTick` on 8 and shows its connection error on 0, 9 or 10, and
+`Ov006_MissionSelectStateCallback` reads the two codes there. The port's layer gave 9 until
+2026-10-15 (seen: a wrong password ended in "Error de conexión" and the title); it gives 8 now
+(seen: back on the list, the password said wrong, the room still there).
 
 **The rooms' details.** A room's announcement (`ANNOUNCE`, and the server's
 `REGISTER`/`ROOMS`, which keep it whole) carries, after the game's
@@ -3582,6 +3587,58 @@ middle shade: 24,49,148; 148,24,33; 148,115,24; 24,148,41) and labelled 1P-4P
 (English), J1-J4 (Spanish and French), S1-S4 (German), G1-G4 (Italian); the
 port fills each row's circle with its place's colour and writes its label
 in it.
+
+**Without the theater's pieces: the game's own screens (2026-10-15).** The same
+list (`roomlist.c`: every room, the search, a room's name and password, the
+password asked, the pings) is drawn by the game's own "Select a group to join"
+and members' screen, in its look, as the maintainer chose. Read in the C: each
+frame `Ov006_UpdateMissionMenuOptionScreen` draws its four labels with
+`Ov006_MissionDrawTextRunFwd(text, 0x57, 0x23 + 0x18 * i, colour, 1, 0, 0)` (colour
+1 white for the rooms it knows, 3 grey for the others, whose label is
+`data_ov006_020563d4`, "------"), 0x3d (the note) centred at (128, 96) on the
+upper screen, 0x3e (its button's word) centred at (128, 152); the call's align is
+0 left, 1 right, 3 centred (`Ov006_MissionDrawTextRun`). It writes its cursor to
+the scene's +0x95ac (`Ov006_MissionScene_SetByte95AC`), where its hand is drawn
+from: 0 the button, 1-4 the plates; the plate under the hand turns red, the
+button too. Its +0x950c is the link level (`Ov006_SetMissionCursorSelection` is
+misnamed: it is given `Ov105_WH_GetLinkLevel()`), the 16x16 icon at (240, 160) on
+the members' screen. ov008's list and members' screen are the same code
+(`Ov008_ForwardSevenArgs` its text call). Measured (no mods, two copies): the
+plates are five sprites, x 72-192 at y 32, 56, 80, 104; the button 56-200 x 140-164.
+
+prepare.py's hooks (`_rooms2d_hooks`, the four functions in both overlays) give
+those calls the port's strings and the hand the port's cursor (`ui/rooms2d.c`):
+the rows in the game's order -- the search, every room, Create a Group on the
+button -- four on the plates from the one on the first (moved by one past the
+first or last plate, as the save lists), a room's name cut to the DS's ten
+characters, its players right-aligned at x 184, the step's note or "wrong
+password" in place of 0x3d, "Join" in place of 0x3e on the password step; the
+members' screen the room's name centred at (128, 24) and each member's ping, or
+"You", right-aligned at x 208. The strings go into buffers the hooked function
+declares: the game's code reads only its own memory, and a host pointer stopped
+the game (`khdays_reference`). The list opens on Create a Group and goes round,
+as the game's (`Ov006_UpdateMissionMenuCursor`: its repeat after 6 frames, then
+every 2, and its sounds `PlaySound(0, 0)`, `(0, 1)`, `(0, 3)`); Create a Group
+opens the name and password on the plates with the hand on the button, so A, A
+creates the room as the DS's one A did. Each room's signal is the game's link
+icon (`UI/mlt/res.p2` entry 1, cells 12-15: one bar in red to four in green, link
+levels 0-3) for its ping read as a member's (under 100 ms 3, under 200 ms 2, else
+1), right of its plate; a room with a password a lock before its players in the
+icon's own colours (the game has none: none of its fonts holds one;
+`ui/room_icons.cpp`). Seen (2026-10-15, copies of this PC on the local network,
+two screens and one, the five languages): six rooms reached past the plates, two
+with a lock; a wrong password back on the list said, the right one joined; a
+room created as "Sala Riku" with a password listed so by a third copy; the
+members' screen with the room's name, "0 ms" and "Tú". With the theater's pieces
+the theater's screens, as before.
+
+Two faults found on the way, which the theater's list had too: a frame the PC
+held up (a capture saved) was taken for the game leaving its list, which opened
+afresh with the cursor on Create a Group (the list's presence is now counted in
+the game's frames, not VBlanks); and the cursor moved onto another room went back
+to the room it was on (the rows are now rebuilt after the cursor's row is noted).
+`KHDAYS_TEST_TYPE` types texts into the fields for a run without a keyboard
+(`|` between them).
 
 ### 16.3 The character select on one screen (2026-10-09)
 
