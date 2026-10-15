@@ -246,6 +246,7 @@ int run_window(App& app) {
 
 int main(int argc, char** argv) {
     using namespace studio;
+    attach_parent_console();  // a terminal run still shows the command line's output
     std::filesystem::path root = std::filesystem::current_path();
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) args.emplace_back(argv[i]);
@@ -255,7 +256,6 @@ int main(int argc, char** argv) {
     }
     if (!args.empty()) return run_command_line(root, args);
 
-    leave_own_console();
     App app;
     std::string note;
     app.settings = load_settings(root, &note);

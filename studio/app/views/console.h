@@ -1,10 +1,10 @@
-// The tool is a console program, so its command line prints where it was
-// typed; opened from the desktop, the console the system made for it alone is
-// let go, leaving only the window.
+// The tool is a windowed program, so opening it from the desktop shows no
+// console. When it was started from a terminal (to run its command line),
+// attach_parent_console connects to that terminal so its output is seen there.
 #pragma once
 
 namespace studio {
 
-void leave_own_console();
+void attach_parent_console();
 
 }  // namespace studio

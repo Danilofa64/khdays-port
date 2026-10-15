@@ -7,6 +7,9 @@
 cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
 project(khdays_studio C CXX)
+if(WIN32)
+    enable_language(RC)  # the executable icon (native/resources/studio.rc)
+endif()
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "khdays-studio is built for x64: use studio/build.py")
@@ -152,6 +155,7 @@ target_link_libraries(khdays-studio-core PUBLIC khdays-studio-port SDL3::SDL3)
 target_compile_options(khdays-studio-core PRIVATE ${KHDAYS_STUDIO_FLAGS})
 
 add_executable(khdays-studio
+    ${CMAKE_CURRENT_SOURCE_DIR}/../native/resources/studio.rc   # the executable's icon (studio.ico)
     app/app.cpp
     app/views/browser.cpp
     app/cli.cpp
@@ -172,6 +176,12 @@ add_executable(khdays-studio
     app/theme.cpp)
 target_link_libraries(khdays-studio PRIVATE khdays-studio-core khdays-studio-imgui)
 target_compile_options(khdays-studio PRIVATE ${KHDAYS_STUDIO_FLAGS})
+if(WIN32)
+    # a windowed program (no console window when opened from the desktop or a shortcut); main()
+    # (SDL's, from SDL_main.h) stays the entry point, and it attaches to a terminal's console when
+    # started from one
+    target_link_options(khdays-studio PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+endif()
 
 enable_testing()
 add_executable(khdays-studio-tests
