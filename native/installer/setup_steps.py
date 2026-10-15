@@ -707,6 +707,18 @@ MESSAGES["steam-missing"] = {
     "de": "Steam wurde auf diesem Computer nicht gefunden.",
     "it": "Steam non è stato trovato su questo computer.",
 }
+MESSAGES["steam-wine"] = {
+    "en": "This runs under Proton or Wine (a Steam Deck, Linux): the installer cannot reach this computer's "
+          "Steam from here. Add the game to Steam by hand, from Desktop Mode.",
+    "es": "Se está ejecutando en Proton o Wine (Steam Deck, Linux): desde aquí el instalador no llega al Steam "
+          "de este equipo. Añade el juego a Steam a mano, desde el Modo Escritorio.",
+    "fr": "Ceci tourne sous Proton ou Wine (Steam Deck, Linux) : l'installateur ne peut pas atteindre le Steam "
+          "de cet ordinateur d'ici. Ajoutez le jeu à Steam à la main, depuis le mode Bureau.",
+    "de": "Dies läuft unter Proton oder Wine (Steam Deck, Linux): Von hier erreicht das Installationsprogramm "
+          "das Steam dieses Computers nicht. Füge das Spiel im Desktop-Modus von Hand zu Steam hinzu.",
+    "it": "Questo gira sotto Proton o Wine (Steam Deck, Linux): da qui l'installazione non raggiunge lo Steam "
+          "di questo computer. Aggiungi il gioco a Steam a mano, dalla modalità Desktop.",
+}
 MESSAGES["steam-added"] = {
     "en": "Added the port to Steam.",
     "es": "Se ha añadido el port a Steam.",
@@ -735,9 +747,11 @@ def _steam_setup(install: Path):
 def steam_status(args: argparse.Namespace) -> dict[str, Any]:
     import steam_library
     import steam_shortcut
+    if steam_shortcut.under_wine():  # a Wine prefix's Steam is not the computer's: nothing to look at
+        return {"steam": None, "wine": True, "running": False, "accounts": 0, "present": False}
     steam = steam_library.steam_folder()
     if steam is None:
-        return {"steam": None, "running": False, "accounts": 0, "present": False}
+        return {"steam": None, "wine": False, "running": False, "accounts": 0, "present": False}
     exe = args.install.resolve() / steam_shortcut.EXE_NAME
     present = False
     configs = steam_shortcut.user_configs(steam)
@@ -747,7 +761,7 @@ def steam_status(args: argparse.Namespace) -> dict[str, Any]:
         except (OSError, ValueError):
             continue
         present = present or steam_shortcut.port_present(entries, exe)
-    return {"steam": str(steam), "steam_exe": str(steam / "steam.exe"),
+    return {"steam": str(steam), "steam_exe": str(steam / "steam.exe"), "wine": False,
             "running": steam_shortcut.steam_running(), "accounts": len(configs), "present": present}
 
 
@@ -757,6 +771,9 @@ def steam_status(args: argparse.Namespace) -> dict[str, Any]:
                     p.add_argument("--proton-from-collection", action="store_true",
                                    help="map whatever Proton the 1.5+2.5 collection already uses")))
 def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
+    import steam_shortcut
+    if steam_shortcut.under_wine():  # also for a silent /STEAM=yes: never write into a Wine prefix's Steam
+        raise Refusal("steam-wine")
     steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
     if steam_shortcut.steam_running():
         raise Refusal("steam-running")
@@ -793,6 +810,9 @@ def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
 
 @command("remove-from-steam", "take the port out of Steam (exit 1 if Steam is open)", _steam_arguments)
 def remove_from_steam(args: argparse.Namespace) -> dict[str, Any]:
+    import steam_shortcut
+    if steam_shortcut.under_wine():  # nothing was ever written there
+        return {"removed": 0}
     steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
     appid = steam_shortcut.shortcut_appid(f'"{exe}"', steam_shortcut.APP_NAME)  # deterministic, no state needed
     if not _port_in_steam(steam, exe, appid, steam_shortcut):

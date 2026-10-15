@@ -75,7 +75,7 @@ Name: "{autoprograms}\KH Studio"; Filename: "{app}\khdays-studio.exe"; WorkingDi
 [Run]
 ; make the install folder writable by the player (the SID is the Users group, name-independent),
 ; so the port keeps its saves, settings and game data beside itself even under Program Files
-Filename: "{sys}\icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)M /T /C /Q"; Flags: runhidden waituntilterminated; Check: NeedsWriteGrant
+Filename: "{sys}\icacls.exe"; Parameters: """{app}"" /grant *S-1-5-32-545:(OI)(CI)M /T /C /Q"; Flags: runhidden waituntilterminated skipifdoesntexist; Check: NeedsWriteGrant
 ; started as the player (not the administrator that installed it), so its saves are the player's
 Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "{cm:StartPort}"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: DataReady
 
@@ -360,9 +360,16 @@ end;
 
 { ---- Add to Steam (optional) ---- }
 
+{ Whether the installer runs under Proton or Wine (a Steam Deck, Linux): it is then in a Wine
+  prefix whose Steam is not the computer's, so the Steam steps and the folder grant are left out. }
+function UnderWine: Boolean;
+begin
+  Result := RegKeyExists(HKEY_CURRENT_USER, 'Software\Wine') or RegKeyExists(HKEY_LOCAL_MACHINE, 'Software\Wine');
+end;
+
 { The port as a non-Steam game: a page with one checkbox (off), shown only when Steam is found.
   The entry is written while Steam is closed (the installer asks before closing it), so it is not
-  lost when Steam next writes its files. }
+  lost when Steam next writes its files. Under Proton the page says to add the game by hand. }
 procedure CreateSteamPage;
 var
   Json: String;
@@ -394,7 +401,12 @@ begin
   SteamStatus.AutoSize := False;
   SteamStatus.WordWrap := True;
   SteamStatus.Height := ScaleY(96);
-  if SteamPresent then
+  if UnderWine then begin
+    SteamAdd.Checked := False;
+    SteamAdd.Enabled := False;
+    SteamStatus.Caption := CustomMessage('SteamUnderProton');
+  end
+  else if SteamPresent then
     SteamStatus.Caption := CustomMessage('SteamAlready')
   else
     SteamStatus.Caption := CustomMessage('SteamPageText');
@@ -479,7 +491,8 @@ end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
-  Result := (PageID = SteamPage.ID) and not SteamFound;
+  { under Proton the page is shown anyway, to say why the game is added to Steam by hand }
+  Result := (PageID = SteamPage.ID) and not SteamFound and not UnderWine;
 end;
 
 { When the Steam page is shown the folder is chosen, so re-check whether the port is already in
@@ -552,7 +565,7 @@ end;
   per-user install (/PRIVILEGESREQUIRED=lowest) is already writable, so the grant is skipped. }
 function NeedsWriteGrant: Boolean;
 begin
-  Result := IsAdminInstallMode;
+  Result := IsAdminInstallMode and not UnderWine;  { a Wine prefix has no Windows permissions to grant }
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -584,7 +597,7 @@ begin
       if it does not run, the port writes its own defaults on first start, so no error is shown }
     RunHelperIn(ExpandConstant('{app}'), 'seed-settings "' + ExpandConstant('{app}') + '"', Json);
     { the port as a non-Steam game: added when chosen, taken out when a re-run turns it off }
-    if SteamFound and SteamAdd.Checked then begin
+    if SteamFound and SteamAdd.Checked and not UnderWine then begin
       WizardForm.StatusLabel.Caption := CustomMessage('SteamAdding');
       WizardForm.Refresh;
       if DoSteam('add-to-steam --proton-from-collection', ExpandConstant('{app}'), not WizardSilent) then begin
@@ -593,7 +606,7 @@ begin
             ShellExecAsOriginalUser('open', SteamExe, '', '', SW_SHOWNORMAL, ewNoWait, Code);
       end else
         SuppressibleMsgBox(CustomMessage('SteamCancelled'), mbInformation, MB_OK, IDOK);
-    end else if SteamFound and SteamPresent and not SteamAdd.Checked then
+    end else if SteamFound and SteamPresent and not SteamAdd.Checked and not UnderWine then
       DoSteam('remove-from-steam', ExpandConstant('{app}'), not WizardSilent);
   end;
 end;
@@ -606,7 +619,8 @@ var
 begin
   if CurUninstallStep = usUninstall then begin
     { take the port out of Steam if it was added (the helper and Python are still here) }
-    DoSteam('remove-from-steam', ExpandConstant('{app}'), not UninstallSilent);
+    if not UnderWine then
+      DoSteam('remove-from-steam', ExpandConstant('{app}'), not UninstallSilent);
     { silent: the default, keep them }
     if SuppressibleMsgBox(CustomMessage('RemoveSaves'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
       if RunHelperIn(ExpandConstant('{app}'), 'remove-user-files "' + ExpandConstant('{app}') + '"', Json) <> 0 then

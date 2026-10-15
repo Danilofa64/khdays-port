@@ -43,6 +43,19 @@ def user_configs(steam: Path) -> list[Path]:
             if account.is_dir() and account.name.isdigit() and account.name != "0"]
 
 
+def under_wine() -> bool:
+    """Whether this runs under Wine or Proton (a Steam Deck, Linux): the installer is then in a Wine
+    prefix, whose Steam folder and registry are the prefix's own, not the computer's Steam -- an
+    entry written there would reach nothing, so the Steam steps are left out."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        return hasattr(ctypes.windll.ntdll, "wine_get_version")
+    except OSError:
+        return False
+
+
 def steam_running() -> bool:
     """Whether Steam is running: its registry `ActiveProcess/pid` names a live process. Steam
     rewrites shortcuts.vdf and config.vdf when it closes, so a change made while it runs would be

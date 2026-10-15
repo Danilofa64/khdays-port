@@ -162,13 +162,14 @@ class Commands(unittest.TestCase):
         self.install = root / "install"
         (self.install / "setup").mkdir(parents=True)
         (self.install / ss.EXE_NAME).write_bytes(b"MZ")
-        self.saved = (steam_library.steam_folder, ss.steam_running)
+        self.saved = (steam_library.steam_folder, ss.steam_running, ss.under_wine)
         steam_library.steam_folder = lambda: self.steam
         ss.steam_running = lambda: False
+        ss.under_wine = lambda: False
         self.lib, self.steps, self.argparse = steam_library, setup_steps, argparse
 
     def tearDown(self):
-        self.lib.steam_folder, ss.steam_running = self.saved
+        self.lib.steam_folder, ss.steam_running, ss.under_wine = self.saved
         self.dir.cleanup()
 
     def run_command(self, name):
@@ -191,6 +192,18 @@ class Commands(unittest.TestCase):
         with self.assertRaises(self.steps.Refusal) as refused:
             self.run_command("add-to-steam")
         self.assertEqual(refused.exception.key, "steam-running")
+
+    def test_under_wine_nothing_is_touched(self):
+        # a Wine prefix's Steam is not the computer's: no entry is written there, even silently
+        ss.under_wine = lambda: True
+        status = self.run_command("steam-status")
+        self.assertTrue(status["wine"])
+        self.assertIsNone(status["steam"])
+        with self.assertRaises(self.steps.Refusal) as refused:
+            self.run_command("add-to-steam")
+        self.assertEqual(refused.exception.key, "steam-wine")
+        self.assertEqual(self.run_command("remove-from-steam")["removed"], 0)
+        self.assertEqual(list((self.steam / "userdata").rglob("shortcuts.vdf")), [])
 
     def test_nothing_to_remove_needs_no_closed_steam(self):
         # uninstalling a port never added to Steam must not ask to close a running Steam

@@ -53,18 +53,23 @@ runs the tools under a folder of their own and puts what they made in place whol
 
 Optional, off by default, on a page of its own shown only when Steam is found: the port added to
 the player's Steam library as a non-Steam game (its name and icon), so it starts from Steam like
-any other game, and on a Steam Deck appears in Game Mode. The entry goes in each local Steam
-user's `userdata/<account>/config/shortcuts.vdf`; nothing of the collections is changed.
+any other game. The entry goes in each local Steam user's `userdata/<account>/config/shortcuts.vdf`;
+nothing of the collections is changed.
 
 Steam reads those files when it starts and writes them when it closes, so they are changed only
 while Steam is closed: if it is running, the installer asks before closing it, and offers to open
 it again afterwards. The binary file is changed only when it reads back to exactly its own bytes
 (another program's shortcuts are never lost), with a one-time `shortcuts.vdf.khdays-backup` kept
 beside it. The entry's id is the port's own, made from its path, so the same number finds it to
-remove it. On Linux or a Steam Deck the port, a Windows game, runs through Proton: the entry gets
-the same Proton the 1.5+2.5 collection is already mapped to in `config/config.vdf` (none when the
-collection has none, as on Windows). Turning the option off on a later run, or uninstalling,
-takes the entry (and that mapping) out again.
+remove it. Turning the option off on a later run, or uninstalling, takes the entry out again.
+
+Under Proton or Wine (a Steam Deck, Linux) the installer runs in a Wine prefix, whose Steam is
+not the computer's: the option is shown off and disabled, with a note, and the helper refuses it
+even for a silent `/STEAM=yes`; the game is added to Steam by hand from Desktop Mode (a non-Steam
+game pointing to `khdays-native.exe` in the install folder, Proton forced in its Compatibility
+properties). The folder grant is skipped there too. `steam_shortcut.py` can also map a Proton tool
+in Steam's `config/config.vdf` (the one the 1.5+2.5 collection uses), for when the installer
+reaches a Linux Steam; it is not used yet.
 
 ## Building it
 
