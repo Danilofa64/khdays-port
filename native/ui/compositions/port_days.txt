@@ -331,27 +331,27 @@ stop
 # whole picture; the upper screen's header across the top -- its title at the
 # top left (0-127), its line of help at the top right (128-255), its plain
 # columns (120-123: black over the red line) repeated between; the world's
-# name at the bottom left (rows 176-191), its corners rounded; the mission
-# list at the right: its frame alone (the lower screen's 9,9-247,183, its
-# corners rounded as the frame's own; around it the screen's dark ground),
-# drawn whole (`force`: its black is the screen's backdrop), at the HUD's
-# scale and smaller the narrower the picture, so that the world stays seen
-# beside it (the maintainer's choice from the pictures, 2026-10-14; the list
-# alone, rounded and following the HUD's size, 2026-10-15).
+# name and rank at the bottom left (rows 176-191), its corners rounded; the
+# lower screen at the right, whole -- its list or a mission's page, the L and
+# R of the worlds at its top corners, the buttons' help in its last rows --
+# its corners rounded, drawn whole (`force`: its black is the screen's
+# backdrop), smaller the narrower the picture so that the world stays seen
+# beside it. All at the HUD's scale (the maintainer's choices from the
+# pictures, 2026-10-14 and 2026-10-15).
 [world-selector]
 screens upper
 brightness upper
 [world-selector if wide]
-shape lower 9 9 238 174 at right margin 0 0 6 0 scale 0.52 round 4 force
+shape lower at right margin 0 0 6 0 scale 0.52 round 8 force
 [world-selector if !wide !narrow]
-shape lower 9 9 238 174 at right margin 0 0 5 0 scale 0.45 round 4 force
+shape lower at right margin 0 0 5 0 scale 0.45 round 8 force
 [world-selector if narrow]
-shape lower 9 9 238 174 at right margin 0 0 4 0 scale 0.38 round 4 force
+shape lower at right margin 0 0 4 0 scale 0.38 round 8 force
 [world-selector]
-shape upper 0 0 128 16 at top-left scale fixed(1)
-shape upper 128 0 128 16 at top-right scale fixed(1)
-shape upper 120 0 4 16 at top-left scale fixed(1) repeat x
-shape upper 0 176 256 16 at bottom-left scale fixed(1) round 4
+shape upper 0 0 128 16 at top-left scale 0.55
+shape upper 128 0 128 16 at top-right scale 0.55
+shape upper 120 0 4 16 at top-left scale 0.55 repeat x
+shape upper 0 176 256 16 at bottom-left margin 4 0 0 4 scale 0.55 round 6
 stop
 
 # ----------------------------------------------------------------------------

@@ -3149,9 +3149,11 @@ two), counts as seen, so the INFORMATION banner does not show the start twice.
 game darkens the lower screen to half under its pause (each 5-bit colour c - c x 8 / 16, measured
 on the mission walk: the map's white 31 to 16, its floor 29 to 15, the ground 4 to 2, the same
 texels), so the pause's pieces key and see through the darkened colours too and show clean. The
-world selector's list is its frame alone (the lower screen's 9,9-247,183, around it the screen's
-dark ground), its corners rounded (`round`, the port's: a radius in the source's dots, the
-frame's own 4), at the HUD's scale; the world's band rounded alike.
+world selector shows its lower screen whole at the right -- the list's frame alone (9,9-247,183)
+left out a mission's page (wider, to x 252), its buttons' help (rows 183-191) and the L and R of
+the worlds (its top corners) -- its corners rounded (`round`, the port's: a radius in the
+source's dots), at the HUD's scale like the header and the world's band (0.55), so that a small
+HUD keeps the world in view.
 
 **A layer that gives nothing** (2026-10-15, traced on the play, mission, story, run07 and save
 walks: every change of engine A's BLDCNT and BLDALPHA while the 3D is BG0 and a second target):
