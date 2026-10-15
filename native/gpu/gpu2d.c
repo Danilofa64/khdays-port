@@ -693,11 +693,13 @@ static void compose_line(const Engine *e, const KhdaysGpu2dState *state,
             }
         }
         pick(bg, bg_on, obj, bg_prio, x, mask, -1, backdrop, layer, color);
-        if (layer[0] == 0 && alpha3d != NULL && alpha3d[x] < 31 && ((bl.bldcnt >> 8) & (1u << layer[1]))) {
+        if (layer[0] == 0 && alpha3d != NULL && ((bl.bldcnt >> 8) & (1u << layer[1])) &&
+            (alpha3d[x] < 31 || (bl.effect == 1 && (bl.bldcnt & 1u)))) {
             /* the 3D layer over a second target blends by its own alpha.
              * GBATEK: "probably EVA=A/2, EVB=16-A/2", whatever BLDALPHA says
-             * and (it says with doubt) whatever the window's effect flag says */
-            result = blend(color[0], color[1], alpha3d[x] / 2u, 16u - alpha3d[x] / 2u);
+             * and (it says with doubt) whatever the window's effect flag says;
+             * an opaque 3D pixel stays itself */
+            result = alpha3d[x] < 31 ? blend(color[0], color[1], alpha3d[x] / 2u, 16u - alpha3d[x] / 2u) : color[0];
         } else {
             result = effects(&bl, obj, x, mask, layer, color);
         }
@@ -910,7 +912,7 @@ uint16_t khdays_gpu2d_recompose(const KhdaysGpu2dComposition *rec, uint16_t colo
             return blend(color3d, rec->other, alpha3d / 2u, 16u - alpha3d / 2u);
         }
         switch (rec->effect) {
-        case KHDAYS_2D_EFFECT_BLEND: return blend(color3d, rec->other, info->eva, info->evb);
+        case KHDAYS_2D_EFFECT_BLEND: return color3d; /* by its own alpha, not BLDALPHA's: opaque */
         case KHDAYS_2D_EFFECT_BRIGHTEN: return brighten(color3d, info->evy);
         case KHDAYS_2D_EFFECT_DARKEN: return darken(color3d, info->evy);
         default: return color3d;

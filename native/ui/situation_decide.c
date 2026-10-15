@@ -164,6 +164,19 @@ static int situation_of(const KhdaysSituationInputs *in)
     }
 }
 
+/* The field's 3D world in every screen of the field (its pause, a tutorial's page, the game over)
+ * and the title's logo over white. Elsewhere beside the DS's columns the wider 3D shows what the
+ * game never drew there: on the mission walk, blue beside the camp menu's frame (f2469-2885,
+ * f3754-4126) and the stars' end beside the world selector (f2886-3753). */
+int khdays_situation_widens(const KhdaysSituationInputs *in)
+{
+    if (in->movie || loaded(in, OV_CREDITS) ||
+        (in->camp_screen != KHDAYS_CAMP_NONE && (in->scene == SCENE_CAMP || in->camp_story))) {
+        return 0;
+    }
+    return in->scene == SCENE_FIELD || in->scene == SCENE_TITLE;
+}
+
 static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
 {
     uint32_t s = 0;

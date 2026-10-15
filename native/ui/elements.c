@@ -8,6 +8,7 @@
 #include "../runtime/core/vram.h"
 #include "../runtime/core/window.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -337,8 +338,82 @@ static int direct_image(const Entry *n)
     return im->direct;
 }
 
+/* Widescreen: each element's group, as the game's pieces are made (gpu2d.h KhdaysGpu2dWide) -- the
+ * elements of engine A no layout line places whose 8x8 cells touch one another's -- and the group's
+ * DS columns. -1: in none (another engine's, or a line places it). */
+static int *group_of;
+static float (*group_x)[2];
+static int group_room;
+
+static int group_root(int i)
+{
+    while (group_of[i] != i) {
+        group_of[i] = group_of[group_of[i]];
+        i = group_of[i];
+    }
+    return i;
+}
+
+static int cells_touch(const KhdaysUiElement *a, const KhdaysUiElement *b)
+{
+    const int ax0 = (int)floorf(a->x / 8.0f), ax1 = (int)floorf((a->x + a->w - 1.0f) / 8.0f);
+    const int ay0 = (int)floorf(a->y / 8.0f), ay1 = (int)floorf((a->y + a->h - 1.0f) / 8.0f);
+    const int bx0 = (int)floorf(b->x / 8.0f), bx1 = (int)floorf((b->x + b->w - 1.0f) / 8.0f);
+    const int by0 = (int)floorf(b->y / 8.0f), by1 = (int)floorf((b->y + b->h - 1.0f) / 8.0f);
+    const int x_over = ax0 <= bx1 && bx0 <= ax1, y_over = ay0 <= by1 && by0 <= ay1;
+    const int x_next = ax0 <= bx1 + 1 && bx0 <= ax1 + 1, y_next = ay0 <= by1 + 1 && by0 <= ay1 + 1;
+    return (x_over && y_next) || (y_over && x_next); /* sharing a cell, or side by side */
+}
+
+/* Gives every element its group (group_of, group_x); 0 when there was no room for them. */
+static int find_groups(void)
+{
+    if (group_room < entry_count) {
+        int *g = (int *)realloc(group_of, (size_t)entry_count * sizeof(*group_of));
+        float (*gx)[2] = g != NULL ? (float (*)[2])realloc(group_x, (size_t)entry_count * sizeof(*group_x)) : NULL;
+        if (g != NULL) {
+            group_of = g;
+        }
+        if (gx == NULL) {
+            return 0;
+        }
+        group_x = gx;
+        group_room = entry_count;
+    }
+    for (int i = 0; i < entry_count; ++i) {
+        const Entry *n = &entries[i];
+        const int alone = n->e.screen != 0 || n->e.w <= 0.0f || n->e.h <= 0.0f ||
+                          khdays_ui_mode(n->part) != KHDAYS_UI_ON || khdays_ui_layout_names(n->e.id);
+        group_of[i] = alone ? -1 : i;
+    }
+    for (int i = 0; i < entry_count; ++i) {
+        for (int k = i + 1; k < entry_count && group_of[i] >= 0; ++k) {
+            if (group_of[k] >= 0 && cells_touch(&entries[i].e, &entries[k].e)) {
+                const int a = group_root(i), b = group_root(k);
+                if (a != b) {
+                    group_of[b] = a;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < entry_count; ++i) {
+        group_x[i][0] = 1.0e9f;
+        group_x[i][1] = -1.0e9f;
+    }
+    for (int i = 0; i < entry_count; ++i) {
+        if (group_of[i] >= 0) {
+            const int r = group_root(i);
+            const float x0 = entries[i].e.x, x1 = entries[i].e.x + entries[i].e.w;
+            group_x[r][0] = x0 < group_x[r][0] ? x0 : group_x[r][0];
+            group_x[r][1] = x1 > group_x[r][1] ? x1 : group_x[r][1];
+        }
+    }
+    return 1;
+}
+
 void khdays_ui_collect(int wide_margin, int upper)
 {
+    int grouped;
     static const char **ids;
     static int id_room;
     entry_count = 0;
@@ -368,6 +443,7 @@ void khdays_ui_collect(int wide_margin, int upper)
         ids[i] = entries[i].e.id;
     }
     khdays_ui_layout_frame(ids, entry_count < id_room ? entry_count : id_room);
+    grouped = wide_margin > 0 && find_groups();
     for (int i = 0; i < entry_count; ++i) {
         Entry *n = &entries[i];
         n->seq = i;
@@ -386,8 +462,9 @@ void khdays_ui_collect(int wide_margin, int upper)
             }
             if (n->leader < 0) {
                 /* where the layout puts it (the check compares at the DS's place) */
-                n->placed = khdays_ui_layout_place(n->e.id, &n->e.screen, upper, wide_margin, &n->e.x, &n->e.y,
-                                                   &n->e.w, &n->e.h, &n->e.slot, &n->order);
+                const float *group = grouped && group_of[i] >= 0 ? group_x[group_root(i)] : NULL;
+                n->placed = khdays_ui_layout_place(n->e.id, &n->e.screen, upper, wide_margin, group, &n->e.x,
+                                                   &n->e.y, &n->e.w, &n->e.h, &n->e.slot, &n->order);
             }
         }
     }

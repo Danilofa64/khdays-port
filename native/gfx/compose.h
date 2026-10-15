@@ -661,8 +661,8 @@ KD_FN uint kd_compose(uint color[4], KdSprite spr, uint mask, uint alpha3d, uint
         const uint second = (blendw >> 8) & (1u << layer1);
         const uint f0 = is3d != 0u && layer0 == 0u ? fine3d : (c0 & KD_HD) != 0u ? c0 & 0xffffffu : kd_fine(c0);
         const uint f1 = is3d != 0u && layer1 == 0u ? fine3d : (c1 & KD_HD) != 0u ? c1 & 0xffffffu : kd_fine(c1);
-        if (is3d != 0u && layer0 == 0u && alpha3d < 31u && second != 0u) {
-            return kd_blend8(f0, f1, alpha3d / 2u, 16u - alpha3d / 2u);
+        if (is3d != 0u && layer0 == 0u && second != 0u && (alpha3d < 31u || (effect == 1u && (blendw & 1u)))) {
+            return alpha3d < 31u ? kd_blend8(f0, f1, alpha3d / 2u, 16u - alpha3d / 2u) : f0;
         }
         if (mask & 0x20u) {
             if (layer0 == KD_LAYER_SPRITE && (spr.mode == 1u || spr.mode == 3u) && second != 0u) {
@@ -686,10 +686,11 @@ KD_FN uint kd_compose(uint color[4], KdSprite spr, uint mask, uint alpha3d, uint
     {
         const uint is3d = (flags & KDF_BG0_IS_3D) != 0u ? 1u : 0u;
         const uint second = (blendw >> 8) & (1u << layer1);
-        if (is3d != 0u && layer0 == 0u && alpha3d < 31u && second != 0u) {
-            /* the 3D over a second target blends by its own alpha
-             * (GBATEK: probably EVA = A/2, EVB = 16 - A/2) */
-            result = kd_blend(c0, c1, alpha3d / 2u, 16u - alpha3d / 2u);
+        if (is3d != 0u && layer0 == 0u && second != 0u && (alpha3d < 31u || (effect == 1u && (blendw & 1u)))) {
+            /* the 3D over a second target blends by its own alpha, never
+             * BLDALPHA's (GBATEK: probably EVA = A/2, EVB = 16 - A/2): an
+             * opaque 3D pixel stays itself */
+            result = alpha3d < 31u ? kd_blend(c0, c1, alpha3d / 2u, 16u - alpha3d / 2u) : c0;
         } else {
             result = c0;
             if (mask & 0x20u) {

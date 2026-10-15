@@ -190,6 +190,11 @@ typedef struct KhdaysSituationFrame {
 /* This frame's situation (situation_decide.c). */
 void khdays_situation_decide(const KhdaysSituationFrame *frame, KhdaysSituation *out);
 
+/* Whether a picture wider than the DS's (two screens in widescreen) shows more of what the game
+ * shows: where its 3D is the game's world, not a picture inside its 2D. From the inputs alone (any
+ * thread that took them). */
+int khdays_situation_widens(const KhdaysSituationInputs *in);
+
 /* Whether a frame decided again may decide otherwise (a picture standing still is then decided
  * again as its VBlanks pass): never, as the decision reads the game's state, not its pictures'
  * history. */

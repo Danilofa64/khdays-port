@@ -311,8 +311,16 @@ static const Entry *entry_for(const char *id)
     return best;
 }
 
-int khdays_ui_layout_place(const char *id, int *screen, int upper, int wide_margin, float *x, float *y, float *w,
-                           float *h, uint32_t *slot, int *order)
+int khdays_ui_layout_names(const char *id)
+{
+    if (!loaded) {
+        load();
+    }
+    return id != NULL && entry_for(id) != NULL;
+}
+
+int khdays_ui_layout_place(const char *id, int *screen, int upper, int wide_margin, const float *group, float *x,
+                           float *y, float *w, float *h, uint32_t *slot, int *order)
 {
     const Entry *e;
     float margin;
@@ -326,9 +334,10 @@ int khdays_ui_layout_place(const char *id, int *screen, int upper, int wide_marg
     margin = *screen == 0 ? (float)wide_margin : 0.0f;
     if (e == NULL) {
         if (margin > 0.0f) {
-            if (*x + *w <= 128.0f) {
+            const float x0 = group != NULL ? group[0] : *x, x1 = group != NULL ? group[1] : *x + *w;
+            if (x1 <= 128.0f) {
                 *x -= margin;
-            } else if (*x >= 128.0f) {
+            } else if (x0 >= 128.0f) {
                 *x += margin;
             }
         }

@@ -180,7 +180,7 @@ uint recompose(uint2 rec, uint c3d, uint alpha3d)
             return blend(c3d, other, alpha3d / 2u, 16u - alpha3d / 2u);
         }
         switch (effect) {
-        case EFFECT_BLEND: return blend(c3d, other, eva, evb);
+        case EFFECT_BLEND: return c3d; // by its own alpha, not BLDALPHA's: opaque
         case EFFECT_BRIGHTEN: return brighten(c3d, evy);
         case EFFECT_DARKEN: return darken(c3d, evy);
         default: return c3d;

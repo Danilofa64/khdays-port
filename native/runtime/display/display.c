@@ -1390,8 +1390,20 @@ void khdays_display_vblank(u32 frame)
     }
     trace_vblank(frame);
     khdays_sheet_colours_frame(); /* the colours each 2D sheet is drawn with, while the dump is on (drawn or not) */
-    /* a wider picture, from the next list the game swaps in */
-    khdays_g3d_set_widen(wide_columns > 256 && headless ? (float)wide_columns / 256.0f : khdays_host_frame_widen());
+    {
+        /* a wider picture, from the next list the game swaps in; on two screens only where the 3D is
+         * the game's world (situation.h) */
+        float widen = wide_columns > 256 && headless ? (float)wide_columns / 256.0f : khdays_host_frame_widen();
+        if (widen > 1.0f && !(khdays_host_graphics_flags() & KHDAYS_HOST_ONE_SCREEN)) {
+            static KhdaysSituationInputs now;
+            khdays_situation_take(&now, frame);
+            now.engine_swaps = engine_swaps;
+            if (!khdays_situation_widens(&now)) {
+                widen = 1.0f;
+            }
+        }
+        khdays_g3d_set_widen(widen);
+    }
     if (!drawn(frame)) {
         gpu_input(&in);
         display_capture(&in, &window_a);

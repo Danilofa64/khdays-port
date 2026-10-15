@@ -680,6 +680,26 @@ left half it keeps its distance to the left edge, in the right half to the
 right edge; across the middle it stays. OBJs never move. Cutscene movies
 (bitmap BG and OBJs, no 3D) are not widened at all.
 
+On two screens (2026-10-15, the mission walk at 16:9 and the maintainer's
+window at about 3.7:1) the picture is made wider only where the 3D is the
+game's world -- the field's screens (its pause, a tutorial's page, the game
+over) and the title (`khdays_situation_widens`, from the same game state as
+the one-screen decision). In the camps' menus and the world selector the 3D
+is a picture inside the game's 2D: wider, the camp menu showed blue beside its
+frame and the world selector the end of its stars, and the world selector's
+rank ("Leyenda") went to the right edge; they stay at the DS's 256 columns.
+The port's own elements a layout line does not place move as the game's
+pieces do, in groups whose cells touch (`elements.c`): a mod's pause hand
+drawn over its line's left end moved alone to the left edge before.
+
+**The 3D as the first target** (GBATEK, "DS 3D Final 2D Output": blending
+with BG0 as the first target "via 3D Alpha-values", probably EVA = A/2 and
+EVB = 16 - A/2, not BLDALPHA's): an opaque 3D pixel stays itself. The game
+over (ov027) runs with BLDCNT 0x2641 (BG0 the first target; BG1, BG2 and the
+backdrop the second) and BLDALPHA 0x1000 (EVA 0, EVB 16): weighing the opaque
+3D by EVA 0, the port lost the kneeling Roxas on two screens; the 3D layer
+now never takes BLDALPHA's weights (`compose.h`, `gpu2d.c`, `compose.hlsl`).
+
 **Widescreen, what the game sends beside its view**: with the lists made 342
 columns wide (16:9) the field sends geometry beyond the DS's 256 columns --
 in a room under the tracks 28 of its 591 polygons lie wholly beside the DS's
