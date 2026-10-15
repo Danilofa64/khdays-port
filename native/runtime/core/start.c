@@ -157,6 +157,28 @@ static void take_working_folder(void)
     fprintf(stderr, "khdays-native: %s\n", working_folder_note);
 }
 
+/* Whether a standard handle is unset (nothing given to the process for that stream). */
+static int std_handle_free(DWORD which)
+{
+    HANDLE h = GetStdHandle(which);
+    return h == NULL || h == INVALID_HANDLE_VALUE;
+}
+
+/* The game is a windowed program, so starting it from Explorer or Steam opens no console. When it
+ * was started from a terminal instead, attach to that terminal so its output is still seen there.
+ * A stream already sent somewhere (a file or a pipe: the walks, the tests) is left where it goes. */
+static void attach_parent_console(void)
+{
+    const int out = std_handle_free(STD_OUTPUT_HANDLE), err = std_handle_free(STD_ERROR_HANDLE),
+              in = std_handle_free(STD_INPUT_HANDLE);
+    if ((out || err || in) && AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE *f;
+        if (out) (void)freopen_s(&f, "CONOUT$", "w", stdout);
+        if (err) (void)freopen_s(&f, "CONOUT$", "w", stderr);
+        if (in) (void)freopen_s(&f, "CONIN$", "r", stdin);
+    }
+}
+
 int main(int argc, char **argv)
 {
     /* first: claim the DS's address ranges before anything else (the symbol handler, SDL) allocates
@@ -164,6 +186,7 @@ int main(int argc, char **argv)
     if (!khdays_memory_map()) {
         return 1;
     }
+    attach_parent_console();
     take_working_folder();
     khdays_diag_init();
     if (argc >= 2 && strcmp(argv[1], "--dump-sounds") == 0) {

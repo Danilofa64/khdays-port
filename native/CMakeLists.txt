@@ -5,6 +5,9 @@
 cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)  # /Z7: no shared PDB to contend on
 project(khdays_native C CXX ASM_MASM)
+if(WIN32)
+    enable_language(RC)  # the executable icon (resources/game.rc)
+endif()
 
 set(KHDAYS_GEN "" CACHE PATH "Output directory of native/tools/prepare.py")
 if(NOT EXISTS "${KHDAYS_GEN}/sources.cmake")
@@ -321,6 +324,7 @@ set(KHDAYS_PORT_COMPOSITIONS "${CMAKE_CURRENT_SOURCE_DIR}/ui/compositions/port_d
 khdays_embed_text(compositions_port "${KHDAYS_PORT_COMPOSITIONS}")
 
 add_executable(khdays-native
+    resources/game.rc   # the executable's icon (native/resources/game.ico)
     $<TARGET_OBJECTS:khdays-game>
     $<TARGET_OBJECTS:khdays-mobiclip>
     runtime/core/arm7.c
@@ -459,7 +463,11 @@ endforeach()
 
 target_link_options(khdays-native PRIVATE
     /DEBUG
-    /INCREMENTAL:NO)            # no padding between .khdi entries (data_init.c walks them)
+    /INCREMENTAL:NO            # no padding between .khdi entries (data_init.c walks them)
+    # a windowed program (no console window when started from Explorer or Steam); main() stays the
+    # entry point, and start.c attaches to a terminal's console when it was started from one
+    /SUBSYSTEM:WINDOWS
+    /ENTRY:mainCRTStartup)
 
 # Renders a DeSmuME savestate's display state and compares it with what
 # DeSmuME showed (native/tools/savestate_gpu.py extracts the input).
