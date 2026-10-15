@@ -18,6 +18,8 @@
 #include "../runtime/core/window.h"
 #include "../runtime/core/session_log.h"
 #include "../runtime/core/vram.h"
+#include "../runtime/mods/textures.h"
+#include "../runtime/mods/tiles2d.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,7 +94,9 @@ typedef struct Shown {
     int room;                     /* how many cells the arrays hold */
     uint32_t *entries;            /* w * h: the map entry under each cell (0xffffffff: not the piece's) */
     uint8_t *chars;               /* w * h * 64: each cell's character as VRAM held it */
+    uint32_t *hd;                 /* w * h: the mod's tile drawn instead in each cell (tiles2d.h), 0 none */
     int image, image_w, image_h, image_scale;
+    int hd_image1, hd_w, hd_h;    /* the image of the mods' tiles in colour, + 1 (0: none), its size */
 } Shown;
 
 static Shown shown[PIECE_COUNT][4];
@@ -117,10 +121,25 @@ static int grow(Shown *sh, int cells)
             return 0;
         }
         sh->chars = c;
+        e = (uint32_t *)realloc(sh->hd, (size_t)cells * sizeof(uint32_t));
+        if (e == NULL) {
+            return 0;
+        }
+        sh->hd = e;
         sh->room = cells;
         sh->w = sh->h = 0; /* to be drawn again */
     }
     return 1;
+}
+
+/* A mod's HD tile sheet drawing a cell's tile (khdays_tiles2d_bg_tile's word), or NULL. */
+static const KhdaysTextureReplacement *hd_sheet(uint32_t word)
+{
+    const KhdaysTextureReplacement *r = word != 0u ? khdays_textures_replacement((int)(word >> 20) - 1) : NULL;
+    return r != NULL && r->rgba != NULL && (r->info & KHDAYS_REPLACEMENT_TILES) != 0u && ((r->info >> 8) & 255u) != 0u &&
+                   (r->info >> 16) != 0u
+               ? r
+               : NULL;
 }
 
 static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
@@ -159,6 +178,7 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
     if (sh->cells_x != i0 || sh->cells_y != j0 || sh->w != w || sh->h != h) {
         sh->cells_x = i0, sh->cells_y = j0, sh->w = w, sh->h = h;
         memset(sh->entries, 0xff, (size_t)w * (size_t)h * sizeof(uint32_t));
+        memset(sh->hd, 0, (size_t)w * (size_t)h * sizeof(uint32_t));
         changed = 1;
     }
     /* its cells as the map and VRAM hold them now (those another part stands for are not its) */
@@ -169,6 +189,7 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
                                        ? 0xffffffffu
                                        : khdays_bg_map_entry(piece->screen, l, cx, cy);
             uint8_t ch[64];
+            uint32_t hd = 0u;
             memset(ch, 0, sizeof(ch));
             if (entry != 0xffffffffu) {
                 const uint32_t at = l->chars + (entry & 0x3ffu) * (uint32_t)size;
@@ -176,9 +197,12 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
                     const uint8_t *b = khdays_bg_memory(piece->screen, at + (uint32_t)k);
                     ch[k] = b != NULL ? *b : 0;
                 }
+                hd = khdays_tiles2d_bg_tile(piece->screen, at); /* a mod's HD sheet draws the tile */
             }
-            if (sh->entries[j * w + i] != entry || memcmp(sh->chars + (size_t)(j * w + i) * 64u, ch, 64) != 0) {
+            if (sh->entries[j * w + i] != entry || sh->hd[j * w + i] != hd ||
+                memcmp(sh->chars + (size_t)(j * w + i) * 64u, ch, 64) != 0) {
                 sh->entries[j * w + i] = entry;
+                sh->hd[j * w + i] = hd;
                 memcpy(sh->chars + (size_t)(j * w + i) * 64u, ch, 64);
                 changed = 1;
             }
@@ -194,37 +218,75 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
         return 0;
     }
     if (changed) {
-        uint32_t *texels = khdays_ui_image_begin(sh->image);
+        const int tw = w * 8 * scale, th = h * 8 * scale;
+        uint32_t *texels, *colours = NULL;
+        int coloured = 0;
+        for (int c = 0; c < w * h; ++c) {
+            const KhdaysTextureReplacement *r = sh->entries[c] != 0xffffffffu ? hd_sheet(sh->hd[c]) : NULL;
+            coloured |= r != NULL && !(r->info & KHDAYS_REPLACEMENT_INDEXED);
+        }
+        /* the mods' tiles in colour go in an image of their own, drawn over the piece's */
+        if (coloured && (sh->hd_image1 == 0 || sh->hd_w != tw || sh->hd_h != th)) {
+            if (sh->hd_image1 != 0) {
+                khdays_ui_image_put(sh->hd_image1 - 1);
+            }
+            sh->hd_image1 = khdays_ui_image_get(tw, th) + 1;
+            sh->hd_w = tw, sh->hd_h = th;
+        } else if (!coloured && sh->hd_image1 != 0) {
+            khdays_ui_image_put(sh->hd_image1 - 1);
+            sh->hd_image1 = 0;
+        }
+        texels = khdays_ui_image_begin(sh->image);
         if (texels == NULL) {
             return 0;
         }
-        for (int py = 0; py < h * 8; ++py) {
-            for (int px = 0; px < w * 8; ++px) {
-                const uint32_t entry = sh->entries[(py / 8) * w + px / 8];
-                const uint8_t *ch = sh->chars + (size_t)((py / 8) * w + px / 8) * 64u;
-                uint32_t t = 0;
-                if (entry != 0xffffffffu) {
+        if (sh->hd_image1 != 0) {
+            colours = khdays_ui_image_begin(sh->hd_image1 - 1);
+        }
+        for (int ty = 0; ty < th; ++ty) {
+            for (int tx = 0; tx < tw; ++tx) {
+                const int px = tx / scale, py = ty / scale, c = (py / 8) * w + px / 8;
+                const uint32_t entry = sh->entries[c];
+                const uint8_t *ch = sh->chars + (size_t)c * 64u;
+                const KhdaysTextureReplacement *r = entry != 0xffffffffu ? hd_sheet(sh->hd[c]) : NULL;
+                uint32_t t = 0, colour = 0, v = 0;
+                if (r != NULL) {
+                    /* the mod's tile at its own resolution: its texel under this one's middle, the
+                     * tile turned as the cell's entry turns it */
+                    const int rs = (int)((r->info >> 8) & 255u), cols = (int)(r->info >> 16);
+                    const uint32_t tile = sh->hd[c] & 0xfffffu;
+                    int ux = ((tx - (px / 8) * 8 * scale) * 2 + 1) * rs / (2 * scale);
+                    int uy = ((ty - (py / 8) * 8 * scale) * 2 + 1) * rs / (2 * scale);
+                    ux = (entry & 0x400u) ? 8 * rs - 1 - ux : ux;
+                    uy = (entry & 0x800u) ? 8 * rs - 1 - uy : uy;
+                    {
+                        const uint32_t s = r->rgba[(size_t)((int)(tile / (uint32_t)cols) * 8 * rs + uy) * (size_t)r->width +
+                                                   (size_t)((int)(tile % (uint32_t)cols) * 8 * rs + ux)];
+                        if (r->info & KHDAYS_REPLACEMENT_INDEXED) {
+                            v = s & 0xffu;
+                        } else {
+                            colour = s; /* its own colour and alpha; nothing of the game's tile under it */
+                        }
+                    }
+                } else if (entry != 0xffffffffu) {
                     const int ex = (entry & 0x400u) ? 7 - (px & 7) : px & 7;
                     const int ey = (entry & 0x800u) ? 7 - (py & 7) : py & 7;
-                    const uint32_t pal = entry >> 12;
-                    if (!l->colors256) {
-                        const uint32_t v = (ch[ey * 4 + ex / 2] >> ((ex & 1) * 4)) & 15u;
-                        t = v != 0 ? KET_OPAQUE | (pal * 16u + v) : 0u;
-                    } else {
-                        const uint32_t v = ch[ey * 8 + ex];
-                        t = v != 0 ? KET_OPAQUE | KET_EXTENDED | pal << KET_EXT_PAL_SHIFT | v : 0u;
-                    }
+                    v = !l->colors256 ? (ch[ey * 4 + ex / 2] >> ((ex & 1) * 4)) & 15u : ch[ey * 8 + ex];
                 }
-                for (int sy = 0; sy < scale; ++sy) {
-                    uint32_t *out =
-                        texels + (size_t)(py * scale + sy) * (size_t)(w * 8 * scale) + (size_t)px * (size_t)scale;
-                    for (int sx = 0; sx < scale; ++sx) {
-                        out[sx] = t;
-                    }
+                if (v != 0 && entry != 0xffffffffu) {
+                    const uint32_t pal = entry >> 12;
+                    t = !l->colors256 ? KET_OPAQUE | (pal * 16u + v) : KET_OPAQUE | KET_EXTENDED | pal << KET_EXT_PAL_SHIFT | v;
+                }
+                texels[(size_t)ty * (size_t)tw + (size_t)tx] = t;
+                if (colours != NULL) {
+                    colours[(size_t)ty * (size_t)tw + (size_t)tx] = colour;
                 }
             }
         }
         khdays_ui_image_end(sh->image);
+        if (colours != NULL) {
+            khdays_ui_image_end(sh->hd_image1 - 1);
+        }
     }
     e.id = piece->id;
     e.screen = piece->screen;
@@ -235,6 +297,12 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
     e.h = (float)(h * 8);
     e.image = sh->image;
     khdays_ui_emit(KHDAYS_UI_HUD, &e);
+    if (sh->hd_image1 != 0) {
+        /* given later, so above the piece's own image */
+        e.slot = KES_DIRECT | (uint32_t)bg;
+        e.image = sh->hd_image1 - 1;
+        khdays_ui_emit(KHDAYS_UI_HUD, &e);
+    }
     for (int j = 0; j < h; ++j) {
         for (int i = 0; i < w; ++i) {
             if (sh->entries[j * w + i] != 0xffffffffu) {

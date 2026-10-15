@@ -29,4 +29,9 @@
 void khdays_tiles2d_map(const KhdaysVramPages *pages, const uint32_t *memory_version, uint32_t *out,
                         uint32_t *out_version);
 
+/* The tile drawn instead at byte `address` of an engine's layers' 2D memory (0 engine A's, 1 engine
+ * B's), as the last map has it: the replacement's id + 1 in bits 20-31 and the tile's number in its
+ * sheet in bits 0-19; 0 when none. For the parts the port draws itself (ui/hud.c). */
+uint32_t khdays_tiles2d_bg_tile(int engine, uint32_t address);
+
 #endif

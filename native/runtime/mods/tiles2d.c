@@ -221,3 +221,13 @@ void khdays_tiles2d_map(const KhdaysVramPages *pages, const uint32_t *memory_ver
         }
     }
 }
+
+uint32_t khdays_tiles2d_bg_tile(int engine, uint32_t address)
+{
+    const size_t a = engine ? 2u : 0u; /* areas[]: engine A's layers, engine B's */
+    const uint32_t page_bytes = KHDAYS_TILES2D_PAGE_WORDS * 32u, page = address / page_bytes;
+    if (page >= (uint32_t)areas[a].pages) {
+        return 0u;
+    }
+    return words[areas[a].first + (int)page][(address % page_bytes) / 32u];
+}

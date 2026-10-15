@@ -2349,6 +2349,15 @@ the five walks every 300 frames (Release, 2026-10-04):
   box in the panels over it; the lower screen's panels are one group of
   cells, the pieces regions of it. In the story's field the lower screen shows the tutorial's
   panel instead; the upper screen's pieces are the same.
+- *The pieces and the mods' HD sheets* (2026-10-15). The port draws these pieces itself
+  (`ui/hud.c`) from their cells' palette indices, so a mod's HD sheet for their characters was not
+  drawn there: the portrait of a mod's `UI/btl/main.p2#1/chr/0` stayed the game's though the sheet
+  was read. A cell whose character a mod's sheet draws (the tiles' map, `tiles2d.h`
+  `khdays_tiles2d_bg_tile`) now takes the sheet's texels at the picture's resolution: an indexed
+  sheet's indices with the cell's palette, a sheet in colour in an image of its own over the piece
+  (the same id, so it goes where the piece goes). The portraits are that sheet's 13 Organization
+  members (48 x 48 each, a smaller one beside it; Roxas the last, at 0,584), each with its own
+  palette row; `chr/1` holds Xion, Mickey, Sora, Riku, Donald and Goofy.
 - *What else the field shows.* Scene 2 is more than the field: on the walks
   32 different screens were seen in it -- the field with its HUD, the Grey
   Area's camp menus (ov025) and save, the pause menu, the tutorials'

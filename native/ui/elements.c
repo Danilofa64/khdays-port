@@ -111,6 +111,7 @@ typedef struct Entry {
     int part, order, seq;
     int source;          /* the engine it belongs to */
     float dx, dy, dw, dh; /* its DS place */
+    uint32_t dslot;      /* its slot as given */
     int placed;          /* a layout line placed it */
     int leader;          /* the first element of its id the layout placed, which it moves with; -1: none */
 } Entry;
@@ -372,6 +373,7 @@ void khdays_ui_collect(int wide_margin, int upper)
         n->seq = i;
         n->source = n->e.screen;
         n->dx = n->e.x, n->dy = n->e.y, n->dw = n->e.w, n->dh = n->e.h;
+        n->dslot = n->e.slot;
         n->placed = 0;
         n->leader = -1;
         if (khdays_ui_mode(n->part) == KHDAYS_UI_ON) {
@@ -425,6 +427,10 @@ void khdays_ui_collect(int wide_margin, int upper)
             n->e.h = n->dh * sy;
             n->e.screen = parent->e.screen;
             n->order = parent->order;
+            if (n->leader >= 0 && (n->dslot & (KES_SPRITES | KES_NUMBER_MASK)) == (parent->dslot & (KES_SPRITES | KES_NUMBER_MASK))) {
+                /* of its id and its layer (a piece's mods' tiles over it, ui/hud.c): its layer too */
+                n->e.slot = (n->e.slot & ~(KES_SPRITES | KES_NUMBER_MASK)) | (parent->e.slot & (KES_SPRITES | KES_NUMBER_MASK));
+            }
         }
     }
     /* one drawn on the other screen in a slot that is the 3D there (engine A's
