@@ -42,6 +42,7 @@ typedef struct ShapeDef {
     int cover;           /* `scale cover`: as large as covers the picture, its proportions kept */
     uint32_t flags;      /* KOF_* */
     float fade[4], opacity;
+    float round;          /* `round <r>`: the corners' radius, source dots */
     uint32_t see_through; /* KO_SEE_THROUGH: a colour and its opacity */
     int key_first, key_count;
 } ShapeDef;
@@ -429,6 +430,10 @@ static int read_shape(char **t, int n, ShapeDef *s, const char **why)
         } else if (strcmp(w, "force") == 0) {
             s->flags |= KOF_FORCE;
             ++i;
+        } else if (strcmp(w, "round") == 0 && i + 1 < n && number(t[i + 1], &s->round) && s->round > 0.0f) {
+            /* `round <r>`: the corners rounded, a radius in the source's dots */
+            s->flags |= KOF_ROUND;
+            i += 2;
         } else if (strcmp(w, "key") == 0) {
             uint32_t c;
             if (!colour(t, n, i + 1, &c) || !grow((void **)&def_keys, &def_key_room, def_key_count, sizeof(uint32_t))) {
@@ -1487,6 +1492,7 @@ static void build_shape(const ShapeDef *d, int columns, KhdaysShape *out, int ke
         put_float(words, KO_FADE + i, d->fade[i] * f);
     }
     put_float(words, KO_OPACITY, d->opacity);
+    put_float(words, KO_ROUND, d->round);
     words[KO_SEE_THROUGH] = d->see_through;
     words[KO_KEYS] = (uint32_t)key_first;
     words[KO_KEY_COUNT] = (uint32_t)d->key_count;

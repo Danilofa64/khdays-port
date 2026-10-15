@@ -863,6 +863,13 @@ static void test_steps(void)
     /* forced: a texel the 2D leaves invisible shows its colour (black here) */
     shape(0, KOF_LOWER | KOF_FORCE, 0, 0, 32, 32, 100, 100, 1.0f);
     CHECK(ko_pixel(100.5f, 100.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == 0u);
+    /* rounded corners of radius 6: the corner's texel outside the quarter circle, what is under it;
+     * one inside it, the shape's (forced: black) */
+    shape(0, KOF_LOWER | KOF_ROUND | KOF_FORCE, 0, 0, 32, 32, 100, 100, 1.0f);
+    put_float(shape_words[0], KO_ROUND, 6.0f);
+    CHECK(ko_pixel(100.5f, 100.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == (x3d & 0xffffffu));
+    CHECK(ko_pixel(104.5f, 104.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == 0u);
+    CHECK(ko_pixel(131.5f, 131.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == (x3d & 0xffffffu));
     /* dimmed: half toward black */
     shape(0, KOF_LOWER | KOF_DIM, 0, 0, 32, 32, 100, 100, 1.0f);
     put_float(shape_words[0], KO_OPACITY, 0.5f);

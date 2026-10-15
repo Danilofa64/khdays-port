@@ -9,7 +9,7 @@
 #ifndef KHDAYS_GFX_ONESCREEN_H
 #define KHDAYS_GFX_ONESCREEN_H
 
-#define KO_WORDS 19
+#define KO_WORDS 20
 
 #define KO_FLAGS 0 /* KOF_* */
 #define KOF_LOWER        0x1u    /* taken from the lower screen, else the upper one's 2D apart from its 3D */
@@ -18,6 +18,7 @@
 #define KOF_REPEAT_X     0x40u   /* its source repeated along its rows, across every column */
 #define KOF_REPEAT_Y     0x80u   /* the same down its columns, across every row */
 #define KOF_FORCE        0x100u  /* its texels used where they are invisible too */
+#define KOF_ROUND        0x400u  /* KO_ROUND: its corners rounded */
 #define KOF_WEIGHT       0x800u  /* KO_OPACITY and KO_FADE weigh it against what is under it */
 #define KOF_SEE_THROUGH  0x2000u /* KO_SEE_THROUGH: the texels of one colour drawn at an opacity */
 #define KOF_DIM          0x4000u /* `dim`: its colours times KO_OPACITY's factor, toward black (not a weight) */
@@ -38,6 +39,7 @@
 #define KO_SCALE_X 16 /* float: destination dots per source dot (the sampling's) */
 #define KO_SCALE_Y 17
 #define KO_SEE_THROUGH 18 /* a colour (BGR555, bits 0-14) its texels drawn at an opacity (bits 16-23, of 255) */
+#define KO_ROUND 19 /* float: the corners' radius, source dots */
 
 /* The pass's constants: the picture's width C in DS dots, the internal
  * resolution, the shapes' count, the frame (KOS_*), the brightness rule
@@ -172,7 +174,8 @@ KO_FN uint ko_taps(float scale)
  * from nothing at an edge to the whole shape over its length, the lesser of
  * the two edges of an axis, the two axes multiplied; `mirror` turns the
  * source over, `repeat` repeats it along its rows or columns, `force` shows
- * texels the 2D would leave invisible over the 3D. `masters`: the upper screen's MASTER_BRIGHT, the lower's in
+ * texels the 2D would leave invisible over the 3D, `round` leaves out the
+ * texels of its corners outside a quarter circle of the radius. `masters`: the upper screen's MASTER_BRIGHT, the lower's in
  * bits 16-31; `backdrop`: the frame's own where nothing is (8-bit); `half`:
  * the picture's middle column. */
 KO_FN uint ko_pixel(float px, float py, float texel, uint x3d, uint shape_count, uint rule, uint masters,
@@ -206,6 +209,14 @@ KO_FN uint ko_pixel(float px, float py, float texel, uint x3d, uint shape_count,
         }
         fx = (px - x1) / sx;
         fy = (py - y1) / sy;
+        if ((flags & KOF_ROUND) != 0u) {
+            /* its corners: outside the quarter circle, what is under the shape */
+            const float r = ko_float(i, KO_ROUND);
+            const float dx = r - (fx < w - fx ? fx : w - fx), dy = r - (fy < h - fy ? fy : h - fy);
+            if (dx > 0.0f && dy > 0.0f && dx * dx + dy * dy > r * r) {
+                continue;
+            }
+        }
         if ((flags & (KOF_REPEAT_X | KOF_REPEAT_Y)) != 0u) {
             const float lx = (x2 - x1) / sx, ly = (y2 - y1) / sy;
             if ((flags & KOF_REPEAT_X) != 0u && lx > 0.0f) {

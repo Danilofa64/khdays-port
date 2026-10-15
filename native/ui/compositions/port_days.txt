@@ -158,16 +158,19 @@ shape upper 0 0 132 14 at top margin 0 22 0 0 scale 0.666667
 # mission's panel at the bottom left, as the field's HUD has them (the
 # maintainer's choice from the pictures, 2026-10-14) -- but in an event's
 # pause (a cutscene's: "Continue", "Skip"), where the lower screen has none of
-# them (mission 77's cabin, the maintainer, 2026-10-15).
+# them (mission 77's cabin, the maintainer, 2026-10-15). The game darkens the
+# lower screen to half under its pause (each colour c - c x 8 / 16: the map's
+# white 31 to 16, its floor 29 to 15, the ground 4 to 2), so each piece's key
+# and see-through colours are the darkened ones too.
 [pause]
 screens upper
 brightness upper
 hide3d hud
 shape upper 72 64 112 76 at centre scale fixed(1)
 [pause if !event]
-shape lower 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36
-shape lower 112 64 104 64 at top-right margin 0 5 5 0 scale 0.6 key 248 248 248 see-through 232 232 240 0.55 fade 4 4 4 4
-shape lower 4 152 248 40 at bottom-left margin 5 0 0 5 scale 0.5 key 36 36 36 see-through 0 0 0 0.65
+shape lower 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36 key 16 16 16
+shape lower 112 64 104 64 at top-right margin 0 5 5 0 scale 0.6 key 248 248 248 key 128 128 128 see-through 120 120 120 0.55 fade 4 4 4 4
+shape lower 4 152 248 40 at bottom-left margin 5 0 0 5 scale 0.5 key 36 36 36 key 16 16 16 see-through 0 0 0 0.65
 [pause]
 stop
 
@@ -328,24 +331,27 @@ stop
 # whole picture; the upper screen's header across the top -- its title at the
 # top left (0-127), its line of help at the top right (128-255), its plain
 # columns (120-123: black over the red line) repeated between; the world's
-# name at the bottom left (rows 176-191); the mission list at the right, its
-# whole screen drawn (`force`: its black is the screen's backdrop), smaller
-# the narrower the picture so that the world stays seen beside it (the
-# maintainer's choice from the pictures, 2026-10-14).
+# name at the bottom left (rows 176-191), its corners rounded; the mission
+# list at the right: its frame alone (the lower screen's 9,9-247,183, its
+# corners rounded as the frame's own; around it the screen's dark ground),
+# drawn whole (`force`: its black is the screen's backdrop), at the HUD's
+# scale and smaller the narrower the picture, so that the world stays seen
+# beside it (the maintainer's choice from the pictures, 2026-10-14; the list
+# alone, rounded and following the HUD's size, 2026-10-15).
 [world-selector]
 screens upper
 brightness upper
 [world-selector if wide]
-shape lower at right margin 0 0 4 0 scale fixed(0.62) force
+shape lower 9 9 238 174 at right margin 0 0 6 0 scale 0.52 round 4 force
 [world-selector if !wide !narrow]
-shape lower at right margin 0 0 3 0 scale fixed(0.45) force
+shape lower 9 9 238 174 at right margin 0 0 5 0 scale 0.45 round 4 force
 [world-selector if narrow]
-shape lower at right margin 0 0 2 0 scale fixed(0.38) force
+shape lower 9 9 238 174 at right margin 0 0 4 0 scale 0.38 round 4 force
 [world-selector]
 shape upper 0 0 128 16 at top-left scale fixed(1)
 shape upper 128 0 128 16 at top-right scale fixed(1)
 shape upper 120 0 4 16 at top-left scale fixed(1) repeat x
-shape upper 0 176 256 16 at bottom-left scale fixed(1)
+shape upper 0 176 256 16 at bottom-left scale fixed(1) round 4
 stop
 
 # ----------------------------------------------------------------------------
