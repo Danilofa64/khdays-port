@@ -196,6 +196,12 @@ static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
             s |= ST(PARTY_4);
         }
     }
+    /* the pause opened in an event (ov023's scene there: a cutscene, its pause "Continue" and
+     * "Skip"), where the lower screen shows none of the field's HUD; in a battle's pause no event
+     * scene is there (mission walk f5029-5529) */
+    if (scene == KHDAYS_SIT_PAUSE && in->event_status >= 0) {
+        s |= ST(EVENT);
+    }
 #undef ST
     return s;
 }

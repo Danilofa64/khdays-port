@@ -209,12 +209,19 @@ static void info_lower(KhdaysSituation *s)
  * message; on one screen it shows only for a while after its text changes (the text row's pixels are
  * summed every frame; a new sum is a new message, shown for INFO_FRAMES). */
 #define INFO_FRAMES 300 /* 5 seconds */
+#define INFO_SETTLE_FRAMES 30 /* a line unchanged so long stands still */
 
 static void info_new(const KhdaysFramePackage *p, KhdaysSituation *s)
 {
-    static uint32_t last_sum, changed;
-    static int seen;
+    static uint32_t last_sum, changed, still_since;
+    static int seen, after_start;
     uint32_t sum = 2166136261u; /* FNV-1a */
+    if (s->states & (1u << KHDAYS_ST_INFO_UPPER)) {
+        /* a mission's start shows its information (info-upper): the lower screen's first message
+         * after it -- once its line stands still, the game drawing it over a frame or two -- is
+         * taken as seen, so the banner is not shown twice (the maintainer, 2026-10-15) */
+        after_start = 1;
+    }
     if (!(s->states & (1u << KHDAYS_ST_INFO_LOWER))) {
         seen = 0; /* the same message coming back is shown again */
         return;
@@ -224,7 +231,15 @@ static void info_new(const KhdaysFramePackage *p, KhdaysSituation *s)
             sum = (sum ^ (pixel(&pixels, 1, x, y) & 0xffffffu)) * 16777619u;
         }
     }
-    if (!seen || sum != last_sum) {
+    if (after_start) {
+        if (!seen || sum != last_sum) {
+            seen = 1;
+            last_sum = sum;
+            still_since = p->frame;
+        }
+        changed = p->frame - INFO_FRAMES;
+        after_start = p->frame - still_since < INFO_SETTLE_FRAMES;
+    } else if (!seen || sum != last_sum) {
         seen = 1;
         last_sum = sum;
         changed = p->frame;

@@ -156,15 +156,19 @@ shape upper 0 0 132 14 at top margin 0 22 0 0 scale 0.666667
 # question) at the DS's size in the middle over the 3D, the lower screen's
 # INFORMATION banner at the top left, the map at the top right and the
 # mission's panel at the bottom left, as the field's HUD has them (the
-# maintainer's choice from the pictures, 2026-10-14).
+# maintainer's choice from the pictures, 2026-10-14) -- but in an event's
+# pause (a cutscene's: "Continue", "Skip"), where the lower screen has none of
+# them (mission 77's cabin, the maintainer, 2026-10-15).
 [pause]
 screens upper
 brightness upper
 hide3d hud
 shape upper 72 64 112 76 at centre scale fixed(1)
+[pause if !event]
 shape lower 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36
 shape lower 112 64 104 64 at top-right margin 0 5 5 0 scale 0.6 key 248 248 248 see-through 232 232 240 0.55 fade 4 4 4 4
 shape lower 4 152 248 40 at bottom-left margin 5 0 0 5 scale 0.5 key 36 36 36 see-through 0 0 0 0.65
+[pause]
 stop
 
 # ----------------------------------------------------------------------------

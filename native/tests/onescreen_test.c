@@ -240,6 +240,16 @@ static void test_real_file(void)
             }
         }
         {
+            /* the pause: its menu, the lower screen's INFORMATION, map and panel -- but in an
+             * event's pause the menu alone */
+            KhdaysSituation pause = {KHDAYS_SIT_PAUSE, 0}, event = {KHDAYS_SIT_PAUSE, 1u << KHDAYS_ST_EVENT};
+            KhdaysComposition comp;
+            khdays_composition_for(&pause, 342, &comp);
+            CHECK(comp.shape_count == 4);
+            khdays_composition_for(&event, 342, &comp);
+            CHECK(comp.shape_count == 1);
+        }
+        {
             /* the credits: the two screens side by side, each with its brightness */
             KhdaysSituation end = {KHDAYS_SIT_THE_END, 0};
             KhdaysComposition comp;

@@ -43,6 +43,7 @@ enum {
     KHDAYS_ST_MISSION_PANEL, /* the lower screen shows the mission's panel (host/render/onescreen.c) */
     KHDAYS_ST_TITLE_LIT,  /* the title's lower-screen fades not shown -- NEW GAME's way into its
                            * dialogs, the dialogs, the way back from them (host/render/onescreen.c) */
+    KHDAYS_ST_EVENT,      /* the pause opened in an event of the field (its scene, ov023, running) */
     KHDAYS_STATES
 };
 

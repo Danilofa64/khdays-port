@@ -3072,6 +3072,7 @@ beside it and logs every frame where they differ.
 | challenge | the story's camp started the mission as a challenge: `data_0204c240` bit 1 (`Ov025_MissionList_StartMission`: 3 with the challenge's thresholds copied, 1 otherwise); after Mission Mode's camp the byte is its session's (`Ov008SessionInfo`: 3 a wireless host), so not a challenge | run07 walk from f5359; the multiplayer walk (host, 3) not one |
 | lower-3d | engine A on the lower screen (POWCNT1 bit 15 clear) and not changing screens | story walk f11933-11943 |
 | party-4 | ov022's member count (`func_ov022_020882f8`'s root +0x34) >= 4 | -- |
+| event | the pause opened while an event of the field runs (ov023's scene there: `data_ov023_0208a784[1]` set): a cutscene's pause, "Continue" and "Skip", the lower screen without the field's HUD | story walk with START in its dialog, f10737-11034; none in the mission walk's battle pause (f5029-5529) |
 
 **The compositions' units** (2026-10-14): `native/ui/compositions/port_days.txt` begins with
 `units port`: a margin or an offset is in the picture's DS dots and a scale makes a DS dot that
@@ -3127,6 +3128,13 @@ pieces themselves hold colours one or two steps from them ((30,30,30) in the map
 panel's edge), so no tolerance. The effects no layout of the port's uses (grey inversion, cut and
 rounded corners, turning, a fade toward a colour) are gone; the field's HUD drawn before and after
 is the same, dot for dot.
+
+**The pause in an event and the banner at a mission's start** (2026-10-15, the maintainer playing
+mission 77's cabin cutscene and the mission walk): an event's pause shows its menu alone -- the
+lower screen's INFORMATION, map and panel, which the battle's pause takes, are not there (the
+`event` state); at a mission's start the upper screen's information shows, and the lower screen's
+first message after it, once its line stands still (30 frames: the game draws it over a frame or
+two), counts as seen, so the INFORMATION banner does not show the start twice.
 
 **A layer that gives nothing** (2026-10-15, traced on the play, mission, story, run07 and save
 walks: every change of engine A's BLDCNT and BLDALPHA while the 3D is BG0 and a second target):
