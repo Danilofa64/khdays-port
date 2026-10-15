@@ -1,0 +1,213 @@
+"""The KINGDOM HEARTS collections' archives (a `.hed` index and its `.pkg`), read as the collections'
+own code reads them -- found by our own reverse engineering of their executables (the launcher's and
+KINGDOM HEARTS II FINAL MIX's `Axa::PackageFile`), nothing taken from other tools:
+
+- the `.hed` is a table of 0x20-byte entries: the MD5 of the entry's path as written (16 bytes),
+  its offset in the `.pkg` (int64), two lengths (int32);
+- at that offset a 16-byte header: the data's length, the count of remastered assets, the stored
+  length (-2: stored as is; -1: encrypted only; above 0: compressed with zlib, then encrypted) and
+  a date; then a 0x30-byte record per remastered asset (its name in 0x20 bytes, its length at
+  +0x28, its stored length at +0x2c); then the data; then each asset's data in turn, each taking
+  its stored length, or its length rounded up to 16 when not compressed;
+- 16 bytes or fewer are read as they are; otherwise the first 0x100 bytes' whole 16-byte blocks
+  are encrypted: each XORed with the XOR of eleven round keys made from the entry's header (its
+  zero bytes replaced by their index) by an AES-128 key expansion whose S-box is a table of the
+  game's own, taken here from the player's KINGDOM HEARTS II FINAL MIX executable (never kept);
+  an asset uses its entry's header.
+
+  python collection_archive.py <archive without .hed/.pkg> <out folder> <kh2 exe> <path> [<path> ...]
+
+writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`.
+"""
+from __future__ import annotations
+
+import hashlib
+import struct
+import sys
+import zlib
+from dataclasses import dataclass, field
+from pathlib import Path
+
+# The game's S-box, recognised by its digest (its bytes stay in the player's executable).
+TABLE_SHA256 = "759b2f22f7e0bfd257063a01f3de0c0835905217aa926df6def134a14313672d"
+TABLE_OFFSETS = (0x710940,)  # where Steam's KINGDOM HEARTS II FINAL MIX.exe has it (8,659,216 bytes)
+RCON = (0, 1, 2, 4, 8, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36)
+ENTRY = struct.Struct("<16sqii")
+HEADER = struct.Struct("<iiii")
+ASSET = struct.Struct("<32siiii")
+STORED, ENCRYPTED = -2, -1
+
+
+class ArchiveError(Exception):
+    pass
+
+
+def load_table(exe: Path) -> bytes:
+    """The S-box from the player's executable: at a known place, else any 16-byte-aligned place
+    whose 256 bytes have its digest."""
+    data = exe.read_bytes()
+    for offset in TABLE_OFFSETS:
+        window = data[offset:offset + 256]
+        if hashlib.sha256(window).hexdigest() == TABLE_SHA256:
+            return window
+    for offset in range(0, len(data) - 255, 16):
+        window = data[offset:offset + 256]
+        if hashlib.sha256(window).hexdigest() == TABLE_SHA256:
+            return window
+    raise ArchiveError(f"{exe} does not hold the collections' archive table")
+
+
+class Cipher:
+    def __init__(self, table: bytes) -> None:
+        self.table = table
+        self._masks: dict[bytes, tuple[int, int, int, int]] = {}
+
+    def mask(self, header: bytes) -> tuple[int, int, int, int]:
+        """The XOR of the eleven round keys of the entry's header."""
+        found = self._masks.get(header)
+        if found is not None:
+            return found
+        key = bytes(b if b else i for i, b in enumerate(header))
+        w = list(struct.unpack("<4I", key))
+        t_ = self.table
+        for i in range(4, 44):
+            t = w[i - 1]
+            if i % 4 == 0:
+                t = ((t >> 8) | (t << 24)) & 0xffffffff  # RotWord: bytes b1 b2 b3 b0
+                t = t_[t & 0xff] | t_[(t >> 8) & 0xff] << 8 | t_[(t >> 16) & 0xff] << 16 | t_[t >> 24] << 24
+                t ^= RCON[i // 4]
+            w.append(w[i - 4] ^ t)
+        m = [0, 0, 0, 0]
+        for r in range(11):
+            for j in range(4):
+                m[j] ^= w[4 * r + j]
+        found = (m[0], m[1], m[2], m[3])
+        self._masks[header] = found
+        return found
+
+    def decrypt(self, data: bytes, header: bytes) -> bytes:
+        m = self.mask(header)
+        out = bytearray(data)
+        for at in range(0, min(0x100, len(out) - len(out) % 16), 16):
+            a, b, c, d = struct.unpack_from("<4I", out, at)
+            struct.pack_into("<4I", out, at, a ^ m[0], b ^ m[1], c ^ m[2], d ^ m[3])
+        return bytes(out)
+
+
+@dataclass
+class Entry:
+    data: bytes
+    assets: list[tuple[str, bytes]] = field(default_factory=list)
+
+
+def path_hash(path: str) -> bytes:
+    """The `.hed` key of `path`: its MD5 as written; a name that is itself an MD5 (`<32 hex>.dat`,
+    an entry whose path is not known) is taken as the key."""
+    stem = path.rsplit("/", 1)[-1]
+    if len(stem) == 36 and stem.endswith(".dat"):
+        try:
+            return bytes.fromhex(stem[:32])
+        except ValueError:
+            pass
+    return hashlib.md5(path.encode("utf-8")).digest()
+
+
+class Archive:
+    def __init__(self, base: Path, cipher: Cipher | None) -> None:
+        self.base = base
+        self.cipher = cipher
+        hed = base.with_name(base.name + ".hed").read_bytes()
+        self.index = {}
+        for at in range(0, len(hed) - len(hed) % ENTRY.size, ENTRY.size):
+            key, offset, _stored, _length = ENTRY.unpack_from(hed, at)
+            self.index[key] = offset
+        self.pkg = base.with_name(base.name + ".pkg").open("rb")
+
+    def close(self) -> None:
+        self.pkg.close()
+
+    def __enter__(self) -> "Archive":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
+    def has(self, path: str) -> bool:
+        return path_hash(path) in self.index
+
+    def _read(self, size: int) -> bytes:
+        data = self.pkg.read(size)
+        if len(data) != size:
+            raise ArchiveError(f"{self.base}.pkg ends inside an entry")
+        return data
+
+    def _payload(self, header: bytes, length: int, stored: int) -> bytes:
+        """One piece's bytes as the game reads them: plain when 16 bytes or fewer; stored; encrypted
+        only; or compressed and encrypted (inflated, its first `length` bytes kept)."""
+        if length <= 16:
+            return self._read(length)
+        if stored > 0:
+            body = self._read(stored)
+            if self.cipher is None:
+                raise ArchiveError(f"{self.base}: an encrypted entry and no table to read it with")
+            out = zlib.decompress(self.cipher.decrypt(body, header))
+            if len(out) < length:
+                raise ArchiveError(f"{self.base}: an entry inflates to {len(out)} bytes, not {length}")
+            return out[:length]
+        body = self._read(length)
+        if stored == ENCRYPTED:
+            if self.cipher is None:
+                raise ArchiveError(f"{self.base}: an encrypted entry and no table to read it with")
+            body = self.cipher.decrypt(body, header)
+        return body
+
+    def read(self, path: str) -> Entry:
+        offset = self.index.get(path_hash(path))
+        if offset is None:
+            raise ArchiveError(f"{path} is not in {self.base}")
+        self.pkg.seek(offset)
+        header = self._read(HEADER.size)
+        length, count, stored, _date = HEADER.unpack(header)
+        records = [ASSET.unpack(self._read(ASSET.size)) for _ in range(count)]
+        data_at = offset + HEADER.size + count * ASSET.size
+        self.pkg.seek(data_at)
+        entry = Entry(self._payload(header, length, stored))
+        at = data_at + (stored if stored > 0 else (length + 15) & ~15)
+        for name, _f20, _f24, alength, astored in records:
+            self.pkg.seek(at)
+            entry.assets.append((name.split(b"\0", 1)[0].decode("ascii", "replace"),
+                                 self._payload(header, alength, astored)))
+            at += astored if astored > 0 else (alength + 15) & ~15
+        return entry
+
+
+def materialise(archive: Archive, paths: list[str], out: Path) -> int:
+    """Each path's data as `original/<path>`, its assets as `remastered/<path>/<asset>`, the layout
+    the HD tools read. Returns how many files were written."""
+    written = 0
+    for path in paths:
+        entry = archive.read(path)
+        target = out / "original" / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(entry.data)
+        written += 1
+        for name, data in entry.assets:
+            asset = out / "remastered" / path / name
+            asset.parent.mkdir(parents=True, exist_ok=True)
+            asset.write_bytes(data)
+            written += 1
+    return written
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 5:
+        print(__doc__)
+        return 2
+    base, out, exe, paths = Path(argv[1]), Path(argv[2]), Path(argv[3]), argv[4:]
+    with Archive(base, Cipher(load_table(exe))) as archive:
+        print(f"{materialise(archive, paths, out)} files written to {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

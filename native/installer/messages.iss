@@ -86,3 +86,63 @@ es.RemoveSaves=¿Quitar también tus partidas y ajustes? Irán a la Papelera de 
 fr.RemoveSaves=Supprimer aussi vos sauvegardes et réglages ? Ils iront dans la Corbeille.
 de.RemoveSaves=Auch deine Spielstände und Einstellungen entfernen? Sie kommen in den Papierkorb.
 it.RemoveSaves=Rimuovere anche salvataggi e impostazioni? Andranno nel Cestino.
+
+en.HdPageCaption=HD pieces (optional)
+es.HdPageCaption=Piezas HD (opcional)
+fr.HdPageCaption=Éléments HD (facultatif)
+de.HdPageCaption=HD-Teile (optional)
+it.HdPageCaption=Pezzi HD (facoltativi)
+
+en.HdPageDescription=Made on this computer from your own collections.
+es.HdPageDescription=Se hacen en este ordenador a partir de tus propias colecciones.
+fr.HdPageDescription=Créés sur cet ordinateur à partir de vos propres collections.
+de.HdPageDescription=Werden auf diesem Computer aus deinen eigenen Sammlungen erstellt.
+it.HdPageDescription=Creati su questo computer dalle tue raccolte.
+
+en.HdPageText=The HD menus and HUD need both collections; the HD videos need KINGDOM HEARTS HD 1.5+2.5 ReMIX. Leave a folder empty if you do not have that collection.
+es.HdPageText=Los menús y el HUD HD necesitan las dos colecciones; los vídeos HD necesitan KINGDOM HEARTS HD 1.5+2.5 ReMIX. Deja una carpeta vacía si no tienes esa colección.
+fr.HdPageText=Les menus et l'interface HD ont besoin des deux collections ; les vidéos HD ont besoin de KINGDOM HEARTS HD 1.5+2.5 ReMIX. Laissez un dossier vide si vous n'avez pas cette collection.
+de.HdPageText=Die HD-Menüs und das HD-HUD brauchen beide Sammlungen; die HD-Videos brauchen KINGDOM HEARTS HD 1.5+2.5 ReMIX. Lass einen Ordner leer, wenn du diese Sammlung nicht hast.
+it.HdPageText=I menu e l'HUD HD richiedono entrambe le raccolte; i video HD richiedono KINGDOM HEARTS HD 1.5+2.5 ReMIX. Lascia vuota una cartella se non hai quella raccolta.
+
+en.Hd1525Label=KINGDOM HEARTS HD 1.5+2.5 ReMIX folder:
+es.Hd1525Label=Carpeta de KINGDOM HEARTS HD 1.5+2.5 ReMIX:
+fr.Hd1525Label=Dossier de KINGDOM HEARTS HD 1.5+2.5 ReMIX :
+de.Hd1525Label=Ordner von KINGDOM HEARTS HD 1.5+2.5 ReMIX:
+it.Hd1525Label=Cartella di KINGDOM HEARTS HD 1.5+2.5 ReMIX:
+
+en.Hd28Label=KINGDOM HEARTS HD 2.8 Final Chapter Prologue folder:
+es.Hd28Label=Carpeta de KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
+fr.Hd28Label=Dossier de KINGDOM HEARTS HD 2.8 Final Chapter Prologue :
+de.Hd28Label=Ordner von KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
+it.Hd28Label=Cartella di KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
+
+en.HdMenus=HD menus and HUD (needs both collections)
+es.HdMenus=Menús y HUD HD (necesita las dos colecciones)
+fr.HdMenus=Menus et interface HD (deux collections nécessaires)
+de.HdMenus=HD-Menüs und HD-HUD (braucht beide Sammlungen)
+it.HdMenus=Menu e HUD HD (servono entrambe le raccolte)
+
+en.HdVideos=HD videos and their subtitles (needs 1.5+2.5)
+es.HdVideos=Vídeos HD y sus subtítulos (necesita 1.5+2.5)
+fr.HdVideos=Vidéos HD et leurs sous-titres (1.5+2.5 nécessaire)
+de.HdVideos=HD-Videos und ihre Untertitel (braucht 1.5+2.5)
+it.HdVideos=Video HD e sottotitoli (serve 1.5+2.5)
+
+en.HdChecking=Checking the collections...
+es.HdChecking=Comprobando las colecciones...
+fr.HdChecking=Vérification des collections...
+de.HdChecking=Die Sammlungen werden geprüft...
+it.HdChecking=Controllo delle raccolte...
+
+en.HdMaking=Making the HD pieces from your collections (a few minutes)...
+es.HdMaking=Haciendo las piezas HD a partir de tus colecciones (unos minutos)...
+fr.HdMaking=Création des éléments HD à partir de vos collections (quelques minutes)...
+de.HdMaking=Die HD-Teile werden aus deinen Sammlungen erstellt (einige Minuten)...
+it.HdMaking=Creazione dei pezzi HD dalle tue raccolte (qualche minuto)...
+
+en.HdFailed=The HD pieces could not be made; the game plays with the DS's look. Run the installer again to try once more.
+es.HdFailed=No se han podido hacer las piezas HD; el juego funciona con el aspecto de DS. Vuelve a ejecutar el instalador para intentarlo otra vez.
+fr.HdFailed=Les éléments HD n'ont pas pu être créés ; le jeu fonctionne avec l'aspect DS. Relancez l'installateur pour réessayer.
+de.HdFailed=Die HD-Teile konnten nicht erstellt werden; das Spiel läuft im DS-Aussehen. Starte das Installationsprogramm erneut, um es noch einmal zu versuchen.
+it.HdFailed=Non è stato possibile creare i pezzi HD; il gioco funziona con l'aspetto DS. Esegui di nuovo l'installazione per riprovare.

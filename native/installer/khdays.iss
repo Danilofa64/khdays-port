@@ -36,8 +36,8 @@ ShowLanguageDialog=yes
 LanguageDetectionMethod=uilanguage
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
-; the game's data made from the ROM after the files (measured: 262 MB for the European ROM)
-ExtraDiskSpaceRequired=262293463
+; the game's data made from the ROM after the files (measured: 262 MB extracted, 64 MB decompressed)
+ExtraDiskSpaceRequired=329000000
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
@@ -81,6 +81,9 @@ var
   RomChecked: String;     { the file last found supported }
   HelperReady: Boolean;
   DataOk: Boolean;
+  HdPage: TInputDirWizardPage;
+  HdMenus, HdVideos: TNewCheckBox;
+  HdStatus: TNewStaticText;
 
 { ---- The helper's results: JSON written in ASCII (other characters as \u escapes) ---- }
 
@@ -189,6 +192,90 @@ begin
     RomStatus.Caption := CustomMessage('RomCheckFailed');
 end;
 
+{ ---- The HD collections: the HD menus and HUD (both), the HD videos (1.5+2.5) ---- }
+
+procedure HdChanged(Sender: TObject);
+begin
+  { a choice whose collection is not given is unavailable; its caption says what it needs }
+  HdMenus.Enabled := (Trim(HdPage.Values[0]) <> '') and (Trim(HdPage.Values[1]) <> '');
+  HdVideos.Enabled := Trim(HdPage.Values[0]) <> '';
+  if not HdMenus.Enabled then HdMenus.Checked := False;
+  if not HdVideos.Enabled then HdVideos.Checked := False;
+end;
+
+procedure CreateHdPage;
+var
+  Json, F1525, F28, Wanted: String;
+begin
+  HdPage := CreateInputDirPage(wpSelectDir, CustomMessage('HdPageCaption'), CustomMessage('HdPageDescription'),
+    CustomMessage('HdPageText'), False, '');
+  HdPage.Add(CustomMessage('Hd1525Label'));
+  HdPage.Add(CustomMessage('Hd28Label'));
+  HdMenus := TNewCheckBox.Create(HdPage);
+  HdMenus.Parent := HdPage.Surface;
+  HdMenus.Top := HdPage.Edits[1].Top + HdPage.Edits[1].Height + ScaleY(14);
+  HdMenus.Width := HdPage.SurfaceWidth;
+  HdMenus.Height := ScaleY(20);
+  HdMenus.Caption := CustomMessage('HdMenus');
+  HdVideos := TNewCheckBox.Create(HdPage);
+  HdVideos.Parent := HdPage.Surface;
+  HdVideos.Top := HdMenus.Top + HdMenus.Height + ScaleY(6);
+  HdVideos.Width := HdPage.SurfaceWidth;
+  HdVideos.Height := ScaleY(20);
+  HdVideos.Caption := CustomMessage('HdVideos');
+  HdStatus := TNewStaticText.Create(HdPage);
+  HdStatus.Parent := HdPage.Surface;
+  HdStatus.Top := HdVideos.Top + HdVideos.Height + ScaleY(10);
+  HdStatus.Width := HdPage.SurfaceWidth;
+  HdStatus.AutoSize := False;
+  HdStatus.WordWrap := True;
+  HdStatus.Height := ScaleY(48);
+  HdStatus.Caption := '';
+  { given on the command line, else last time's, else what Steam has }
+  F1525 := ExpandConstant('{param:HD1525|}');
+  F28 := ExpandConstant('{param:HD28|}');
+  if (F1525 = '') and (F28 = '') then begin
+    F1525 := GetPreviousData('Hd1525', '');
+    F28 := GetPreviousData('Hd28', '');
+  end;
+  if (F1525 = '') and (F28 = '') and (RunHelper('find-collections', Json) = 0) then begin
+    F1525 := JsonValue(Json, 'folder_1525');
+    F28 := JsonValue(Json, 'folder_28');
+    if F1525 = 'null' then F1525 := '';
+    if F28 = 'null' then F28 := '';
+  end;
+  HdPage.Values[0] := F1525;
+  HdPage.Values[1] := F28;
+  HdPage.Edits[0].OnChange := @HdChanged;
+  HdPage.Edits[1].OnChange := @HdChanged;
+  HdChanged(nil);
+  Wanted := ExpandConstant('{param:HD|menus,videos}');
+  HdMenus.Checked := HdMenus.Enabled and (Pos('menus', Wanted) > 0);
+  HdVideos.Checked := HdVideos.Enabled and (Pos('videos', Wanted) > 0);
+end;
+
+function CheckHd: Boolean;
+var
+  Json: String;
+begin
+  Result := True;
+  HdStatus.Caption := CustomMessage('HdChecking');
+  WizardForm.Refresh;
+  if (Trim(HdPage.Values[0]) <> '') and (HdMenus.Checked or HdVideos.Checked) then
+    if RunHelper('check-collection 1.5+2.5 "' + HdPage.Values[0] + '"', Json) <> 0 then begin
+      HdStatus.Caption := JsonValue(Json, 'message');
+      Result := False;
+      Exit;
+    end;
+  if (Trim(HdPage.Values[1]) <> '') and HdMenus.Checked then
+    if RunHelper('check-collection 2.8 "' + HdPage.Values[1] + '"', Json) <> 0 then begin
+      HdStatus.Caption := JsonValue(Json, 'message');
+      Result := False;
+      Exit;
+    end;
+  HdStatus.Caption := '';
+end;
+
 procedure InitializeWizard;
 var
   Json, Found: String;
@@ -214,11 +301,14 @@ begin
     if (Found <> '') and (Found <> 'null') then
       RomPage.Values[0] := Found;
   end;
+  CreateHdPage;
 end;
 
 procedure RegisterPreviousData(PreviousDataKey: Integer);
 begin
   SetPreviousData(PreviousDataKey, 'RomPath', RomChecked);
+  SetPreviousData(PreviousDataKey, 'Hd1525', HdPage.Values[0]);
+  SetPreviousData(PreviousDataKey, 'Hd28', HdPage.Values[1]);
 end;
 
 { ---- The folder: the player must be able to write there ---- }
@@ -245,7 +335,9 @@ begin
     Result := FolderWritable(WizardDirValue);
     if not Result then
       SuppressibleMsgBox(FmtMessage(CustomMessage('FolderNotWritable'), [WizardDirValue]), mbError, MB_OK, IDOK);
-  end;
+  end
+  else if CurPageID = HdPage.ID then
+    Result := CheckHd;
 end;
 
 { Before installing, also when silent (/ROM=<file>, no pages): the ROM checked, or nothing installed. }
@@ -266,7 +358,7 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  Json: String;
+  Json, Args: String;
 begin
   if CurStep = ssPostInstall then begin
     WizardForm.StatusLabel.Caption := CustomMessage('DataPreparing');
@@ -275,6 +367,17 @@ begin
                           ExpandConstant('{app}') + '"', Json) = 0;
     if not DataOk then
       SuppressibleMsgBox(CustomMessage('DataFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
+    if DataOk and (HdMenus.Checked or HdVideos.Checked) then begin
+      WizardForm.StatusLabel.Caption := CustomMessage('HdMaking');
+      WizardForm.Refresh;
+      Args := 'build-hd "' + ExpandConstant('{app}') + '"';
+      if HdMenus.Checked then Args := Args + ' --menus';
+      if HdVideos.Checked then Args := Args + ' --videos';
+      if Trim(HdPage.Values[0]) <> '' then Args := Args + ' --1525 "' + HdPage.Values[0] + '"';
+      if HdMenus.Checked then Args := Args + ' --28 "' + HdPage.Values[1] + '"';
+      if RunHelperIn(ExpandConstant('{app}'), Args, Json) <> 0 then
+        SuppressibleMsgBox(CustomMessage('HdFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
+    end;
   end;
 end;
 
