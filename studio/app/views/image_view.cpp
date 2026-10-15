@@ -178,7 +178,7 @@ void draw_candidate_controls(App& app, const Item& item) {
         return;
     }
     ImGui::TextUnformatted(tr(app.language, S::drop_here));
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::choose_file)));
     if (ImGui::Button(tr(app.language, S::choose_file))) choose_file(app, item);
     if (!app.candidate_error.empty()) ImGui::TextColored(verdict_colour(Verdict::refused), "%s", app.candidate_error.c_str());
     if (app.candidate.item != app.selected) return;
@@ -206,7 +206,7 @@ void draw_candidate_controls(App& app, const Item& item) {
             save(app, item);
             ImGui::CloseCurrentPopup();
         }
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::cancel)));
         if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }

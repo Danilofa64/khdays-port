@@ -55,6 +55,9 @@ struct SheetView {
     SheetPixels current;
     fs::path current_from;
     std::vector<std::uint8_t> picture;
+    // the game's own sheet, shown as the original whatever the mod holds
+    SheetPixels game;
+    std::vector<std::uint8_t> game_picture;
     std::uint64_t version = 0;
     int export_scale = 0;  // 0: the current sheet's
 
@@ -103,6 +106,7 @@ void take_edited() {
 void rebuild(App& app) {
     ++v.version;
     v.picture.clear();
+    v.game_picture.clear();
     v.assembly = Assembly{};
     v.error.clear();
     if (v.fits.empty()) return;
@@ -133,6 +137,8 @@ void rebuild(App& app) {
         if (list[i].whole) v.whole_top = tops[i], v.whole_end = tops[i] + v.source.height();
     }
     v.picture = render_assembly(v.source, v.assembly, v.current, v.colours);
+    v.game = v.current_from.empty() ? v.current : game_sheet_pixels(v.source);
+    v.game_picture = v.current_from.empty() ? v.picture : render_assembly(v.source, v.assembly, v.game, v.colours);
     v.unseen.clear();
     if (v.palette == v.source.seen_palette) {
         for (int t = 0; t < v.source.tiles; ++t) {
@@ -265,12 +271,12 @@ void keep_rows(App& app) {
     if (!e.empty()) app.tell(fmt(app.language, S::save_failed, {e}), false);
 }
 
-// Painting rows on the sheet as it is in the picture `s` (at the current
-// sheet's scale): the tile under the pointer outlined; a rectangle dragged
-// gives its tiles the row chosen.
+// Painting rows on the sheet as it is in the picture `s` (the game's own
+// sheet, at its scale): the tile under the pointer outlined; a rectangle
+// dragged gives its tiles the row chosen.
 void paint_rows(App& app, const Shown& s) {
     if (s.factor <= 0 || v.whole_end <= v.whole_top) return;
-    const float k = s.factor * static_cast<float>(v.current.scale);
+    const float k = s.factor * static_cast<float>(v.game.scale);
     const ImVec2 m = ImGui::GetIO().MousePos;
     // the pointer in the assembly's pixels, kept inside the sheet as it is
     const float px = (m.x - s.at.x) / k, py = (m.y - s.at.y) / k;
@@ -377,7 +383,7 @@ void sheet_export_to(App& app, const fs::path& chosen) {
 
 bool draw_sheet_mode(App& app) {
     if (ImGui::RadioButton(tr(app.language, S::sheet_as_tiles), !v.assembled)) v.assembled = false;
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(app.language, S::sheet_assembled)));
     if (ImGui::RadioButton(tr(app.language, S::sheet_assembled), v.assembled)) v.assembled = true;
     return v.assembled;
 }
@@ -476,18 +482,18 @@ void draw_sheet_assembled(App& app, const Item& item) {
     for (std::size_t i = 0; i < v.fits.size(); ++i) whole_chosen = whole_chosen || (v.fits[i].whole && v.chosen[i]);
     const int rows = palette_rows(v.source, v.colours);
     if (whole_chosen && rows > 1) {
-        ImGui::SameLine();
+        same_line_if_room(140.0f * ImGui::GetStyle().FontScaleDpi + check_width(tr(app.language, S::sheet_row)));
         ImGui::SetNextItemWidth(140.0f * ImGui::GetStyle().FontScaleDpi);
         if (ImGui::SliderInt(tr(app.language, S::sheet_row), &v.row, 0, rows - 1)) {
             v.row = std::clamp(v.row, 0, rows - 1);
             rebuild(app);
         }
-        ImGui::SameLine();
+        same_line_if_room(check_width(tr(app.language, S::sheet_paint_rows)));
         ImGui::Checkbox(tr(app.language, S::sheet_paint_rows), &v.painting);
         const bool painted = std::any_of(v.tile_rows.begin(), v.tile_rows.end(), [](int r) { return r >= 0; }) &&
                              v.tile_rows != v.screen_rows;
         if (painted) {
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(app.language, S::sheet_clear_rows)));
             if (ImGui::Button(tr(app.language, S::sheet_clear_rows))) {
                 v.tile_rows = v.screen_rows;
                 keep_rows(app);
@@ -539,13 +545,17 @@ void draw_sheet_assembled(App& app, const Item& item) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::TextUnformatted(tr(app.language, S::original));
-        const Shown now = show(app, key + ":now", v.version, v.picture, v.assembly.width * v.current.scale,
-                               v.assembly.height * v.current.scale, ImVec2(half, box_h));
-        if (v.painting) paint_rows(app, now);
-        if (v.mark_unseen) mark(now, v.current.scale, v.unseen, IM_COL32(90, 170, 255, 255));
+        const Shown game = show(app, key + ":game", v.version, v.game_picture, v.assembly.width * v.game.scale,
+                                v.assembly.height * v.game.scale, ImVec2(half, box_h));
+        if (v.painting) paint_rows(app, game);
+        if (v.mark_unseen) mark(game, v.game.scale, v.unseen, IM_COL32(90, 170, 255, 255));
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted(tr(app.language, S::replacement));
-        if (v.have_result) {
+        if (!v.have_result && !v.current_from.empty()) {
+            // what the mod holds now, until another picture is brought back
+            show(app, key + ":now", v.version, v.picture, v.assembly.width * v.current.scale,
+                 v.assembly.height * v.current.scale, ImVec2(half, box_h));
+        } else if (v.have_result) {
             const Shown s = show(app, key + ":new", v.result_version, v.result_picture, v.assembly.width * v.result.scale, v.assembly.height * v.result.scale,
                                  ImVec2(half, box_h));
             if (v.marks) {
@@ -569,11 +579,11 @@ void draw_sheet_assembled(App& app, const Item& item) {
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::sheet_export)));
     if (ImGui::Button(tr(app.language, S::sheet_export))) choose_export(app);
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::sheet_bring_back)));
     if (ImGui::Button(tr(app.language, S::sheet_bring_back))) choose_file(app, app.catalog.items[static_cast<std::size_t>(v.item)]);
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::sheets_export_all)));
     ImGui::BeginDisabled(app.sheets_export != nullptr && !app.sheets_export->done);
     if (ImGui::Button(tr(app.language, S::sheets_export_all))) {
         SDL_ShowOpenFolderDialog(
@@ -605,12 +615,12 @@ void draw_sheet_assembled(App& app, const Item& item) {
         ImGui::TextColored(warn, "%s", fmt(app.language, S::sheet_off_palette, {std::to_string(t.off_palette)}).c_str());
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(tr(app.language, S::sheet_colours));
-        ImGui::SameLine();
+        same_line_if_room(check_width(tr(app.language, S::sheet_colours_own)));
         if (ImGui::RadioButton(tr(app.language, S::sheet_colours_own), v.mode != Colours::fit)) {
             v.mode = Colours::automatic;
             take_edited();
         }
-        ImGui::SameLine();
+        same_line_if_room(check_width(tr(app.language, S::sheet_colours_fit)));
         if (ImGui::RadioButton(tr(app.language, S::sheet_colours_fit), v.mode == Colours::fit)) {
             v.mode = Colours::fit;
             take_edited();
@@ -702,7 +712,7 @@ void draw_sheets_export(App& app) {
             }
         }
         if (ImGui::Button(tr(app.language, S::open_folder))) SDL_OpenURL(("file:///" + folder).c_str());
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::close)));
         if (ImGui::Button(tr(app.language, S::close))) {
             app.sheets_export.reset();
             return;

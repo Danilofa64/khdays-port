@@ -7,7 +7,24 @@
 
 #include "khdays/vfs/filesystem.h"
 
+#include "imgui.h"
+
 namespace studio {
+
+void same_line_if_room(float width) {
+    // after an item the cursor is at the next line's start: from there, what is
+    // left of the line is the window's whole visible width
+    const float right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+    if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + width <= right) ImGui::SameLine();
+}
+
+float button_width(const char* label) {
+    return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+}
+
+float check_width(const char* label) {
+    return ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize(label, nullptr, true).x;
+}
 
 void App::start_catalog() {
     if (catalog_thread.joinable()) {

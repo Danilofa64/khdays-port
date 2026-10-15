@@ -626,7 +626,7 @@ void draw_details(App& app) {
         ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
         ImGui::DragFloat(tr(lang, S::map_marker_facing), &facing, 1.0f, -360.0f, 360.0f, "%.0f");
         moved |= ImGui::IsItemDeactivatedAfterEdit();
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(lang, S::map_to_ground)));
         if (ImGui::SmallButton(tr(lang, S::map_to_ground))) {
             double y = 0;
             if (ground_under(p.built, at[0] * 4096.0, at[2] * 4096.0, at[1] * 4096.0 + 4096.0, &y) ||
@@ -680,7 +680,7 @@ void draw_details(App& app) {
                     }
                     ImGui::EndCombo();
                 }
-                ImGui::SameLine();
+                same_line_if_room(button_width(tr(lang, S::map_clear_names)));
                 if (ImGui::SmallButton(tr(lang, S::map_clear_names))) {
                     for (const auto t : triangles) p.r.names_by_triangle.erase(t);
                     p.dirty = true;
@@ -766,7 +766,7 @@ void draw_names_and_exits(App& app) {
             ImGui::TextUnformatted(fmt(lang, S::map_material_names, {material.empty() ? std::string("-") : material,
                                                                      list.empty() ? std::string(tr(lang, S::map_none)) : list})
                                        .c_str());
-            ImGui::SameLine();
+            same_line_if_room(9 * ImGui::GetFontSize());
             ImGui::SetNextItemWidth(9 * ImGui::GetFontSize());
             if (ImGui::BeginCombo("##add", tr(lang, S::map_add_name))) {
                 for (const auto& c : choices) {
@@ -778,7 +778,7 @@ void draw_names_and_exits(App& app) {
                 ImGui::EndCombo();
             }
             if (!names.empty()) {
-                ImGui::SameLine();
+                same_line_if_room(button_width(tr(lang, S::map_clear_names)));
                 if (ImGui::SmallButton(tr(lang, S::map_clear_names))) {
                     names.clear();
                     p.dirty = true;
@@ -915,7 +915,7 @@ void draw_replace(App& app, const Item& item) {
         p.next_is_collision = false;
         choose_file(app, item);
     }
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(lang, S::map_export)));
     if (ImGui::Button(tr(lang, S::map_export))) choose_room_export(app);
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
@@ -927,7 +927,7 @@ void draw_replace(App& app, const Item& item) {
     if (!p.active) return;
     ImGui::TextUnformatted(fmt(lang, S::map_model_file, {p.model_source.empty() ? std::string("-") : u8(p.model_source.filename())}).c_str());
     const char* views[3] = {tr(lang, S::map_show_new), tr(lang, S::map_show_game), tr(lang, S::map_show_both)};
-    ImGui::SameLine();
+    same_line_if_room(12 * ImGui::GetFontSize() + check_width(tr(lang, S::map_show)));
     ImGui::SetNextItemWidth(12 * ImGui::GetFontSize());
     ImGui::Combo(tr(lang, S::map_show), &p.view, views, 3);
 
@@ -961,7 +961,7 @@ void draw_replace(App& app, const Item& item) {
     if (source == 2) {
         ImGui::SameLine();
         ImGui::TextUnformatted(p.collision_source.empty() ? "-" : u8(p.collision_source.filename()).c_str());
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(lang, S::map_choose_collision)));
         if (ImGui::SmallButton(tr(lang, S::map_choose_collision))) {
             p.next_is_collision = true;
             choose_file(app, item);
@@ -1059,7 +1059,7 @@ void draw_replace(App& app, const Item& item) {
     }
     ImGui::EndDisabled();
     if (p.from_mod) {
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(lang, S::map_revert)));
         if (ImGui::Button(tr(lang, S::map_revert))) {
             WorldOutcome o;
             std::string why;
@@ -1144,13 +1144,13 @@ void draw_map_view(App& app, const Item& item) {
         if (!rm.problem.empty()) ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.35f, 1), "%s", rm.problem.c_str());
     }
     ImGui::Checkbox(tr(lang, S::map_models), &m.show_models);
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(lang, S::map_grounds)));
     ImGui::Checkbox(tr(lang, S::map_grounds), &m.show_ground);
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(lang, S::map_walls)));
     ImGui::Checkbox(tr(lang, S::map_walls), &m.show_walls);
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(lang, S::map_ceilings)));
     ImGui::Checkbox(tr(lang, S::map_ceilings), &m.show_ceilings);
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(lang, S::map_markers)));
     ImGui::Checkbox(tr(lang, S::map_markers), &m.show_markers);
     if (m.rep.dirty) rebuild();  // the modder's model placed before the picture draws it
     const ImVec2 avail = ImGui::GetContentRegionAvail();

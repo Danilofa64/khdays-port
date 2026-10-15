@@ -101,7 +101,7 @@ void draw_mod_bar(App& app) {
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::mod_new)));
     if (ImGui::Button(tr(app.language, S::mod_new))) {
         new_name.clear();
         new_error.clear();
@@ -138,7 +138,7 @@ void draw_mod_bar(App& app) {
                 new_error = tr(app.language, why == "exists" ? S::mod_exists : S::mod_name_invalid);
             }
         }
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::cancel)));
         if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
@@ -186,7 +186,7 @@ void draw_replacements(App& app, bool* open) {
                 mod_files_stale = true;
                 ImGui::CloseCurrentPopup();
             }
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(app.language, S::cancel)));
             if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
@@ -274,7 +274,7 @@ void draw_replacements(App& app, bool* open) {
             mod_files_stale = true;
             ImGui::CloseCurrentPopup();
         }
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::cancel)));
         if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
@@ -351,7 +351,7 @@ void draw_settings(App& app, bool* open) {
     }
     if (changed || paths) save_settings_told(app);
     if (ImGui::Button(tr(app.language, S::reload))) app.start_catalog();
-    ImGui::SameLine();
+    same_line_if_room(button_width(tr(app.language, S::close)));
     if (ImGui::Button(tr(app.language, S::close))) *open = false;
     ImGui::End();
 }

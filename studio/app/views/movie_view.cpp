@@ -279,7 +279,7 @@ void draw_movie_view(App& app, const Item& item) {
     bool mine = false;
     for (const auto& h : held) mine = mine || h.mod == m->name;
     if (mine) {
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(lang, S::text_give_back)));
         if (ImGui::Button(tr(lang, S::text_give_back))) {
             if (player.open && player.item == app.selected) stop();
             std::string why;

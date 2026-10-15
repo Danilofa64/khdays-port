@@ -162,7 +162,7 @@ void draw_text_view(App& app, const Item& item) {
         std::error_code ec;
         const fs::path mine = m->dir / path_u8(replacement_path(item, "", false));
         if (fs::is_regular_file(mine, ec)) {
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(lang, S::text_give_back)));
             if (ImGui::Button(tr(lang, S::text_give_back))) {
                 std::string why;
                 if (remove_replacement(m->dir, item, &why)) {

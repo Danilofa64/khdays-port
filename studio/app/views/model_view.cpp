@@ -537,12 +537,12 @@ void draw_clip_panel(App& app) {
     }
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(tr(app.language, S::anim_preview));
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(app.language, S::anim_preview_game)));
     if (ImGui::RadioButton(tr(app.language, S::anim_preview_game), !s.show_new)) {
         s.show_new = false;
         s.clip = s.game_animation;
     }
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(app.language, S::anim_preview_new)));
     if (ImGui::RadioButton(tr(app.language, S::anim_preview_new), s.show_new)) {
         s.show_new = true;
         s.clip = s.new_animation;
@@ -759,9 +759,9 @@ void draw_model_view(App& app, const Item& item) {
         ImGui::TextDisabled("%s", tr(app.language, S::animations_none));
     }
     if (s.animation >= 0) {
-        ImGui::SameLine();
+        same_line_if_room(button_width(s.playing ? tr(app.language, S::stop) : tr(app.language, S::play)));
         if (ImGui::Button(s.playing ? tr(app.language, S::stop) : tr(app.language, S::play))) s.playing = !s.playing;
-        ImGui::SameLine();
+        same_line_if_room(220.0f * ImGui::GetStyle().FontScaleDpi);
         ImGui::SetNextItemWidth(220.0f * ImGui::GetStyle().FontScaleDpi);
         ImGui::SliderFloat("##frame", &s.frame, 0.0f, static_cast<float>(std::max<int>(1, s.clip.frame_count)), "%.0f");
         // on this line when it fits
@@ -776,7 +776,7 @@ void draw_model_view(App& app, const Item& item) {
     ImGui::SetNextItemWidth(200.0f * ImGui::GetStyle().FontScaleDpi);
     const char* views[] = {tr(app.language, S::view_side), tr(app.language, S::view_over)};
     ImGui::Combo(tr(app.language, S::view_mode), &s.view, views, 2);
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(app.language, S::show_bones)));
     ImGui::Checkbox(tr(app.language, S::show_bones), &s.bones);
     ImGui::SameLine();
     // asked first whether its animations go with it, when it has some
@@ -809,18 +809,18 @@ void draw_model_view(App& app, const Item& item) {
             ImGui::CloseCurrentPopup();
             choose_export_file();
         }
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::model_export_only)));
         if (ImGui::Button(tr(app.language, S::model_export_only))) {
             s.export_animations = false;
             ImGui::CloseCurrentPopup();
             choose_export_file();
         }
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(app.language, S::cancel)));
         if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
     if (s.have_model) {
-        ImGui::SameLine();
+        same_line_if_room(160.0f * ImGui::GetStyle().FontScaleDpi + check_width(tr(app.language, S::scale)));
         ImGui::SetNextItemWidth(160.0f * ImGui::GetStyle().FontScaleDpi);
         if (ImGui::DragFloat(tr(app.language, S::scale), &s.scale, 0.005f, 0.01f, 100.0f, "%.3f")) {
             s.scale = std::max(0.001f, s.scale);
@@ -883,7 +883,7 @@ void draw_model_view(App& app, const Item& item) {
                 save(app, item);
                 ImGui::CloseCurrentPopup();
             }
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(app.language, S::cancel)));
             if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }

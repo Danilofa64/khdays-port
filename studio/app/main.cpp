@@ -71,11 +71,14 @@ void draw_frame(App& app, bool* settings_open, bool* themes_open) {
 
     const float status_h = ImGui::GetFrameHeightWithSpacing();
     const ImVec2 avail = ImGui::GetContentRegionAvail();
-    ImGui::BeginChild("##left", ImVec2(avail.x * 0.42f, avail.y - status_h), ImGuiChildFlags_Borders);
+    // what is wider than a panel can be scrolled to, never hidden past its edge
+    ImGui::BeginChild("##left", ImVec2(avail.x * 0.42f, avail.y - status_h), ImGuiChildFlags_Borders,
+                      ImGuiWindowFlags_HorizontalScrollbar);
     draw_browser(app);
     ImGui::EndChild();
     ImGui::SameLine();
-    ImGui::BeginChild("##right", ImVec2(0, avail.y - status_h), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("##right", ImVec2(0, avail.y - status_h), ImGuiChildFlags_Borders,
+                      ImGuiWindowFlags_HorizontalScrollbar);
     draw_item(app);
     ImGui::EndChild();
     ImGui::TextUnformatted(app.status.c_str());

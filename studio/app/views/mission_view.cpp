@@ -904,11 +904,11 @@ void draw_mission_view(App& app, const Item& item) {
         }
         ImGui::EndDisabled();
         if (v.changes > 0) {
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(lang, S::mission_undo)));
             if (ImGui::Button(tr(lang, S::mission_undo))) v.item = -1;  // read again: the changes dropped
         }
         // a new mission made from this one, in the slot of another
-        ImGui::SameLine();
+        same_line_if_room(button_width(tr(lang, S::mission_copy)));
         if (ImGui::Button(tr(lang, S::mission_copy))) ImGui::OpenPopup("###copy");
         if (ImGui::BeginPopupModal((std::string(tr(lang, S::mission_copy)) + "###copy").c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             static int target = -1;
@@ -946,12 +946,12 @@ void draw_mission_view(App& app, const Item& item) {
                 }
             }
             ImGui::EndDisabled();
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(lang, S::cancel)));
             if (ImGui::Button(tr(lang, S::cancel))) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
         if (from_mod) {
-            ImGui::SameLine();
+            same_line_if_room(button_width(tr(lang, S::mission_give_back)));
             if (ImGui::Button(tr(lang, S::mission_give_back))) {
                 std::string why;
                 if (give_back_mission(nitrofs(), m->dir, v.edit.number, &why)) {

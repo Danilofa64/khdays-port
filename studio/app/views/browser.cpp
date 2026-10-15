@@ -189,7 +189,7 @@ void draw_browser(App& app) {
     ImGui::SameLine();
     bool tree = app.settings.browser_tree;
     if (ImGui::RadioButton(tr(app.language, S::browser_folders), tree)) tree = true;
-    ImGui::SameLine();
+    same_line_if_room(check_width(tr(app.language, S::browser_list)));
     if (ImGui::RadioButton(tr(app.language, S::browser_list), !tree)) tree = false;
     if (tree != app.settings.browser_tree) {
         app.settings.browser_tree = tree;

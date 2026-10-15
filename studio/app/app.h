@@ -194,4 +194,12 @@ std::string finding_text(const App& app, const Finding& finding);
 // Opens the system's file dialog for the shown item.
 void choose_file(App& app, const Item& item);
 
+// Rows that wrap: the next item on the last one's line when its `width` fits
+// in what the window shows, else on the next line, so nothing is hidden past
+// the window's right edge.
+void same_line_if_room(float width);
+// The width of a button, and of a checkbox or radio button, with `label`.
+float button_width(const char* label);
+float check_width(const char* label);
+
 }  // namespace studio
