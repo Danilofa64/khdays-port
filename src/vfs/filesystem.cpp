@@ -27,7 +27,9 @@ std::optional<std::filesystem::path> normalize(std::string_view game_path) {
         ++start;
     }
     const std::filesystem::path rel{cleaned.substr(start)};
-    if (rel.empty()) {
+    // A root name ("C:", "C:/...") would make `root / rel` discard the root
+    // entirely, so it escapes as surely as "..".
+    if (rel.empty() || rel.has_root_name() || rel.has_root_directory()) {
         return std::nullopt;
     }
     for (const auto& part : rel) {
@@ -43,9 +45,9 @@ bool is_file(const std::filesystem::path& path) {
     return std::filesystem::is_regular_file(path, ec);
 }
 
-// Mod overrides: mods/<Mod>/files/<rel>, mods visited in sorted order.
-std::optional<std::filesystem::path> find_mod_file(
-    const std::filesystem::path& rel) {
+}  // namespace
+
+std::optional<std::filesystem::path> find_in_mods(const std::filesystem::path& rel) {
     std::error_code ec;
     if (!std::filesystem::is_directory(g_mods_root, ec)) {
         return std::nullopt;
@@ -59,12 +61,20 @@ std::optional<std::filesystem::path> find_mod_file(
     }
     std::sort(mods.begin(), mods.end());
     for (const auto& mod : mods) {
-        const auto candidate = mod / "files" / rel;
+        const auto candidate = mod / rel;
         if (is_file(candidate)) {
             return candidate;
         }
     }
     return std::nullopt;
+}
+
+namespace {
+
+// Mod overrides: mods/<Mod>/files/<rel>, mods visited in sorted order.
+std::optional<std::filesystem::path> find_mod_file(
+    const std::filesystem::path& rel) {
+    return find_in_mods(std::filesystem::path("files") / rel);
 }
 
 }  // namespace
@@ -116,6 +126,24 @@ std::optional<std::filesystem::path> resolve(std::string_view game_path) {
             if (is_file(candidate)) {
                 return candidate;
             }
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::filesystem::path> resolve_original(
+    std::string_view game_path) {
+    const auto rel = normalize(game_path);
+    if (!rel) {
+        return std::nullopt;
+    }
+    if (const auto mod = find_mod_file(*rel)) {
+        return mod;
+    }
+    if (!g_data_root.empty()) {
+        const auto raw = g_data_root / "nitrofs" / *rel;
+        if (is_file(raw)) {
+            return raw;
         }
     }
     return std::nullopt;

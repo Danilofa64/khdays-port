@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace khdays::assets {
@@ -30,6 +31,10 @@ struct NeutralVertex final {
     std::array<float, 2> texcoord{0.0F, 0.0F};
     std::array<std::uint8_t, 4> color{255U, 255U, 255U, 255U};
 
+    // The normal the GPU command stream gave (raw, like `position`), or 0 0 0
+    // when it gave none.
+    std::array<float, 3> normal{0.0F, 0.0F, 0.0F};
+
     // Skinning: up to four palette matrices with weights. The final position is
     // sum(weights[i] * palette[joints[i]]) * position. A DS vertex uses a single
     // matrix (joints[0], weight 1); glTF vertices can blend up to four bones.
@@ -44,6 +49,24 @@ struct NeutralMesh final {
     // Name of the TEX0 texture bound by the mesh's material, or empty if the
     // material has no texture. Resolve it with the TEX0 loader on the same file.
     std::string texture_name;
+    // The material's own name (what material animations address) and its base
+    // polygon alpha in 0..1. The DS does not draw a mesh whose alpha is 0.
+    std::string material_name;
+    float material_alpha = 1.0F;
+    // Whether the material draws both faces (glTF doubleSided); otherwise only
+    // the front, wound counter-clockwise.
+    bool double_sided = false;
+    // How the material takes its texture's alpha (glTF alphaMode): `unknown`
+    // where the file does not say (FBX, a DS model's), `opaque` (alpha
+    // ignored), `mask` (a texel is drawn when its alpha reaches
+    // `alpha_cutoff`, else not at all) or `blend` (translucent).
+    enum class AlphaMode { unknown, opaque, mask, blend };
+    AlphaMode alpha_mode = AlphaMode::unknown;
+    float alpha_cutoff = 0.5F;
+    // A DS model's texture coordinates past 0..1 on S and T: repeated, and
+    // repeated mirrored (TEXIMAGE_PARAM), else clamped to the edge.
+    std::array<bool, 2> repeat{true, true};
+    std::array<bool, 2> mirror{false, false};
     std::vector<NeutralVertex> vertices;
     std::vector<std::uint32_t> indices;  // 3 per triangle
 };
@@ -64,6 +87,16 @@ struct NeutralModel final {
     // Name of each bone (object), aligned with object_matrices. Used to map a
     // glTF skin's joints onto this skeleton by name for animation retargeting.
     std::vector<std::string> object_names;
+
+    // Each bone's parent as the render stream's NODEDESC gives it, aligned
+    // with object_names; -1 for a root (a node that is its own parent) or a
+    // bone the stream never reaches.
+    std::vector<int> object_parents;
+
+    // What each palette entry stands for: the bones whose matrices it is made
+    // of and their weights -- one bone with weight 1 for a bone's own matrix,
+    // several for an envelope (NODEMIX); empty for the identity.
+    std::vector<std::vector<std::pair<std::uint32_t, float>>> palette_bones;
 
     // The program that rebuilds the palette from bone matrices (for animation).
     std::shared_ptr<const SkinningProgram> skinning;

@@ -1,13 +1,16 @@
 #include "khdays/assets/gltf.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <map>
 #include <stdexcept>
 #include <string>
 
-#include "khdays/assets/png.h"
+#include "khdays/assets/image.h"
 
 // cgltf is third-party and not warning-clean; isolate it.
 #if defined(_MSC_VER)
@@ -90,7 +93,7 @@ constexpr std::array<float, 16> kIdentity{
 
 namespace khdays::assets {
 
-GltfModel import_gltf(const std::filesystem::path& input_path) {
+ImportedModel import_gltf(const std::filesystem::path& input_path) {
     cgltf_options options{};
     cgltf_data* data = nullptr;
     const auto path_string = input_path.string();
@@ -105,30 +108,69 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
         throw std::runtime_error("cannot load glTF buffers: " + path_string);
     }
 
-    GltfModel result;
+    ImportedModel result;
     result.model.name = input_path.stem().string();
     // Palette entry 0 is the identity, used by static (unskinned) meshes.
     result.model.palette.push_back(kIdentity);
 
     const auto base_dir = input_path.parent_path();
 
-    // Load each referenced image once, keyed by name; remember its size.
+    // Load each referenced image once, keyed by name; remember its size. An
+    // image is embedded (a buffer view -- a .glb's -- or a data URI) or a file
+    // found by find_texture; one that cannot be had is drawn white and told
+    // to the caller.
     std::map<std::string, DecodedTexture> loaded;
     for (cgltf_size i = 0; i < data->images_count; ++i) {
         const cgltf_image& image = data->images[i];
-        if (image.uri == nullptr) {
-            continue;  // embedded images are a later step
-        }
         const auto key = image_key(&image, i);
         if (loaded.count(key) != 0U) {
             continue;
         }
         try {
-            auto texture = load_png(base_dir / image.uri);
+            DecodedTexture texture;
+            if (image.buffer_view != nullptr) {
+                const cgltf_buffer_view& view = *image.buffer_view;
+                if (view.buffer == nullptr || view.buffer->data == nullptr) {
+                    throw std::runtime_error("its buffer was not loaded");
+                }
+                texture = read_image(static_cast<const std::uint8_t*>(view.buffer->data) + view.offset, view.size, key);
+            } else if (image.uri != nullptr && std::strncmp(image.uri, "data:", 5) == 0) {
+                const char* comma = std::strchr(image.uri, ',');
+                if (comma == nullptr || std::strstr(image.uri, ";base64,") == nullptr) {
+                    throw std::runtime_error("a data URI that is not base64");
+                }
+                const std::size_t length = std::strlen(comma + 1);
+                std::size_t size = length / 4 * 3;
+                if (length >= 1 && comma[length] == '=') --size;
+                if (length >= 2 && comma[length - 1] == '=') --size;
+                void* bytes = nullptr;
+                if (cgltf_load_buffer_base64(&options, size, comma + 1, &bytes) != cgltf_result_success) {
+                    throw std::runtime_error("its base64 cannot be decoded");
+                }
+                try {
+                    texture = read_image(static_cast<const std::uint8_t*>(bytes), size, key);
+                } catch (...) {
+                    std::free(bytes);
+                    throw;
+                }
+                std::free(bytes);
+            } else if (image.uri != nullptr) {
+                std::string uri = image.uri;
+                cgltf_decode_uri(uri.data());  // %20 and the like
+                uri.resize(std::strlen(uri.c_str()));
+                const auto file = find_texture(base_dir, uri);
+                if (!file) {
+                    throw std::runtime_error("not found");
+                }
+                texture = read_image(*file);
+            } else {
+                throw std::runtime_error("no data and no file");
+            }
             texture.name = key;
             loaded.emplace(key, std::move(texture));
-        } catch (const std::exception&) {
-            // Missing/unsupported texture: the mesh falls back to white.
+        } catch (const std::exception& error) {
+            // The mesh falls back to white; the caller says so.
+            result.missing_textures.emplace_back(key, error.what());
         }
     }
 
@@ -151,7 +193,7 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
                 cgltf_accessor_read_float(
                     skin.inverse_bind_matrices, j, inverse_bind.data(), 16);
             }
-            GltfSkinJoint joint;
+            ImportedJoint joint;
             joint.palette_index =
                 static_cast<std::uint32_t>(result.model.palette.size());
             const cgltf_node* joint_node = skin.joints[j];
@@ -159,9 +201,23 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
                 joint.name = joint_node->name;
             }
             joint.inverse_bind = inverse_bind;
+            std::copy(world, world + 16, joint.world.begin());
             result.joints.push_back(std::move(joint));
             result.model.palette.push_back(
                 matrix_multiply(world, inverse_bind.data()));
+        }
+        // Each joint's parent: its nearest ancestor among the skin's joints.
+        const std::size_t first = result.joints.size() - skin.joints_count;
+        for (cgltf_size j = 0; j < skin.joints_count; ++j) {
+            for (const cgltf_node* up = skin.joints[j]->parent;
+                 up != nullptr && result.joints[first + j].parent < 0; up = up->parent) {
+                for (cgltf_size k = 0; k < skin.joints_count; ++k) {
+                    if (skin.joints[k] == up) {
+                        result.joints[first + j].parent = static_cast<int>(first + k);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -199,6 +255,8 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
                 find_attribute(primitive, cgltf_attribute_type_texcoord);
             const cgltf_accessor* colors =
                 find_attribute(primitive, cgltf_attribute_type_color);
+            const cgltf_accessor* normals =
+                find_attribute(primitive, cgltf_attribute_type_normal);
             const cgltf_accessor* joints =
                 skin != nullptr
                     ? find_attribute(primitive, cgltf_attribute_type_joints)
@@ -224,6 +282,26 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
             out_mesh.name =
                 mesh.name != nullptr ? mesh.name : ("mesh_" + std::to_string(m));
             out_mesh.texture_name = texture_key;
+            out_mesh.material_name =
+                primitive.material != nullptr && primitive.material->name != nullptr ? primitive.material->name : "";
+            out_mesh.double_sided =
+                primitive.material != nullptr && primitive.material->double_sided != 0;
+            if (primitive.material != nullptr) {
+                switch (primitive.material->alpha_mode) {
+                    case cgltf_alpha_mode_mask:
+                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::mask;
+                        out_mesh.alpha_cutoff = primitive.material->alpha_cutoff;
+                        break;
+                    case cgltf_alpha_mode_blend:
+                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::blend;
+                        break;
+                    default:
+                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::opaque;
+                        break;
+                }
+            } else {
+                out_mesh.alpha_mode = NeutralMesh::AlphaMode::opaque;  // glTF's default material
+            }
 
             const auto vertex_count = positions->count;
             out_mesh.vertices.reserve(vertex_count);
@@ -243,6 +321,19 @@ GltfModel import_gltf(const std::filesystem::path& input_path) {
                             + world[9] * position[2] + world[13],
                         world[2] * position[0] + world[6] * position[1]
                             + world[10] * position[2] + world[14]};
+                }
+
+                std::array<float, 3> normal{};
+                if (normals != nullptr
+                    && cgltf_accessor_read_float(normals, v, normal.data(), 3)) {
+                    // Like the position: raw when skinned, else through the
+                    // node's transform (its 3x3; renormalize before lighting).
+                    vertex.normal = skinned
+                        ? normal
+                        : std::array<float, 3>{
+                              world[0] * normal[0] + world[4] * normal[1] + world[8] * normal[2],
+                              world[1] * normal[0] + world[5] * normal[1] + world[9] * normal[2],
+                              world[2] * normal[0] + world[6] * normal[1] + world[10] * normal[2]};
                 }
 
                 if (texcoords != nullptr

@@ -526,16 +526,54 @@ std::vector<Matrix> read_inverse_binds(
     return inv_binds;
 }
 
-// ----- Materials (only the texture size, for UV normalization) -------------
+// ----- Materials -------------------------------------------------------------
 
-// Returns the TEX0 texture name bound to each material (empty when none). UVs
-// are decoded in texels and normalized by the real texture size at render time,
-// so the material's own size fields are not needed here.
-std::vector<std::string> read_material_textures(
+struct MaterialInfo final {
+    std::string texture;  // bound TEX0 texture name, empty when none
+    std::string name;     // the material's own name (what animations target)
+    float alpha = 1.0F;   // base polygon alpha, 0..31 scaled to 0..1
+    std::uint32_t poly_attr = 0U;        // POLYGON_ATTR (record +0x0C)
+    std::uint32_t tex_image_param = 0U;  // TEXIMAGE_PARAM (record +0x14)
+};
+
+// Reads each material's name, base polygon alpha and bound TEX0 texture. UVs
+// are decoded in texels and normalized by the real texture size at render
+// time, so the material's own size fields are not needed here.
+//
+// Layout (NitroSystem NNSG3dResMat / NNSG3dResMatData, as the decomp's G3D
+// material handler func_01ffbbf0 reads them): two u16 pairing-dictionary
+// offsets, then a dictionary whose entries are u32 offsets -- relative to the
+// block -- to each material record; a record's polyAttr sits at +0x0C with the
+// alpha in bits 16..20.
+std::vector<MaterialInfo> read_materials(
     const ByteVector& mdl0,
     const std::size_t materials_offset,
     const std::size_t material_count) {
+    std::vector<MaterialInfo> materials(material_count);
     std::vector<std::string> textures(material_count);
+
+    const auto material_dictionary =
+        parse_dictionary(mdl0, materials_offset + 4U, "materials");
+    for (std::size_t i = 0U;
+         i < material_dictionary.names.size() && i < material_count; ++i) {
+        materials[i].name = material_dictionary.names[i];
+        const auto& entry = material_dictionary.entries[i];
+        if (entry.size() < 4U) {
+            continue;
+        }
+        const auto record = materials_offset
+            + (static_cast<std::size_t>(entry[0])
+               | (static_cast<std::size_t>(entry[1]) << 8U)
+               | (static_cast<std::size_t>(entry[2]) << 16U)
+               | (static_cast<std::size_t>(entry[3]) << 24U));
+        const auto poly_attr = read_u32(mdl0, record + 0x0CU, "material polyAttr");
+        materials[i].alpha =
+            static_cast<float>((poly_attr >> 16U) & 0x1FU) / 31.0F;
+        materials[i].poly_attr = poly_attr;
+        // NNSG3dResMatData: itemTag, size, diffAmb, specEmi, polyAttr,
+        // polyAttrMask, then texImageParam
+        materials[i].tex_image_param = read_u32(mdl0, record + 0x14U, "material texImageParam");
+    }
 
     // The materials block starts with two u16 pairing offsets. The texture
     // pairing is an info block whose names are texture names and whose entries
@@ -566,7 +604,10 @@ std::vector<std::string> read_material_textures(
         }
     }
 
-    return textures;
+    for (std::size_t i = 0U; i < material_count; ++i) {
+        materials[i].texture = textures[i];
+    }
+    return materials;
 }
 
 // ----- Render command stream (SBC) -----------------------------------------
@@ -586,12 +627,15 @@ enum class OpKind {
     ScaleDown,
     BindMaterial,
     Draw,
+    ScaleBy,  // a piece's MTX_SCALE: the current matrix scaled by `scale`
 };
 
 struct RenderOp final {
     OpKind kind;
     std::uint8_t index = 0U;  // stack_pos / object / material / piece
     std::vector<SkinTerm> terms;
+    std::uint8_t parent = 0U;  // MulObject: the node's parent (NODEDESC)
+    std::array<float, 3> scale{1.0F, 1.0F, 1.0F};  // ScaleBy
 };
 
 // Length in bytes of the fixed-size render commands (excluding 0x09).
@@ -682,7 +726,7 @@ std::vector<RenderOp> parse_render_commands(
                 if (load_pos.has_value()) {
                     ops.push_back({OpKind::LoadMatrix, *load_pos, {}});
                 }
-                ops.push_back({OpKind::MulObject, object_idx, {}});
+                ops.push_back({OpKind::MulObject, object_idx, {}, mdl0[params + 1U]});
                 if (store_pos.has_value()) {
                     ops.push_back({OpKind::StoreMatrix, *store_pos, {}});
                 }
@@ -795,7 +839,7 @@ struct Builder final {
     const ByteVector& mdl0;
     const std::vector<Matrix>& objects;
     const std::vector<Matrix>& inv_binds;
-    const std::vector<std::string>& materials;  // texture name per material
+    const std::vector<MaterialInfo>& materials;
     float up_scale = 1.0F;
     float down_scale = 1.0F;
 
@@ -804,12 +848,20 @@ struct Builder final {
     std::vector<std::size_t> piece_offsets;
     std::vector<std::size_t> piece_lengths;
 
-    // Matrix palette. Index 0 is the identity.
+    // Matrix palette. Index 0 is the identity. palette_bones: what each
+    // entry is made of (NeutralModel::palette_bones).
     std::vector<Matrix> palette{matrix_identity()};
+    std::vector<std::vector<std::pair<std::uint32_t, float>>> palette_bones{{}};
+    std::vector<int> parents;  // per object, -1 for none
     std::uint32_t current_matrix = 0U;
     std::array<int, 32> stack{};  // palette index per stack slot, -1 = unset
 
     int current_material = -1;
+
+    // The matrix program as run: the render commands, each piece's display
+    // list's MTX_RESTORE and MTX_SCALE where they come. Replayed with other
+    // bone matrices it gives the same palette, entry for entry.
+    std::vector<RenderOp> program;
 
     khdays::assets::NeutralModel& out;
 
@@ -817,7 +869,7 @@ struct Builder final {
         const ByteVector& mdl0_,
         const std::vector<Matrix>& objects_,
         const std::vector<Matrix>& inv_binds_,
-        const std::vector<std::string>& materials_,
+        const std::vector<MaterialInfo>& materials_,
         khdays::assets::NeutralModel& out_)
         : mdl0(mdl0_),
           objects(objects_),
@@ -827,8 +879,10 @@ struct Builder final {
         stack.fill(-1);
     }
 
-    std::uint32_t add_matrix(const Matrix& matrix) {
+    std::uint32_t add_matrix(const Matrix& matrix,
+                             std::vector<std::pair<std::uint32_t, float>> bones) {
         palette.push_back(matrix);
+        palette_bones.push_back(std::move(bones));
         return static_cast<std::uint32_t>(palette.size() - 1U);
     }
 
@@ -841,6 +895,7 @@ struct Builder final {
 
     void run(const std::vector<RenderOp>& ops) {
         for (const auto& op : ops) {
+            program.push_back(op);
             switch (op.kind) {
                 case OpKind::LoadMatrix:
                     current_matrix = fetch_from_stack(op.index);
@@ -854,12 +909,18 @@ struct Builder final {
                     }
                     const auto matrix = matrix_multiply(
                         palette[current_matrix], objects[op.index]);
-                    current_matrix = add_matrix(matrix);
+                    if (parents.size() < objects.size()) {
+                        parents.assign(objects.size(), -1);
+                    }
+                    parents[op.index] = op.parent == op.index ? -1 : static_cast<int>(op.parent);
+                    current_matrix = add_matrix(matrix, {{op.index, 1.0F}});
                     break;
                 }
                 case OpKind::Skin: {
                     Matrix acc = matrix_zero();
+                    std::vector<std::pair<std::uint32_t, float>> bones;
                     for (const auto& term : op.terms) {
+                        bones.emplace_back(term.inv_bind_idx, term.weight);
                         if (term.inv_bind_idx >= inv_binds.size()) {
                             throw std::runtime_error(
                                 "inverse bind index out of range");
@@ -869,18 +930,23 @@ struct Builder final {
                             palette[slot], inv_binds[term.inv_bind_idx]);
                         matrix_add_scaled(acc, product, term.weight);
                     }
-                    current_matrix = add_matrix(acc);
+                    current_matrix = add_matrix(acc, std::move(bones));
                     break;
                 }
                 case OpKind::ScaleUp:
                     current_matrix = add_matrix(matrix_multiply(
                         palette[current_matrix],
-                        matrix_scale(up_scale, up_scale, up_scale)));
+                        matrix_scale(up_scale, up_scale, up_scale)), palette_bones[current_matrix]);
                     break;
                 case OpKind::ScaleDown:
                     current_matrix = add_matrix(matrix_multiply(
                         palette[current_matrix],
-                        matrix_scale(down_scale, down_scale, down_scale)));
+                        matrix_scale(down_scale, down_scale, down_scale)), palette_bones[current_matrix]);
+                    break;
+                case OpKind::ScaleBy:
+                    current_matrix = add_matrix(matrix_multiply(
+                        palette[current_matrix],
+                        matrix_scale(op.scale[0], op.scale[1], op.scale[2])), palette_bones[current_matrix]);
                     break;
                 case OpKind::BindMaterial:
                     current_material = static_cast<int>(op.index);
@@ -901,11 +967,22 @@ struct Builder final {
         mesh.name = piece_names[piece_idx];
         if (current_material >= 0
             && static_cast<std::size_t>(current_material) < materials.size()) {
-            mesh.texture_name =
+            const auto& material =
                 materials[static_cast<std::size_t>(current_material)];
+            mesh.texture_name = material.texture;
+            mesh.material_name = material.name;
+            mesh.material_alpha = material.alpha;
+            // GBATEK: TEXIMAGE_PARAM bits 16/17 repeat S/T, 18/19 flip
+            // (mirror) S/T; POLYGON_ATTR bits 6/7 render back/front surface
+            mesh.repeat = {(material.tex_image_param >> 16U & 1U) != 0U,
+                           (material.tex_image_param >> 17U & 1U) != 0U};
+            mesh.mirror = {(material.tex_image_param >> 18U & 1U) != 0U,
+                           (material.tex_image_param >> 19U & 1U) != 0U};
+            mesh.double_sided = (material.poly_attr & 0xC0U) == 0xC0U;
         }
 
         std::array<float, 3> position{0.0F, 0.0F, 0.0F};
+        std::array<float, 3> normal{0.0F, 0.0F, 0.0F};
         std::array<float, 2> texel{0.0F, 0.0F};
         std::array<std::uint8_t, 4> color{255U, 255U, 255U, 255U};
         PrimitiveGroup group;
@@ -917,6 +994,7 @@ struct Builder final {
             // by the real decoded texture size.
             vertex.texcoord = {texel[0], texel[1]};
             vertex.color = color;
+            vertex.normal = normal;
             vertex.joints[0] = current_matrix;  // one bone, weight 1 (DS)
             const auto index = static_cast<std::uint32_t>(mesh.vertices.size());
             mesh.vertices.push_back(vertex);
@@ -953,10 +1031,24 @@ struct Builder final {
                 };
 
                 switch (opcode) {
-                    case 0x14:  // MTX_RESTORE
-                        current_matrix = fetch_from_stack(
-                            static_cast<std::uint8_t>(param(0U) & 0x1FU));
+                    case 0x14: {  // MTX_RESTORE
+                        const auto slot = static_cast<std::uint8_t>(param(0U) & 0x1FU);
+                        current_matrix = fetch_from_stack(slot);
+                        program.push_back({OpKind::LoadMatrix, slot, {}});
                         break;
+                    }
+                    case 0x1B: {  // MTX_SCALE: the model's position scale after
+                                  // each MTX_RESTORE (DS01, the Darkside, and 14 more)
+                        RenderOp op{OpKind::ScaleBy, 0U, {}};
+                        for (std::size_t c = 0U; c < 3U; ++c) {
+                            op.scale[c] = fix_1_x_12(static_cast<std::int32_t>(param(c)));
+                        }
+                        current_matrix = add_matrix(matrix_multiply(
+                            palette[current_matrix],
+                            matrix_scale(op.scale[0], op.scale[1], op.scale[2])), palette_bones[current_matrix]);
+                        program.push_back(op);
+                        break;
+                    }
                     case 0x20: {  // COLOR
                         const auto value = param(0U);
                         const auto expand = [](std::uint32_t c) {
@@ -966,6 +1058,14 @@ struct Builder final {
                         color = {
                             expand(value), expand(value >> 5U),
                             expand(value >> 10U), 255U};
+                        break;
+                    }
+                    case 0x21: {  // NORMAL (three 1.0.9 components)
+                        const auto value = param(0U);
+                        normal = {
+                            static_cast<float>(sign_extend(value & 0x3FFU, 10U)) / 512.0F,
+                            static_cast<float>(sign_extend((value >> 10U) & 0x3FFU, 10U)) / 512.0F,
+                            static_cast<float>(sign_extend((value >> 20U) & 0x3FFU, 10U)) / 512.0F};
                         break;
                     }
                     case 0x22:  // TEXCOORD (1.11.4 texels)
@@ -1116,6 +1216,10 @@ std::vector<Matrix> build_palette(
                     palette[current],
                     matrix_scale(down_scale, down_scale, down_scale)));
                 break;
+            case OpKind::ScaleBy:
+                current = add(matrix_multiply(
+                    palette[current], matrix_scale(op.scale[0], op.scale[1], op.scale[2])));
+                break;
             case OpKind::BindMaterial:
             case OpKind::Draw:
                 break;
@@ -1174,6 +1278,10 @@ std::vector<Matrix> build_bone_world(
                 current = add(matrix_multiply(
                     palette[current],
                     matrix_scale(down_scale, down_scale, down_scale)));
+                break;
+            case OpKind::ScaleBy:
+                current = add(matrix_multiply(
+                    palette[current], matrix_scale(op.scale[0], op.scale[1], op.scale[2])));
                 break;
             case OpKind::Skin:
             case OpKind::BindMaterial:
@@ -1311,7 +1419,7 @@ NeutralModel decode_model_from_bytes(
         read_inverse_binds(mdl0, model_offset + inv_binds_off, num_objects);
     const auto material_count =
         static_cast<std::size_t>(mdl0[model_offset + 0x18U]);
-    const auto materials = read_material_textures(
+    const auto materials = read_materials(
         mdl0, model_offset + materials_off, material_count);
 
     Builder builder{mdl0, objects, inv_binds, materials, result};
@@ -1350,10 +1458,13 @@ NeutralModel decode_model_from_bytes(
     builder.run(render_ops);
 
     result.palette = builder.palette;
+    result.palette_bones = builder.palette_bones;
     result.object_matrices = objects;
     result.object_names = object_names;
+    result.object_parents = builder.parents;
+    result.object_parents.resize(objects.size(), -1);
     result.skinning = std::make_shared<SkinningProgram>(SkinningProgram{
-        render_ops, inv_binds, builder.up_scale, builder.down_scale});
+        builder.program, inv_binds, builder.up_scale, builder.down_scale});
     return result;
 }
 

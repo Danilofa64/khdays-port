@@ -1,0 +1,176 @@
+/* The port's multiplayer session. Rooms are announced on the local network (copies on the same PC see
+ * them too) and, online, through khdays-server; the members form a star around the host. Every record
+ * reaches its destinations once and in order, whatever the network loses or reorders, and a thread of
+ * its own keeps the session alive while the game is busy or paused.
+ *
+ * The port's wireless layer (hal/sdk_wireless.c) uses this. Everything here takes plain values and
+ * the events hold no pointer, so the game's side and the port's read them the same way. */
+#ifndef KHDAYS_NET_SESSION_H
+#define KHDAYS_NET_SESSION_H
+
+enum {
+    KHDAYS_NET_ROOM = 1, /* a room seen (or seen again): id; data = its game information */
+    KHDAYS_NET_JOINING,  /* host: a guest asks to join: the aid it would get, id; data = its SSID bytes */
+    KHDAYS_NET_JOINED,   /* host: member `aid` joined. guest: we joined, as `aid` */
+    KHDAYS_NET_REFUSED,  /* guest: our join failed: reason */
+    KHDAYS_NET_RECORD,   /* a record from `aid` on `port`: data */
+    KHDAYS_NET_LEFT      /* host: member `aid` is gone. guest: the host is gone (aid 0) */
+};
+
+enum {
+    KHDAYS_NET_REFUSE_FULL = 1, /* the room is full */
+    KHDAYS_NET_REFUSE_CLOSED,   /* it does not take anyone now */
+    KHDAYS_NET_REFUSE_JUDGE,    /* the host's game said no */
+    KHDAYS_NET_REFUSE_BUILD,    /* another build of the port */
+    KHDAYS_NET_REFUSE_SILENT,   /* no answer */
+    KHDAYS_NET_REFUSE_PASSWORD  /* the room's password not proven */
+};
+
+typedef struct KhdaysNetEvent {
+    unsigned int kind;
+    unsigned int aid;
+    unsigned int port;
+    unsigned int reason;
+    unsigned int size;   /* how many bytes khdays_net_next wrote */
+    unsigned char id[8]; /* a room's or member's network id (6 bytes used) */
+} KhdaysNetEvent;
+
+/* Where khdays_net_begin gets the server's address: `server` fills it in and
+ * says whether to use it (the player's settings, host.h
+ * khdays_settings_server). It is not asked when there is no source or when
+ * KHDAYS_NET_SERVER is set (empty means no server). */
+void khdays_net_settings_source(int (*server)(char *text, int size));
+
+/* Starts the network and its thread (again after khdays_net_end). Returns 1
+ * on success, 0 without a network (the reason goes to the log). */
+int khdays_net_begin(void);
+
+/* Leaves every room and membership (saying goodbye) and drops the events. */
+void khdays_net_end(void);
+
+/* This copy's network id (6 random bytes, a locally administered address). */
+void khdays_net_id(unsigned char *id);
+
+/* Opens a room of ours: `ggid` is the game's group id, `info` the game
+ * information guests see, `max_members` how many guests it takes. Returns 1
+ * once announced. */
+int khdays_net_host(unsigned int ggid, const void *info, unsigned int size, unsigned int max_members);
+
+/* Opens or closes the room to new guests. */
+void khdays_net_entry(int open);
+
+/* While `on`, reports the rooms of `ggid` (KHDAYS_NET_ROOM). */
+void khdays_net_scan(unsigned int ggid, int on);
+
+/* Asks to join room `id`, with the guest's SSID bytes. Returns 1 when sent. */
+int khdays_net_join(const unsigned char *id, const void *ssid, unsigned int size);
+
+/* The host's answer to a KHDAYS_NET_JOINING. */
+void khdays_net_accept(unsigned int aid, int accepted);
+
+/* Sends `size` bytes on `port` to the members in `destinations` (one bit per
+ * aid; a guest always sends to the host, whatever the bits). It is queued at
+ * once and delivered by the session. Returns 1 if anyone is there to get it. */
+int khdays_net_send(unsigned int destinations, unsigned int port, const void *data, unsigned int size);
+
+/* Leaves the room or membership, saying goodbye. */
+void khdays_net_leave(void);
+
+/* The connection's quality, 0 to 3; 0 when nobody is connected. */
+int khdays_net_link_level(void);
+
+/* The round trip to each member (on the host its guests, on a guest the host), smoothed, for the ping
+ * shown in the window: up to `room` aids and round trips in milliseconds (-1 until measured). Returns
+ * how many members there are. */
+int khdays_net_round_trips(unsigned int *aids, int *ms, int room);
+
+/* Whether we are in a room or joining one (the settings menu does not pause the game then). */
+int khdays_net_in_session(void);
+
+/* Guest only: the last control packet the game sent (gate 3, Ov022_SendControlPacket) into `out`.
+ * Returns its size, 0 if none or not a guest (mp_predict.c). */
+unsigned int khdays_net_own_control(unsigned char *out, unsigned int room);
+
+/* Guest only: a filter for each record from the host on the game's port, applied before the game gets
+ * it: it edits the record in place and returns its new size (mp_predict.c removes the host's copies
+ * of the guest's own shots). NULL for none. */
+void khdays_net_filter(unsigned int (*filter)(unsigned char *data, unsigned int size));
+
+/* Whether an event is waiting. */
+int khdays_net_pending(void);
+
+/* Takes the next event that can be delivered in game frame `frame`, its data (at most `room` bytes)
+ * into `data`. Returns 1, or 0 when there is none. A member's record waits for the next frame if its
+ * port already had one this frame (the game keeps one record per member and frame); on a joined port
+ * (khdays_net_join_records) the records waiting behind it come along, as many as fit. */
+int khdays_net_next(KhdaysNetEvent *event, void *data, unsigned int room, unsigned int frame);
+
+/* Lets a member's waiting records on `port` reach the game together, up to `up_to` bytes (0: one at a
+ * time), for a port whose receiver reads a record as a series of messages: a delay the network caused
+ * is not kept. Lasts until khdays_net_end. */
+void khdays_net_join_records(unsigned int port, unsigned int up_to);
+
+/* A callback the wireless layer owes the game at its next delivery (a send's
+ * completion). Kept here in a growing queue, as the game's own references and
+ * numbers (no port pointer). */
+typedef struct KhdaysNetOwed {
+    unsigned int kind;
+    unsigned int callback;
+    unsigned int arg;
+    unsigned int data;
+    unsigned int length;
+    unsigned int port;
+    unsigned int dest;
+    unsigned int apiid;
+} KhdaysNetOwed;
+
+void khdays_net_owe(const KhdaysNetOwed *owed);
+
+/* How many callbacks are owed; and the oldest one taken (returns 1), or 0
+ * when there is none. */
+int khdays_net_owed_count(void);
+int khdays_net_take_owed(KhdaysNetOwed *owed);
+
+/* With KHDAYS_TRACE_WM=1, writes a line about the wireless layer to the
+ * session log. */
+void khdays_net_trace(const char *what, unsigned int a, unsigned int b);
+
+/* --- the port's list of rooms (runtime/net/roomlist.c) ---------------------- */
+
+/* The room this copy hosts next: its name (UTF-8; cut to what an announcement carries) and its
+ * password (NULL or empty: none). A guest proves it to join; it never travels itself. */
+void khdays_net_room_details(const char *name, const char *password);
+
+/* The password the next joins prove (NULL or empty: none). */
+void khdays_net_join_password(const char *password);
+
+/* While scanning, the game is told of room `id` only (the one the port's list chose), or of
+ * every room (NULL). */
+void khdays_net_scan_only(const unsigned char *id);
+
+typedef struct KhdaysNetRoomView {
+    unsigned char id[8];   /* its network id (6 bytes used) */
+    int open;              /* it takes guests now */
+    int local;             /* seen on the local network */
+    int locked;            /* it asks for a password */
+    int players, most;     /* in it now, the host too; the most it takes (0: not said) */
+    int ping_ms;           /* the round trip a session with it would take: on the local network
+                            * straight to the host, online through the server; -1 not known */
+    unsigned short host[16]; /* the host's name as the game shows it (UTF-16, ended) */
+} KhdaysNetRoomView;
+
+/* This copy's number in its session: 0 the host, a guest's own, -1 none. */
+int khdays_net_own_aid(void);
+
+/* Why the last join was refused (KHDAYS_NET_REFUSE_*), 0 when it was not. */
+int khdays_net_last_refusal(void);
+
+/* How many rooms of the group being scanned are known now. */
+int khdays_net_room_count(void);
+
+/* Room `index` (0 to the count): its view, and its name (UTF-8, ended) in `name`, cut to
+ * `name_room` bytes. Returns the name's whole size in bytes (0 for a room without one), or -1
+ * when there is no such room. */
+int khdays_net_room_at(int index, KhdaysNetRoomView *out, char *name, unsigned int name_room);
+
+#endif

@@ -1,0 +1,65 @@
+/* The game card's ROM as the card bus serves it, assembled from the port's
+ * extracted data and mods (rom.cpp). */
+#ifndef KHDAYS_ROM_H
+#define KHDAYS_ROM_H
+
+#include "../../hal/hal.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Finds the extracted data (data/extracted/<hash>) and indexes it. Returns 0
+ * and says why on failure. */
+int khdays_rom_init(void);
+
+/* The 0x200-byte cartridge header. */
+const u8 *khdays_rom_header(void);
+
+/* `size` bytes of the ROM at `offset`. */
+void khdays_rom_read(u32 offset, u8 *destination, u32 size);
+
+/* A file of the game's filesystem by its path ("/snd/sound_data.sdat", as
+ * the FNT names it; a leading / is the root): where the ROM holds it -- the
+ * FAT the game reads, a moved mod file's place. 0 if there is none. */
+int khdays_rom_find(const char *path, u32 *offset, u32 *size);
+
+/* The game's files by FAT id, 0 to khdays_rom_file_count() - 1: each one's
+ * path as the FNT names it (no leading /) and where the ROM holds it. 0 for
+ * an id with no file. */
+int khdays_rom_file_count(void);
+int khdays_rom_file_info(int id, char *path, int size, u32 *offset, u32 *bytes);
+
+/* The game file the ROM holds at `offset`: its path as the FNT names it
+ * ("UI/cm/cmo_es.p2.z", no leading /) into `path`, and how far into it
+ * `offset` is. 0 if no file is there. */
+int khdays_rom_file_at(u32 offset, char *path, int size, u32 *within);
+
+/* What the image holds at `offset`, for a log: a game file's path as the FNT
+ * names it, or the system part ("(the FAT)", "(the ARM9 binary)", ...), and
+ * that part's range in the image (a moved mod file's place). 0 for padding
+ * and the ranges the extraction does not keep. */
+int khdays_rom_area_at(u32 offset, char *name, int size, u32 *start, u32 *end);
+
+/* A file a mod provides at mods/<Mod>/<relative> ("sounds/strm/X.ogg"), in
+ * the mods' order (khdays::vfs::find_in_mods): its path, UTF-8, into `path`.
+ * 0 if no mod has it. */
+int khdays_mods_find(const char *relative, char *path, int size);
+
+/* A reader of its own for a thread other than the game's (the sound's):
+ * the same bytes as khdays_rom_read, through its own open files. */
+typedef struct KhdaysRomReader KhdaysRomReader;
+KhdaysRomReader *khdays_rom_reader_new(void);
+void khdays_rom_reader_read(KhdaysRomReader *reader, u32 offset, u8 *destination, u32 size);
+
+/* A game file's data as the game reads it, through `reader`: with `entry` below 0 the whole file
+ * (LZ-decompressed for ".z"), else that entry of its "P2" archive (the header
+ * Archive_OpenSubfileByHandle reads), decompressed when marked so. Malloc'd into *data, which the
+ * caller frees. 0 if there is no such file or entry. */
+int khdays_rom_file_data(KhdaysRomReader *reader, const char *path, int entry, u8 **data, u32 *size);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

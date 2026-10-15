@@ -1,231 +1,747 @@
 # khdays-port
 
-[![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/rVeTPhPbsx)
+A native PC port of **Kingdom Hearts 358/2 Days**, built on
+[`khdays-decomp`](https://github.com/Yokimitsuro/khdays-decomp).
 
-Experimental native PC runtime and source port for **Kingdom Hearts 358/2 Days**, developed alongside [`khdays-decomp`](https://github.com/Yokimitsuro/khdays-decomp).
-
-> [!WARNING]
-> This project is in early development. The native asset pipeline — textures, 2D/UI graphics, fonts, models, animation, text, and audio — works, along with a mod-override system and a game filesystem. The game's **front-end now runs natively** (boot logos → title and menus → character select) with its real assets, music, and timings. An **experimental gameplay harness** is available in Twilight Town (`wd_tt`, room 0); it is useful for bringing systems up, but is not yet a reconstructed mission or combat loop.
+The game is the decompilation's C, compiled for the PC; the port supplies what
+the Nintendo DS hardware did underneath it -- graphics, sound, input, the card,
+interrupts and the system calls of its SDK -- and, around it, what a PC version
+wants: modern controls, rendering, resolutions, a single-screen mode and
+replaceable content. This is how other decompilation-based ports work: the
+game code is the original's, readable and moddable; the platform layer is new.
 
 > [!IMPORTANT]
-> This repository does not contain a ROM, game assets, audio, video, text dumps, proprietary SDK files, or copyrighted game binaries. Users will be required to provide their own legally obtained copy of the game.
+> This repository contains no ROM, game assets, audio, video, text, SDK files or
+> game binaries. You need your own legally obtained copy of the game.
 
-## Relationship to `khdays-decomp`
+## Status
 
-The two repositories have different purposes:
+The whole game runs natively from the decompilation: the title and its menus,
+Story Mode (opening movie, days, cutscenes, the field), Mission Mode (character
+select, camp, missions, results), combat and magic, the shop, and a player's
+save loaded, played and saved again. Crashes found while playing are fixed as
+classes in the build's source preparation, and what they show about the C goes
+back to the decompilation ([`docs/DECOMP_FINDINGS.md`](docs/DECOMP_FINDINGS.md)).
 
-- **`khdays-decomp`** reconstructs Nintendo DS code that compiles byte-for-byte to the original game.
-- **`khdays-port`** adapts understood game code and behavior to a portable runtime for modern systems.
+Today it builds for **Windows x64 (64-bit)**. It plays with the keyboard,
+the mouse or a gamepad, with remappable controls and optional enhancements
+(an analog camera among them). The picture is the port's own: the 2D
+composed by the port on the graphics card from what the game asks for, and
+the 3D's geometry answered by the port and drawn there too -- at up to eight
+times the DS's resolution, in widescreen, and with HD textures, models and
+2D graphics from mods; the DS's own engines remain only as the reference the
+port is checked against. The sound is the port's own: the ARM7's sound
+driver in C, mixed at the PC's rate, with its own volumes and every sound
+replaceable from mods. So are the movies: decoded by the port, shown at full
+colour, their sound at its own volume, each replaceable by a video from a
+mod. No machine code of the DS runs: the port has no ARM interpreter, and
+what the decompilation keeps as assembly and the game calls is C the port
+wrote from it. The game's files reach it from the port as well: each
+read copied at once from a mod's file or the extracted data, with no card in
+between (the emulated card stays as the reference). The game's time is the
+port's too: its frames, its tick and alarms on the PC's clock, its interrupts
+taken where the game waits or unmasks them, nothing simulating the DS's timers
+or its display; and the 3D is drawn at the monitor's refresh rate, between the
+game's frames, which still come 30 a second as on the DS. The game's memory
+is the port's: a range Windows places, with each DS region at its DS address
+from its start, the game's pointers kept as references into it -- the DS's own
+addresses hold nothing. Underneath, the rest of the DS is still close to the
+original: its two screens one above the other, its ARM7 services.
 
-Matching and reverse-engineering work belongs in `khdays-decomp`. Platform abstractions, native rendering, input, audio, filesystem work, quality-of-life features, and other PC-specific changes belong here.
+Planned: first, replacing one by one the DS systems still under the game
+with the port's own, so that nothing the game shows or plays is bound to
+the DS any more. The sound, the 2D, the 3D, the files, the movies, the
+timing, the registers and the memory map are done; the HUD, the menus and
+the text drawn anew by the port, each element placeable, are next. Then, in
+this order:
 
-The port should consume a pinned revision of the decompilation rather than turning the matching repository into a collection of platform-specific `#ifdef` blocks.
+- the ARM7's other services (the save, the clock, the touch screen);
+- Linux and macOS.
 
-## Current status
+Then a new edition of the game on top: new HD models, maps, textures, audio
+and videos from content the user provides, a single-screen mode, and
+Mission Mode's multiplayer.
 
-Phases 0–3 are complete — the bootstrap, the user-data pipeline, the platform
-runtime, and the full asset/rendering pipeline. Work is now on **Phase 4 — game
-flow**. What runs today:
+## Getting started
 
-**Asset pipeline** — every asset type decodes to a neutral, engine-independent form:
+1. Check and extract your copy of the game (Python 3.11+):
 
-- [x] TEX0 textures → RGBA
-- [x] 2D/UI graphics: NCLR palettes + NCGR tiles + NSCR tilemaps composed to RGBA (`--render-tiles`, `--render-bg`)
-- [x] NFTR bitmap fonts, with text rendering (`--render-text`)
-- [x] MDL0 models with bones and skinning → a neutral, animation-ready mesh
-- [x] NSBCA skeletal animation, GPU-skinned per frame; environment maps (NSBMD)
-- [x] Message text from the `db_<lang>.p2` container and the UI `.s`/`.s.z` string tables (`--message-info`, `--dump-messages`, `--dump-strings`)
-- [x] Mission CAKP action scripts: named members and packed commands/operands (`--mission-script-info MISSION DAY`)
-- [x] Audio: SDAT wave archives → PCM (PCM8/PCM16/IMA-ADPCM), and an SSEQ software synthesizer for sequenced music
+   ```powershell
+   py .\tools\verify_rom\verify_rom.py "E:\path\game.nds"
+   py .\tools\extract_data\extract_data.py "E:\path\game.nds"
+   ```
 
-**Rendering & audio (SDL3)**
+   The data goes to `data/extracted/<hash>/`, which is never committed.
 
-- [x] GPU renderer: depth-tested, textured, GPU-skinned, orbit camera, plays any NSBCA
-- [x] Audio output: sound effects (`--play-sound`) and synthesized music (`--play-sequence`)
+2. Build (Windows, Visual Studio 2026 with the C++ workload, CMake, Ninja,
+   and for the preparation Python's `pycparser`):
 
-**Modding** — drop-in overrides resolved before the DS asset (see [Modding](#modding)):
+   ```powershell
+   py -m pip install pycparser
+   py .\native\build.py --config Release
+   ```
 
-- [x] Textures (PNG/BMP, HD), rigged models (glTF, animated by the DS skeleton), text, sound effects, music samples, 2D graphics, fonts, and raw files
+   `native/tools/prepare.py` generates the build's sources from the
+   decompilation -- the game's C rewritten with every pointer a reference
+   (`build/native/gen-x64`); the executable is
+   `build/native/obj-release-x64/khdays-native.exe` (`--config Debug`:
+   `build/native/obj-x64/`).
 
-**Phase 4 — game flow (in progress)**
+3. Run it from the repository root, so it finds `data/` and keeps the save in
+   `saves/khdays.sav`:
 
-- [x] Game filesystem: `khdays::vfs` resolves NitroFS game paths (mods → unpacked → decompressed → raw) (`--vfs-resolve`)
-- [x] Scene/task frame loop (`khdays::game`) reproducing the decompiled backbone — object state machines, an id→scene table with pending-id transitions, running in a native SDL window with input (`--game`; `--game-demo` headless). `Game::boot` mirrors the DS `BootTask_Construct` exactly.
-- [x] **Boot logos** (scene 1, ov000) — three real screen pairs from `ttl/ttl.p2`, with the DS's own timings (91 frames per pair: 32 fade-in / 27 hold / 32 fade-out) fading both screens through black via the master brightness
-- [x] **Story opening hand-off** — ov012's `802.mods` opening now feeds ov004's special day-255 calendar route, then ov002 resolves mission `10000` by its named CAKP bundles (`400.Z` → `818.mods` → control `0x191` → day 7 → `7.Z` → `803.mods`), including MobiClip audio and the native sixteen-frame Start skip fade
-- [x] **Title and menus** — the real 3D KH logo over the character illustration, hosting every menu level (MODO HISTORIA / MODO MISIÓN → NUEVA PARTIDA / CARGAR or UN JUGADOR / MULTIJUGADOR) with the real localized textures at the exact DS positions, playing the real title BGM (an SDAT STRM stream) through the neutral `game::MusicPlayer`
-- [x] **Character select** (scene 7, ov06) — the 13-portrait grid from `UI/mlt/res.p2`, laid out and shaded (greyscale, colour when selected) exactly as the DS does
-- [x] In-window options overlay (Dear ImGui): volume, remappable controls, stacked/side-by-side screen layout, fullscreen — persisted between runs
-- [ ] Gameplay (scene 2, ov002) — an experimental `wd_tt` room-0 harness currently exercises the real Roxas model, distinct idle/locomotion clips, a Keyblade attached to `ro_w_tg_R`, floor and lateral room collision, movement, camera, ov002's runtime-composited local-player HP gauge, and its localized three-row primary command page with the original X-button selection cycle; mission logic, enemies, combat, command execution, and the remaining party/enemy HUD remain in progress
-- [ ] The save-file screen (layout known; needs a save system) and wiring the decoded attract MobiClip into the title flow
+   ```powershell
+   .\build\native\obj-release-x64\khdays-native.exe 2> khdays.log
+   ```
 
-Run the slice directly with:
+   The runtime reports to stderr; `2>` keeps it for a bug report. Started
+   without the data (or with it incomplete), it says so in a message box in
+   the system's language, with the folder it looked in.
 
-```powershell
-.\build\Release\khdays-port.exe --playable-demo
+   The save is the DS's backup memory as a file, in the same format as a DS
+   save (a 64 KB raw backup), so a save from the DS loads. It is written whole
+   each time the game saves -- a new file beside it, then put in its place --
+   so a crash of the game or the PC while saving leaves the save as it was
+   before, or as it is after, never half of one.
+
+4. When something seems wrong -- music late, the game stopping for a moment
+   -- the session log says what the game was doing: the Debug build writes one
+   for every session in `saves/logs/` (Release: turn on **Session log** in the
+   settings, or `KHDAYS_LOG=1`): its
+   scenes, the files it read and how long they took, when each music was
+   asked for and when it was heard, and every stretch over 50 ms without a
+   frame. Press **F12** when you see it happen: the log gets a mark there,
+   and what the DS's two screens show then is saved in `saves/marks/`
+   (`mark_<n>_frame_<frame>.bmp`, with the upper screen's layer registers and
+   the pause's pieces in the log). Send the log and the pictures with the bug
+   report.
+
+## Controls
+
+By default the game is played as on the DS.
+
+- **Keyboard:** arrows = D-pad, Z = A, X = B, S = X, A = Y, Q = L, E = R,
+  Enter = START, right Shift = SELECT.
+- **Mouse:** hold the left button on the lower screen to touch it with the
+  stylus.
+- **Gamepad** (Xbox, PlayStation, Switch Pro, Steam Deck, or any controller
+  your system recognises as a gamepad): connect it whenever you like, even in
+  the middle of a battle. The buttons follow the DS's layout by *position*,
+  whatever is printed on them: the right-hand face button is A, the bottom one
+  B, the left one Y and the top one X; the shoulders are L and R; Start or
+  Options is START; Select, Share or View is SELECT. The left stick moves like
+  the D-pad (the DS's eight directions). With several gamepads connected, the
+  first one plays.
+
+**Settings.** Press **Esc**, the gamepad's **Guide / Home** button or **L3**
+(click the left stick in; Steam and the Steam Deck keep Guide for
+themselves), or click the title's settings key where the title is the
+theater's. The menu covers the window, the
+game dimmed and paused behind it (in a multiplayer session the game goes on).
+Every section is on one screen -- Controls, Enhancements, Sticks and camera,
+Video, Sound, Multiplayer, Language, General -- and works with the mouse
+alone, the keyboard alone or a gamepad alone (its shoulders move between the
+sections). A change takes effect when you make it: the picture behind the
+menu follows the video settings, each volume plays a sample of its kind (the
+game is heard at it when it resumes), and a new binding works from the first
+press after the menu closes. The Controls section shows every action with its
+two keys and two gamepad buttons side by side: choose a cell and press the new
+input; the Kingdom Hearts II layout and the defaults of each section are there
+too. A setting that waits for something says so beside it (the movies' choice
+from the next movie; the nickname, online play and the server from the next
+multiplayer session while one is open).
+
+**Language.** The game and the settings menu follow your system's
+language when the game has it (English, French, German, Italian or Spanish;
+English otherwise). Settings → Language chooses one of the five instead: the
+menu changes at once, the game's own text when the screen you are on ends (a
+mission, a menu of the game, the title) -- a screen of the game loads its text
+when it is built, so every one is built whole in one language.
+`KHDAYS_LANGUAGE=es` (or `en`, `fr`, `de`, `it`) wins over both. Where the
+screen names one of the game's Config options, it uses the game's own words
+in that language.
+
+Your choices are kept in `saves/settings.ini`, a text file you may also edit
+by hand (`KHDAYS_SETTINGS=<path>` uses another file). If the port cannot read
+it, it starts with the defaults and keeps the old file as `settings.ini.bad`.
+
+**Enhancements** (Settings → Enhancements; all off by default, so the game
+plays as on the DS until you switch one on). Each does only what the game's
+own controls can do, through the same parts of the game:
+
+- **Analog camera:** the right stick turns the field camera and tilts it, as
+  far as the tilt of the stick, at up to the game's own turning speed
+  (adjustable, and invertible, under Sticks and camera). On the DS the camera
+  is turned by dragging on the touch screen, by Select's look view, or with
+  L/R when the game's Config sets them to the camera.
+- **Command menu on the D-pad:** in a field, the gamepad's D-pad moves
+  through the command deck instead of moving Roxas, by making the presses the
+  DS itself uses (X, or X held with a direction); menus, dialogs and open
+  panels keep the D-pad. Which directions work depends on the game's own
+  Config option for the command deck: with X alone moving it (the new-game
+  default), only Down can.
+- **Analog movement:** Roxas moves in the exact direction of the left stick;
+  pushed less than the run threshold (75 % by default) he walks, at half his
+  speed by default, his steps slowed to match. Fully pushed he runs at the
+  game's own speed, never faster.
+- **Separate lock-on:** lock on (and off) and switch to the next target on
+  buttons of their own, by making the presses the game uses: its lock-on is
+  R pressed twice quickly, a single R moves to the next target once locked
+  (with Controls: Type B, L tapped goes to the previous one). The game takes
+  two R presses within 9 of its frames (0.3 s) as the double press that lets
+  go, so switching quickly on the DS drops the lock: here the next target
+  waits for that window instead, and a quick series of switches keeps the
+  lock. On the DS a single R press also resets the camera and a long one
+  switches the chase cam; the DS's R stays available for those. Out of the
+  field -- menus, tutorials, the pause -- there is no lock-on, and these
+  buttons are the DS's R (lock on, next target) and L (previous target), so
+  they turn pages as R and L do there.
+
+The **Kingdom Hearts II layout** (Settings → Gamepad preset; Kingdom Hearts
+III uses the same buttons for these actions) puts attack on the bottom face
+button, jump on the right, guard on the left, DS X on the top, the shortcuts
+on L1, lock-on on R1, the next target on R2, the camera's reset on R3 (the
+DS's R), the command menu on the D-pad, the camera on the right stick and
+SELECT on View / the touch pad, and switches on the enhancements it uses.
+The keyboard is not changed.
+
+## Picture
+
+By default the picture is the DS's: each screen 256x192, drawn exactly as the
+DS draws it, its pixels scaled up sharp to fill the window at 4:3. The port
+draws it through the graphics card (Direct3D 12 or Vulkan, whichever the
+system offers), and needs one: without, it says why in a message box and its
+log, and does not start.
+
+**Settings → Video** changes it; the picture behind the screen follows at
+once:
+
+- **Display mode**: a window (the default) you can move and resize, a
+  borderless window over the whole screen, or full screen (the screen for the
+  game alone, at your desktop's resolution). **Alt+Enter** switches between
+  the window and the full screen you chose last (the borderless window if
+  none) while the settings menu is closed, and keeps it.
+- **Internal resolution** (1x, 2x, 3x, 4x, 6x, 8x, or the window's own
+  size): the 3D -- the field, the characters, the effects -- drawn at
+  that many times the DS's pixels. "The window's" draws at the next whole
+  multiple up and shrinks it on the graphics card to the window's own pixels
+  (with sharp scaling, the largest that fits, its pixels square); a picture
+  drawn larger than the window is always shrunk so, each pixel the average of
+  what is under it, never stretched. The 2D -- the HUD, the menus, the text,
+  the lower screen -- stays the DS's pixels, as the game drew them, unless a
+  mod replaces it (below). It is the
+  same picture, only sharper: the 3D follows the same rules as at 1x, and
+  wherever the 2D covers or blends with it, it does so as on the DS.
+- **Antialiasing** (off, 2x, 3x, 4x): the picture made that many times
+  larger, then shrunk to the size shown, each pixel the average of what is
+  under it -- the 3D's edges come out smooth instead of in steps. 2x is four times the graphics
+  card's work, 4x sixteen; off by default. (A mod's textures, and the HD
+  replacements, are read at the size they are drawn whatever this says:
+  smaller copies of each are kept, so a model far away does not break into
+  steps that flicker.)
+- **Aspect ratio** (4:3, 16:9, 16:10, or the window's): the 3D view of the
+  upper screen widens to it, and the field's HUD keeps to the corners of the
+  wider picture as it does on the DS -- the command deck bottom left, the
+  portrait and gauge bottom right, the hearts counter top left. What the game
+  centres (dialogs, menus) and what follows the 3D (markers over targets)
+  stays where it was, and the lower screen stays 4:3 in the middle, where the
+  mouse still touches it. The game sees nothing different: it still computes
+  its 4:3 view.
+- **Screen scaling**: sharp (the DS's pixels as squares) or smooth.
+- **3D texture smoothing**: off as on the DS, or blended between texels.
+- **HD graphics**: the replacements in your mods (below), on by default.
+- **Dump graphics**: each texture and 2D tile sheet written out the first
+  time it is drawn, into `saves/dump/graphics`.
+- **Movies**: HD, the default -- the HD collection's own videos where you
+  have copied them (below), the other movies at full colour -- at full colour
+  (the decoded frames as they are), or as on the DS (15-bit colour with its
+  checkerboard dither).
+- **Picture pace**: smooth, the default -- the 3D drawn at your monitor's
+  refresh rate (60, 120, 144, 165 Hz...), placed between the game's last two
+  frames (the game itself runs at 30 frames a second, as on the DS), the
+  picture up to one game frame behind -- or as on the DS, a new picture each
+  game frame. Camera cuts and scene changes are not smoothed across. The 2D
+  (HUD, menus, text) and the movies change when the game changes them.
+- **Show FPS**: a counter in the window's corner -- the pictures drawn a
+  second and the game's own frames a second.
+- **Graphics API**: what draws the picture -- automatic (the system's
+  choice: Direct3D 12 on Windows), Direct3D 12 or Vulkan, changed at once. If
+  the graphics card stops answering on Direct3D 12, try Vulkan. Should the
+  card stop answering anyway (Windows resets its driver), the game carries on:
+  the picture is made again, and an internal resolution lost twice drops to
+  1x for the session.
+
+The choices are kept in the `[video]` section of `saves/settings.ini`:
+
+```ini
+[video]
+internal_resolution = window   # the window's size (the default), or a multiple: 2 to 16 in the settings
+antialiasing = off        # off, 2x, 3x or 4x: made that many times larger and shrunk
+aspect = 16:9             # 4:3 (the DS's), 16:9, 16:10, or window
+scaling = sharp           # sharp (the DS's) or smooth
+texture_smoothing = off   # off (the DS's) or on
+hd_graphics = on          # the mods' replacements
+dump_graphics = off       # write what is drawn to saves/dump/graphics
+movies = hd               # hd (your HD videos, the rest pc), pc (full colour) or ds (the DS's)
+picture_pace = smooth     # smooth (the monitor's rate) or ds
+show_fps = off            # the live counter
+backend = auto            # auto, direct3d12 or vulkan
 ```
 
-Use the arrow keys to move, Q/E to rotate the camera, X to return to the title,
-and Enter to reset after reaching the goal.
+**The field on one screen.** With one screen (`[video] screens = one`, the
+default) the field's HUD is laid out for a PC screen, made of the game's own
+pieces: the mission's objective and gauge at the top left, its badges and
+chests counted at the right of the objective, the hearts counter under it;
+in the top right corner the map, drawn over the field as in Kingdom Hearts
+II, with the enemy's health over it; the command deck at the bottom left and
+the party at the bottom right. The panels' dark ground is half see-through,
+their text and edges are not. The INFORMATION banner shows at the top left,
+over everything, for five seconds each time its message changes, instead of
+staying on screen; at a mission's start the mission's panel and map show at
+once, before the game brings in the rest of its HUD.
 
-Scene identification is **verified against the running game** (emulator savestates) rather than assumed — which corrected an earlier wrong model: ov000 is the *entire* front-end (logos, title, all menu levels, save-file screen), ov06 is the character select, and ov012 is the movie player.
+**Badges on the mission panel.** In a story mission the lower screen's
+mission panel shows, left of the chest icon, the mission's badges with the
+camp's mission list's own icons -- the ordeal badge and the blazon, then the
+unity badge -- grey until found, lit once your save holds them or you pick
+one up; on one screen it shows how many are found of how many. The
+DS shows them only in the list. Mission Mode puts out no badges, so it shows
+none.
 
-Phase 4 is *decomp-gated*: it reimplements understood game behavior as
-[`khdays-decomp`](https://github.com/Yokimitsuro/khdays-decomp) names each
-subsystem, so it advances subsystem by subsystem. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md) for the full plan.
+**The players' names in multiplayer.** In a Mission Mode session the field's
+party shows each player's name left of their J label, in white in the game's
+own font -- yours by your bar, the others' by theirs. The DS shows only the
+labels.
 
-## Documentation
+**The title as the HD collection's theater menu.** If you have KINGDOM HEARTS
+HD 1.5+2.5 ReMIX, `native/tools/theater_title.py` makes a mod from your copy
+(nothing of the collection is in the port) that shows the title's menu, on
+one screen, as the collection's 358/2 Days theater draws its main menu -- its
+logo, key art, bars and settings key, animated as there -- with the game's
+own options in its font, in the five languages. It reads the theater's
+files as OpenKh's extractor writes them (`Image/Mare.hed_out/original`):
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — milestones and phase plan.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the neutral-format layering (importers → resource layer → engine).
-- [`docs/MODDING.md`](docs/MODDING.md) — replacing textures, models, text, sound, 2D graphics, fonts, and raw files via the `mods/` folder.
-- [`docs/NATIVE_MESH_DECODER.md`](docs/NATIVE_MESH_DECODER.md) — MDL0 geometry/skinning decode to the neutral mesh.
-- [`docs/NATIVE_TEX0_RUNTIME.md`](docs/NATIVE_TEX0_RUNTIME.md) — TEX0 texture decoding.
-- [`docs/NATIVE_MDL0_INSPECTOR.md`](docs/NATIVE_MDL0_INSPECTOR.md) — the `--model-info` inspector.
-- [`docs/PLATFORM_RUNTIME.md`](docs/PLATFORM_RUNTIME.md) — the SDL3 platform runtime.
-- [`docs/MESSAGE_DATA_P2.md`](docs/MESSAGE_DATA_P2.md) — the `db_<lang>.p2` message-container format.
+```bash
+python native/tools/theater_title.py "<collection>/Image/Mare.hed_out/original"
+```
 
-## Goals
+The pictures go to `mods/Theater title/layouts/title/`; the screens after the
+menu (the save list, the theater's list; the difficulty, unless the new game's
+dialogs below are made) are the game's. Its
+settings key opens the settings menu when clicked and, while you play with a
+gamepad, shows your gamepad's button
+for the settings in the collection's own icons (the left stick's click by
+default: the collection has no icon for the Guide button). The boot logos are the
+theater's too: its Disney, SQUARE ENIX and copyright screens in the DS's three
+turns.
 
-- Build a native, portable runtime for the game.
-- Preserve the behavior of the original game where practical.
-- Keep PC-specific code separate from the matching Nintendo DS decompilation.
-- Require user-provided game data instead of distributing copyrighted content.
-- Support modern input, rendering, audio, display resolutions, and debugging tools over time.
-- Document formats and behavior discovered during reverse engineering.
+**The new game's dialogs as in Dream Drop Distance HD.** If you also have
+KINGDOM HEARTS HD 2.8 Final Chapter Prologue, `native/tools/newgame_dialog.py`
+adds to the same mod the new game's steps as Dream Drop Distance HD draws its
+own -- the game's difficulty, then the port's question whether the movies show
+their subtitles, then the review of both ("Continue with these settings?") --
+in Days's colours (greys, the selected button red; `--colours ddd` keeps DDD's
+blue), with DDD's words in its font, in the five languages, over the theater's
+menu. It reads DDD's files as OpenKh's extractor writes them
+(`Image/dt/kh3d_first.hed_out`), the theater's as above, and the pointing
+glove of KINGDOM HEARTS II's title sheet (DDD's own is not among those files;
+OpenKh's KH2 data: `remastered/menu/fm/title.2ld/UK_title_2ld0.png`):
 
-## Non-goals
+```bash
+python native/tools/newgame_dialog.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<kh2>/remastered/menu/fm/title.2ld/UK_title_2ld0.png"
+```
 
-- Distributing the game, a pre-patched ROM, extracted assets, or proprietary development tools.
-- Replacing or weakening the byte-matching goals of `khdays-decomp`.
-- Claiming affiliation with or endorsement by the original rights holders.
-- Treating guessed or unverified code as completed reverse engineering.
+**The settings menu as the HD collection's.** `native/tools/theater_settings.py`
+makes, from the same copy, the collection's own settings menu's pieces in the
+new game's dialogs' tones -- its screen and heading's tab, a faded picture for
+each section, the sections' tabs, the rows' capsules, a switch's check, a
+number's slider, a choice's arrows, the question's window, the hints' bar --
+and its font; the port's settings menu draws itself with them (its rows, keys
+and mouse unchanged), the selected pieces red with a silver rim:
 
-## Proposed architecture
+```bash
+python native/tools/theater_settings.py "<collection>/Image/SettingMenu.hed_out/original"
+```
+
+They go to `mods/Theater title/layouts/settings/<lang>/`; without them the
+menu keeps its own look.
+
+**The save list as Dream Drop Distance HD's, with 99 files.**
+`native/tools/save_screen.py` makes, from DDD's files (as above) and the
+port's extracted game data, the pieces of DDD's own save screen in Days's
+tones -- its screen, the list's rows (the selected one red), the scrollbar, the
+crown, the questions' buttons -- with DDD's font and input icons, Days's
+three faces and the theater's hand (the 1.5+2.5 collection's, as below):
+
+```bash
+python native/tools/save_screen.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original"
+```
+
+They go to `mods/Theater title/layouts/save/<lang>/`. With them, the lists of
+files are the port's -- CONTINUE's and Mission Mode's on the title, and Save
+in the story's and Mission Mode's camp menus: 99 files, each row with Days's
+face and its day, level, munny, difficulty and time, the game's own questions
+and words, and the keys shown as the icons of what you have for them (an Xbox
+pad's, a PlayStation's, a Switch's for other pads, the keyboard's keys).
+Files 1-3 are the DS's three, in `saves/khdays.sav` as always; files 4-99 go
+to `saves/slots/slotNN.sav`. The save after the story's ending still shows the
+DS's three.
+
+**THEATER MODE as the HD collection's theater.** `native/tools/theater_cine.py`
+makes, from the same copy of the collection and the port's extracted game
+data, the theater's chapter list -- its heading, its rows (the selected one
+red, the glove), its DAY and digits, its scrollbar and help bar, its font and
+button and key icons -- and the artwork of each scene's chapter:
+
+```bash
+python native/tools/theater_cine.py "<collection>/Image/Mare.hed_out/original"
+```
+
+They go to `mods/Theater title/layouts/cine/` (`<lang>/` and `art/`). With
+them THEATER MODE's list is drawn as the theater draws its chapters: the
+game's 28 scenes, ten to a page as in the game, each with its name and length,
+its day when it is a day's first, and behind the list the artwork of the
+selected scene's chapter. The game's own list runs underneath (its keys,
+pages and movies).
+
+**Mission Mode's rooms and character select on one screen.**
+`native/tools/theater_mission.py` makes, from the same copy, the faces of the
+game's nineteen characters as the theater has them (in colour and in grey)
+and its hooded figure, the rows, scroll bar and help bar of its chapter list,
+its veil, one of its artworks, its font and its icons:
+
+```bash
+python native/tools/theater_mission.py "<collection>/Image/Mare.hed_out/original"
+```
+
+They go to `mods/Theater title/layouts/select/` and `layouts/rooms/`. With
+them the list of rooms and a room (below, Multiplayer) are drawn as the
+theater's chapters, and the character select, alone or in a group, is one
+screen: the character you are on large,
+with its name, weapon and gauges; the characters you can choose (the ones not
+bought are not there, as in the game) in rows; each player's place along the
+bottom, in its colour and label (J1-J4), ringed once it has chosen. The
+directions move on that grid; A, B and START are the game's.
+
+**The camp menus on one screen.** `native/tools/ddd_camp.py` makes,
+from your copy of KINGDOM HEARTS HD 2.8 Final Chapter Prologue (Dream Drop
+Distance's camp menu) and the theater of the 1.5+2.5 collection, Mission Mode's
+and the story's camp menus as one screen in DDD's pieces in Days's greys:
+
+```bash
+python native/tools/ddd_camp.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<collection>/Image/SettingMenu.hed_out/original"
+```
+
+They go to `mods/Theater title/layouts/camp/<lang>/`. With them the camp's
+menu shows its options in DDD's command bars (the selected one lit), the
+character's own 3D model large in a grey box where DDD's portrait frame goes
+(cut at its edge, as the DS's frame cuts it), its face, name and
+numbers on the right, the trials with the DS's sigil and DDD's crown, the munny and
+heart points in DDD's digits, the option's description and the settings key,
+the hand at the option selected, the game mode (the story's difficulty, or
+Mission Mode) on the panel, Title Screen's question with its two answers, and the
+Preferences page in the menu -- all the game's settings in sections, in the
+settings menu's tabs and rows, L and R between the sections; in the
+story's, its day on the box;
+in a group, a plate for each player with its face and where it is (an option,
+the menu, or ready -- ringed in its colour -- once it accepted the mission).
+The game's menu runs underneath (its cursor, sounds and pages); its other pages
+(the holo-missions, the panels, the shop, ...) are still the game's screens.
+
+**Retry.** In a Mission Mode mission played alone, the pause has a third line
+between Continue and Give Up: Retry, drawn like the game's lines in its own
+font. After the game's "Are you sure?", the mission starts again from its
+beginning, without the results screen (`KHDAYS_UI=pause=off` gives the game's
+two lines back).
+
+**The pause in HD.** A mod can draw every pause (Mission Mode's, a scene's with
+Skip, "Are you sure?", and Retry) in its own pictures. From your own pictures
+of the KH games' pause (its title's bars, a line's capsule plain and lit, the
+hand) and the free fonts of Televo's *Kingdom Hearts Re:Collection*
+(KHGummi for the title, KHMenu for the lines), in the game's words in each
+language:
+
+```bash
+python native/tools/hd_pause.py <your pictures> "<Re:Collection>/Fonts" --mod "mods/HD HUD"
+```
+
+They go to `mods/HD HUD/layouts/pause/` (see the tool for the pictures' names).
+
+**Subtitles.** `[video] subtitles = on|off` (Video in the settings menu,
+and the new game's question where those dialogs show): off, the game's movies
+show without the subtitles the DS draws over them. With `movies = hd`, the HD
+videos show the theater's own subtitles when it is on -- in its event font, in
+your language -- if you made them from your copy; `native/tools/theater_movies.py`
+also copies the theater's videos, which carry no subtitles in the picture (a
+video with them drawn in: leave subtitles off). A video you already have is
+kept unless `--force`:
+
+```bash
+python native/tools/theater_movies.py "<collection>/Image/Mare.hed_out/original"
+```
+
+The videos go to `data/cutscenes/cinematics/hd<id>.mp4` (the opening's from
+the theater's `DOP.mp4`; the ending's, 843, is not among them), the subtitles
+to `data/cutscenes/cinematics/subtitles/<lang>/hd<id>.png` and `.txt`; a mod's
+`movies/subtitles/<lang>/hd<id>.txt` comes first.
+
+**HD graphics from mods.** A mod replaces any of the game's graphics, at
+any resolution, with a file named after it:
 
 ```text
-khdays-port/
-├── CMakeLists.txt
-├── include/
-│   └── khdays/
-│       └── port.h
-├── src/
-│   └── main.cpp
-├── external/
-│   └── khdays-decomp/       # pinned Git submodule
-├── platform/
-│   ├── common/
-│   └── pc/
-├── game/
-│   └── ported/              # adapted, understood game code
-├── tools/
-│   ├── verify_rom/
-│   └── extract_data/
-├── docs/
-│   └── ROADMAP.md
-└── data/                    # local generated data; never committed
+mods/<Mod>/graphics/<file>[#<entry>]/
+├── tex/<texture>[@<palette>].png  # a 3D texture, any size (with any palette: <texture>.png)
+├── chr/<n>.png                    # a 2D tile sheet, a whole multiple of its size
+└── mdl/<model>.gltf               # a model -- or .glb, or .fbx (<model>.bones.txt beside it pairs its joints)
 ```
 
-The directories beyond the current bootstrap files should be added when they contain real code. Avoid committing empty architecture for systems that have not been designed yet.
+`<file>` is the game file the graphic is loaded from and `#<entry>` its
+entry in a pack. A texture is drawn with the original's mapping at the
+PNG's resolution. A 2D tile sheet's PNG holds the sheet's tiles in its rows:
+indexed, its pixels are the game's palette indices and it is drawn with the
+palettes the game draws the tiles with, so its fades and palette effects
+stay; in true colour, with its own colours. Only tiles the game has not
+drawn over itself are replaced, so the game's text stays its own. A model
+keeps its own skeleton, weights, polygons and textures and is moved by the
+game's animations: its joints named like the original's nodes follow them,
+`<model>.bones.txt` pairs the others (a line `<joint> <node>`; `scale <k>`
+sizes the model), the rest move with their parents, and a rest pose far from
+the game's (a T-pose) is turned to match. A model may be glTF (`.gltf`, or
+`.glb` with its textures inside) or FBX (`.fbx`, binary or ASCII), taken in
+that order when more than one is there; an FBX in centimetres or with Z up is
+converted to glTF's metres and Y up, so the same model measures the same in
+either. Its textures are PNG, JPEG, TGA or BMP, embedded or beside it -- one
+the file stores under another machine's path is found by its name beside the
+model -- and one that is missing is drawn white and named once in the log.
+The model's own animations are not used: the game's move it. While a mod's graphics are drawn,
+the 3D and the 2D's blending and brightness work in 8 bits a channel instead
+of the DS's 6 and 5. A file that cannot be used is named once in the log,
+and the original is drawn.
 
-## Building the bootstrap executable
+**The originals** to make them from: `khdays-native --dump-graphics [DIR]`
+writes, without starting the game, every texture (with each palette it is
+drawn with), every model as glTF with its skeleton, and every 2D tile sheet
+as an indexed PNG, under those names (default `saves/dump/graphics`). A
+dumped 2D tile sheet put back unchanged is drawn as the original.
 
-Requirements:
+## Sound
 
-- CMake 4.2 or newer
-- A C++20 compiler:
-  - Visual Studio 2026 on Windows
-  - Clang or GCC on Linux
-  - Apple Clang on macOS
+The port plays the game's sound itself: the DS's sound driver, which the
+game's ARM7 binary carries, written in C and run on a thread of its own, so
+loading and busy frames no longer cut it; the music streams read by the
+port as the game's stream player would; and the channels mixed at the PC's
+output rate in floating point, without the DS's 10 bits.
 
-Configure and build:
+**Settings → Sound** sets the overall volume and those of the music, the
+effects, the voices (what each sound is comes from the name of the
+player the game's sound archive gives it) and the movies, kept in
+`saves/settings.ini`:
+
+```ini
+[sound]
+volume = 100    # 0 to 100, each
+music = 100
+effects = 100
+voices = 100
+movies = 100
+ds_exact = off  # on: the DS's own output (32,728 Hz, 10 bits)
+```
+
+**Replacing sounds.** A mod replaces any sound with a WAV, FLAC or Ogg
+Vorbis file at any rate, mono or stereo, named after the sound in the game's
+sound archive:
+
+```text
+mods/<Mod>/sounds/
+├── seq/<sequence>.<ext>              # a whole sequence (music)
+├── seqarc/<archive>/<entry>.<ext>    # one effect or voice of a sequence archive
+├── wave/<wave archive>/<index>.<ext> # one wave an instrument plays
+└── strm/<stream>.<ext>               # a stream (music, voices)
+```
+
+The loop is a WAV's `smpl` loop, else the Vorbis comments `LOOPSTART` and
+`LOOPLENGTH`, else the original's. The original keeps running unheard, so
+the game waits for it and reads it as before; a file that cannot be read is
+named once and the original plays.
+
+**The originals** to make them from: `khdays-native --dump-sounds [DIR]`
+writes every wave, stream, sequence and sequence-archive entry as WAV under
+those same names, loops included (default `saves/dump/sounds`, about
+2.3 GB). It runs without starting the game; the sequences are played by the
+port's driver and mixer at 48,000 Hz. A dumped file put back unchanged plays
+as the original.
+
+**HD movies.** If you own KINGDOM HEARTS HD 1.5+2.5 ReMIX, the HD videos of
+this game's movies its 358/2 Days theater holds can play in their place: make
+them from your copy with `native/tools/theater_movies.py --videos` (see
+*Subtitles* below), which writes them to the port's
+`data/cutscenes/cinematics/` (`hd802.mp4` to `hd848.mp4`). They are yours:
+nothing of them is in this repository, and `data/` is never committed. With the Movies setting on HD, a movie that has one shows it over
+the whole window with its own sound, in both screen layouts; the game plays
+its own movie behind it, unseen, and waits at its end until the video ends.
+START stops the video where the DS lets you skip the movie. Windows decodes
+the videos (Media Foundation); a file it cannot play, or a movie without an
+HD video, plays the game's movie, and the log says why. A mod's movie for the
+same movie comes first. Subtitles are not shown over the HD videos.
+
+**Replacing movies.** A mod replaces any of the game's 46 movies with an
+MPEG-1 file of any size, with or without MPEG-1 Layer II sound:
+`mods/<Mod>/movies/<id>.mpg`, `<id>` the movie's number in the game's `mv/`
+folder (`802` is the opening). The game plays its movie as ever -- START
+skips it, it ends when the game says, its subtitles show over it -- and the
+port shows the mod's picture in its place, at the game's movie time and in
+its shape (the rest black), and plays the mod's sound at the movies' volume
+instead of the game's. A file the port cannot read: the game's movie plays,
+and the log says why. Made from a copy you own, for example:
+
+```text
+ffmpeg -i source.mp4 -c:v mpeg1video -q:v 2 -c:a mp2 -b:a 256k -f mpeg mods/MyMod/movies/802.mpg
+```
+
+## Multiplayer
+
+Mission Mode's multiplayer works over the PC's network: the game's own
+menus (Create a Group, the group list, the character select, the camp, the
+mission, the review), on the port's own networking -- nothing of the DS's
+radio is involved. Answer Yes to "Begin network play?".
+
+The game's words about the DS's hardware are the port's for a PC, in its
+five languages: network play instead of DS Wireless Communications, "do not
+close the game" instead of the power switch and the Game Card. A mod that
+words those texts itself keeps its own.
+
+- **Two players on one PC.** Start the port twice. The second copy is
+  player 2: it uses `saves/player2/` for its save, settings (copied from
+  yours the first time) and logs, and the second gamepad connected; each
+  player keeps their gamepad when the other window has the focus. To play
+  your own character as player 2, copy a save into `saves/player2/` (Guest
+  Play needs none). A third and fourth copy are players 3 and 4.
+- **One local network.** Groups made on the other PCs appear in the list by
+  themselves (built for it; not yet tried between two PCs). The first time,
+  Windows asks whether the port may use the network: allow it on private
+  networks, or the others cannot join you (copies on the same PC need
+  nothing).
+- **Over the internet.** With *Online play* on (settings, Multiplayer; on by
+  default), the group list also shows the groups of players anywhere, met
+  through a matchmaking server -- the maintainer's by default, or any other
+  `khdays-server` you write in *Server*. Nobody opens a port on their
+  router: the games only connect outward, straight to each other when
+  their networks allow it and through the server when they do not. Tried
+  over the internet: two copies through the maintainer's server played a
+  mission to its review.
+- **Your own server.** `khdays-server.exe` sits next to the game: open it,
+  and its window says the address the players write as the server. On a
+  home PC it asks the router to open its UDP port 35821 by itself
+  (NAT-PMP or UPnP), and says so when the router or the provider (a shared
+  internet address) will not; on a Linux server, `native/server/README.md`
+  says how to run it as a service.
+- **Your name** in the group list is your *Nickname* (settings,
+  Multiplayer; 10 characters, as the DS's), or else an automatic one
+  ("Player" and four digits) -- never your Windows user name.
+- **The list of rooms.** With the theater's pieces made (`theater_mission.py`,
+  above), the group list and the group's members are the port's: Create a
+  Group and a search by name always first, then every room there is (not
+  the DS's four), each with its name, its host, its players and its ping --
+  through the server, the round trip a session with it would take, or
+  straight to the host on the local network -- as four signal bars and in
+  milliseconds. Create a Group asks your room's name (your nickname by
+  default) and an optional password. A password is never sent nor seen by
+  the server: the others must know it (tell them), and their game proves it
+  to yours. Inside the room, a card for each of the four places: its player,
+  "Host" and "You", the ping; and the host's Proceed once two players are
+  in. The game's own list underneath does the joining, as before; the
+  server needs nothing new.
+
+The connection is the PC's: what the network delays the game waits for, and
+nothing more -- a datagram lost is made good by the next one. Leaving or
+losing a player ends the session for everyone, as on the DS (the game shows
+its connection error).
+
+Quicker than the DS's:
+
+- **A guest's own character answers at once.** On the DS a guest's every
+  action goes to the host and comes back before it shows; the port runs the
+  guest's own character on the guest's PC as the host will, and the host's
+  word still decides (a hit the host saw is shown as the host has it). A
+  guest's attack -- and its shot's projectile -- shows as soon as the host's
+  own does, whatever the round trip; what it does to the others -- a hit on
+  an enemy or an ally -- still comes from the host.
+- **Three and four players at full pace.** The DS slowed the battle to two
+  thirds with three or more players; the port keeps it at the pace of two.
+- **No press lost** when the network bunches two of a guest's controls into
+  one of the host's ticks.
+- **The fourth player on the HUD.** With four players the single-screen
+  picture shows every ally's row whole.
+
+Where the game restarts the console -- leaving Mission Mode for the title,
+the connection error -- the port boots it again in the same window.
+
+## Repository
+
+| Path | What it is |
+|---|---|
+| `native/` | The port. `build.py` builds it; `tools/prepare.py` turns the decompilation's C into the game's PC sources |
+| `native/runtime/` | The game's side: what stands in for the DS while the game runs. `core/` memory, I/O registers, events, clock, ARM7, threads, overlays, ROM and files, logs; `input/` the controls as the game reads them; `display/` each frame handed to the window; `sound/` the game's sound driver; `net/` the multiplayer session; `menus/` the port's menus over the game's; `movies/` the game's movies and their HD or mod replacements; `mods/` textures, models and 2D sheets mods replace |
+| `native/host/` | The PC's side. `app/` window, devices, profile, audio out; `render/` the graphics card and the one-screen picture; `screens/` the port's own screens; `settings/` the settings menu; `net/` sockets; `movies/` video decoding |
+| `native/hal/` | The NitroSDK's hardware layer, in C |
+| `native/gfx/`, `native/gpu/` | The 2D's description and composition and the 3D's geometry; the DS's graphics engines in software, the reference the picture is checked against |
+| `native/ui/` | The port's parts over the game's picture: text, HUD, pause, the one-screen situations and compositions |
+| `native/sound/` | The DS's sound (the ARM7's driver) in C, and mods' sounds |
+| `native/server/` | The multiplayer's matchmaking server |
+| `native/shaders/` | The graphics card's shaders (HLSL), and `native/host/render/generated/` what `native/tools/build_shaders.py` makes of them (committed, so building needs no shader tools) |
+| `native/tests/`, `native/fuzz/` | The port's tests (`ctest`) and fuzz targets |
+| `native/tools/` | Build, regression and research tools |
+| `studio/` | khdays-studio, the mod tool. `app/` its window, `app/views/` each view; `core/` what it does, by subject: `files/`, `mods/`, `models/`, `rooms/`, `missions/`, `texts/`, `sheets/` |
+| `src/assets/`, `include/khdays/assets/` | The game's data formats decoded to neutral forms (textures, 2D graphics, fonts, text, models and animation, sound, video) and the open formats mods use (PNG, BMP, glTF) |
+| `src/resource/`, `src/vfs/` | The mod layer and the game filesystem |
+| `tools/` | ROM verification and data extraction, decompression and unpacking |
+| `tests/` | Tests of the formats, the filesystem and the tools (`ctest`, `python -m unittest`) |
+| `docs/` | [`DECOMP_FINDINGS.md`](docs/DECOMP_FINDINGS.md), what the decompilation's C should say differently; [`RUNTIME_MAP.md`](docs/RUNTIME_MAP.md), what the running game does (scenes, overlays, menus, data); [`MESSAGE_DATA_P2.md`](docs/MESSAGE_DATA_P2.md), the text containers |
+| `external/khdays-decomp` | The decompilation, pinned; updated deliberately and tested |
+
+### Checking the port
+
+- `ctest --test-dir build/native/obj-release-x64` runs the port's tests. In
+  the Release tree they include the static analysis
+  (`native/tools/analyze.py`: the port's own sources and the HAL compiled
+  again with MSVC's `/analyze`; any finding left fails it -- each is fixed,
+  or suppressed at its line with the reason beside it), 15 seconds of each
+  fuzzer (libFuzzer with AddressSanitizer over what arrives from outside:
+  the server's datagrams, a router's answers, the game's session), and the
+  server under a flood.
+- `py native/tools/fuzz.py --target server --minutes 60` fuzzes one of them
+  (`server`, `portmap`, `session`) for longer, on several cores; an input
+  that breaks a reader is kept in `native/fuzz/<target>/` and replayed by
+  the tests from then on.
+- `py native/build.py --asan` makes the memory-checking build
+  (`build/native/obj-asan-x64`): AddressSanitizer on the port's own code and
+  the server -- not on the decompilation's, whose memory is the window the
+  port maps itself, which AddressSanitizer does not track.
+  `py native/tools/regress.py build/native/obj-asan-x64/khdays-native.exe --walk-save OLD.sav`
+  plays the regression walks with it (from copies of the save given, never
+  the save itself); a report fails the walk.
+
+The format library and its tests build on any platform:
 
 ```bash
 cmake -S . -B build
 cmake --build build --config Release
+ctest --test-dir build -C Release
 ```
 
-Run on Windows with a multi-config generator:
+## Relationship to `khdays-decomp`
 
-```powershell
-.\build\Release\khdays-port.exe
-```
+- **`khdays-decomp`** reconstructs the Nintendo DS code so that it compiles
+  byte-for-byte to the original game.
+- **`khdays-port`** compiles that code for the PC and provides the platform.
 
-Run on Linux or macOS with a single-config generator:
+The port never edits the decompilation: what its C needs to run on another CPU
+is rewritten at build time (`native/tools/prepare.py`), and what that reveals
+about the C is reported back in `docs/DECOMP_FINDINGS.md`.
 
-```bash
-./build/khdays-port
-```
+## Non-goals
 
-## Adding the decompilation as a submodule
-
-Run this from the repository root:
-
-```bash
-git submodule add https://github.com/Yokimitsuro/khdays-decomp external/khdays-decomp
-git submodule update --init --recursive
-git add .gitmodules external/khdays-decomp
-git commit -m "build: pin khdays-decomp as a submodule"
-```
-
-Do not automatically track the latest decompilation commit during normal builds. Update the pinned revision deliberately, test the port, and record the decomp commit in the port commit message or pull request.
-
-## First technical milestone
-
-The first useful milestone is not “boot the entire game.” It is:
-
-1. Accept a local `.nds` path.
-2. Calculate and display its cryptographic hash.
-3. Reject unsupported revisions cleanly.
-4. Extract required files into ignored local storage.
-5. Open a native window.
-6. Load and visualize one texture, model, or map resource.
-7. Port one self-contained function or subsystem and compare its behavior against the original game.
-
-This creates a legal, testable pipeline before attempting the boot flow, overlays, graphics emulation, audio, or gameplay.
-
-## Modding
-
-Because the runtime decodes DS assets into neutral, open formats before anything
-reaches the engine, replacing content is a supported feature rather than byte
-hacking. Drop open-format files into a `mods/` folder and the resource layer
-resolves them ahead of the original DS asset:
-
-- **Textures** — a PNG/BMP under `mods/<Mod>/textures/**/<name>.png` overrides a
-  DS texture. UVs are normalized by the original DS size, so higher-resolution
-  (HD) replacements map correctly and are not downscaled.
-- **Models** — a rigged glTF at `mods/<Mod>/models/<ds_name>.gltf` replaces a DS
-  model's geometry and is **animated by the DS skeleton**: joints are matched to
-  DS bones by name, so existing DS animations play on higher-poly geometry with
-  no animation authoring.
-- **Text** — a `mods/<Mod>/text/<name>.txt` file retranslates or rewords the
-  game's decoded UTF-8 strings (`db_<lang>.p2` story/menu text and `UI/**/*.s.z`
-  tables), one `key = value` line per string.
-- **Sound** — a WAV at `mods/<Mod>/sounds/<wave_archive>_<swav>.wav` replaces a
-  decoded game waveform (sound effects / voice clips).
-- **2D graphics & fonts** — a PNG/BMP at `mods/<Mod>/graphics/<screen>.png`
-  redraws a UI background, and an NFTR at `mods/<Mod>/fonts/<name>.nftr` swaps a
-  font.
-
-Mods only ever contain your own edits — never copyrighted game data — and
-`mods/` is git-ignored. See [`docs/MODDING.md`](docs/MODDING.md) for the folder
-layout and the export/edit workflow.
-
-## Contributing
-
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
-
-Contributions must not include copyrighted game data, ROMs, proprietary Nintendo/Metrowerks tools, or code copied from projects with incompatible licenses.
-
-## License
-
-Original port code in this repository is licensed under the [MIT License](LICENSE).
-
-Code imported or adapted from `khdays-decomp` remains subject to that project's CC0 1.0 dedication. Third-party components retain their own licenses. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-The MIT license applies only to the contributors' original work. It does not grant rights to the original game, its assets, names, characters, trademarks, or other copyrighted material.
-
-## Disclaimer
-
-This is an unofficial fan-made reverse-engineering and preservation project. It is not affiliated with, sponsored by, or endorsed by Square Enix, Disney, Nintendo, h.a.n.d., or any other rights holder. All trademarks and original game content belong to their respective owners.
+- Distributing the game, a pre-patched ROM, extracted assets, or proprietary
+  development tools.
+- Weakening the byte-matching goals of `khdays-decomp`.
+- Claiming affiliation with or endorsement by the original rights holders.

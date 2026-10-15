@@ -1,0 +1,106 @@
+/* The port's settings menu (settings_menu.cpp).
+ *
+ * It covers the whole window, with the game's picture dimmed behind it: the
+ * sections in a column on the left, the chosen section's settings on the
+ * right. It works with only a keyboard, only a gamepad or only a mouse. It is
+ * drawn with Dear ImGui but reads the input itself; what it
+ * shows comes from settings_model.c.
+ *
+ * Known limit: while it is open the game is paused by stopping the DS clock
+ * (runtime/core/clock.c). A game loop that spins without waiting (the opening
+ * movie's) keeps one processor core busy meanwhile, without moving on. */
+#ifndef KHDAYS_SETTINGS_UI_H
+#define KHDAYS_SETTINGS_UI_H
+
+#include "../app/profile.h"
+
+#include <SDL3/SDL.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Opens the menu on a working copy of `current`. */
+void khdays_settings_open(const KhdaysProfile *current);
+
+int khdays_settings_is_open(void);
+
+/* Handles one event while the menu is open. Returns 1 when the menu has just
+ * closed: khdays_settings_changed() then says whether the profile changed
+ * since it opened, and khdays_settings_profile() gives it. */
+int khdays_settings_handle(const SDL_Event *event, SDL_Window *window);
+
+/* Lets time pass (for repeating a held direction, and for the time limit
+ * when waiting for a key or button). */
+void khdays_settings_tick(void);
+
+int khdays_settings_changed(void);
+const KhdaysProfile *khdays_settings_profile(void);
+
+/* While the menu is open: whether its profile differs from the one it opened
+ * with (so it can be saved if the port is closed with the menu open). */
+int khdays_settings_profile_changed(void);
+
+/* Which parts of the working profile changed since the last call
+ * (KHDAYS_CHANGE_* in settings_model.h), so they can be applied at once. */
+unsigned khdays_settings_take_changes(void);
+
+/* Draws the menu over whatever was rendered, in the renderer's own pixels. */
+void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window);
+
+/* The renderer the menu drew with is about to be destroyed (a lost device,
+ * another graphics API, the window closing): free its textures first. The
+ * next draw starts again on whatever renderer it is given. */
+void khdays_settings_renderer_gone(void);
+
+/* What the rows depend on besides the profile: whether a multiplayer session
+ * is open (then the game keeps running behind the menu) and
+ * whether the HD videos are installed. Set when the menu opens. */
+void khdays_settings_set_situation(int in_session, int hd_videos);
+
+/* A line for the notice area (a problem in the settings file, a controller
+ * that could not be used), shown while the menu is open (settings_corner.c). */
+void khdays_settings_add_notice(const char *text);
+int khdays_settings_notice_count(void);
+const char *khdays_settings_notice(int n);
+
+/* The FPS display (Video: Show FPS), in the window's top-left corner:
+ * `pictures` drawn per second and the game's own `frames` per second. */
+void khdays_settings_fps_draw(SDL_Renderer *renderer, int pictures, int frames);
+
+/* The ping display ([network] show_ping): `line` in the top-left corner,
+ * below the FPS display when `under_fps`. */
+void khdays_settings_ping_draw(SDL_Renderer *renderer, const char *line, int under_fps);
+
+/* Whether the picture is drawn by the graphics card. Without it, the Video
+ * settings that need it are shown as unavailable. */
+void khdays_settings_set_graphics_card(int available);
+
+/* For the tests: where the last drawing put something, in the renderer's
+ * pixels. It can be a section's entry (index 0 to KHDAYS_SECTION_COUNT-1, or
+ * the count for Close), a row of the chosen section, a cell of a binding row
+ * (index row * 4 + cell), a prompt's answer (0 or 1), or a row's value.
+ * Returns 0 if it was not drawn (or is scrolled out of sight). */
+enum { KHDAYS_PLACE_ENTRY, KHDAYS_PLACE_ROW, KHDAYS_PLACE_CELL, KHDAYS_PLACE_ANSWER, KHDAYS_PLACE_VALUE };
+int khdays_settings_place(int what, int index, SDL_FRect *out);
+
+/* For the tests: the chosen section, whether the focus is on its rows (or on
+ * the column), the chosen row and cell; and a row's setting (KhdaysSettingId)
+ * and, for a binding, its action. khdays_settings_row_info returns 0 past the
+ * last row. */
+void khdays_settings_focus(int *section, int *in_rows, int *row, int *cell);
+int khdays_settings_row_info(int row, int *id, int *action);
+
+/* For the tests: the gamepad family the Controls section shows (KhdaysPadFamily). */
+int khdays_settings_pad_family(void);
+
+/* One of the gamepads' icons the executable holds (Kenney's Input Prompts, by
+ * its name: "switch_button_a"), as PNG bytes; NULL when there is none. For
+ * the save list's Switch icons (save_screen.c). */
+const unsigned char *khdays_pad_icon_png(const char *name, unsigned *size);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

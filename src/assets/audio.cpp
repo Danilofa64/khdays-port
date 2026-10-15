@@ -290,13 +290,18 @@ DecodedAudio decode_stream(const Sdat& sdat, const std::size_t index) {
         throw std::runtime_error("stream has no file");
     }
     const auto& [offset, size] = sdat.fat[file_id];
-    const auto& d = sdat.data;
-    if (static_cast<std::size_t>(offset) + size > d.size() || size < 0x68U
-        || d[offset] != 'S' || d[offset + 1U] != 'T' || d[offset + 2U] != 'R'
-        || d[offset + 3U] != 'M') {
+    if (static_cast<std::size_t>(offset) + size > sdat.data.size()) {
         throw std::runtime_error("stream is not a valid STRM");
     }
-    const std::size_t s = offset;  // STRM base
+    return decode_strm(sdat.data.data() + offset, size);
+}
+
+DecodedAudio decode_strm(const std::uint8_t* strm, const std::size_t strm_size) {
+    const ByteVector d(strm, strm + strm_size);
+    if (strm_size < 0x68U || d[0] != 'S' || d[1] != 'T' || d[2] != 'R' || d[3] != 'M') {
+        throw std::runtime_error("stream is not a valid STRM");
+    }
+    const std::size_t s = 0;  // STRM base
     // HEAD block fields (see docs/AUDIO or the format notes).
     const auto format = d[s + 0x18U];
     const auto loop_flag = d[s + 0x19U];

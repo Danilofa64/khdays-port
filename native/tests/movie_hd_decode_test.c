@@ -1,0 +1,61 @@
+/* The HD video decoder (movie_hd_win.c) on one of the player's
+ * files. The file is opened and played to its end at its own pace, with its
+ * sound, taking every picture as a 60 Hz display would; the status must say
+ * it ended within a second of the file's length. When the file is not there
+ * the test is skipped (and passes): the videos belong to the player, never to
+ * the repository. */
+#include "../host/movies/movie_hd.h"
+
+#include <SDL3/SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv)
+{
+    const char *path = argc > 1 ? argv[1] : "data/cutscenes/cinematics/hd808.mp4";
+    const double length = argc > 2 ? atof(argv[2]) : 7.2;
+    KhdaysHdInfo info;
+    char why[320];
+    FILE *f = fopen(path, "rb");
+    Uint64 start, last_change;
+    long pictures = 0;
+    int status = 0;
+    if (f == NULL) {
+        printf("movie_hd_decode_test: no %s; skipped\n", path);
+        return 0;
+    }
+    fclose(f);
+    if (!SDL_Init(SDL_INIT_AUDIO)) {
+        printf("movie_hd_decode_test: no audio (%s)\n", SDL_GetError());
+        return 1;
+    }
+    if (!khdays_hd_open(path, &info, why, sizeof(why))) {
+        printf("movie_hd_decode_test: %s cannot be played: %s\n", path, why);
+        return 1;
+    }
+    printf("movie_hd_decode_test: %s: %dx%d, %.3f frames a second, %d channels at %d Hz\n", path, info.width,
+           info.height, info.fps, info.channels, info.rate);
+    khdays_hd_set_gain(0.0f); /* silent: a test */
+    khdays_hd_start();
+    start = last_change = SDL_GetTicks();
+    while (SDL_GetTicks() - start < (Uint64)((length + 5.0) * 1000.0)) {
+        KhdaysHdPicture p;
+        if (khdays_hd_picture_begin(&p)) {
+            ++pictures;
+            khdays_hd_picture_done();
+        }
+        status = khdays_hd_status(why, sizeof(why));
+        if (status != 0) {
+            break;
+        }
+        SDL_Delay(16);
+    }
+    {
+        const double took = (double)(SDL_GetTicks() - start) / 1000.0;
+        printf("movie_hd_decode_test: status %d after %.2f s, %ld pictures taken%s%s\n", status, took, pictures,
+               status == -1 ? ": " : "", status == -1 ? why : "");
+        khdays_hd_close();
+        SDL_Quit();
+        return status == 1 && took < length + 1.0 && took > length - 1.5 ? 0 : 1;
+    }
+}

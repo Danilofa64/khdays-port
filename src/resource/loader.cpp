@@ -114,7 +114,7 @@ std::unordered_map<std::string, std::u16string> parse_text_override(
 // joints to DS bones by name, then build a retargeting skinning program so DS
 // NSBCA animations pose the (higher-poly) glTF geometry.
 LoadedModel retarget_gltf_onto_ds(
-    khdays::assets::GltfModel gltf,
+    khdays::assets::ImportedModel gltf,
     khdays::assets::NeutralModel ds) {
     LoadedModel out;
     out.model = std::move(gltf.model);  // geometry + rest palette

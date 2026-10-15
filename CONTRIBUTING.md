@@ -52,6 +52,12 @@ Do not submit large generated rewrites that cannot be explained or reviewed.
 - Treat warnings as defects in newly added code.
 - Add error messages that explain how the user can fix the problem.
 - Never silently download game data or proprietary tools.
+- Put a file in the folder of its subject (the README's Repository map); the
+  port's tests go in `native/tests/`.
+- Keep comments short: a file starts with 2-5 lines on what it is and where it
+  fits, a function with 1-2 lines; inside a function, comment only what the
+  code does not say. How something was found, and when, goes in the commit
+  message or in `docs/RUNTIME_MAP.md` / `docs/DECOMP_FINDINGS.md`.
 
 ## Commit messages
 

@@ -10,7 +10,8 @@ compile_commands.json
 *.vcxproj.filters
 *.sln
 
-# IDE and editor files
+# IDE and editor files, and the agent's local settings
+.claude/settings.local.json
 .vs/
 .vscode/
 .idea/
@@ -27,6 +28,8 @@ compile_commands.json
 *.srl
 *.rom
 *.sav
+# The player's save and settings (saves/settings.ini)
+/saves/
 
 # Emulator savestates, RAM dumps and traces (derived from the user's own ROM)
 *.dst
@@ -52,8 +55,8 @@ __pycache__/
 *.tmp
 *.bak
 mods/
-title.bmp
-/menu.txt
 
-# Snapshot output from --save-shot / --title-shot / --boot-shot and friends.
+# Frames the native build saves (KHDAYS_SHOTS, into shots/ by default).
+/shots/
 *.bmp
+

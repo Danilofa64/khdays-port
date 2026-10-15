@@ -1,0 +1,64 @@
+/* The player's HD video, shown in place of one of the game's movies.
+ *
+ * One video plays at a time. The system decodes it on a thread of its own
+ * (on Windows Media Foundation, movie_hd_win.c). Its sound plays on an audio
+ * stream of its own, and how much of it has played is the video's clock. When a video plays
+ * is decided on the game's side (runtime/movies/movie_hd.h). */
+#ifndef KHDAYS_HOST_MOVIE_HD_H
+#define KHDAYS_HOST_MOVIE_HD_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct KhdaysHdInfo {
+    int width, height;  /* the picture shown (the file's display area) */
+    double fps;         /* the file's frame rate, 0 when it does not say */
+    int channels, rate; /* its sound, 0 when it has none */
+} KhdaysHdInfo;
+
+/* Opens `path` and decodes its first picture. Returns 1, or 0 with the reason
+ * in `why`. A video already open is closed first. The new video then waits,
+ * showing its first picture, until khdays_hd_start. */
+int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size);
+
+/* Starts the video: its sound starts, and its clock with it. */
+void khdays_hd_start(void);
+
+/* Pauses or resumes the picture and the sound (the settings menu pauses them). */
+void khdays_hd_pause(int pause);
+
+/* Stops the picture and the sound at once and frees everything; the
+ * presenter keeps the last picture it took. Does nothing if no video is open. */
+void khdays_hd_close(void);
+
+/* The video's state: 0 while it plays (or waits, or is paused); 1 once it has
+ * ended (its last picture is due and its sound has played); -1 if it failed
+ * part-way (with the reason in `why`); 2 if no video is open. */
+int khdays_hd_status(char *why, size_t size);
+
+/* Sets the sound's volume (0-1): the master volume times the movies' volume. */
+void khdays_hd_set_gain(float gain);
+
+/* Called by the host's thread at each screen refresh. If a picture newer than
+ * the last one taken is due on the video's clock, returns 1 and its planes
+ * (NV12: the luma, then the interleaved chroma at half height, both `pitch`
+ * bytes per row). They stay valid, and the video waits, until
+ * khdays_hd_picture_done is called. Otherwise returns 0. */
+typedef struct KhdaysHdPicture {
+    const uint8_t *luma, *chroma;
+    int pitch, width, height;
+    double time; /* its presentation time in the file, in seconds */
+    double fps;  /* the file's frame rate, 0 when it does not say */
+} KhdaysHdPicture;
+int khdays_hd_picture_begin(KhdaysHdPicture *picture);
+void khdays_hd_picture_done(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

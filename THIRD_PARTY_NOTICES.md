@@ -23,11 +23,11 @@ Upstream repository: <https://github.com/libsdl-org/SDL>
 
 Pinned release: **3.4.12** (`release-3.4.12`)
 
-Usage: downloaded by CMake with `FetchContent`, compiled as a static library, and linked into the native runtime.
+Usage: downloaded by CMake with `FetchContent`, compiled as a static library, and linked into the native runtime and into khdays-studio, the mod tool (`studio/`, specs/018), with the same release and hash.
 
 License: **zlib License**.
 
-SDL3 is used for the native window, renderer, events, timing, and future platform abstractions.
+SDL3 is used for the native window, the picture (its GPU API -- Direct3D 12, Vulkan or Metal -- and its renderer), events, timing, sound output, keyboard, mouse and gamepad input, the host's threads and locks, and future platform abstractions.
 
 ## apicula (format reference and validation tool)
 
@@ -44,23 +44,94 @@ MDL0 binary layout (bones, inverse-bind matrices, render commands, and GPU
 vertex commands). The decoder in `src/assets/mesh.cpp` is an independent
 reimplementation; no apicula code was copied.
 
-## stb_image
+## stb_image and stb_image_write
 
-Project: stb — `stb_image.h`
+Project: stb — `stb_image.h` and `stb_image_write.h`
 
 Upstream: <https://github.com/nothings/stb>
 
+Pinned commit: `2c980bb59875b0d32144a71867fbdebb2f77cd20` (`stb_image.h` v2.30)
+
 License: public domain (Unlicense) or MIT, at your option.
 
-Usage: compiled into `khdays-assets` (via `src/assets/png.cpp`) to decode PNG
-texture overrides. Fetched by CMake when `KHDAYS_ENABLE_PNG` is on (the
-default); with it off, PNG support is dropped and no fetch occurs.
+Usage: fetched by CMake and compiled in. `khdays-assets` (via
+`src/assets/png.cpp`) decodes PNG overrides with `stb_image.h` (when
+`KHDAYS_ENABLE_PNG` is on, the default). The native port
+(`native/host/render/png_io.c`) reads PNG files with `stb_image.h` and writes them
+with `stb_image_write.h` (HD screenshots, and the graphics dump to come).
+khdays-studio, the mod tool (`studio/`, specs/018), compiles those same port
+files (`native/host/render/png_io.c`, `src/assets/image.cpp`) as they are, at the same
+commit.
+
+## cgltf
+
+Project: cgltf — single-file glTF 2.0 loader
+
+Upstream: <https://github.com/jkuhlmann/cgltf>
+
+Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
+
+License: **MIT**.
+
+Usage: fetched by CMake and compiled in. `khdays-assets` (via
+`src/assets/gltf.cpp`, when `KHDAYS_ENABLE_GLTF` is on, the default) and the
+native port (`native/runtime/mods/models.cpp`, through the same file) read the
+glTF models mods bring; khdays-studio (`studio/`) compiles the same file to
+read them as the port does, and lists a glTF's buffers and images with cgltf.
+
+## stb_vorbis
+
+Project: stb — `stb_vorbis.c` (Ogg Vorbis audio decoder v1.22)
+
+Upstream: <https://github.com/nothings/stb>
+
+Pinned commit: `2c980bb59875b0d32144a71867fbdebb2f77cd20`, the same as
+stb_image above.
+
+License: public domain (Unlicense) or MIT, at your option.
+
+Usage: compiled into the native port's sound library
+(`native/sound/third_party_decoders.c`) to decode Ogg Vorbis files that
+replace the game's music, effects and voices from `mods/`; khdays-studio
+(`studio/`) compiles the same file to check and play them as the port does.
+
+## pl_mpeg
+
+Project: PL_MPEG -- MPEG-1 video decoder, MP2 audio decoder, MPEG-PS demuxer
+
+Upstream: <https://github.com/phoboslab/pl_mpeg>
+
+Pinned commit: `c871f2be022ece7ef4f64230b4fb8e1fb9eb6023`
+
+License: MIT (SPDX header in `pl_mpeg.h`), Copyright Dominic Szablewski.
+
+Usage: fetched by CMake (only `pl_mpeg.h` is used) and compiled into the
+native port (`native/runtime/movies/video_mod.c`) to decode the MPEG-1 movies a mod
+puts in the place of the game's (`mods/<Mod>/movies/<id>.mpg`).
+
+## dr_flac
+
+Project: dr_libs — `dr_flac.h` (v0.13.4)
+
+Upstream: <https://github.com/mackron/dr_libs>
+
+Pinned commit: `dfe8377631000664666519fdb83da193fd8037f4`
+
+License: public domain (Unlicense) or MIT No Attribution, at your option.
+
+Usage: fetched by CMake (only this header is used) and compiled into the
+native port's sound library (`native/sound/third_party_decoders.c`) to decode
+FLAC files that replace the game's music, effects and voices from `mods/`;
+khdays-studio (`studio/`) compiles the same file to check and play them as the
+port does.
 
 ## cgltf
 
 Project: cgltf — single-file glTF loader
 
 Upstream: <https://github.com/jkuhlmann/cgltf>
+
+Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
 
 License: MIT.
 
@@ -69,17 +140,111 @@ model overrides. Fetched by CMake when `KHDAYS_ENABLE_GLTF` is on (the default,
 which also requires `KHDAYS_ENABLE_PNG`); with it off, glTF support is dropped
 and no fetch occurs.
 
-## Vulkan SDK (build tool)
+## Vulkan SDK (build tools)
 
-Project: LunarG Vulkan SDK — `glslc` (shaderc)
+Project: LunarG Vulkan SDK — `dxc` (the DirectX Shader Compiler) and
+`spirv-cross`
 
 Upstream: <https://vulkan.lunarg.com/>
 
-Usage: **build tool only, not linked or redistributed**. `glslc` compiles the
-GLSL shaders in `shaders/` to SPIR-V, which is committed under
-`platform/pc/generated/*.spv.inc` and embedded into the executable. Regenerate
-with `tools/build_shaders/build_shaders.py`. At runtime the renderer uses SDL3's
-GPU API, which targets the system's Vulkan driver.
+Usage: **build tools only, not linked or redistributed**.
+`native/tools/build_shaders.py` compiles the HLSL shaders in `native/shaders/`
+with `dxc` to DXIL (Direct3D 12) and SPIR-V (Vulkan), and with `spirv-cross`
+from the SPIR-V to MSL (Metal); the results are committed as C arrays in
+`native/host/render/generated/` and compiled into the executable, so building the port
+needs neither tool. At runtime SDL3's GPU API hands them to the system's
+graphics driver.
+
+## ufbx
+
+Project: ufbx -- a single-source FBX loader, by Samuli Raivio
+
+Upstream repository: <https://github.com/ufbx/ufbx>
+
+Pinned version: **v0.23.1** (tag object `35a37776ee1163a74609f4ee75d162b7ada099ac`, commit
+`26a482ae66871d7de36eb722aa060bce95bce274`, 2026-09-25). Only its three files are fetched, each
+checked by its SHA-256 (`cmake/fetch_ufbx.cmake`):
+
+- `ufbx.c`, 1,181,511 bytes, `4a956c26a708e40d82ecb0aeaee54da709d5ba7c144c9642174970059bda7e1d`
+- `ufbx.h`, 223,898 bytes, `f787be529af577efc04f3e3e735844a08556718dbb613d1211c2b313d72895dc`
+- `LICENSE`, 2,631 bytes, `0dd48ebadf52273c736256325c8f078c03c8bb4facee22a4122de0ad3f615391`
+
+Usage: downloaded by CMake, compiled unmodified as a static library and linked into the native
+runtime and the asset library, to read a mod's FBX models (`src/assets/fbx.cpp`, specs/014); also
+into khdays-studio (`studio/`), which reads them as the port does and lists an FBX's textures.
+
+License: **MIT or Unlicense (public domain)**, the user's choice (its `LICENSE`); this repository
+takes it under the MIT License, copyright (c) 2020 Samuli Raivio.
+
+## Dear ImGui
+
+Project: Dear ImGui -- an immediate-mode graphical user interface library, by Omar Cornut
+
+Upstream repository: <https://github.com/ocornut/imgui>
+
+Pinned version: **v1.92.9b** (2026-07-31), fetched by CMake as
+`https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz`, 2,123,074 bytes, checked by
+its SHA-256 `21d8a0a565e85dce943e375db00812c2f3f0ab21f3f0f7964e364a63422d7f99`
+(`studio/CMakeLists.txt`, `native/CMakeLists.txt`).
+
+Usage: compiled unmodified as static libraries into two programs:
+
+- **khdays-studio** (the mod tool, specs/018): `imgui.cpp` (979,959 bytes), `imgui_draw.cpp`
+  (381,779), `imgui_tables.cpp` (270,549), `imgui_widgets.cpp` (555,245),
+  `backends/imgui_impl_sdl3.cpp` (44,853), `backends/imgui_impl_sdlgpu3.cpp` (37,443) and
+  `misc/cpp/imgui_stdlib.cpp`;
+- **the port** (`khdays-host-imgui`, its settings menu, specs/019): the same four core files and
+  `backends/imgui_impl_sdlrenderer3.cpp` (17,414), built with `IMGUI_DISABLE_DEFAULT_FONT` (none
+  of ImGui's embedded fonts is included).
+
+License: **MIT**, copyright (c) 2014-2026 Omar Cornut.
+
+## Roboto Medium (the settings menu's font)
+
+Font: Roboto Medium, by Christian Robertson (Google), `misc/fonts/Roboto-Medium.ttf` (162,588 bytes)
+of the same Dear ImGui archive as above.
+
+Usage: embedded unmodified, as bytes generated at configure time (`native/CMakeLists.txt`), in
+`khdays-native.exe`, for the port's settings menu (specs/019).
+
+License: **Apache License 2.0** (<https://www.apache.org/licenses/LICENSE-2.0>), as Dear ImGui's
+`docs/FONTS.md` records it.
+
+## Kenney's Input Prompts (the settings menu's gamepad icons and pictures)
+
+Project: Input Prompts 1.5A, by Kenney (<https://kenney.nl/assets/input-prompts>)
+
+Pinned archive: `kenney_input-prompts_1.5.zip` (5,070,075 bytes), fetched by CMake from
+`https://kenney.nl/media/pages/assets/input-prompts/8de120163f-1783763952/kenney_input-prompts_1.5.zip`, checked
+by its SHA-256 `ac2fcf599080b0f3ba2d174c9474db6df1a0e96ff0662580e2da79a122ab78a1` (`native/CMakeLists.txt`).
+
+Usage: 72 of its 128-pixel PNGs (the `Double` folders of `Xbox Series`, `PlayStation Series` and
+`Nintendo Switch`: the buttons, triggers, sticks and D-pads the menu names, and five gamepads' pictures:
+Xbox Series, PlayStation 5, 4 and 3, Switch Pro), embedded unmodified in
+`khdays-native.exe` as bytes generated at configure time, drawn in the settings menu's Controls section
+(specs/019 US5).
+
+License: **Creative Commons Zero (CC0 1.0)**, public domain (<http://creativecommons.org/publicdomain/zero/1.0/>),
+as the archive's `License.txt` states; crediting Kenney is not required, and is done here.
+
+## Windows Media Foundation (system library)
+
+Component: Microsoft Media Foundation, part of Windows (`mfplat.dll`, `mfreadwrite.dll`), with
+its import libraries from the Windows SDK (`mfplat.lib`, `mfreadwrite.lib`, `mfuuid.lib`).
+
+Usage: linked by the native runtime and loaded from the system on first use
+(`native/host/movies/movie_hd_win.c`) to decode the player's own HD videos (H.264 and AAC, specs/013).
+Nothing of it is distributed with this repository; it is the operating system's.
+
+License: part of Windows, under the operating system's license.
+
+## KH Melon Mix (acknowledgement)
+
+KH Melon Mix (by vitor251093, justedni, Kite2810 and contributors,
+<https://github.com/vitor251093/KHMelonMix>) showed that the Kingdom Hearts DS games can be played
+on one screen. Nothing of it is in this repository: the port's one-screen mode -- how it tells the
+game's screens apart, its layouts, its effects and its tests -- was made by the port from the
+decompilation, the DS's documented behaviour and measurements of the running game.
 
 ## Original game
 

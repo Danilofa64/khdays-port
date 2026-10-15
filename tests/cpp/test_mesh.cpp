@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "khdays/assets/mesh.h"
-#include "khdays/assets/scene3d.h"
 
 namespace {
 
@@ -67,8 +66,13 @@ std::vector<std::uint8_t> make_dictionary(
 // Synthesize a BMD0 with one model whose render command stream draws a single
 // piece: a triangle from three VTX_16 vertices at (1,0,0), (0,1,0), (0,0,1).
 // The model has no bones, so the matrix palette is the identity and rest-pose
-// positions equal the raw positions.
-std::vector<std::uint8_t> make_triangle_bmd0() {
+// positions equal the raw positions. `scaled`: the piece's display list first
+// restores matrix 0 and scales it by 2 (MTX_RESTORE + MTX_SCALE, as the
+// models with a position scale do: the Darkside, DS01), so the triangle is
+// drawn twice as large.
+std::vector<std::uint8_t> wrap_bmd0(const std::vector<std::uint8_t>& mdl0, std::size_t mdl0_offset_in_file);
+
+std::vector<std::uint8_t> make_triangle_bmd0(const bool scaled = false) {
     constexpr std::size_t mdl0_offset_in_file = 0x14U;
     constexpr std::size_t model_offset = 0x30U;    // within the MDL0 section
     constexpr std::size_t render_off = 0x80U;      // relative to the model
@@ -79,8 +83,8 @@ std::vector<std::uint8_t> make_triangle_bmd0() {
     constexpr std::size_t mesh_offset = mesh_list_offset + mesh_relative;
     constexpr std::size_t command_relative = 0x10U;
     constexpr std::size_t command_offset = mesh_offset + command_relative;
-    constexpr std::size_t command_length = 9U * 4U;  // 9 packed words
-    constexpr std::size_t mdl0_size = command_offset + command_length;
+    const std::size_t command_length = (scaled ? 13U : 9U) * 4U;  // packed words
+    const std::size_t mdl0_size = command_offset + command_length;
 
     std::vector<std::uint8_t> mdl0(mdl0_size, 0U);
     write_magic(mdl0, 0U, "MDL0");
@@ -114,8 +118,35 @@ std::vector<std::uint8_t> make_triangle_bmd0() {
     write_u32(mdl0, mesh_offset + 8U, static_cast<std::uint32_t>(command_relative));
     write_u32(mdl0, mesh_offset + 12U, static_cast<std::uint32_t>(command_length));
 
-    // Command stream: BEGIN_VTXS(triangles), 3x VTX_16, END_VTXS.
+    // Command stream: BEGIN_VTXS(triangles), 3x VTX_16, END_VTXS (after
+    // MTX_RESTORE 0 and MTX_SCALE 2,2,2 when scaled).
     std::size_t cursor = command_offset;
+    if (scaled) {
+        write_u32(mdl0, cursor, 0x23401B14U);  // [MTX_RESTORE, MTX_SCALE, BEGIN_VTXS, VTX_16]
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00000000U);  // MTX_RESTORE: matrix 0
+        cursor += 4U;
+        for (int axis = 0; axis < 3; ++axis) {
+            write_u32(mdl0, cursor, 0x00002000U);  // MTX_SCALE: 2.0 (1.19.12)
+            cursor += 4U;
+        }
+        write_u32(mdl0, cursor, 0x00000000U);  // BEGIN_VTXS param: mode 0
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00001000U);  // v0 p0: X=4096, Y=0
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00000000U);  // v0 p1: Z=0
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00412323U);  // [VTX_16, VTX_16, END_VTXS, NOP]
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x10000000U);  // v1 p0: X=0, Y=4096
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00000000U);  // v1 p1: Z=0
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00000000U);  // v2 p0: X=0, Y=0
+        cursor += 4U;
+        write_u32(mdl0, cursor, 0x00001000U);  // v2 p1: Z=4096
+        return wrap_bmd0(mdl0, mdl0_offset_in_file);
+    }
     write_u32(mdl0, cursor, 0x23232340U);  // [BEGIN_VTXS, VTX_16, VTX_16, VTX_16]
     cursor += 4U;
     write_u32(mdl0, cursor, 0x00000000U);  // BEGIN_VTXS param: mode 0
@@ -133,8 +164,11 @@ std::vector<std::uint8_t> make_triangle_bmd0() {
     write_u32(mdl0, cursor, 0x00001000U);  // v2 p1: Z=4096
     cursor += 4U;
     write_u32(mdl0, cursor, 0x00000041U);  // [END_VTXS, NOP, NOP, NOP]
+    return wrap_bmd0(mdl0, mdl0_offset_in_file);
+}
 
-    // Wrap the MDL0 in a minimal single-section BMD0 container.
+// Wrap an MDL0 in a minimal single-section BMD0 container.
+std::vector<std::uint8_t> wrap_bmd0(const std::vector<std::uint8_t>& mdl0, const std::size_t mdl0_offset_in_file) {
     const auto file_size = mdl0_offset_in_file + mdl0.size();
     std::vector<std::uint8_t> file(file_size, 0U);
     write_magic(file, 0U, "BMD0");
@@ -228,128 +262,33 @@ int main() {
             throw std::runtime_error("OBJ export is missing geometry");
         }
 
+        // A piece's MTX_SCALE scales the restored matrix (the DS's geometry
+        // engine does; the Darkside's arms were half their size without it),
+        // and the program replayed for animation gives the same matrix.
         {
-            // The 3D scene rasterizer: two unit quads facing the camera, the
-            // red one nearer than the blue one and covering it. A depth buffer
-            // must show red; a painter's-algorithm draw in submission order
-            // would show blue.
-            const auto quad = [](const float z,
-                                 const std::array<std::uint8_t, 4>& colour) {
-                khdays::assets::NeutralModel m;
-                m.name = "quad";
-                khdays::assets::NeutralMesh mesh;
-                for (int corner = 0; corner < 4; ++corner) {
-                    khdays::assets::NeutralVertex v;
-                    // Small enough that the quads do not fill the frame,
-                    // so the backdrop stays visible at the corners.
-                    const float sx = (corner == 0 || corner == 3) ? -0.3F : 0.3F;
-                    const float sy = (corner < 2) ? -0.3F : 0.3F;
-                    v.position = {sx, sy, z};
-                    v.color = colour;
-                    v.weights = {0.0F, 0.0F, 0.0F, 0.0F};  // no skinning
-                    mesh.vertices.push_back(v);
+            const auto scaled_data = make_triangle_bmd0(true);
+            const auto scaled = khdays::assets::decode_model_geometry(scaled_data.data(), scaled_data.size(), 0U);
+            if (scaled.meshes.size() != 1U || scaled.meshes.front().vertices.size() != 3U) {
+                throw std::runtime_error("scaled triangle not decoded");
+            }
+            const auto& sv = scaled.meshes.front().vertices;
+            const auto p0 = khdays::assets::posed_position(scaled, sv[0]);
+            const auto p2 = khdays::assets::posed_position(scaled, sv[2]);
+            if (!close_to(p0[0], 2.0F) || !close_to(p0[1], 0.0F) || !close_to(p2[2], 2.0F)) {
+                throw std::runtime_error("MTX_SCALE not applied to the piece's vertices");
+            }
+            const auto replayed = khdays::assets::compute_palette(*scaled.skinning, scaled.object_matrices);
+            if (replayed.size() != scaled.palette.size()) {
+                throw std::runtime_error("replayed palette differs in size");
+            }
+            for (std::size_t e = 0U; e < replayed.size(); ++e) {
+                for (std::size_t k = 0U; k < 16U; ++k) {
+                    if (!close_to(replayed[e][k], scaled.palette[e][k])) {
+                        throw std::runtime_error("replayed palette differs");
+                    }
                 }
-                mesh.indices = {0U, 1U, 2U, 0U, 2U, 3U};
-                m.meshes.push_back(mesh);
-                return m;
-            };
-            const auto far_quad = quad(-4.0F, {0U, 0U, 255U, 255U});
-            const auto near_quad = quad(-2.0F, {255U, 0U, 0U, 255U});
-
-            // Submit the near one FIRST so submission order cannot explain a
-            // correct result.
-            std::vector<khdays::assets::ModelInstance> instances{
-                khdays::assets::ModelInstance{&near_quad, nullptr},
-                khdays::assets::ModelInstance{&far_quad, nullptr}};
-
-            khdays::assets::Camera3D camera;
-            camera.eye = {0.0F, 0.0F, 0.0F};
-            camera.target = {0.0F, 0.0F, -1.0F};
-            const auto image =
-                khdays::assets::render_scene(instances, camera, 64, 64);
-            if (image.width != 64 || image.height != 64) {
-                throw std::runtime_error("scene image has the wrong size");
-            }
-            const std::size_t middle =
-                (static_cast<std::size_t>(32) * 64U + 32U) * 4U;
-            if (image.rgba[middle] < 200U || image.rgba[middle + 2U] > 60U) {
-                throw std::runtime_error(
-                    "the nearer surface did not win the depth test");
-            }
-            if (image.rgba[middle + 3U] != 255U) {
-                throw std::runtime_error("the covered pixel is not opaque");
-            }
-            // A corner outside both quads stays transparent.
-            if (image.rgba[3U] != 0U) {
-                throw std::runtime_error("the backdrop is not transparent");
-            }
-
-            // A triangle crossing the near plane must be clipped, not dropped.
-            // Large room polygons routinely cross this plane as the gameplay
-            // camera moves; dropping one vertex made whole walls disappear.
-            khdays::assets::NeutralModel crossing;
-            crossing.name = "near_plane_crossing";
-            khdays::assets::NeutralMesh crossing_mesh;
-            for (const auto& position :
-                 std::array<std::array<float, 3>, 3>{
-                     std::array<float, 3>{-0.8F, -0.8F, -0.05F},
-                     std::array<float, 3>{0.8F, -0.8F, -1.0F},
-                     std::array<float, 3>{0.0F, 0.8F, -1.0F}}) {
-                khdays::assets::NeutralVertex vertex;
-                vertex.position = position;
-                vertex.color = {0U, 255U, 0U, 255U};
-                vertex.weights = {0.0F, 0.0F, 0.0F, 0.0F};
-                crossing_mesh.vertices.push_back(vertex);
-            }
-            crossing_mesh.indices = {0U, 1U, 2U};
-            crossing.meshes.push_back(std::move(crossing_mesh));
-            camera.near_z = 0.1F;
-            const auto clipped = khdays::assets::render_scene(
-                {khdays::assets::ModelInstance{&crossing, nullptr}},
-                camera, 64, 64);
-            std::size_t clipped_pixels = 0U;
-            for (std::size_t k = 3U; k < clipped.rgba.size(); k += 4U) {
-                if (clipped.rgba[k] != 0U) {
-                    ++clipped_pixels;
-                }
-            }
-            if (clipped_pixels == 0U) {
-                throw std::runtime_error(
-                    "near-plane crossing triangle was dropped");
-            }
-
-            // Framing must put the geometry on screen from any angle.
-            const auto framed =
-                khdays::assets::frame_scene(instances, 0.7F, 0.3F);
-            const auto shot =
-                khdays::assets::render_scene(instances, framed, 64, 64);
-            std::size_t drawn = 0;
-            for (std::size_t k = 3U; k < shot.rgba.size(); k += 4U) {
-                if (shot.rgba[k] != 0U) {
-                    ++drawn;
-                }
-            }
-            if (drawn == 0U) {
-                throw std::runtime_error("frame_scene framed nothing on screen");
-            }
-
-            const auto bounds = khdays::assets::scene_bounds(instances);
-            if (!bounds.valid || bounds.radius <= 0.0F) {
-                throw std::runtime_error("scene bounds are not valid");
-            }
-
-            auto translated = khdays::assets::ModelInstance{
-                &near_quad, nullptr};
-            translated.transform[12] = 5.0F;
-            const auto moved_bounds =
-                khdays::assets::scene_bounds({translated});
-            if (!moved_bounds.valid
-                || std::fabs(moved_bounds.center[0] - 5.0F) > 0.001F) {
-                throw std::runtime_error(
-                    "instance translation is absent from scene bounds");
             }
         }
-
 
         std::filesystem::remove(path);
         std::cout << "Mesh decoder test passed" << '\n';

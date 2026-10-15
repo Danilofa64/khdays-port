@@ -1,0 +1,335 @@
+/* The DS's sixteen sound channels (channels.h), as GBATEK describes them:
+ *
+ *  - a channel plays PCM8, PCM16 or IMA-ADPCM from memory, or a PSG square
+ *    wave (channels 8-13) or noise (14, 15), a sample per overflow of its
+ *    timer, which counts at half the clock from SOUNDxTMR;
+ *  - a start takes effect after 3 samples (PCM), 11 (ADPCM: 3 and the
+ *    header's 8) or 1 (PSG, noise); a one-shot sound clears its busy bit as
+ *    its last sample begins and stops when it ends, keeping that sample out
+ *    while Hold is set; a looped one plays the part before the loop start
+ *    once and the rest forever, ADPCM taking back the state it had there.
+ *
+ * The capture units are not modelled: a capture that starts is reported. */
+#include "channels.h"
+
+#include <stdio.h>
+#include <string.h>
+
+enum { PCM8, PCM16, ADPCM, PSG };
+enum { MANUAL, LOOP, ONE_SHOT };
+
+#define REG8(offset)  (*(uint8_t *)(hw->regs + (offset)))
+#define REG16(offset) (*(uint16_t *)(hw->regs + (offset)))
+#define REG32(offset) (*(uint32_t *)(hw->regs + (offset)))
+
+/* IMA-ADPCM (GBATEK "DS Sound Notes"). */
+static const int8_t adpcm_index_table[8] = {-1, -1, -1, -1, 2, 4, 6, 8};
+static const uint16_t adpcm_table[89] = {
+    0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x0010, 0x0011, 0x0013, 0x0015,
+    0x0017, 0x0019, 0x001c, 0x001f, 0x0022, 0x0025, 0x0029, 0x002d, 0x0032, 0x0037, 0x003c, 0x0042,
+    0x0049, 0x0050, 0x0058, 0x0061, 0x006b, 0x0076, 0x0082, 0x008f, 0x009d, 0x00ad, 0x00be, 0x00d1,
+    0x00e6, 0x00fd, 0x0117, 0x0133, 0x0151, 0x0173, 0x0198, 0x01c1, 0x01ee, 0x0220, 0x0256, 0x0292,
+    0x02d4, 0x031c, 0x036c, 0x03c3, 0x0424, 0x048e, 0x0502, 0x0583, 0x0610, 0x06ab, 0x0756, 0x0812,
+    0x08e0, 0x09c3, 0x0abd, 0x0bd0, 0x0cff, 0x0e4c, 0x0fba, 0x114c, 0x1307, 0x14ee, 0x1706, 0x1954,
+    0x1bdc, 0x1ea5, 0x21b6, 0x2515, 0x28ca, 0x2cdf, 0x315b, 0x364b, 0x3bb9, 0x41b2, 0x4844, 0x4f7e,
+    0x5771, 0x602f, 0x69ce, 0x7462, 0x7fff,
+};
+
+/* Each oddity once, so the model grows from what the driver really does. */
+static void report(const char *what, int channel)
+{
+    static const char *seen[32];
+    static int count;
+    for (int i = 0; i < count; ++i) {
+        if (seen[i] == what) {
+            return;
+        }
+    }
+    if (count < 32) {
+        seen[count++] = what;
+    }
+    fprintf(stderr, "sound: %s (channel %d)\n", what, channel);
+    fflush(stderr);
+}
+
+static const uint8_t *memory(const KhdaysSoundHw *hw, uint32_t address, int channel)
+{
+    return hw->memory != NULL ? hw->memory(address, channel) : NULL;
+}
+
+static uint32_t control(const KhdaysSoundHw *hw, int n)
+{
+    return REG32(n * 16);
+}
+
+static void set_busy(KhdaysSoundHw *hw, int n, int busy)
+{
+    hw->channels[n].busy = busy;
+    if (busy) {
+        REG8(n * 16 + 3) |= 0x80;
+    } else {
+        REG8(n * 16 + 3) &= 0x7f;
+    }
+}
+
+/* The channel stops: its output falls to zero, or stays at the last sample
+ * while Hold is set. */
+static void silence(KhdaysSoundHw *hw, int n)
+{
+    hw->channels[n].playing = 0;
+    if (!(control(hw, n) & 0x8000)) {
+        hw->channels[n].sample = 0;
+    }
+}
+
+static void start(KhdaysSoundHw *hw, int n)
+{
+    KhdaysSoundChannel *c = &hw->channels[n];
+    const uint32_t cnt = control(hw, n);
+    const uint32_t format = (cnt >> 29) & 3;
+    /* the whole address: the DS register's 27 bits would cut the game's heaps',
+     * which hold its sounds; a DS address is the same either way */
+    c->sad = REG32(n * 16 + 4) & ~3u;
+    c->pnt = REG16(n * 16 + 0xa);
+    c->len = REG32(n * 16 + 0xc) & 0x3fffffu;
+    c->counter = REG16(n * 16 + 8);
+    c->busy = 1;
+    c->playing = 1;
+    c->sample = 0;
+    c->loop_saved = 0;
+    c->played = 0;
+    ++c->starts;
+    c->source = hw->source != NULL && format != PSG
+                    ? hw->source->bind(hw->source->context, n, c->sad, c->len, (int)format)
+                    : -1;
+    if (hw->trace) {
+        fprintf(stderr, "sound: %llu ch%d start cnt %08x sad %08x tmr %04x pnt %04x len %06x\n",
+                (unsigned long long)hw->clock, n, cnt, c->sad, c->counter, c->pnt, c->len);
+    }
+    if (format == PSG) {
+        c->position = -1;
+        c->noise = 0x7fff;
+        if (n < 8) {
+            report("PSG format on a channel without PSG or noise, silent", n);
+        }
+        return;
+    }
+    c->position = -3;
+    if (c->pnt + c->len < 4) {
+        /* GBATEK: under 4 words the channel hangs, busy, with no output. */
+        report("a sound shorter than 4 words (hangs, as on the DS)", n);
+    }
+    if (format == ADPCM) {
+        const uint8_t *header = memory(hw, c->sad, n);
+        const uint32_t word = header != NULL ? *(const uint32_t *)header : 0;
+        c->pcm = (int16_t)word;
+        c->index = (word >> 16) & 0x7f;
+        if (c->index > 88) {
+            report("an ADPCM header with a table index over 88, taken as 88", n);
+            c->index = 88;
+        }
+    }
+    if (((cnt >> 27) & 3) == MANUAL || ((cnt >> 27) & 3) == 3) {
+        report("repeat mode 0 or 3, which GBATEK leaves undefined; played as one-shot", n);
+    }
+}
+
+static int32_t adpcm_step(KhdaysSoundChannel *c, uint32_t nibble)
+{
+    const int32_t step = adpcm_table[c->index];
+    int32_t diff = step >> 3;
+    if (nibble & 1) diff += step >> 2;
+    if (nibble & 2) diff += step >> 1;
+    if (nibble & 4) diff += step;
+    if (nibble & 8) {
+        c->pcm -= diff;
+        if (c->pcm < -0x7fff) c->pcm = -0x7fff;
+    } else {
+        c->pcm += diff;
+        if (c->pcm > 0x7fff) c->pcm = 0x7fff;
+    }
+    c->index += adpcm_index_table[nibble & 7];
+    if (c->index < 0) c->index = 0;
+    if (c->index > 88) c->index = 88;
+    return c->pcm;
+}
+
+uint32_t khdays_sound_decode(const uint8_t *data, uint32_t words, int format, int16_t *out)
+{
+    uint32_t n = 0;
+    switch (format) {
+    case PCM8:
+        for (; n < words * 4; ++n) {
+            out[n] = (int16_t)((int8_t)data[n] * 256);
+        }
+        return n;
+    case PCM16:
+        for (; n < words * 2; ++n) {
+            out[n] = (int16_t)(data[2 * n] | data[2 * n + 1] << 8);
+        }
+        return n;
+    case ADPCM: {
+        KhdaysSoundChannel c;
+        if (words < 1) {
+            return 0;
+        }
+        memset(&c, 0, sizeof(c));
+        c.pcm = (int16_t)(data[0] | data[1] << 8);
+        c.index = data[2] & 0x7f;
+        if (c.index > 88) {
+            c.index = 88;  /* as start() takes it */
+        }
+        for (; n < (words - 1) * 8; ++n) {
+            out[n] = (int16_t)adpcm_step(&c, (data[4 + n / 2] >> ((n & 1) * 4)) & 0xf);
+        }
+        return n;
+    }
+    default:
+        return 0;
+    }
+}
+
+/* The channel's timer overflowed: its next sample. */
+static void advance(KhdaysSoundHw *hw, int n)
+{
+    KhdaysSoundChannel *c = &hw->channels[n];
+    const uint32_t cnt = control(hw, n);
+    const uint32_t format = (cnt >> 29) & 3;
+    const uint32_t per_word = format == PCM8 ? 4 : format == PCM16 ? 2 : 8;
+    int32_t total, loop_start;
+    const uint8_t *data;
+
+    ++c->position;
+    if (format == PSG) {
+        if (n >= 8 && n <= 13) {
+            /* eight steps, starting at the LOW part: HIGH for (duty + 1)/8 */
+            const uint32_t duty = (cnt >> 24) & 7;
+            c->sample = duty != 7 && (uint32_t)(c->position & 7) >= 7 - duty ? 0x7fff : -0x7fff;
+        } else if (n >= 14) {
+            if (c->noise & 1) {
+                c->noise = (c->noise >> 1) ^ 0x6000;
+                c->sample = -0x7fff;
+            } else {
+                c->noise >>= 1;
+                c->sample = 0x7fff;
+            }
+        }
+        return;
+    }
+    if (c->position < 0 || c->pnt + c->len < 4) {
+        return;  /* the start delay; or hung */
+    }
+    total = (int32_t)((c->pnt + c->len) * per_word);
+    loop_start = (int32_t)(c->pnt * per_word);
+    if (c->position >= total) {
+        if (((cnt >> 27) & 3) != LOOP) {
+            silence(hw, n);
+            return;
+        }
+        c->position = loop_start;
+        if (format == ADPCM) {
+            if (!c->loop_saved) {
+                report("an ADPCM loop start the sound never reached", n);
+            }
+            c->pcm = c->loop_pcm;
+            c->index = c->loop_index;
+        }
+    }
+    if (((cnt >> 27) & 3) != LOOP && c->position == total - 1) {
+        set_busy(hw, n, 0);  /* the busy bit clears as the last sample begins */
+    }
+    if (format == ADPCM && c->position < 8) {
+        c->sample = 0;  /* the header's time */
+        return;
+    }
+    if (format == ADPCM && c->position == loop_start && !c->loop_saved) {
+        c->loop_pcm = c->pcm;
+        c->loop_index = c->index;
+        c->loop_saved = 1;
+    }
+    if (c->source >= 0) {
+        int32_t sample;
+        if (hw->source->sample(hw->source->context, c->source, c->played++, &sample)) {
+            c->sample = sample;
+            return;
+        }
+        c->source = -1;
+    }
+    switch (format) {
+    case PCM8:
+        data = memory(hw, c->sad + (uint32_t)c->position, n);
+        c->sample = data != NULL ? (int32_t)(int8_t)*data * 256 : 0;
+        break;
+    case PCM16:
+        data = memory(hw, c->sad + (uint32_t)c->position * 2, n);
+        c->sample = data != NULL ? (int32_t)*(const int16_t *)data : 0;
+        break;
+    default:
+        data = memory(hw, c->sad + ((uint32_t)c->position >> 1), n);
+        c->sample = data != NULL ? adpcm_step(c, (*data >> ((c->position & 1) * 4)) & 0xf) : c->pcm;
+        break;
+    }
+}
+
+/* --- Registers ------------------------------------------------------------------ */
+
+void khdays_sound_hw_reset(KhdaysSoundHw *hw, KhdaysSoundMemory memory_of)
+{
+    memset(hw, 0, sizeof(*hw));
+    hw->memory = memory_of;
+}
+
+uint32_t khdays_sound_hw_read(const KhdaysSoundHw *hw, uint32_t offset, int size)
+{
+    uint32_t value = 0;
+    memcpy(&value, hw->regs + offset, (size_t)size);
+    return value;
+}
+
+void khdays_sound_hw_write(KhdaysSoundHw *hw, uint32_t offset, int size, uint32_t value)
+{
+    if (offset < 0x100) {
+        /* an aligned access stays inside one register of one channel */
+        const int n = (int)(offset >> 4);
+        const uint32_t reg = offset & 15;
+        const int was_busy = hw->channels[n].busy;
+        memcpy(hw->regs + offset, &value, (size_t)size);
+        if (reg < 4) {
+            const int start_bit = (REG8(n * 16 + 3) & 0x80) != 0;
+            if (start_bit && !was_busy) {
+                start(hw, n);
+            } else if (!start_bit && was_busy) {
+                hw->channels[n].busy = 0;
+                silence(hw, n);
+            } else if (!hw->channels[n].playing && !(control(hw, n) & 0x8000)) {
+                hw->channels[n].sample = 0;  /* Hold cleared: the held sample ends */
+            }
+        } else if (reg != 8 && hw->channels[n].playing) {
+            report("SAD, PNT or LEN written while playing (taken at the next start)", n);
+        }
+        return;
+    }
+    memcpy(hw->regs + offset, &value, (size_t)size);
+    if (offset <= 0x109 && offset + (uint32_t)size > 0x108 && ((REG8(0x108) | REG8(0x109)) & 0x80)) {
+        report("a sound capture started (not modelled)", -1);
+    }
+}
+
+/* --- Time ------------------------------------------------------------------------ */
+
+void khdays_sound_hw_step(KhdaysSoundHw *hw, uint32_t cycles)
+{
+    const uint32_t counts = (cycles + hw->half) / 2;
+    hw->half = (cycles + hw->half) & 1;
+    for (int n = 0; n < 16; ++n) {
+        KhdaysSoundChannel *c = &hw->channels[n];
+        if (c->playing) {
+            const uint32_t reload = REG16(n * 16 + 8);
+            c->counter += counts;
+            while (c->counter >= 0x10000u && c->playing) {
+                c->counter = c->counter - 0x10000u + reload;
+                advance(hw, n);
+            }
+        }
+    }
+}

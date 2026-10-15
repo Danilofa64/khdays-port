@@ -1,0 +1,191 @@
+# khdays-studio (specs/018): a mod authoring tool beside the port, built on
+# its own (studio/build.py) so that nothing of the port's or the asset
+# library's builds changes. It compiles some of the port's portable files as
+# they are, by path -- where the port decides something (which mod wins, how a
+# sound or a PNG is read), the tool asks the same code -- and edits none of
+# them.
+cmake_minimum_required(VERSION 3.25)
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+project(khdays_studio C CXX)
+
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "khdays-studio is built for x64: use studio/build.py")
+endif()
+
+set(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+include(FetchContent)
+
+# SDL3: the release the port pins (native/CMakeLists.txt), static.
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    SDL3
+    URL
+        https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
+    URL_HASH
+        SHA256=f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(SDL3)
+
+# Dear ImGui (specs/018 research R1), MIT, at the release THIRD_PARTY_NOTICES.md
+# records. Only its sources are wanted.
+FetchContent_Declare(
+    imgui
+    URL https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz
+    URL_HASH SHA256=21d8a0a565e85dce943e375db00812c2f3f0ab21f3f0f7964e364a63422d7f99
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_SUBDIR none
+)
+FetchContent_MakeAvailable(imgui)
+
+# What the reused port files need, at the commits the port pins
+# (native/CMakeLists.txt; THIRD_PARTY_NOTICES.md).
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG 2c980bb59875b0d32144a71867fbdebb2f77cd20
+    SOURCE_SUBDIR none
+)
+FetchContent_MakeAvailable(stb)
+FetchContent_Declare(
+    dr_libs
+    GIT_REPOSITORY https://github.com/mackron/dr_libs.git
+    GIT_TAG dfe8377631000664666519fdb83da193fd8037f4
+    SOURCE_SUBDIR none
+)
+FetchContent_MakeAvailable(dr_libs)
+FetchContent_Declare(
+    cgltf
+    GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+    GIT_TAG 85cd62382dfea638278962690cf515023f33ed00
+    SOURCE_SUBDIR none
+)
+FetchContent_MakeAvailable(cgltf)
+include("${ROOT}/cmake/fetch_ufbx.cmake")  # sets ufbx_SOURCE_DIR (the port's pin and hashes)
+
+# --- Dear ImGui, as it is -------------------------------------------------------------
+add_library(khdays-studio-imgui STATIC
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_sdlgpu3.cpp"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
+target_include_directories(khdays-studio-imgui PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/backends"
+                                                      "${imgui_SOURCE_DIR}/misc/cpp")
+target_link_libraries(khdays-studio-imgui PUBLIC SDL3::SDL3)
+target_compile_options(khdays-studio-imgui PRIVATE /W0 /std:c++20)
+
+# --- The port's files, compiled as they are -------------------------------------------
+add_library(khdays-studio-port STATIC
+    "${ROOT}/src/vfs/filesystem.cpp"            # the game's files, and which mod wins
+    "${ROOT}/src/assets/image.cpp"              # images in PNG, JPEG, TGA, BMP (its own stb_image)
+    "${ROOT}/src/assets/gltf.cpp"               # a mod's models, as the port imports them
+    "${ROOT}/src/assets/gltf_export.cpp"        # a room written to build on (specs/020)
+    "${ROOT}/src/assets/fbx.cpp"
+    "${ROOT}/src/assets/mesh.cpp"               # the game's models
+    "${ROOT}/src/assets/animation.cpp"          # and their animations
+    "${ROOT}/src/assets/message.cpp"            # lz_decompress
+    "${ROOT}/src/assets/font.cpp"               # the game's font: which characters it draws
+    "${ROOT}/src/assets/graphics2d.cpp"         # 2D: palettes, tile sheets, screens
+    "${ROOT}/src/assets/cell.cpp"               # and sprite cells
+    "${ROOT}/native/sound/replace.c"            # a mod's sound read as the port reads it
+    "${ROOT}/native/sound/third_party_decoders.c"
+    "${ROOT}/native/host/render/png_io.c"              # PNG in and out, indexed included
+    "${ROOT}/native/host/movies/movie_hd_win.c")       # videos played as the port plays them (Media Foundation)
+target_include_directories(khdays-studio-port PUBLIC "${ROOT}/include")
+target_include_directories(khdays-studio-port PUBLIC "${cgltf_SOURCE_DIR}" "${ufbx_SOURCE_DIR}")
+target_include_directories(khdays-studio-port PRIVATE "${stb_SOURCE_DIR}" "${dr_libs_SOURCE_DIR}")
+# ufbx as it is: third-party, not held to these warnings (as native/CMakeLists.txt)
+add_library(khdays-studio-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
+target_compile_options(khdays-studio-ufbx PRIVATE /W0)
+target_link_libraries(khdays-studio-port PUBLIC SDL3::SDL3 khdays-studio-ufbx mfplat mfreadwrite mfuuid ole32)
+target_compile_options(khdays-studio-port PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
+    $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
+set_source_files_properties("${ROOT}/native/sound/third_party_decoders.c" PROPERTIES COMPILE_OPTIONS "/W0")
+# The port's files as they are: their C library and C++20 deprecation notes
+# are the port's to decide on, not this build's.
+target_compile_definitions(khdays-studio-port PRIVATE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING)
+# The tool's own code reaches these by their directories.
+set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/native/sound" "${ROOT}/native/host")
+
+# --- The tool -------------------------------------------------------------------------
+set(KHDAYS_STUDIO_FLAGS /W4 /std:c++20 /EHsc /utf-8 /permissive-)
+
+add_library(khdays-studio-core STATIC
+    core/models/anim_replace.cpp
+    core/models/bca0.cpp
+    core/models/bones.cpp
+    core/files/catalog.cpp
+    core/files/catalog_tree.cpp
+    core/mods/check.cpp
+    core/models/clip_import.cpp
+    core/files/containers.cpp
+    core/files/file_write.cpp
+    core/models/game_model.cpp
+    core/missions/command_meanings.cpp
+    core/missions/command_names.cpp
+    core/files/lz.cpp
+    core/missions/mission_db.cpp
+    core/missions/missions.cpp
+    core/missions/mission_edit.cpp
+    core/missions/enemy_names.cpp
+    core/texts/texts.cpp
+    core/models/model_export.cpp
+    core/models/model_files.cpp
+    core/mods/mods.cpp
+    core/files/paths.cpp
+    core/mods/process.cpp
+    core/rooms/room_change.cpp
+    core/rooms/room_collision.cpp
+    core/rooms/room_export.cpp
+    core/mods/settings.cpp
+    core/sheets/sheets.cpp
+    core/rooms/worlds.cpp)
+target_include_directories(khdays-studio-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" ${KHDAYS_STUDIO_PORT_HEADERS})
+target_link_libraries(khdays-studio-core PUBLIC khdays-studio-port SDL3::SDL3)
+target_compile_options(khdays-studio-core PRIVATE ${KHDAYS_STUDIO_FLAGS})
+
+add_executable(khdays-studio
+    app/app.cpp
+    app/views/browser.cpp
+    app/cli.cpp
+    app/views/console.cpp
+    app/gpu_images.cpp
+    app/views/image_view.cpp
+    app/main.cpp
+    app/views/map_view.cpp
+    app/views/mission_view.cpp
+    app/views/movie_view.cpp
+    app/views/text_view.cpp
+    app/views/mod_panel.cpp
+    app/views/model_view.cpp
+    app/preview3d.cpp
+    app/views/sheet_view.cpp
+    app/views/sound_view.cpp
+    app/strings.cpp
+    app/theme.cpp)
+target_link_libraries(khdays-studio PRIVATE khdays-studio-core khdays-studio-imgui)
+target_compile_options(khdays-studio PRIVATE ${KHDAYS_STUDIO_FLAGS})
+
+enable_testing()
+add_executable(khdays-studio-tests
+    tests/test_main.cpp
+    tests/test_check.cpp
+    tests/test_foundation.cpp
+    tests/test_bones.cpp
+    tests/test_anim.cpp
+    tests/test_sheets.cpp
+    tests/test_missions.cpp
+    tests/test_worlds.cpp
+    app/strings.cpp
+    tests/test_strings.cpp)
+target_include_directories(khdays-studio-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app")
+target_link_libraries(khdays-studio-tests PRIVATE khdays-studio-core)
+target_compile_options(khdays-studio-tests PRIVATE ${KHDAYS_STUDIO_FLAGS})
+add_test(NAME khdays-studio-tests COMMAND khdays-studio-tests)

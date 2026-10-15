@@ -28,11 +28,23 @@ bool autodetect_data_root(
 // `mods/<Mod>/files/<game_path>`.
 void set_mods_root(const std::filesystem::path& root);
 
+// A file some mod provides at `mods/<Mod>/<rel>` (e.g.
+// "sounds/strm/Title_BGM_PCM8.ogg"): the first mod, in sorted order, that
+// has it -- the order every override follows.
+std::optional<std::filesystem::path> find_in_mods(const std::filesystem::path& rel);
+
 // Resolve a game path to an on-disk file, searching in order: mod overrides,
 // the unpacked container view, the decompressed view, then raw NitroFS. Returns
 // std::nullopt if nothing matches. A path escaping the root (via "..") is
 // rejected.
 std::optional<std::filesystem::path> resolve(std::string_view game_path);
+
+// Resolve a game path to the file as the game itself reads it: a mod override,
+// else the raw NitroFS file -- never the extractor's decompressed or unpacked
+// views, whose bytes the game would not recognise (it decompresses and
+// unpacks on its own). This is what the recompiled game's ROM is built from,
+// so a mod there must be in the game's own format.
+std::optional<std::filesystem::path> resolve_original(std::string_view game_path);
 
 // True if resolve() finds the game path.
 bool exists(std::string_view game_path);

@@ -1,0 +1,499 @@
+/* Mission Mode's character select (charselect.h), over the game's (Ov006_UpdateMissionMemberMenuScreen
+ * in scene 7, Ov008_LobbyStep in the camp). The port reads the four places' rows, the players' names,
+ * the characters bought and the gauges from the game's session context and menu, and moves a place by
+ * writing the same request the game's own input makes, right after its update and under the same
+ * conditions: one step whatever the port's grid, the game's sounds and gauges following. An A while a
+ * move is unanswered waits for it. Addresses and offsets: docs/RUNTIME_MAP.md section 16.3. */
+#include "charselect.h"
+
+#include "../input/input.h"
+#include "../core/io.h"
+#include "../core/rom.h"
+#include "../core/window.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <windows.h>
+
+extern int GetLanguage(void);
+int khdays_language_wanted(void);  /* language.c */
+u32 khdays_events_vblank_count(void);
+int khdays_overlay_loaded(int id); /* overlays.c */
+
+/* A place's row as the game gives it (Ov006_GetMissionRowInfo). */
+typedef struct GameRow {
+    u16 count;
+    u8 present, ready;
+    s8 character;
+} GameRow;
+
+extern void Ov006_UpdateMissionMemberMenuScreen(void);
+extern void Ov006_MemberMenuNextStateNoOp(void);
+extern int Ov006_MissionGetCursorEntry(void);
+extern int Ov006_MissionScene_IsFlagSet(void);
+extern int Ov006_CanConfirmMissionMenu(void);
+extern int Ov006_MissionScene_GetState(void);
+extern int Ov006_MissionIsEntryActive(void);
+extern int Ov006_CountPlayers(void);
+extern void Ov008_LobbyStep(void);
+extern void Ov008_LobbyNextStepNoOp(void);
+extern int Ov008_GetLocalPlayerIndex(void);
+extern int Ov008_MissionScene_IsFlagSet(void);
+extern int Ov008_CanConfirmMissionMenu(void);
+extern int Ov008_MissionScene_GetState(void);
+extern int Ov008_MissionIsEntryActive(void);
+extern int Ov008_CountPlayers(void);
+
+#define SEEN_FRAMES 2u      /* the game's screen is gone when its update did not run for longer */
+#define STATE_CHOOSING 5    /* the screen's state while the places move (Ov006_MissionScene_GetState) */
+#define MENU_HOST 0x20u
+#define MENU_MESSAGE 0x32u
+#define MENU_BOUGHT 0x30u
+#define ROWS 0x4acu          /* the places' rows, six bytes each: */
+#define ROW_FLAGS 0x1u       /*   bit 0 a player there, bit 1 chosen */
+#define ROW_CHARACTER 0x2u
+#define ROW_COUNT 0x4u
+#define ROW_SIZE 6u
+#define REQUEST 0x4e0u       /* a guest's request, as a row (its first byte the place) */
+#define LOCKED_OUT 0x4e8u    /* set: the request is place 0's whatever this copy's (the game's) */
+#define NAMES_PRESENT 0x434u
+#define NAMES 0x436u
+#define NAME_LENGTH 11u
+#define STAT_ROW 9u
+#define ALWAYS 13           /* characters 0-12 are always there; 13 on are bought */
+#define ASK_WAIT 120u       /* VBlanks a move may take to be answered before the port lets it go (the
+                             * host's answer comes within a few frames) */
+#define REPEAT_AFTER 20u    /* a held direction moves again after this many VBlanks, */
+#define REPEAT_EVERY 6u     /* then every this many (the port's) */
+/* the game's messages (mlt_&.s) */
+#define MSG_CHOOSE 0x33
+#define MSG_WAIT 0x34
+#define MSG_PRESS_START 0x37
+#define MSG_HOST_LEAVING 0x36
+#define HELP_CHOOSE 0x38
+#define HELP_CHANGE 0x39
+#define HELP_CHANGE_START 0x3a
+#define HELP_HOST 0x3b
+
+typedef struct Screen {
+    int overlay;
+    void (*update)(void), (*leaving)(void); /* the screen's update; the state it leaves in */
+    int (*self)(void);
+    int (*flag_set)(void), (*confirming)(void), (*state)(void), (*entry_active)(void), (*players)(void);
+    u32 session, menu, captions, stats;
+} Screen;
+
+static const Screen screens[] = {
+    {6, Ov006_UpdateMissionMemberMenuScreen, Ov006_MemberMenuNextStateNoOp, Ov006_MissionGetCursorEntry, Ov006_MissionScene_IsFlagSet,
+     Ov006_CanConfirmMissionMenu, Ov006_MissionScene_GetState, Ov006_MissionIsEntryActive, Ov006_CountPlayers,
+     0x020565e4u, 0x02056660u, 0x020561d0u, 0x020561e0u},
+    {8, Ov008_LobbyStep, Ov008_LobbyNextStepNoOp, Ov008_GetLocalPlayerIndex, Ov008_MissionScene_IsFlagSet, Ov008_CanConfirmMissionMenu,
+     Ov008_MissionScene_GetState, Ov008_MissionIsEntryActive, Ov008_CountPlayers, 0x02090f24u, 0x02090fa0u,
+     0x0208fc8cu, 0x0208fc9cu},
+};
+#define SCREENS ((int)(sizeof(screens) / sizeof(screens[0])))
+
+static SRWLOCK lock = SRWLOCK_INIT;
+static KhdaysSelectView shown;
+static int on = -1;            /* screens' index whose update ran last */
+static u32 seen_at;
+static volatile LONG columns = 5;
+/* the game's thread's own */
+static KhdaysSelectView now;   /* as last read, after the game's update */
+static int want = -1;          /* the character the player moved to, until the game has it */
+static int asked;              /* the port's request for it is made */
+static u32 asked_at;
+static int a_kept;             /* an A pressed while the move was unanswered */
+static int a_give;             /* ... to hand the game now that it is answered */
+static u16 held;
+static int repeat_dir;
+static u32 repeat_from, repeat_count;
+
+static u32 rd32(u32 address)
+{
+    return *(const volatile u32 *)KHDAYS_W(address);
+}
+
+static u16 rd16(u32 address)
+{
+    return *(const volatile u16 *)KHDAYS_W(address);
+}
+
+static u8 rd8(u32 address)
+{
+    return *(const volatile u8 *)KHDAYS_W(address);
+}
+
+static void wr8(u32 address, u8 value)
+{
+    *(volatile u8 *)KHDAYS_W(address) = value;
+}
+
+static void wr16(u32 address, u16 value)
+{
+    *(volatile u16 *)KHDAYS_W(address) = value;
+}
+
+static int in_ram(u32 address)
+{
+    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+}
+
+static int language(void)
+{
+    return khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage();
+}
+
+/* Whether a mod gives the port's screen in the language. */
+static int available(int lang)
+{
+    static const char *const codes[] = {"", "en", "fr", "de", "it", "es"};
+    static int asked_lang = -1, answer;
+    char relative[64], path[1024];
+    if (lang != asked_lang) {
+        asked_lang = lang;
+        answer = 0;
+        if (lang >= 1 && lang <= 5) {
+            snprintf(relative, sizeof(relative), "layouts/select/%s/select.txt", codes[lang]);
+            answer = khdays_mods_find(relative, path, (int)sizeof(path));
+        }
+    }
+    return answer;
+}
+
+/* The game's fade: the lower screen's master brightness (MASTER_BRIGHT, engine B). */
+static int16_t brightness(void)
+{
+    const u16 bright = IO16(0x106c);
+    const int mode = bright >> 14, factor = (bright & 0x1f) > 16 ? 16 : bright & 0x1f;
+    return (int16_t)(mode == 1 ? factor : mode == 2 ? -factor : 0);
+}
+
+static int active(void)
+{
+    return on >= 0 && khdays_events_vblank_count() - seen_at <= SEEN_FRAMES && now.shown;
+}
+
+/* ---- The grid --------------------------------------------------------------------------------- */
+
+/* The characters another place is on (the game lets no two places have one). */
+static uint32_t taken(const KhdaysSelectView *v)
+{
+    uint32_t mask = 0;
+    for (int i = 0; i < KHDAYS_SELECT_PLACES; ++i) {
+        if (i != v->self && v->places[i].present && v->places[i].character >= 0) {
+            mask |= 1u << v->places[i].character;
+        }
+    }
+    return mask;
+}
+
+/* Where a character is in the port's grid: the characters there in the game's order, `cols` a row,
+ * the last row centred; x its middle in columns. */
+static float grid_x(int position, int count, int cols)
+{
+    const int row = position / cols, in_row = count - row * cols < cols ? count - row * cols : cols;
+    return (float)(position % cols) - (float)(in_row - 1) / 2.0f;
+}
+
+/* The character a direction leads to from `from` (KHDAYS_KEY_*), the ones taken stepped over. */
+static int step(int from, u16 key, uint32_t choosable, uint32_t busy)
+{
+    int list[KHDAYS_SELECT_CHARACTERS], count = 0, at = 0;
+    const int cols = (int)columns > 0 ? (int)columns : 1;
+    for (int c = 0; c < KHDAYS_SELECT_CHARACTERS; ++c) {
+        if (choosable & (1u << c)) {
+            if (c == from) {
+                at = count;
+            }
+            list[count++] = c;
+        }
+    }
+    if (count == 0) {
+        return from;
+    }
+    if (key == KHDAYS_KEY_LEFT || key == KHDAYS_KEY_RIGHT) {
+        const int dir = key == KHDAYS_KEY_RIGHT ? 1 : -1;
+        for (int k = 1; k < count; ++k) {
+            const int c = list[((at + dir * k) % count + count) % count];
+            if (!(busy & (1u << c))) {
+                return c;
+            }
+        }
+        return from;
+    } else {
+        const int rows = (count + cols - 1) / cols, dir = key == KHDAYS_KEY_DOWN ? 1 : -1;
+        const float x = grid_x(at, count, cols);
+        for (int k = 1; k < rows; ++k) {
+            const int row = (((at / cols) + dir * k) % rows + rows) % rows;
+            int best = -1;
+            float best_d = 0.0f;
+            for (int p = row * cols; p < count && p < (row + 1) * cols; ++p) {
+                const float d = grid_x(p, count, cols) - x;
+                const float dist = d < 0 ? -d : d;
+                if (!(busy & (1u << list[p])) && (best < 0 || dist < best_d)) {
+                    best = p;
+                    best_d = dist;
+                }
+            }
+            if (best >= 0) {
+                return list[best];
+            }
+        }
+        return from;
+    }
+}
+
+/* ---- The game's screen ------------------------------------------------------------------------ */
+
+static void messages(const Screen *sc, const GameRow *rows, int self, u32 menu, KhdaysSelectView *v)
+{
+    if (sc->overlay == 8) {
+        /* Ov008_LobbyStep's */
+        const int confirming = sc->confirming() != 0;
+        v->heading = confirming ? MSG_HOST_LEAVING : MSG_CHOOSE;
+        v->help = confirming ? HELP_HOST : HELP_CHOOSE;
+        return;
+    }
+    /* Ov006_UpdateMissionMemberMenuScreen's */
+    {
+        const int host = rd32(menu + MENU_HOST) != 0;
+        int all = 0;
+        if (sc->flag_set() && host) {
+            int count = 0;
+            all = 1;
+            for (int i = 0; i < KHDAYS_SELECT_PLACES; ++i) {
+                if (rows[i].present) {
+                    if (!rows[i].ready) {
+                        all = 0;
+                        break;
+                    }
+                    ++count;
+                }
+            }
+            if (all && count != sc->players()) {
+                all = 0;
+            }
+        }
+        if (!rows[self].ready) {
+            v->heading = MSG_CHOOSE;
+            v->help = HELP_CHOOSE;
+        } else if (host) {
+            v->heading = all ? MSG_PRESS_START : MSG_WAIT;
+            v->help = all ? HELP_CHANGE_START : HELP_CHANGE;
+        } else {
+            v->heading = rd16(menu + MENU_MESSAGE) & 0xff; /* "Wait..." and "Wait for the host." in turn */
+            v->help = HELP_CHANGE;
+        }
+    }
+}
+
+/* The screen as the game has it after its update (its overlay loaded). */
+static int read_screen(const Screen *sc, GameRow rows[KHDAYS_SELECT_PLACES], KhdaysSelectView *v)
+{
+    const u32 session = rd32(sc->session), menu = rd32(sc->menu);
+    int self, shown_character;
+    u16 present;
+    memset(v, 0, sizeof(*v));
+    if (!in_ram(session) || !in_ram(menu)) {
+        return 0;
+    }
+    self = sc->self() & 0xffff;
+    if (self >= KHDAYS_SELECT_PLACES) {
+        return 0; /* the game's screen is not taking moves yet (Ov006_MissionGetCursorEntry's 0xff) */
+    }
+    v->self = self;
+    v->choosable = ((1u << ALWAYS) - 1u) | ((uint32_t)(rd8(menu + MENU_BOUGHT) & 0x3fu) << ALWAYS);
+    present = rd16(session + NAMES_PRESENT);
+    for (int i = 0; i < KHDAYS_SELECT_PLACES; ++i) {
+        KhdaysSelectPlace *p = &v->places[i];
+        const u32 at = session + ROWS + (u32)i * ROW_SIZE;
+        const u8 flags = rd8(at + ROW_FLAGS);
+        rows[i].count = rd16(at + ROW_COUNT);
+        rows[i].present = flags & 1u;
+        rows[i].ready = (flags >> 1) & 1u;
+        rows[i].character = (s8)rd8(at + ROW_CHARACTER);
+        p->present = rows[i].present != 0;
+        p->ready = rows[i].ready != 0;
+        p->character = rows[i].character >= 0 && rows[i].character < KHDAYS_SELECT_CHARACTERS ? rows[i].character
+                                                                                               : -1;
+        if ((present >> i) & 1u) {
+            for (u32 k = 0; k < NAME_LENGTH; ++k) {
+                p->name[k] = rd16(session + NAMES + ((u32)i * NAME_LENGTH + k) * 2u);
+            }
+        }
+    }
+    messages(sc, rows, self, menu, v);
+    shown_character = want >= 0 ? want : v->places[self].character;
+    v->character = shown_character;
+    for (int i = 0; i < 4; ++i) {
+        v->stat_label[i] = rd8(sc->captions + 6u + (u32)i);
+    }
+    for (int i = 0; i < 3; ++i) {
+        v->stat_label[4 + i] = rd8(sc->captions + (u32)i);
+    }
+    if (shown_character >= 0) {
+        /* Ov006_MissionApplyParameterRow: the left column's gauges from bytes 4, 0, 2, 1; the
+         * right's from 7, 3, 8 */
+        static const u8 bytes[KHDAYS_SELECT_STATS] = {4, 0, 2, 1, 7, 3, 8};
+        for (int i = 0; i < KHDAYS_SELECT_STATS; ++i) {
+            v->stat[i] = rd8(sc->stats + (u32)shown_character * STAT_ROW + bytes[i]);
+        }
+    }
+    v->language = language();
+    v->master = brightness();
+    v->shown = available(v->language);
+    return 1;
+}
+
+/* After the game's update: the player's move asked of the game as its own input would. */
+static void move_self(const Screen *sc, GameRow rows[KHDAYS_SELECT_PLACES], const KhdaysSelectView *v)
+{
+    GameRow row;
+    const KhdaysSelectPlace *self = &v->places[v->self];
+    if (want < 0) {
+        return;
+    }
+    if (self->character == want) {
+        want = -1; /* the game has it */
+        asked = 0;
+        a_give = a_kept;
+        a_kept = 0;
+        return;
+    }
+    if (self->ready || !(v->choosable & (1u << want)) || (taken(v) & (1u << want)) ||
+        (asked && khdays_events_vblank_count() - asked_at > ASK_WAIT)) {
+        want = -1; /* chosen, gone or never answered: the game's stays */
+        asked = 0;
+        a_kept = 0;
+        return;
+    }
+    if (sc->flag_set() && !sc->confirming() && sc->state() == STATE_CHOOSING && sc->entry_active()) {
+        /* Ov006_MissionArmCursorRequest: the host's row itself, a guest's request */
+        const u32 session = rd32(sc->session);
+        const int place = rd32(session + LOCKED_OUT) != 0 ? 0 : v->self;
+        const u32 at = place == 0 ? session + ROWS : session + REQUEST;
+        row = rows[v->self];
+        wr8(at, (u8)place);
+        wr8(at + ROW_FLAGS, (u8)((rd8(at + ROW_FLAGS) & ~3u) | 1u | (row.ready ? 2u : 0u)));
+        wr8(at + ROW_CHARACTER, (u8)(s8)want);
+        wr16(at + ROW_COUNT, (u16)(row.count + 1u));
+        if (!asked) {
+            asked = 1;
+            asked_at = khdays_events_vblank_count();
+        }
+    }
+}
+
+void khdays_charselect_update_ran(uintptr_t update)
+{
+    for (int i = 0; i < SCREENS; ++i) {
+        if (update == (uintptr_t)screens[i].leaving && on == i && now.shown) {
+            /* the game leaves the screen (START, or the group gone): its fade over the port's, the
+             * places as they were, so that the DS's screen never shows on the way out */
+            seen_at = khdays_events_vblank_count();
+            now.master = brightness();
+            AcquireSRWLockExclusive(&lock);
+            shown = now;
+            ReleaseSRWLockExclusive(&lock);
+            return;
+        }
+        if (update == (uintptr_t)screens[i].update && khdays_overlay_loaded(screens[i].overlay)) {
+            GameRow rows[KHDAYS_SELECT_PLACES];
+            KhdaysSelectView v;
+            if (!read_screen(&screens[i], rows, &v)) {
+                return;
+            }
+            on = i;
+            seen_at = khdays_events_vblank_count();
+            if (v.shown) {
+                move_self(&screens[i], rows, &v);
+                if (want >= 0) {
+                    /* the player sees the move at once */
+                    read_screen(&screens[i], rows, &v);
+                }
+            }
+            now = v;
+            AcquireSRWLockExclusive(&lock);
+            shown = v;
+            ReleaseSRWLockExclusive(&lock);
+            return;
+        }
+    }
+}
+
+/* ---- The buttons ------------------------------------------------------------------------------ */
+
+/* Whether `key` moves this frame: on its press, then again while held. */
+static int repeated(u16 buttons, u16 key)
+{
+    const u32 t = khdays_events_vblank_count();
+    if ((buttons & key) && !(held & key)) {
+        repeat_dir = key;
+        repeat_from = t;
+        repeat_count = 0;
+        return 1;
+    }
+    if ((buttons & key) && repeat_dir == key && t - repeat_from >= REPEAT_AFTER + repeat_count * REPEAT_EVERY) {
+        ++repeat_count;
+        return 1;
+    }
+    return 0;
+}
+
+uint16_t khdays_charselect_buttons(uint16_t buttons)
+{
+    static const u16 keys[4] = {KHDAYS_KEY_UP, KHDAYS_KEY_DOWN, KHDAYS_KEY_LEFT, KHDAYS_KEY_RIGHT};
+    const u16 directions = KHDAYS_KEY_UP | KHDAYS_KEY_DOWN | KHDAYS_KEY_LEFT | KHDAYS_KEY_RIGHT;
+    u16 out = buttons;
+    if (!active()) {
+        if (on >= 0 && khdays_events_vblank_count() - seen_at > SEEN_FRAMES) {
+            on = -1; /* the screen left: nothing of it kept */
+            want = -1;
+            asked = a_kept = a_give = 0;
+            AcquireSRWLockExclusive(&lock);
+            memset(&shown, 0, sizeof(shown));
+            ReleaseSRWLockExclusive(&lock);
+        }
+        held = buttons;
+        return buttons;
+    }
+    out &= (u16)~directions; /* the port's grid, not the game's */
+    if (!now.places[now.self].ready) {
+        const int from = want >= 0 ? want : now.places[now.self].character;
+        for (int k = 0; k < 4; ++k) {
+            if (repeated(buttons, keys[k])) {
+                const int to = step(from, keys[k], now.choosable, taken(&now));
+                if (to != from && to >= 0) {
+                    want = to;
+                    asked = 0;
+                }
+                break;
+            }
+        }
+    }
+    if (want >= 0 && (buttons & KHDAYS_KEY_A) && !(held & KHDAYS_KEY_A)) {
+        a_kept = 1; /* the game would take it on the character before the move */
+    }
+    if (want >= 0 || a_kept) {
+        out &= (u16)~KHDAYS_KEY_A;
+    }
+    if (a_give) {
+        out |= KHDAYS_KEY_A;
+        a_give = 0;
+    }
+    held = buttons;
+    return out;
+}
+
+void khdays_charselect_view(KhdaysSelectView *out)
+{
+    AcquireSRWLockShared(&lock);
+    *out = shown;
+    ReleaseSRWLockShared(&lock);
+}
+
+void khdays_charselect_columns(int cols)
+{
+    InterlockedExchange(&columns, cols > 0 ? cols : 1);
+}

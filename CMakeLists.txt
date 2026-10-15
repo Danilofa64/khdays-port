@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
 
+# The game itself is the decompilation's C compiled natively: native/
+# (native/build.py). This project builds what sits beside it, portable C++
+# for every platform: the library of the game's data formats, the mod layer
+# that resolves user overrides before the originals, the game filesystem, and
+# their tests.
 project(
     khdays_port
-    VERSION 0.0.4
-    DESCRIPTION "Experimental native PC runtime for Kingdom Hearts 358/2 Days"
+    VERSION 0.1.0
+    DESCRIPTION "Native PC port of Kingdom Hearts 358/2 Days: data formats, mods and filesystem"
     LANGUAGES C CXX
 )
 
@@ -24,9 +29,8 @@ if(KHDAYS_ENABLE_SANITIZERS AND MSVC)
         "KHDAYS_ENABLE_SANITIZERS is only wired for Clang/GCC; it will be ignored under MSVC.")
 endif()
 
-# Apply ASan+UBSan to a single target. Sanitizers are scoped to the project's
-# own targets so the fetched SDL3 build is left uninstrumented, which keeps the
-# build fast and avoids third-party diagnostics we cannot act on.
+# ASan+UBSan on one of the project's own targets; fetched third-party code is
+# left uninstrumented.
 function(khdays_enable_sanitizers target)
     if(NOT KHDAYS_ENABLE_SANITIZERS OR MSVC)
         return()
@@ -40,34 +44,27 @@ function(khdays_enable_sanitizers target)
         -fsanitize=address,undefined)
 endfunction()
 
+# The project's warning level on one of its own targets.
+function(khdays_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
+
 include(FetchContent)
 
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(
-    SDL3
-    URL
-        https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
-    URL_HASH
-        SHA256=f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-FetchContent_MakeAvailable(SDL3)
-
-# Optional PNG texture overrides via stb_image. When off, the build needs no
-# network for stb and PNG overrides are simply unavailable (BMP still works).
-option(KHDAYS_ENABLE_PNG "Support PNG texture overrides (fetches stb)" ON)
+# Optional PNG overrides via stb_image. When off, the build needs no network
+# for stb and PNG overrides are unavailable (BMP still works).
+option(KHDAYS_ENABLE_PNG "Support PNG overrides (fetches stb)" ON)
 if(KHDAYS_ENABLE_PNG)
     FetchContent_Declare(
         stb
         GIT_REPOSITORY https://github.com/nothings/stb.git
-        # Header-only; track master. Pin to a commit for fully reproducible builds.
-        GIT_TAG master
-        GIT_SHALLOW TRUE
+        # stb has no release tags: pin a commit (recorded in
+        # THIRD_PARTY_NOTICES.md). A shallow clone cannot fetch a bare SHA.
+        GIT_TAG 2c980bb59875b0d32144a71867fbdebb2f77cd20
     )
     FetchContent_MakeAvailable(stb)
 endif()
@@ -78,66 +75,49 @@ if(KHDAYS_ENABLE_GLTF AND KHDAYS_ENABLE_PNG)
     FetchContent_Declare(
         cgltf
         GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
-        GIT_TAG master
-        GIT_SHALLOW TRUE
+        # Pinned commit, recorded in THIRD_PARTY_NOTICES.md.
+        GIT_TAG 85cd62382dfea638278962690cf515023f33ed00
     )
     FetchContent_MakeAvailable(cgltf)
 endif()
 
-# Dear ImGui for the in-window options menu bar (Config/View). Cross-platform;
-# rendered through the SDL renderer. When off, the runtime falls back to keyboard
-# hotkeys only.
-option(KHDAYS_ENABLE_UI "In-window options menu bar via Dear ImGui" ON)
-if(KHDAYS_ENABLE_UI)
-    FetchContent_Declare(
-        imgui
-        GIT_REPOSITORY https://github.com/ocornut/imgui.git
-        GIT_TAG v1.91.6
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(imgui)
-    add_library(
-        imgui STATIC
-            "${imgui_SOURCE_DIR}/imgui.cpp"
-            "${imgui_SOURCE_DIR}/imgui_draw.cpp"
-            "${imgui_SOURCE_DIR}/imgui_tables.cpp"
-            "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
-            "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp"
-            "${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp"
-    )
-    target_include_directories(
-        imgui PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/backends")
-    target_link_libraries(imgui PUBLIC SDL3::SDL3)
+# Optional FBX model overrides via ufbx (needs PNG's stb for their textures;
+# specs/014): its three files, pinned and checked (cmake/fetch_ufbx.cmake).
+option(KHDAYS_ENABLE_FBX "Support FBX model overrides (fetches ufbx)" ON)
+if(KHDAYS_ENABLE_FBX AND KHDAYS_ENABLE_PNG)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_ufbx.cmake")
+    add_library(khdays-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 endif()
 
-# Our own targets are UTF-8, source and execution. Without this MSVC reads
-# sources in the host's codepage and mangles non-ASCII literals — the interface
-# is localized, so that matters. Set after FetchContent so third-party targets
-# keep their own flags.
+# Our own targets are UTF-8, source and execution: without this MSVC reads
+# sources in the host's codepage and mangles non-ASCII literals. Set after
+# FetchContent so third-party targets keep their own flags.
 if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
+# The game's data formats, decoded to neutral forms (textures, 2D graphics,
+# fonts, text, models and animation, sound, video containers) and the open
+# formats mods bring (PNG, BMP, glTF).
 add_library(
     khdays-assets
     STATIC
         src/assets/animation.cpp
         src/assets/audio.cpp
-        src/assets/battle_hud.cpp
         src/assets/bmp.cpp
         src/assets/cakp.cpp
         src/assets/cell.cpp
-        src/assets/collision.cpp
         src/assets/font.cpp
+        src/assets/gltf_export.cpp
         src/assets/graphics2d.cpp
+        src/assets/material_animation.cpp
         src/assets/mdl0.cpp
         src/assets/mesh.cpp
         src/assets/message.cpp
         src/assets/mobiclip.cpp
         src/assets/mods.cpp
         src/assets/mods_video.cpp
-        external/khdays-decomp/tools/mobiclip_reference.cpp
-        src/assets/scene3d.cpp
+        external/khdays-decomp/libs/mobiclip/video/portable/mobiclip_reference.cpp
         src/assets/screen.cpp
         src/assets/sdat.cpp
         src/assets/sequence.cpp
@@ -150,11 +130,11 @@ target_include_directories(
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/external/khdays-decomp/tools"
+        "${CMAKE_CURRENT_SOURCE_DIR}/external/khdays-decomp/libs/mobiclip/video/portable"
 )
 
 if(KHDAYS_ENABLE_PNG)
-    target_sources(khdays-assets PRIVATE src/assets/png.cpp)
+    target_sources(khdays-assets PRIVATE src/assets/png.cpp src/assets/image.cpp)
     target_include_directories(khdays-assets PRIVATE "${stb_SOURCE_DIR}")
     target_compile_definitions(khdays-assets PUBLIC KHDAYS_HAS_PNG)
 endif()
@@ -165,499 +145,51 @@ if(KHDAYS_ENABLE_GLTF AND KHDAYS_ENABLE_PNG)
     target_compile_definitions(khdays-assets PUBLIC KHDAYS_HAS_GLTF)
 endif()
 
-if(MSVC)
-    target_compile_options(khdays-assets PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(khdays-assets PRIVATE -Wall -Wextra -Wpedantic)
+if(KHDAYS_ENABLE_FBX AND KHDAYS_ENABLE_PNG)
+    target_sources(khdays-assets PRIVATE src/assets/fbx.cpp)
+    target_include_directories(khdays-assets PRIVATE "${ufbx_SOURCE_DIR}")
+    target_link_libraries(khdays-assets PRIVATE khdays-ufbx)
+    target_compile_definitions(khdays-assets PUBLIC KHDAYS_HAS_FBX)
 endif()
 
+khdays_warnings(khdays-assets)
 khdays_enable_sanitizers(khdays-assets)
 
-# The resource layer resolves neutral assets (from DS formats or user overrides)
-# so the engine never depends on Nintendo DS formats directly.
+# The mod layer (overrides resolved before the originals) and the game
+# filesystem (NitroFS paths across mods, unpacked, decompressed and raw data).
 add_library(
     khdays-resource
     STATIC
         src/resource/loader.cpp
-        src/resource/mission.cpp
-        src/resource/ui_content.cpp
-        src/resource/video.cpp
-        src/resource/world.cpp
         src/vfs/filesystem.cpp
 )
 
 target_link_libraries(khdays-resource PUBLIC khdays-assets)
-
-if(MSVC)
-    target_compile_options(khdays-resource PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(khdays-resource PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
+khdays_warnings(khdays-resource)
 khdays_enable_sanitizers(khdays-resource)
-
-# The game-flow state machine (scenes/tasks/frame loop) and the concrete game
-# scenes. Depends only on the neutral resource layer (never on DS formats or the
-# platform), so gameplay code draws through the Renderer and loads through
-# khdays-resource, which yields neutral forms.
-add_library(
-    khdays-game
-    STATIC
-        src/game/scene.cpp
-        src/game/object.cpp
-        src/game/game.cpp
-        src/game/game_state.cpp
-        src/game/playable_controller.cpp
-        src/game/settings.cpp
-        src/game/software_renderer.cpp
-        src/game/scenes/boot_logo_scene.cpp
-        src/game/scenes/day_transition_scene.cpp
-        src/game/scenes/opening_scene.cpp
-        src/game/scenes/title_scene.cpp
-        src/game/scenes/main_menu_scene.cpp
-        src/game/scenes/gameplay_scene.cpp
-        src/game/scenes/save_file_scene.cpp
-)
-
-target_include_directories(
-    khdays-game
-    PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_link_libraries(khdays-game PUBLIC khdays-resource)
-
-if(MSVC)
-    target_compile_options(khdays-game PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(khdays-game PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-khdays_enable_sanitizers(khdays-game)
-
-add_executable(
-    khdays-port
-    src/main.cpp
-    platform/pc/sdl_runtime.cpp
-    platform/pc/gpu_renderer.cpp
-    platform/pc/audio_backend.cpp
-    platform/pc/music_backend.cpp
-    platform/pc/overlay_ui.cpp
-)
-
-target_include_directories(
-    khdays-port
-    PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_definitions(
-    khdays-port
-    PRIVATE
-        KHDAYS_PORT_VERSION="${PROJECT_VERSION}"
-)
-
-if(KHDAYS_ENABLE_UI)
-    target_link_libraries(khdays-port PRIVATE imgui)
-    target_compile_definitions(khdays-port PRIVATE KHDAYS_HAS_UI)
-endif()
-
-target_link_libraries(
-    khdays-port
-    PRIVATE
-        khdays-resource
-        khdays-game
-        SDL3::SDL3
-)
-
-if(MSVC)
-    target_compile_options(khdays-port PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(khdays-port PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-khdays_enable_sanitizers(khdays-port)
 
 include(CTest)
 
 if(BUILD_TESTING)
-    add_executable(
-        khdays-tex0-test
-        tests/cpp/test_tex0.cpp
-    )
-
-    target_link_libraries(
-        khdays-tex0-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-mdl0-test
-        tests/cpp/test_mdl0.cpp
-    )
-
-    target_link_libraries(
-        khdays-mdl0-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-mesh-test
-        tests/cpp/test_mesh.cpp
-    )
-
-    target_link_libraries(
-        khdays-mesh-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-message-test
-        tests/cpp/test_message.cpp
-    )
-
-    target_link_libraries(
-        khdays-message-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-mobiclip-test
-        tests/cpp/test_mobiclip.cpp
-    )
-
-    target_link_libraries(
-        khdays-mobiclip-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-audio-test
-        tests/cpp/test_audio.cpp
-    )
-
-    target_link_libraries(
-        khdays-audio-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-graphics2d-test
-        tests/cpp/test_graphics2d.cpp
-    )
-
-    target_link_libraries(
-        khdays-graphics2d-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-font-test
-        tests/cpp/test_font.cpp
-    )
-
-    target_link_libraries(
-        khdays-font-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-vfs-test
-        tests/cpp/test_vfs.cpp
-    )
-
-    target_link_libraries(
-        khdays-vfs-test
-        PRIVATE
-            khdays-resource
-    )
-
-    add_executable(
-        khdays-game-test
-        tests/cpp/test_game.cpp
-    )
-
-    target_link_libraries(
-        khdays-game-test
-        PRIVATE
-            khdays-game
-    )
-
-    add_executable(
-        khdays-game-state-test
-        tests/cpp/test_game_state.cpp
-    )
-
-    target_link_libraries(
-        khdays-game-state-test
-        PRIVATE
-            khdays-game
-    )
-
-    add_executable(
-        khdays-anim-channel-test
-        tests/cpp/test_anim_channel.cpp
-    )
-
-    target_link_libraries(
-        khdays-anim-channel-test
-        PRIVATE
-            khdays-game
-    )
-
-    add_executable(
-        khdays-affine-test
-        tests/cpp/test_affine.cpp
-    )
-
-    target_link_libraries(
-        khdays-affine-test
-        PRIVATE
-            khdays-game
-    )
-
-    add_executable(
-        khdays-cakp-test
-        tests/cpp/test_cakp.cpp
-    )
-
-    target_link_libraries(
-        khdays-cakp-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-cell-test
-        tests/cpp/test_cell.cpp
-    )
-
-    target_link_libraries(
-        khdays-cell-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-ui-layout-test
-        tests/cpp/test_ui_layout.cpp
-    )
-
-    target_link_libraries(
-        khdays-ui-layout-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-collision-test
-        tests/cpp/test_collision.cpp
-    )
-
-    target_link_libraries(
-        khdays-collision-test
-        PRIVATE
-            khdays-assets
-    )
-
-    add_executable(
-        khdays-battle-hud-test
-        tests/cpp/test_battle_hud.cpp
-    )
-
-    target_link_libraries(
-        khdays-battle-hud-test
-        PRIVATE
-            khdays-assets
-    )
-
-    if(MSVC)
-        target_compile_options(khdays-tex0-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-mdl0-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-mesh-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-message-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-mobiclip-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-audio-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-graphics2d-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-font-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-vfs-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-game-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-game-state-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-anim-channel-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-affine-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-cakp-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-cell-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-ui-layout-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-collision-test PRIVATE /W4 /permissive-)
-        target_compile_options(khdays-battle-hud-test PRIVATE /W4 /permissive-)
-    else()
-        target_compile_options(khdays-tex0-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-mdl0-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-mesh-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-message-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-mobiclip-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-audio-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-graphics2d-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-font-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-vfs-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-game-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-game-state-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-anim-channel-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-affine-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-cakp-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-cell-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-ui-layout-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-collision-test PRIVATE -Wall -Wextra -Wpedantic)
-        target_compile_options(khdays-battle-hud-test PRIVATE -Wall -Wextra -Wpedantic)
+    # One executable per tests/cpp/test_<name>.cpp, run by ctest as
+    # khdays-<name>. khdays-asset-tests builds them all: CI builds that target
+    # instead of naming each test, so adding a test here is the only place it
+    # has to be added.
+    set(KHDAYS_TESTS
+        audio cakp cell font graphics2d material_animation mdl0 mesh message
+        mobiclip tex0 ui_layout vfs)
+    if(KHDAYS_ENABLE_FBX AND KHDAYS_ENABLE_GLTF AND KHDAYS_ENABLE_PNG)
+        list(APPEND KHDAYS_TESTS model_import)  # the mod models' two formats (specs/014)
     endif()
-
-    khdays_enable_sanitizers(khdays-tex0-test)
-    khdays_enable_sanitizers(khdays-mdl0-test)
-    khdays_enable_sanitizers(khdays-mesh-test)
-    khdays_enable_sanitizers(khdays-message-test)
-    khdays_enable_sanitizers(khdays-mobiclip-test)
-    khdays_enable_sanitizers(khdays-audio-test)
-    khdays_enable_sanitizers(khdays-graphics2d-test)
-    khdays_enable_sanitizers(khdays-font-test)
-    khdays_enable_sanitizers(khdays-vfs-test)
-    khdays_enable_sanitizers(khdays-game-test)
-    khdays_enable_sanitizers(khdays-game-state-test)
-    khdays_enable_sanitizers(khdays-anim-channel-test)
-    khdays_enable_sanitizers(khdays-affine-test)
-    khdays_enable_sanitizers(khdays-cakp-test)
-    khdays_enable_sanitizers(khdays-cell-test)
-    khdays_enable_sanitizers(khdays-ui-layout-test)
-    khdays_enable_sanitizers(khdays-collision-test)
-    khdays_enable_sanitizers(khdays-battle-hud-test)
-
-    add_test(
-        NAME khdays-port-version
-        COMMAND khdays-port --version
-    )
-
-    add_test(
-        NAME khdays-tex0-parser
-        COMMAND khdays-tex0-test
-    )
-
-    add_test(
-        NAME khdays-mdl0-parser
-        COMMAND khdays-mdl0-test
-    )
-
-    add_test(
-        NAME khdays-mesh-decoder
-        COMMAND khdays-mesh-test
-    )
-
-    add_test(
-        NAME khdays-message-container
-        COMMAND khdays-message-test
-    )
-
-    add_test(
-        NAME khdays-mobiclip-colour
-        COMMAND khdays-mobiclip-test
-    )
-
-    add_test(
-        NAME khdays-audio-decoder
-        COMMAND khdays-audio-test
-    )
-
-    add_test(
-        NAME khdays-graphics2d
-        COMMAND khdays-graphics2d-test
-    )
-
-    add_test(
-        NAME khdays-font
-        COMMAND khdays-font-test
-    )
-
-    add_test(
-        NAME khdays-vfs
-        COMMAND khdays-vfs-test
-    )
-
-    add_test(
-        NAME khdays-game-flow
-        COMMAND khdays-game-test
-    )
-
-    add_test(
-        NAME khdays-game-state
-        COMMAND khdays-game-state-test
-    )
-
-    add_test(
-        NAME khdays-anim-channel
-        COMMAND khdays-anim-channel-test
-    )
-
-    add_test(
-        NAME khdays-affine
-        COMMAND khdays-affine-test
-    )
-
-    add_test(
-        NAME khdays-ui-layout
-        COMMAND khdays-ui-layout-test
-    )
-
-    add_test(
-        NAME khdays-collision
-        COMMAND khdays-collision-test
-    )
-
-    add_test(
-        NAME khdays-cakp
-        COMMAND khdays-cakp-test
-    )
-
-    add_test(
-        NAME khdays-cell
-        COMMAND khdays-cell-test
-    )
-
-    add_test(
-        NAME khdays-battle-hud
-        COMMAND khdays-battle-hud-test
-    )
-
-    # Everything ctest runs under the sanitizers job, as one target. CI builds
-    # this instead of naming each test, so adding a test here is the only place
-    # it has to be added -- a hand-written list in the workflow silently drifts,
-    # and the build then fails with "Unable to find executable" at ctest time.
-    # The SDL-linked smoke test is deliberately absent; ctest excludes it too.
-    add_custom_target(
-        khdays-asset-tests
-        DEPENDS
-            khdays-tex0-test
-            khdays-mdl0-test
-            khdays-mesh-test
-            khdays-message-test
-            khdays-mobiclip-test
-            khdays-audio-test
-            khdays-graphics2d-test
-            khdays-font-test
-            khdays-vfs-test
-            khdays-game-test
-            khdays-game-state-test
-            khdays-anim-channel-test
-            khdays-affine-test
-            khdays-cell-test
-            khdays-ui-layout-test
-            khdays-collision-test
-            khdays-cakp-test
-            khdays-battle-hud-test
-    )
+    set(KHDAYS_TEST_TARGETS)
+    foreach(name IN LISTS KHDAYS_TESTS)
+        string(REPLACE "_" "-" dashed "${name}")
+        add_executable(khdays-${dashed}-test tests/cpp/test_${name}.cpp)
+        target_link_libraries(khdays-${dashed}-test PRIVATE khdays-resource)
+        khdays_warnings(khdays-${dashed}-test)
+        khdays_enable_sanitizers(khdays-${dashed}-test)
+        add_test(NAME khdays-${dashed} COMMAND khdays-${dashed}-test)
+        list(APPEND KHDAYS_TEST_TARGETS khdays-${dashed}-test)
+    endforeach()
+    add_custom_target(khdays-asset-tests DEPENDS ${KHDAYS_TEST_TARGETS})
 endif()
