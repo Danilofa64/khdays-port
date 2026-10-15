@@ -8,10 +8,10 @@
 #include "badges.h"
 #include "bg.h"
 #include "elements.h"
+#include "mission_list.h"
 #include "parts.h"
 #include "../host/app/host.h"
 #include "../runtime/display/frame_package.h"
-#include "../runtime/core/rom.h"
 #include "../runtime/core/window.h"
 
 #include <stdio.h>
@@ -21,10 +21,6 @@
 /* the game's */
 extern int GameState_GetField(int field, int bits);
 extern int GetLanguage(void);
-
-#define LIST_FILE "UI/cm/cm.p2"
-#define LIST_CHARACTERS 17   /* its entries */
-#define LIST_PALETTE 20
 
 #define RANK_OPEN 0          /* the icons, characters 0x80-0x83: the ordeal badge's and the blazon's, */
 #define RANK_FOUND 1
@@ -41,28 +37,16 @@ extern int GetLanguage(void);
 #define FOUND_FIELD 0x92b
 #define FOUND_HERE 0x8d4e        /* in the field's context: a byte every 4 */
 
-static KhdaysRomReader *reader;  /* its own: this runs at VBlank, maybe inside the game's own reading */
-
 static int in_game_ram(uint32_t p)
 {
     return khdays_game_ram(p);  /* main RAM or the game's heaps */
 }
 
-static uint32_t le16(const uint8_t *p)
-{
-    return (uint32_t)(p[0] | p[1] << 8);
-}
-
-static uint32_t le32(const uint8_t *p)
-{
-    return le16(p) | le16(p + 2) << 16;
-}
-
 /* --- The icons ------------------------------------------------------------------------ */
 
-static uint8_t icons[4][64];  /* each icon's 8 x 8 palette indices */
-static uint32_t colours[256]; /* the palette, as the picture's colours (RGBA) */
-static int graphics;          /* 0: not read yet, 1: read, -1: not there */
+static uint8_t icons[4][64];      /* each icon's 8 x 8 palette indices */
+static const uint32_t *colours;   /* the list's palette, as the picture's colours (RGBA) */
+static int graphics;              /* 0: not read yet, 1: read, -1: not there */
 
 /* The colour the composition makes of a DS colour (elements.c rgb_of). */
 static uint32_t rgba_of(uint32_t bgr555)
@@ -75,114 +59,14 @@ static uint32_t rgba_of(uint32_t bgr555)
     return out;
 }
 
-/* The icons' characters, from the NCGR of entry 17: its CHAR block follows
- * the header, its pixels start 8 + the offset at +0x1c into it. */
-static int read_icons(const uint8_t *d, uint32_t size)
-{
-    uint32_t block, depth, bytes, at;
-    if (size < 0x10 || memcmp(d, "RGCN", 4) != 0) return 0;
-    block = le16(d + 0xc);
-    if (block + 0x20 > size || memcmp(d + block, "RAHC", 4) != 0) return 0;
-    depth = le32(d + block + 0xc);
-    bytes = le32(d + block + 0x18);
-    at = block + 8 + le32(d + block + 0x1c);
-    if (depth != 4 || at > size || bytes > size - at || bytes < (FIRST_ICON + 4) * 64u) return 0; /* 4: 8 bits a pixel */
-    for (int i = 0; i < 4; ++i) memcpy(icons[i], d + at + (FIRST_ICON + i) * 64u, 64);
-    return 1;
-}
-
-/* The palette, from the D2KP pack of entry 20: its palettes' table (kind 0)
- * at the offset at +8, the first one's offset at +4 into it (Archive_GetMember);
- * an NCLR whose PLTT block follows the header, its colours 8 + the offset at
- * +0x14 into it. */
-static int read_palette(const uint8_t *d, uint32_t size)
-{
-    uint32_t table, nclr, block, bytes, at;
-    if (size < 0x10 || memcmp(d, "D2KP", 4) != 0) return 0;
-    table = le32(d + 8);
-    if (table > size - 8) return 0;
-    nclr = le32(d + table + 4);
-    if (nclr > size - 0x10 || memcmp(d + nclr, "RLCN", 4) != 0) return 0;
-    block = nclr + le16(d + nclr + 0xc);
-    if (block > size - 0x18 || memcmp(d + block, "TTLP", 4) != 0) return 0;
-    bytes = le32(d + block + 0x10);
-    at = block + 8 + le32(d + block + 0x14);
-    if (at > size || bytes > size - at || bytes < 512) return 0;
-    for (int i = 0; i < 256; ++i) colours[i] = i == 0 ? 0u : rgba_of(le16(d + at + 2 * i) & 0x7fffu);
-    return 1;
-}
-
+/* The icons: the list sheet's characters 0x80-0x83 (mission_list.h). */
 static int read_graphics(void)
 {
-    uint8_t *chars = NULL, *set = NULL;
-    uint32_t chars_size = 0, set_size = 0;
-    int ok;
-    if (reader == NULL) reader = khdays_rom_reader_new();
-    ok = khdays_rom_file_data(reader, LIST_FILE, LIST_CHARACTERS, &chars, &chars_size) &&
-         khdays_rom_file_data(reader, LIST_FILE, LIST_PALETTE, &set, &set_size) &&
-         read_icons(chars, chars_size) && read_palette(set, set_size);
-    free(chars);
-    free(set);
-    if (!ok) fprintf(stderr, "ui: the badges' icons are not in %s (entries %d and %d)\n", LIST_FILE,
-                     LIST_CHARACTERS, LIST_PALETTE);
-    return ok;
-}
-
-/* --- Which badges a mission has -------------------------------------------------------- */
-
-/* The mission list's records, read again when the language changes. */
-typedef struct Record {
-    uint16_t room, mission;
-    uint8_t counted, kind;
-} Record;
-
-static Record *records;
-static int record_count;
-static int records_language = -1;
-
-static void read_records(int language)
-{
-    static const char *const codes[] = {"", "en", "fr", "de", "it", "es"}; /* the firmware's numbering */
-    char path[64];
-    uint8_t *d = NULL;
-    uint32_t size = 0, at = 2, count;
-    record_count = 0;
-    if (language < 1 || language > 5) return;
-    snprintf(path, sizeof(path), "UI/cm/msl_%s.msi.z", codes[language]);
-    if (reader == NULL) reader = khdays_rom_reader_new();
-    if (!khdays_rom_file_data(reader, path, -1, &d, &size) || size < 2) {
-        free(d);
-        return;
+    for (int i = 0; i < 4; ++i) {
+        if (!khdays_mission_list_character(FIRST_ICON + (unsigned)i, icons[i])) return 0;
     }
-    count = le16(d);
-    free(records);
-    records = (Record *)malloc((size_t)(count ? count : 1) * sizeof(Record));
-    for (uint32_t i = 0; records != NULL && i < count; ++i) {
-        const uint32_t length = at + 2 <= size ? le16(d + at) : 0;
-        if (length < 0x24 || length > size - at) break;
-        records[record_count].room = (uint16_t)le16(d + at + 2);
-        records[record_count].mission = (uint16_t)le16(d + at + 4);
-        records[record_count].counted = le16(d + at + 0xc) != 1;
-        records[record_count].kind = d[at + 0x23];
-        ++record_count;
-        at += length;
-    }
-    free(d);
-}
-
-/* The badges of `mission` played in `room`, as bits (kind - 1): 0 when the
- * list has no such mission there (a challenge's number, say). */
-static unsigned badges_of(uint16_t room, uint16_t mission)
-{
-    unsigned kinds = 0;
-    int listed = 0;
-    for (int i = 0; i < record_count; ++i) {
-        const Record *r = &records[i];
-        if (r->room != room || !r->counted) continue;
-        if (r->kind == 0) listed |= r->mission == mission;
-        else if (r->kind <= 8) kinds |= 1u << (r->kind - 1);
-    }
-    return listed ? kinds : 0u;
+    colours = khdays_mission_list_colours();
+    return colours != NULL;
 }
 
 /* --- On the panel ------------------------------------------------------------------------ */
@@ -295,13 +179,9 @@ void khdays_ui_badges_emit(void)
     if (graphics == 0) graphics = read_graphics() ? 1 : -1;
     if (graphics < 0) return;
     language = GetLanguage();
-    if (language != records_language) {
-        records_language = language;
-        read_records(language);
-    }
     room = *(const volatile uint16_t *)KHDAYS_W(MODE_FLAGS + 2u);
     mission = *(const volatile uint16_t *)KHDAYS_W(MISSION);
-    kinds = badges_of(room, mission);
+    kinds = khdays_mission_badges(language, room, mission);
     if (kinds == 0 || !khdays_bg_text_layer(1, 2, &l) || !find_counter(&l, &x, &y, &entry)) return;
     found = (unsigned)GameState_GetField(FOUND_FIELD + 4 * mission, 4);
     context = *(const volatile uint32_t *)KHDAYS_W(FIELD_CONTEXT);

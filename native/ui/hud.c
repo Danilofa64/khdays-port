@@ -8,6 +8,7 @@
  * show anything, with their place, cells, characters, palettes and files. */
 #include "hud.h"
 #include "badges.h"
+#include "crowns.h"
 #include "player_names.h"
 #include "bg.h"
 #include "elements.h"
@@ -486,6 +487,7 @@ static void emit(void)
         party_there |= there && strcmp(pieces_table[n].id, "hud.portrait") == 0;
     }
     khdays_ui_player_names_emit(party_there); /* the port's: the players' names in multiplayer */
+    khdays_ui_crowns_emit();                  /* the port's: the crowns on the story's day list */
 }
 
 void khdays_ui_hud_init(void)

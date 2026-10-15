@@ -2448,6 +2448,40 @@ the five walks every 300 frames (Release, 2026-10-04):
   bits, the running game's state holds 1 there (GameState_GetField at the
   list) and the list shows the ordeal badge found. A badge's icon lights
   when it is picked up (the maintainer, playing, 2026-10-08).
+- *The crowns on the story's day list* (a port addition, `ui/crowns.c`,
+  2026-10-15; read in the running game with `saves/khdays.sav`, every day
+  complete, and an older save, some days not). The story's Holo-Missions
+  (ov025) list the days on engine B: page B (`Ov025_ScrollList_*`, the
+  context's +0x95a0, the context the second word of `data_ov025_020b5744`)
+  holds the rows at +4 (0x10 bytes each: the first and the last day of the
+  span), their count at +8, the cursor at +0x2c8 and the scroll at +0x2d0 in
+  dots, 16 a row (a key press moves it a whole row). `Ov025_ScrollList_BuildRows`
+  makes a row of a span of `data_ov025_020b39e4`'s table when a record of
+  `msl_<lang>.msi.z` falls in it: +6 its first day on or after the span's,
+  +8 its last on or before, +0xc 0 (`Ov025_MissionList_HasVisibleMissionInDays`);
+  54 rows in a complete game (8, 9, ..., 15-21, 26-50, ..., 358-399). A day's
+  missions show how far they are only on the list that day opens
+  (`Ov025_DrawMissionRow`): the cleared seal (field 0x28e4 + 3 x the mission
+  is 3: LISTO), "found / total" chests (`Ov025_CountGroupFlagsSet`) and the
+  badges as above; the 0-3 of field 0x2a4c + 3 x the mission are Mission
+  Mode's crowns, not shown there (0 for mission 15 in the complete save).
+  The chests are `mi/mi/trbox` (the game asks for `mi/mi/trBox`;
+  `Ov025_RelocateOffsetTable2`): the group count in its first byte, each
+  group's offset from the file's start at +4 + 4 x its number; a group's
+  room key (u16, the record's +2), its chest count (s8) at +2, from +8 its
+  chests 0x14 bytes apart (a group's last one 16 bytes in the file), each
+  a found flag less 9 (s16) first -- 89 groups; mission 15 (Agrabah, room
+  key 401) has 5, the "5/5" its row shows. Opening days 26-50 with the older
+  save shows mission 15 at 4/5: that row has no crown. The list's rows: on
+  engine B's BG1 (row text, 8 bits a pixel) over the plates in BG2 and BG3,
+  no windows; a row's plate takes x 16-214 and y 18-30 of the row's 16 from
+  y 16 less the scroll, and the list shows ten rows, its area the touch area
+  `Ov025_ScrollList_Open` gives it (0xe0 x 0xa0 at (16, 16)). The crown is
+  the gold one of `cm.p2` entry 17's four (black, bronze, silver, gold:
+  characters 0x40-0x47 over 0x60-0x67), its dots in columns 2-15 and rows
+  1-13 of its 16: drawn at (195, 17 + 16 x row - scroll) in BG1, it fills
+  the plate's height at its right end. Challenges have a list of their own
+  (by world, with their stamps), without the day list.
 
 ## 15. One screen
 
