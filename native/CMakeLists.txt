@@ -532,6 +532,14 @@ add_test(NAME khdays-onescreen COMMAND khdays-onescreen-test)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME khdays-references
          COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/references_test.py")
+# The installer's tools (installer/): one test each, in Python, named after its file.
+file(GLOB KHDAYS_INSTALLER_TESTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/installer/tests/*_test.py")
+foreach(installer_test ${KHDAYS_INSTALLER_TESTS})
+    get_filename_component(installer_test_name "${installer_test}" NAME_WE)
+    string(REGEX REPLACE "_test$" "" installer_test_name "${installer_test_name}")
+    string(REPLACE "_" "-" installer_test_name "${installer_test_name}")
+    add_test(NAME khdays-installer-${installer_test_name} COMMAND "${Python3_EXECUTABLE}" "${installer_test}")
+endforeach()
 
 # The execution contexts the game's threads run on (host/app/context.h): more of
 # them than the old fixed table held, each resumed in turn.

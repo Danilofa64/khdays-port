@@ -98,6 +98,11 @@ bool autodetect_data_root(const std::filesystem::path& extracted_dir) {
     }
     for (const auto& entry :
          std::filesystem::directory_iterator(extracted_dir, ec)) {
+        // an extraction still being made (the installer's, named <hash>.partial until it is whole)
+        // is never taken
+        if (entry.path().extension() == ".partial") {
+            continue;
+        }
         if (entry.is_directory(ec)
             && std::filesystem::is_directory(entry.path() / "nitrofs", ec)) {
             g_data_root = entry.path();
