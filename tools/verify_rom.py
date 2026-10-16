@@ -11,6 +11,9 @@ from typing import Any
 
 
 HEADER_MIN_SIZE = 0x200
+CAPACITY_OFFSET = 0x14  # the cartridge's capacity: 128 KiB shifted left by this byte
+USED_SIZE_OFFSET = 0x80  # the ROM's used size: a trimmed dump ends here
+LARGEST_CAPACITY_SHIFT = 12  # 512 MiB, the largest DS cartridge
 
 REGION_BY_CODE = {
     "E": "USA",
@@ -39,11 +42,27 @@ def decode_ascii(raw: bytes) -> str:
     return raw.split(b"\x00", 1)[0].decode("ascii", errors="replace").strip()
 
 
-def sha256_file(path: Path) -> str:
+def whole_dump_sha256(path: Path) -> str:
+    """The ROM's SHA-256 as a whole dump of its cartridge. A trimmed dump (cut after the ROM's used
+    size) is hashed with the cartridge's 0xFF padding put back, so it matches the whole dump."""
+    size = path.stat().st_size
+    with path.open("rb") as stream:
+        header = stream.read(HEADER_MIN_SIZE)
+    padding = 0
+    if len(header) == HEADER_MIN_SIZE and header[CAPACITY_OFFSET] <= LARGEST_CAPACITY_SHIFT:
+        capacity = 0x20000 << header[CAPACITY_OFFSET]  # 128 KiB << the header's byte
+        used = int.from_bytes(header[USED_SIZE_OFFSET : USED_SIZE_OFFSET + 4], "little")
+        if HEADER_MIN_SIZE <= used <= size < capacity:
+            padding = capacity - size
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
+    fill = b"\xff" * (1024 * 1024)
+    while padding > 0:
+        step = min(padding, len(fill))
+        digest.update(fill[:step])
+        padding -= step
     return digest.hexdigest()
 
 
@@ -74,7 +93,7 @@ def read_rom_info(path: Path) -> RomInfo:
         rom_version=rom_version,
         header_crc16=header_crc16,
         file_size=path.stat().st_size,
-        sha256=sha256_file(path),
+        sha256=whole_dump_sha256(path),
         region=region,
     )
 

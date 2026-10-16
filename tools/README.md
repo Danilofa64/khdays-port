@@ -12,7 +12,9 @@ py .\tools\extract_data.py "E:\path\game.nds"
 py .\tools\decompress_data.py ".\data\extracted\<hash>"
 ```
 
-- `verify_rom.py` checks the ROM's SHA-256 against `supported_roms.json`.
+- `verify_rom.py` checks the ROM's SHA-256 against `supported_roms.json`. A trimmed dump (cut
+  after the ROM's used size) is hashed with its cartridge's 0xFF padding put back, so it counts as
+  the whole dump; `extract_data.py` hashes it the same way.
   `--json` prints what it read; `--print-entry` prints an entry for that
   list. Register only clean dumps whose region and revision you confirmed,
   with their real hash. Exit codes: 0 supported, 1 read error, 2 not
