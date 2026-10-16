@@ -134,14 +134,11 @@ shape upper 128 84 128 107 at bottom-right margin 0 0 5 6 scale 0.766667
 shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 
 # ----------------------------------------------------------------------------
-# The field's dialogs (an event's text: the dialog box, the speaker's face and
-# name, a challenge's label above; a person's words): the upper screen whole,
-# the 3D across the whole picture behind it (the maintainer's choice from the
-# pictures, 2026-10-14). At the HUD's size up to the DS's, never larger (a
-# smaller HUD makes it smaller, the maintainer's choice of 2026-10-16), held at
-# the bottom, where its box is. A challenge in play: its label (the upper
-# screen's top left, rows 0-13) at the top under the countdown, as small as the
-# HUD's pieces.
+# The field's dialogs (an event's text, a person's words): the upper screen
+# whole over the 3D, at the HUD's size but never larger than the DS's, at the
+# bottom where the dialog box is (the maintainer's choices). A challenge in
+# play: its label (the upper screen's top left, rows 0-13) at the top under the
+# countdown, as small as the HUD's pieces.
 [field if dialog]
 shape upper at bottom scale 1 at-most fixed(1)
 stop

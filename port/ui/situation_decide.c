@@ -92,11 +92,9 @@ static int mission_start_info(const KhdaysSituationInputs *in)
     return in->mission_start >= 3 && in->mission_start <= 6;
 }
 
-/* The same panel's state 10: a person's words in the field, in a box across the upper screen's
- * lower half where the deck and the party were. In 9 before it the HUD is still drawn
- * (Ov002_LeavePanelForMap clears BG1 and BG3 as it moves to 10), in 11 after it the HUD comes
- * back (the story walk on to day 7's Grey Area, Saix's words: the box f12954-13064 of state 10
- * f12954-13067, the HUD again from f13082 in state 11, f13068-13090). */
+/* A person talking in the field: the same panel in state 10 shows the talk's box across the bottom
+ * of the upper screen. States 9 and 11 come before and after it with the HUD still or again drawn,
+ * so they are not a dialog (RUNTIME_MAP section 15.6, "dialog"). */
 static int field_talk(const KhdaysSituationInputs *in)
 {
     return in->mission_start == 10;
@@ -104,7 +102,7 @@ static int field_talk(const KhdaysSituationInputs *in)
 
 /* The overlays the rules name (RUNTIME_MAP section 1). */
 #define OV_GAME_OVER 27 /* ov027_game_over: Ov027_GameOverFadeIn .. Ov027_GameOverIdle (mission walk f5571-6539) */
-#define OV_SHOP 26      /* ov026_shop: the field's moogle, a sub-scene of ov002 (Ov026_FillSceneHooks) */
+#define OV_SHOP 26      /* ov026_shop: the moogle's shop, a sub-scene of the field (Ov026_FillSceneHooks) */
 #define OV_CREDITS                                                                                                     \
     11 /* ov011: the credits (Ov011_CreateScene .. Ov011_StartTitleExit, khdays_movie_hd_credits' hooks) */
 
@@ -119,8 +117,7 @@ static int field_screens(const KhdaysSituationInputs *in)
     if (loaded(in, OV_GAME_OVER)) {
         return KHDAYS_SIT_GAME_OVER;
     }
-    /* the moogle's shop: ov026 loaded over the field's overlays, which load again when it closes
-     * (a player's session: f12604-12765 and from f14505) */
+    /* the moogle's shop, loaded over the field */
     if (loaded(in, OV_SHOP)) {
         return KHDAYS_SIT_SHOP;
     }
@@ -193,8 +190,8 @@ static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
     uint32_t s = 0;
 #define ST(n) (1u << KHDAYS_ST_##n)
     if (scene == KHDAYS_SIT_FIELD || scene == KHDAYS_SIT_FIELD_3D_BOTH || scene == KHDAYS_SIT_TUTORIAL) {
-        /* an event of the field runs its text (ov023's status bit 1, Ov023_SceneRun: story walk
-         * f10155-11926) -- to confirm on the walks -- or a person talks */
+        /* a dialog: an event's text (ov023's status bit 1, Ov023_SceneRun: story walk f10155-11926;
+         * to confirm on the walks) or a person talking */
         const int event_text = in->event_status >= 0 && (in->event_status & 2) != 0;
         if (mission_start_info(in)) {
             s |= ST(INFO_UPPER);
