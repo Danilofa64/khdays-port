@@ -75,6 +75,33 @@ class State(unittest.TestCase):
             self.assertFalse(s.step_done(again, "data", {"rom": "other"}))  # inputs changed: redo
             self.assertFalse(s.step_done(again, "hd", inputs))
 
+    def test_hd_made_is_left_as_it_is(self):
+        with tempfile.TemporaryDirectory() as d:
+            install = Path(d)
+            made = install / "mods" / s.HD_MOD
+            state = {}
+            s.mark_step(state, "hd-menus", {"1.5+2.5": r"z:\games\KH 1.5", "2.8": r"z:\games\KH 2.8"})
+            folders = {"1.5+2.5": "Z:\\Games\\kh 1.5\\", "2.8": r"Z:\Games\KH 2.8"}  # as Windows compares them
+            self.assertFalse(s.hd_made(state, "hd-menus", folders, made))  # nothing there: made again
+            made.mkdir(parents=True)
+            (made / "layouts").mkdir()
+            self.assertTrue(s.hd_made(state, "hd-menus", folders, made))
+            self.assertFalse(s.hd_made(state, "hd-menus", {**folders, "2.8": r"Z:\Other"}, made))
+            self.assertFalse(s.hd_made(state, "hd-videos", folders, made))
+            # the command: everything asked for already made, so no collection is read
+            s.save_state(install, state)
+            result = s.build_hd(
+                s.argparse.Namespace(
+                    install=install,
+                    menus=True,
+                    videos=False,
+                    c1525=Path(folders["1.5+2.5"]),
+                    c28=Path(folders["2.8"]),
+                    language="en",
+                )
+            )
+            self.assertTrue(result["skipped"])
+
 
 class Results(unittest.TestCase):
     def run_command(self, *argv):

@@ -50,10 +50,11 @@ HD 1.5+2.5 ReMIX and HD 2.8 Final Chapter Prologue: the tools' `mods/HD PACK`) a
 entries the tools need straight from the collections' archives (`collection_archive.py`: the
 format and its encryption found by our own reverse engineering of the collections' executables;
 the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.exe`, never kept),
-runs the tools under a folder of their own and puts what they made in place whole.
-Either folder may be left empty: a choice whose collection is not given cannot be ticked. (The
-page is a text page with its own Browse buttons, because Inno's folder page refuses an empty
-folder.)
+runs the tools under a folder of their own and puts what they made in place whole. An update
+leaves the pieces already made from the same collections as they are (deleting their folder makes
+them again). Either folder may be left empty: a choice whose collection is not given cannot be
+ticked. (The page is a text page with its own Browse buttons, because Inno's folder page refuses an
+empty folder.)
 
 ## Add to Steam
 

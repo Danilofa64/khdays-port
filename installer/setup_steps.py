@@ -165,6 +165,21 @@ def mark_step(state: dict[str, Any], step: str, inputs: dict[str, Any], **more: 
     state.setdefault("steps", {})[step] = {"complete": True, "inputs": inputs, **more}
 
 
+def same_folder(a: str, b: str) -> bool:
+    """Whether two folder paths name the same folder, as Windows compares them (case, separators)."""
+    return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+
+
+def hd_made(state: dict[str, Any], step: str, folders: dict[str, str], made: Path) -> bool:
+    """Whether an HD step was made from these collection folders and what it made is still there: an
+    update then leaves it as it is."""
+    record = state.get("steps", {}).get(step)
+    if not record or record.get("complete") is not True or not made.is_dir() or not any(made.iterdir()):
+        return False
+    recorded = record.get("inputs", {})
+    return set(recorded) == set(folders) and all(same_folder(recorded[k], folders[k]) for k in folders)
+
+
 # ---- The commands ------------------------------------------------------------------------------
 
 Command = Callable[[argparse.Namespace], dict[str, Any]]
@@ -644,6 +659,16 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
         raise Refusal("hd-needs-both")
     if args.videos and args.c1525 is None:
         raise Refusal("hd-needs-1525")
+    # an update leaves the pieces already made from the same collections (their folder deleted: made again)
+    made_before = load_state(install)
+    if args.menus and hd_made(
+        made_before, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)}, install / "mods" / HD_MOD
+    ):
+        args.menus = False
+    if args.videos and hd_made(made_before, "hd-videos", {"1.5+2.5": str(args.c1525)}, install / "data" / "cutscenes"):
+        args.videos = False
+    if not args.menus and not args.videos:
+        return {"pieces": [], "skipped": True, "message": words("hd-ready", args.language)}
     for kind, folder in (("1.5+2.5", args.c1525), ("2.8", args.c28)):
         if folder is not None and (args.menus or kind == "1.5+2.5"):
             missing = check_folder(kind, folder)
