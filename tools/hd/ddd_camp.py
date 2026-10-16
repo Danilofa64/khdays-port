@@ -1,45 +1,7 @@
 #!/usr/bin/env python3
-"""Mission Mode's camp menu on one screen, in the camp pieces of KINGDOM HEARTS Dream Drop Distance HD
-in Days's tones.
-
+"""Mission Mode's camp menu on one screen, in Dream Drop Distance HD's camp pieces in Days's tones, from
+your own copies (DDD, MARE, SETTINGS: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/camp/.
   python tools/hd/ddd_camp.py DDD MARE SETTINGS [--mod NAME] [--lang es|en|fr|de|it ...] [--data DIR]
-
-DDD is Dream Drop Distance's files from your own copy of KINGDOM HEARTS HD 2.8 Final Chapter
-Prologue as OpenKh's extractor writes them (newgame_dialog.py's: the folder kh3d_first.hed_out);
-MARE the 358/2 Days theater's of KINGDOM HEARTS HD 1.5+2.5 ReMIX (theater_title.py's), for the
-characters' faces and the input icons; SETTINGS the same collection's settings menu
-(theater_settings.py's: <collection>/Image/SettingMenu.hed_out/original), for the Preferences
-page's capsules and arrows; --data the port's extracted game data (data/extracted/<hash>,
-found by default), for the DS's own trial symbols. The screen goes to mods/NAME/layouts/camp/<lang>/
-(NAME "Theater title" by default): camp.txt (host/screens/camp_screen.c reads it, runtime/menus/camp.c gives it
-the game's menu), its atlas and font, and camp_backdrop.png, the picture behind the game's 3D (the
-one-screen picture draws it, host/render/onescreen.c), and camp_page_backdrop.png, the Preferences page's
-(the same, one panel in the place of the model's box, the trials and the status panel). Nothing of the collections is in the port: run this
-on your copies.
-
-What it is (the maintainer's choices, from mock-ups): DDD's camp menu
-(menu/<lang>/camp/comn/comn/bin/camp00_n.l2d and its HD textures) with its blues made Days's greys
--- its sides' shade (layout 3), its top band (layout 1 nodes 1 and 43), its bottom band with the
-heart (layout 14 node 2), its title's pill in red (layout 1 node 10) with its word MENU as DDD draws it
-(node 11, the language's), its command bars (layout 11, node 100: control 0, and control 4 for the
-one selected), the inner panel of its portrait frame (layout 23 node 16 without its checks) as large as
-the frame, its pink edge in red, where the game's own 3D model shows, a bar of its (layout 11 node
-700) for the trials, its status panel (layout 17 node 10, without its scroll bar), its money's word in white (layout 14 node 401,
-the language's) and its big digits (cnt_00), its settings key (layout 1 node 2: the keyboard's
-Esc and the gear, its columns split where the gear begins); the theater's face of the character
-played (theater_mission.py's FACES); the DS's trial symbol (UI/srslt/res.p2 entry 2 cell 45, the
-sigil), DDD's save screen's crown (save_screen.py's); DDD's help font (newgame_dialog.py's). The
-words are the game's (UI/cm/str/status_&.s, root_&.s, select_&.s; UI/mlt/mlt_&.s), but for the
-options, which the game writes only in pictures (UI/cm/cmo_&.p2 entry 1, cells 14, 15, 22, 23, 24,
-18 and 19 for Mission Mode's seven): OPTIONS transcribes them, read from those cells.
-
-The Preferences page (in the menu, not a screen of its own):
-the status panel stretched to one panel, its ends kept; the settings menu's section tabs (layout
-700 node 701, controls 0 and 6) for the page's sections and its rows (750 node 751, controls 0 and
-4) with its choice's arrows (1020 nodes 1027 and 1028) for the settings, each drawn at its size as
-the settings menu draws them (settings_skin.cpp's lay(): the ends' shape kept), in theater_settings.py's
-Days's tones; DDD's save screen's scroll bar's thumb (layout 5 node 5556) when a section's settings
-do not all fit. The words are the game's (UI/cm/str/cfg_&.s).
 """
 from __future__ import annotations
 

@@ -1,31 +1,8 @@
 #!/usr/bin/env python3
-"""The HD videos and their subtitles from the 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX.
-
-  python tools/hd/theater_movies.py MARE [--movies DIR] [--videos] [--subtitles] [--force]
-                                         [--lang es|en|fr|de|it ...]
-
-MARE is the theater's files as OpenKh's extractor writes them (<collection>/Image/Mare.hed_out/
-original, theater_title.py's); --movies its videos (<collection>/STEAM/Mare/MOVIE/Days/dt, found
-from MARE by default). Nothing of the collection is in the port: run this on your copy. Without
---videos or --subtitles it does both.
-
---videos: the theater's videos as the port plays them in the game's movies' place
-(data/cutscenes/cinematics/hd<id>.mp4, [video] movies = hd): hd8NN.mp4, DOP.mp4 as the opening's
-(802: the same length, 299.7 s, and hd802's subtitles) and DED.mp4 as the ending's (843: the ending
-and its staff roll, 382.4 s, which the port plays in place of the movie and the roll both; its
-subtitles are event hd844's, whose sound is DED's; CED.mp4 is Re:coded's). Their first 0x100 bytes
-are XORed with a 16-byte pattern (it shows where the movie header's bytes are zero); the rest is a
-plain MP4. A video already there is kept unless --force.
-
---subtitles: each language's subtitles as the theater draws them over its videos, for the port to
-draw over the videos ([video] subtitles = on): data/cutscenes/cinematics/subtitles/<lang>/
-hd<id>.png, every line drawn, and hd<id>.txt, when each shows. The theater keeps, for each video,
-an event file (<lang folder>/event/<lang>/hd/hd<id>/hd<id>.exia2, XML: a SCHEDULE_TEXT_MOVIE for
-each language, DATA FrameStart FrameEnd TextID, the frames the video's, 30 a second), the words in
-its message tables (<lang folder>/message/<lang>/event/hd/bin/cthd*.ctd, TextID = group << 16 |
-id; see WORDS) and its event font (<lang folder>/font/eventfont.tm2 and .cod, the glyphs outlined in black).
-Their size and places were measured on the theater itself, in window captures of the collection
-playing its videos with subtitles: see SCALE.
+"""The HD videos and their subtitles from the 358/2 Days theater (MARE, its videos in --movies: found
+from MARE by default), from your own copy (docs/HD_SCREENS.md, "Making them"). Without --videos or
+--subtitles it does both; a video already there is kept unless --force.
+  python tools/hd/theater_movies.py MARE [--movies DIR] [--videos] [--subtitles] [--force] [--lang ...]
 """
 from __future__ import annotations
 
@@ -57,12 +34,9 @@ OPENING = ('DOP.mp4', '802')
 ENDING = ('DED.mp4', '843')
 ENDING_EVENT = '844'   # the ending's subtitles: no DS movie 844, its sound DED_MONO
 OUT = tt.ROOT / 'data' / 'cutscenes' / 'cinematics'
-# Measured on the theater (the maintainer's window captures, 2026-10-15: hd818's two lines "Son
-# los días que han pasado..." and a one-line subtitle, the 1998 x 1125 pictures scaled to the
-# 1920 x 1080 one): the font's 32-texel cells drawn 1.445 times their size, a space 13.75 of its
-# texels, each glyph advancing its width in the .cod (the three lines' white within a dot of the
-# captures'); the lines' cells 51 apart, the last one's top at 956 (955 and 958 measured); the
-# block of lines centred on 964 (964 to 965.5), each line from its left edge.
+# Measured on the theater's window captures (hd818's lines, scaled to 1920 x 1080): the font's cells
+# drawn 1.445 times their size, a space 13.75 texels, the lines 51 apart, the last one's top at 956,
+# the block centred on 964 (docs/HD_SCREENS.md).
 SCALE, SPACE, PITCH, LAST_TOP, CENTRE = 1.445, 13.75, 51, 956, 964
 PICTURE = (1920, 1080)
 RATE = 30

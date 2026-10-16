@@ -1,20 +1,6 @@
-"""The pause's HD pictures for a mod (ui/pause.cpp draws them): its title, its lines and the
-"Are you sure?" question, in each of the game's five languages.
-
+"""The pause's HD pictures for a mod (ui/pause.cpp draws them): its title, lines and question in the
+game's five languages, from your own pictures and KH Re:Collection's fonts (docs/HD_SCREENS.md).
   python tools/hd/hd_pause.py PIECES FONTS [--mod "mods/HD HUD"]
-
-PIECES is a folder of the player's own pictures (from their copies of the KH games):
-  pause_label.png   the title's two bars, without a word (1024 x 256)
-  select2.png       a line's capsule (1024 x 193)
-  command2.png      the same capsule lit (red)
-  select.png        the hand that points at the lit line
-FONTS is Kingdom Hearts Re:Collection's Fonts folder (Televo's free fonts): KHGummi.otf for the
-title, KHMenu.otf for the lines.
-
-Written into the mod's layouts/pause/: hand.png, and for each language <lang>/title.png,
-<lang>/question.png and each line's <key>.png and <key>_lit.png. The words are the game's (its
-pause/etcicon.NSCR strips over pause/pausebg_&.pbg) and the port's Retry
-(host/screens/ui_text.c TXT_PAUSE_RETRY).
 """
 from __future__ import annotations
 

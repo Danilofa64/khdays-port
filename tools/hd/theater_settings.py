@@ -1,31 +1,7 @@
 #!/usr/bin/env python3
-"""The settings menu as KINGDOM HEARTS HD 1.5+2.5 ReMIX draws its own, in Days's colours.
-
-  python tools/hd/theater_settings.py SETTINGS [--mod NAME] [--lang es|en|fr|de|it ...]
-                                          [--preview DIR]
-
-SETTINGS is the collection's settings menu as OpenKh's extractor writes it
-(<collection>/Image/SettingMenu.hed_out/original). Nothing of the collection is in the port: run
-this on your copy. The pieces go beside the title's (mods/NAME/layouts/settings/<lang>/, NAME
-"Theater title" by default): settings_atlas.png, settings_font.png and settings.txt, which the
-port's settings menu (host/settings/settings_menu.cpp) draws itself with when they are there.
-
-What they are: the collection's menu (<lang folder>/l2d/setting_1525.l2d, OpenKh's BBS L2D like
-the theater's, sp uk fr gr it for es en fr de it): layout 100 the screen (101 its ground, 102 the
-heading's tab with the menu's name and the band's lines, 103 the faded pictures of its sections,
-the screen, the sound, the gamepad, the keyboard and a film, of which the menu shows one), 150's
-node 181 the line between the sections and the rows; 700 a section's tab, 750 a row's capsule,
-850 a switch's (862 its check), 950 a number's (962 its slider: the track, its ends, the filled
-part and the knob), 1020's 1027 and 1028 a choice's arrows, 650 the question (661 its window, its
-title in the window's texels, 662 and 663 its answers), 1010's 340 the hints' bar, 400's 411 (its control 4) the gamepads' pictures (a PlayStation, an
-Xbox, another), 350's 361 the keyboard's and 300's 329 the mouse's. A node's
-controls: 0 shown, 3 dimmed, 4 selected (a section's tab: 4 moving right, 5 flashing, 6 chosen,
-18 texels right of its place). The menu's words are in its own font
-(<lang folder>/font/menufont.tm2 and .cod, theater_title.py's).
-
-Days's colours (the new game's dialogs' tones, newgame_dialog.py): every
-colour as the grey of its brightness, the selected pieces' gold red and their bright rim silver,
-the switch's check red as it is.
+"""The settings menu as the HD 1.5+2.5 collection draws its own, in Days's colours, from your own copy
+(SETTINGS: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/settings/<lang>/.
+  python tools/hd/theater_settings.py SETTINGS [--mod NAME] [--lang es|en|fr|de|it ...] [--preview DIR]
 """
 from __future__ import annotations
 

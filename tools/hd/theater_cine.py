@@ -1,40 +1,7 @@
 #!/usr/bin/env python3
-"""MODO CINE's list as the 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX shows its chapters.
-
-  python tools/hd/theater_cine.py MARE [--mod NAME] [--lang es|en|fr|de|it ...] [--data DIR]
-                                         [--preview DIR]
-
-MARE is the theater's files as OpenKh's extractor writes them from your own copy of the
-collection (theater_title.py's); --data the port's extracted game data (data/extracted/<hash>,
-found by default). The list goes to mods/NAME/layouts/cine/<lang>/ (NAME "Theater title" by
-default): cine.txt, cine_atlas.png and cine_font.png, which host/screens/cine_screen.c draws over the
-window while the game's own list runs (runtime/menus/cinelist.c); each scene's background goes to
-mods/NAME/layouts/cine/art/. Nothing of the collection is in the port: run this on your copy.
---preview also draws each language's list with its first page, as the port lays it out.
-
-What it draws is the theater's chapter list, layout 118 of <lang dir>/l2d/days_theatre.l2d, at
-the size the theater draws it: the layout's texels are the 1920 x 1080 picture's pixels (the
-maintainer's capture of the theater, matches it to the pixel). In it the game's own
-list (Ov000_FillListRows, Ov000_DrawListScene): its 28 scenes, ten to a page from the game's
-first row, the game's cursor -- in the theater's rows, the first in the place of its "play all"
-bar; each scene's name and length (UI/thr/thr_<lang>.s, records 1-28 and 29-56; record 0 the
-help, drawn in the theater's help bar) in the theater's menu font, the length where the theater
-has its row's report icon; the day as the theater's chapter has it (the theater's DIA and its
-digits, tinted as it tints them, on a day's first scene; its dark square on those rows only, day
-0's without a day: the capture's rows); the glove the collection's launcher has
-(launcher.l2d's part 65) where the capture has it; and behind it all the artwork of the scene's
-chapter (bg/artwork/<name>.tm2, the theater's node 106) under the theater's veil (node 700).
-Sizes and places not in the layout were measured on the capture: see MEASURED.
-
-The theater's own data (no documentation of them is known): data/DaysTheater.thd
-("THD@", u16 count at 6, 28-byte records from 0x10, then strings: a record's u16 at 8, 12 and 16
-are the offsets of its event's file, its video's and its music's) lists the theater's scenes;
-data/DaysTheater.chp ("CHP@", u16 count at 6, 96-byte records from 8, then strings: a record's
-u16 at 2 its day, 8 its artwork's offset, 32 its scenes' count and 36 on their THD indices) its
-chapters. A DS scene is the THD scene whose event is hd<movie>/ (the DS's movie numbers:
-thr.p2's entry 7); its chapter the first one holding that scene at or after the chapter of the
-scene before it (818 is in two: the prologue's and its own day's); 843, the ending, is in no
-chapter and takes the one of the theater's own ending (its DED.mp4).
+"""MODO CINE's list as the 358/2 Days theater shows its chapters, from your own copy of the HD 1.5+2.5
+collection (MARE: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/cine/.
+  python tools/hd/theater_cine.py MARE [--mod NAME] [--lang es|en|fr|de|it ...] [--data DIR] [--preview DIR]
 """
 from __future__ import annotations
 

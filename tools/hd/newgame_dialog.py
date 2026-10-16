@@ -1,34 +1,7 @@
 #!/usr/bin/env python3
-"""Make the new game's dialogs from KINGDOM HEARTS Dream Drop Distance HD.
-
-  python tools/hd/newgame_dialog.py DDD MARE HAND [--mod NAME] [--lang es|en|fr|de|it ...]
-                                         [--preview DIR]
-
-DDD is Dream Drop Distance's files from your own copy of KINGDOM HEARTS HD 2.8 Final Chapter
-Prologue, as OpenKh's extractor writes them (OpenKh.Command.IdxImg hed extract
-<2.8>/Image/dt/kh3d_first.hed): the folder kh3d_first.hed_out. MARE is the 358/2 Days theater's
-files (theater_title.py's), whose main menu is the dialogs' background. HAND is the pointing glove's
-picture, from KINGDOM HEARTS II's title sheet (OpenKh's KH2 data: remastered/menu/fm/title.2ld/
-UK_title_2ld0.png): DDD's own is not among kh3d_first's textures. Nothing of the collections is in
-the port: run this on your copies. --preview draws each state, as the port does, into DIR/<lang>/.
-
-The pictures go beside the title's (mods/NAME/layouts/title/<lang>/, NAME "Theater title" by
-default): newgame_atlas.png and, for each state of the new game's dialogs,
-newgame<options>_<step>_<row>.txt (the port's animated pictures, docs/COMPOSITIONS.md): options the
-story level's options behind the dialogs (1 NEW GAME alone, 2 with CONTINUE: a save is there),
-step 1 the difficulty (row: the one selected), 2 the subtitles (row: 0 yes, 1 no), 3 the settings
-to confirm (row: difficulty x 4 + subtitles x 2 + the button selected, 0 yes, 1 no). Each opens as
-DDD's opens its dialogs (the window's control 1) and then holds, the selected button's border
-pulsing (its control 4, 60 frames). Behind them the theater's menu stands as the story level showed
-it when NEW GAME was chosen (the options stay, darkened with the rest).
-
-What they are: DDD's new game dialogs (menu/en/title/title_menu/bin/title_menu_n.l2d, its HD
-texture US_title_menu.dds at twice the CTRT's 512 texels): layout 1 the shade over the title,
-layout 2 the heading's tab, layout 3 the window with three buttons, 5 with two, 7 the settings
-with their rows; the words DDD's own (message/<lang>/system/bin/ct00000.ctd and ct00200.ctd) in its
-help font (font/en/bin/helpfont.bcfnt, its HD sheet), where its nodes anchor them. The words'
-sizes and colours, and the heading's and the buttons' words' places, are measured on the
-maintainer's captures of DDD's own dialogs: the code that sets them is DDD's.
+"""Make the new game's dialogs from Dream Drop Distance HD, over the theater's menu, from your own copies
+(DDD, MARE, HAND: docs/HD_SCREENS.md, "Making them"), beside the title's pictures.
+  python tools/hd/newgame_dialog.py DDD MARE HAND [--mod NAME] [--lang es|en|fr|de|it ...] [--preview DIR]
 """
 from __future__ import annotations
 

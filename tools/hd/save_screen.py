@@ -1,43 +1,7 @@
 #!/usr/bin/env python3
-"""Make the save list's pieces from KINGDOM HEARTS Dream Drop Distance HD, in Days's tones.
-
-  python tools/hd/save_screen.py DDD MARE [--data DIR] [--mod NAME] [--lang es|en|fr|de|it ...]
-                                              [--preview DIR]
-
-DDD is Dream Drop Distance's files from your own copy of KINGDOM HEARTS HD 2.8 Final Chapter
-Prologue, as OpenKh's extractor writes them (newgame_dialog.py's: the folder kh3d_first.hed_out).
-MARE is the 358/2 Days theater's (theater_title.py's: <collection>/Image/Mare.hed_out/original),
-for the hand at the selected row. --data is the port's extracted game data (data/extracted/<hash>, found by default): Days's own
-faces for the files' rows. Nothing of either game is in the port: run this on your copies. The
-pieces go to mods/NAME/layouts/save/<lang>/ (NAME "Theater title" by default, beside the title's):
-save.txt, save_atlas.png and save_font.png, which host/screens/save_screen.c reads. --preview draws a list
-with made-up rows into DIR/<lang>.png.
-
-What they are:
-- DDD's save screen (menu/<lang>/camp/save/bin/save00_n.l2d; its blocks' HD textures
-  <XX>_save00.dds at the CTRT's size, <XX>_save_gratext_00.dds and <XX>_save_cnt_00.dds at twice
-  it): layout 1's node 2 the screen behind everything (its pattern, the list's and the help's
-  panels) and node 500 the heading's tab; layout 5's node 210 the list's window, 5555 its
-  scrollbar's track and 5556 its thumb; layout 4's node 2 a file's row, a frame drawn twice and the
-  number's circle -- control 0 shown, 4 selected -- and node 14 the crown of a story seen to its
-  end; layout 7's nodes 2 and 3 a question's two buttons, yes and no (control 4 the one selected);
-  the gratext texture's words LOAD and SAVE, MUNNY and TIME, in each language.
-- In Days's tones: the screen in greys; the selected row's
-  pink as red, the number's circle silver; the selected button's red kept, darker, its ring silver.
-- DDD's help font (font/en/bin/helpfont.bcfnt, its HD sheets), its glyphs for the port's words:
-  the game's own words (Days's) are the port's to draw, read from the game as it runs.
-- DDD's input icons (font/<lang>/bin/iconfont_n.ctt, its HD sheet <XX>_iconfont_n.png): an Xbox
-  pad's, a PlayStation's and the keyboard's keys, each language's keys' names its own. Other pads
-  show the port's Switch icons (the DS's letters in the same places).
-- The theater's hand (its launcher's glove, theater_cine.py's): at the selected row, or at the
-  question's selected button, as the theater's lists and the camp menu have it.
-- Days's faces: the three plates the DS's list draws a file with (UI/cm/cmo_&.p2 entry 3, cells
-  48-50: Roxas, Axel, Xion -- field 0xc4b, rolled at each save), their faces' end, fading in;
-  and Mission Mode's guest's row's words from the same characters (guest_label).
-
-Where the port puts things -- the rows, the words, the question -- is this file's `place` and
-`text` lines: a mod may move them. The rows' and the screen's pieces are DDD's places in its
-1920 x 1080 picture; the words' places, sizes and colours are the port's (the mock-up's).
+"""Make the save list's pieces from Dream Drop Distance HD in Days's tones, from your own copies (DDD,
+MARE: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/save/<lang>/.
+  python tools/hd/save_screen.py DDD MARE [--data DIR] [--mod NAME] [--lang es|en|fr|de|it ...] [--preview DIR]
 """
 from __future__ import annotations
 

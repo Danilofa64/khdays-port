@@ -1,40 +1,7 @@
 #!/usr/bin/env python3
-"""Make the title's animated pictures from the 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX.
-
-  python tools/hd/theater_title.py MARE [--mod NAME] [--lang es|en|fr|de|it ...]
-                                            [--preview DIR CLIP FRAME]
-
-MARE is the theater's files as OpenKh's extractor writes them from your own copy of the
-collection: <collection>/Image/Mare.hed_out/original (Mare.pkg is the 358/2 Days theater). The
-pictures go to mods/NAME/layouts/title/<lang>/ (NAME "Theater title" by default): atlas.png, the
-texels of every piece, and for each state of the title's menu <menu>_<count>_<row>.txt, its
-pieces and how they move (the port's animated picture, docs/COMPOSITIONS.md), which the port shows
-on one screen while the game's title menu shows (ui/compositions/port_days.txt), and
-intro_0_0.txt, the white ground alone, for the menu's fade-in while the lower screen is still
-white, and logo_3_0.txt to logo_3_2.txt, the theater's own boot screens (Disney, SQUARE ENIX, its
-copyright) for the game's three boot logos. Nothing of the collection is in the port: run this on your copy. --preview draws each
-state's CLIP (enter, arrive or loop) at FRAME into DIR/<lang>/, as the port draws it.
-
-The settings key's bar ("Esc", a gear, AJUSTES DEL JUEGO) opens the port's settings when clicked
-(the file's `button`), and its key shows the gamepad's button for them when a gamepad is played
-(`prompt`, from the theater's own button icons, <lang dir>/font/Icon.tm2: the file's `icon`s).
-
-What it draws is the theater's own main menu, layout 113 of <lang dir>/l2d/days_theatre.l2d --
-its logo, its key art, "DEVELOPED BY SQUARE ENIX", its options' bars, its settings key -- with
-the game's options in place of the theater's (REPRODUCIR, CAPITULOS...): their words written in
-the theater's menu font (<lang dir>/font/menufont), the option the game has selected drawn as the
-theater draws its selected one, its light pulsing as there. The theater's own extras (the
-entries under its options) are left out. Its animations: on the title's arrival every group
-appears as the layout's appearing control has it (the key art first, then the rest); on a change
-of level (another group of files: root, story, mission) the options' bars appear so; then the
-selected option's own loop, again and again.
-Which animation goes with which of the game's moments is the port's choice: the data has the
-animations, the theater's program the moments it plays them.
-
-The L2D's structures are those OpenKh documents for Birth by Sleep (openkh.dev/bbs/file/type/
-l2d.html); this file's version (0500) differs where its data says so: sequences of 16 bytes,
-animations of 28 bytes with 12 key counts (status, base x, base y, -, offset x, offset y, -,
-rotation, -, scale x, scale y, colour), and a node's parent counted from its layout's first node.
+"""Make the title's animated pictures from the 358/2 Days theater's main menu, from your own copy of the
+HD 1.5+2.5 collection (MARE: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/title/<lang>/.
+  python tools/hd/theater_title.py MARE [--mod NAME] [--lang es|en|fr|de|it ...] [--preview DIR CLIP FRAME]
 """
 from __future__ import annotations
 
@@ -65,13 +32,9 @@ LANGUAGES = {
                   'mission': ['UN GIOCATORE', 'MULTIGIOCATORE']}),
 }
 
-# Layout 113, the theater's main menu: its option nodes by id, top to bottom, each one's two word
-# parts (black and white, in its selected sprite) and its word part when not selected; the nodes of
-# the entries under the theater's options; and the controls that draw an option selected and not
-# (seen: its control 0 with the orange square, its bar and its black word, and its light growing
-# and shrinking over 180 frames; control 3 grey). The layout's groups (its nodes with no sprite of
-# their own, which move and fade their children) appear with their control 1 (from nothing, over
-# 44 frames: the key art's by frame 16, the others' from 12 to 44) and stand still with control 0.
+# Layout 113, the theater's main menu: its option nodes top to bottom with their word parts, the nodes
+# of the entries under its options, and the controls that draw an option selected (0) and not (3); its
+# groups appear with control 1 and stand still with 0 (docs/HD_SCREENS.md, "The title").
 MENU_LAYOUT = 113
 # The theater's boot screens, in its order (seen drawn): Disney, SQUARE ENIX, the
 # copyright card; each node 100's control 1 fades its logo over 275 frames, its control 0 holds it.
@@ -224,12 +187,8 @@ class Layouts:
         return self.nodes[nidx:nidx + ncount]
 
     def control(self, node, control):
-        """A node's control (max frame, return frame, first animation, once, animations), or None.
-        Past its max frame a control with `once` 0 plays again from its return frame (the theater's
-        options' light, 180 frames; Dream Drop Distance's selected button's, 60) and one with 1
-        holds its last frame (the appearing controls: Dream Drop Distance's shade over the title
-        ends dark, as its still control is, and starting it again made the background blink when
-        the new game's dialog came)."""
+        """A node's control (max frame, return frame, first animation, once, animations), or None: past
+        its max frame one with `once` 0 plays again from its return frame, one with 1 holds its last."""
         base, seq = node[1], node[2]
         if not (0 <= base < len(self.blocks)) or not (0 <= seq < len(self.blocks[base].seqs)):
             return None

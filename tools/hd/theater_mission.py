@@ -1,30 +1,7 @@
 #!/usr/bin/env python3
-"""Mission Mode's screens on one screen -- its list of rooms, a room, the character select -- in the
-pieces of the 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX.
-
+"""Mission Mode's screens on one screen -- the rooms, a room, the character select -- in the 358/2 Days
+theater's pieces, from your own copy (MARE: docs/HD_SCREENS.md, "Making them"), into mods/NAME/layouts/.
   python tools/hd/theater_mission.py MARE [--mod NAME] [--lang es|en|fr|de|it ...] [--data DIR]
-
-MARE is the theater's files as OpenKh's extractor writes them from your own copy of the
-collection (theater_title.py's); --data the port's extracted game data (data/extracted/<hash>,
-found by default). The screens go to mods/NAME/layouts/ (NAME "Theater title" by default):
-select/<lang>/select.txt (the character select: host/screens/select_screen.c, runtime/menus/charselect.c) and
-rooms/<lang>/rooms.txt (the rooms: host/screens/room_screen.c, runtime/net/roomlist.c), each with its atlas and
-font, and select/select_art.png, the background of both. Nothing of the collection is in the port:
-run this on your copy.
-
-The pieces: each character's face (bg/face/<name>.tm2, 256 x 256: the theater's faces; FACES says
-whose is whose, as seen on them), in colour and in grey -- the game's own grid shows the characters
-nobody is on in grey, the ones a player is on in colour (UI/mlt/res.p2 entry 2: cells 5-23 and
-24-42) --, and the theater's hooded figure (UNKNOWN) for a room's players, who have no character
-yet; the theater's chapter list's rows, square, scroll bar and help bar and the launcher's glove
-(theater_cine.py's list_pieces); its veil (days_theatre.l2d layout 118, node 700) over one of its
-artworks (ART); its event font; its button icons; the game's gauge colours (res.p2 entry 3, cell
-14: the full gauge's ten bars). Where they go is the port's own layout (SELECT_*, ROOMS_*), one
-screen of 1920 x 1080 -- the maintainer's choices from mock-ups: the character select
-with the character a player is on large on the left with its name, weapon and gauges, the
-characters there are to the right in rows, the group's places along the bottom; the rooms as the
-theater's chapters, Create a Group and the search first and the rooms under them, each room's
-signal as four bars lit by its ping; a room as four cards, one a place.
 """
 from __future__ import annotations
 
