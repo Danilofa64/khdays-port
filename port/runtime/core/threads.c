@@ -1,9 +1,6 @@
-/* The game's threads on the port's execution contexts (threads.h). The SDK's scheduler is decompiled
- * C and runs unchanged; hal/sdk_thread.c keeps its register images, this file the contexts
- * underneath. OS_SaveContext returns 0 here and records the current context; OS_LoadContext switches
- * to the next one's, and a thread scheduled again resumes inside that call -- where the DS's
- * "SaveContext returned 1" path goes. Each thread runs on its context's own stack; the DS stack the
- * game gave it stays unused. */
+/* The game's threads on the port's execution contexts (threads.h): the SDK's scheduler runs unchanged;
+ * OS_SaveContext returns 0 and records the context, OS_LoadContext switches, and a thread scheduled
+ * again resumes inside that call. Each thread runs on its context's own stack (docs/PLATFORM.md). */
 #include "threads.h"
 #include "window.h"
 #include "../../hal/hal.h"

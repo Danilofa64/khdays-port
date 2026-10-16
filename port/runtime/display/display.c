@@ -1,11 +1,6 @@
-/* The display: what the DS's screens show, frame by frame (display.h). The game's work for a frame
- * ends long before the DS's line-by-line drawing would, so the whole frame is drawn when VBlank
- * begins, from the registers, VRAM, palettes and OAM as the game left them. Each frame goes to the
- * window as a frame package (frame_package.h).
- *
- * With a window a VBlank is not drawn again when nothing the display reads changed (about every other
- * one: the game runs at 30 frames a second), or when both screens are the same single colours as the
- * last frame (a fade or a load). */
+/* The display (display.h): the whole frame drawn when VBlank begins, from the registers, VRAM, palettes
+ * and OAM as the game left them, sent to the window as a frame package. With a window a VBlank is not
+ * drawn again when nothing it reads changed, or both screens stay the same single colours. */
 #include "display.h"
 #include "../core/events.h"
 #include "frame_package.h"

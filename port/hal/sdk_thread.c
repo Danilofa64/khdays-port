@@ -1,10 +1,6 @@
-/* NitroSDK thread contexts (libs/nitro/os/asm_stubs: OS_InitContext,
- * OS_SaveContext, OS_LoadContext): the register images the SDK reads and
- * writes, on the port's execution contexts (runtime/core/threads.c, which keeps
- * which context runs each image).
- *
- * The SDK's scheduler is decompiled C and runs unchanged; only the register
- * save/restore underneath is native (runtime/core/threads.h has the idiom). */
+/* NitroSDK thread contexts (OS_InitContext, OS_SaveContext, OS_LoadContext): the register images the
+ * SDK reads and writes, on the port's execution contexts (runtime/core/threads.c). The SDK's scheduler
+ * is decompiled C and runs unchanged (docs/PLATFORM.md). */
 #include "hal.h"
 #include "os_context.h"
 #include "../runtime/core/threads.h"

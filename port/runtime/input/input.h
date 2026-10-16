@@ -22,12 +22,8 @@ enum {
     KHDAYS_KEY_Y = 1 << 11,
 };
 
-/* Reads KHDAYS_INPUT, a script of presses for runs without a window: `FRAME+KEY` press, `FRAME-KEY`
- * release (A B X Y L R START SELECT UP DOWN LEFT RIGHT, or the port's LOCK_ON TARGET_NEXT TARGET_PREV
- * MENU_UP MENU_DOWN MENU_LEFT MENU_RIGHT); `FRAME@X,Y` and `FRAME@-` touch and lift; `FRAME~X,Y` and
- * `FRAME^X,Y` hold the movement and camera sticks (-32767..32767, y up; 0,0 lets go). After `sN` the
- * frames count from scene N's first frame, after `uName` from the update Name's first run, and wait
- * for it. */
+/* Reads KHDAYS_INPUT, a script of presses for runs without a window: keys, touches and sticks by
+ * frame, counted from a scene's or an update's first frame (docs/BUILD.md, "The input scripts"). */
 void khdays_input_init(void);
 
 /* An object update ran (runtime/core/diag.c, from Obj_UpdateAll). */

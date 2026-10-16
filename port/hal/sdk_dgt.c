@@ -1,14 +1,6 @@
-/* NitroSDK DGT's SHA-1 block transform, which the decompilation keeps as ARM
- * assembly (libs/nitro/dgt/asm_stubs/auto/DGTi_Hash2ProcessBlock.c,
- * 0x0200bd4c), translated. The game reaches it through the DGT library's
- * known-answer table (data_020422d0).
- *
- * Each 64-byte block of `src`, its words read big-endian, is folded into the
- * five-word state at `state` with SHA-1's 80 rounds (choice, parity,
- * majority, parity), using the constants held in the 0x14 bytes before the
- * routine (0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6). The routine
- * checks the length after each block, signed, so it always hashes at least
- * one block. */
+/* NitroSDK DGT's SHA-1 block transform (DGTi_Hash2ProcessBlock, 0x0200bd4c), which the decompilation
+ * keeps as ARM assembly, translated: each 64-byte block folded into the five-word state with SHA-1's
+ * 80 rounds, at least one block hashed (docs/PLATFORM.md, "The HAL's translations"). */
 #include "hal.h"
 
 static u32 rotl(u32 x, int n)

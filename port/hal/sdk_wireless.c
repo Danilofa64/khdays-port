@@ -1,18 +1,7 @@
-/* The DS's wireless library replaced:
- * ov105 -- NitroSDK's WM and its helper wh.c --
- * is not built; the 24 functions the game calls in it are these, under the
- * decompilation's names (wh.c's and WM's, with ov105's prefix),
- * running on the port's network (runtime/net/net_session.h). Nothing of the
- * DS's radio is left: no channels to measure or walk, no beacons, no MP
- * cycle, no 512-byte limit, no ARM7.
- *
- * What the game reads back keeps its shape: the helper's system states and
- * errors, the two DTCM words the engine reads (sMyAid, sConnectBitmap), the
- * records it is handed (a WMBssDesc per room, the parent's connect record
- * its judge reads, the port records its engine reads). What wh.c did in a WM
- * callback -- an interrupt on the DS -- is done where the port takes the
- * game's interrupts (khdays_wireless_deliver, from hal/sdk_irq.c), never
- * inside the call that asked for it. */
+/* The DS's wireless library replaced: ov105 (WM and its helper wh.c) is not built; the 24 functions
+ * the game calls in it are these, under the decompilation's names, on the port's network
+ * (runtime/net/net_session.h). What the game reads back keeps its shape; what wh.c did in a WM
+ * callback is done where the port takes the game's interrupts (docs/PLATFORM.md, docs/MULTIPLAYER.md). */
 #include "hal.h"
 #include "../runtime/net/net_session.h"
 
@@ -72,13 +61,9 @@ enum {
  * bytes unless the session's link mode is 3, a guest's, 0x60). */
 #define HOST_FRAME 0x1e0
 #define GUEST_FRAME 0x60
-/* The engine's port (Session_Init_2 sets its receiver there). Its receivers
- * put a record into the sender's packet slot (ChannelBuf_Append, the slot
- * restarted), which holds two of the sender's largest frames
- * (Session_LayoutPacketSlots: 0xc0 for a guest's on the host, 0x3c0 for the
- * host's on a guest), and the engine reads the slot as a run of messages up
- * to its length (CmdPacket_Dispatch): records that waited go to it together,
- * up to the slot's size. */
+/* The engine's port (Session_Init_2): its receivers put a record into the sender's packet slot, two
+ * of its largest frames (0xc0 a guest's on the host, 0x3c0 the host's on a guest), read as a run of
+ * messages up to its length: records that waited go together. */
 #define ENGINE_PORT 12
 
 typedef struct WMGameInfo {

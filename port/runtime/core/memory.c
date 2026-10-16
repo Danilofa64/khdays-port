@@ -1,17 +1,6 @@
-/* The DS's ARM9 address space in the game's memory window (window.h): each region at the window's
- * start plus its DS address. Windows maps 64 KB at a time, so each region is rounded out to that;
- * the rest of the window is inaccessible, the null range among it.
- *
- *   0x01ff8000  ITCM, 32 KB
- *   0x02000000  main RAM, 4 MB, mirrored up to 0x02800000 (0x027ff000 is 0x023ff000)
- *   0x027e0000  DTCM, 16 KB
- *   0x02800000  the headers' heaps (a header is named by 24 bits), or two more mirrors
- *   0x03000000  shared WRAM; 0x037f8000 the ARM7's WRAM, for its sound driver
- *   0x04000000  I/O registers and ports: inaccessible, the port reaches them
- *   0x05000000  palettes; 0x06000000 VRAM; 0x07000000 OAM; 0x08000000 the empty GBA slot
- *   0x0b100000  the register model's memory (io.h); 0x0b200000 the data area
- *   0x0c000000  the stacks of the game's threads (host/app/context.h)
- *   0x20000000  the game's heaps, committed a granule at a time as the game touches them */
+/* The DS's ARM9 address space in the game's memory window (window.h): each region at the window's start
+ * plus its DS address, rounded out to 64 KB; the rest inaccessible, the null range among it. The map:
+ * docs/PLATFORM.md, "Memory". */
 #include "game_heap.h"
 #include "io.h"
 #include "runtime.h"

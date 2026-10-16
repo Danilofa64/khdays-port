@@ -6,11 +6,9 @@
 #include "../runtime/core/io.h"
 
 /* --- CPSR interrupt bits --------------------------------------------------
- * The emulated CPSR (hal.h): interrupts reach the game only where the runtime
- * delivers them, so what matters is the I/F state callers save and restore
- * (OSIntrMode = the CPSR I bit, 0x80; F is 0x40) and that thread switches
- * carry it (OS_SaveContext / OS_LoadContext). crt0 leaves the CPU in system
- * mode with both enabled (`msr cpsr_csfx, #0x1f`). */
+ * Interrupts reach the game only where the runtime delivers them, so what matters is the I/F state
+ * callers save and restore (OSIntrMode: I 0x80, F 0x40) and that thread switches carry it. crt0 leaves
+ * the CPU in system mode with both enabled. */
 u32 khdays_cpsr = 0x1f;
 
 u32 OS_DisableInterrupts(void)

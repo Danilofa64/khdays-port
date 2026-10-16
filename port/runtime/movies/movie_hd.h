@@ -1,9 +1,6 @@
-/* The course of an HD movie: when the game opens a movie the player has an HD video for
- * (data/cutscenes/cinematics/hd<id>.mp4) and the Video setting is `hd`, the window shows that video
- * with its sound (host/movies/movie_hd.h) while the game plays its own movie unseen, silent and
- * without the player's buttons; at its movie's end the game is held until the HD video ends. START
- * stops the video where the DS lets the movie be skipped. Designed from the decompilation and the
- * measured files. */
+/* The course of an HD movie: with an HD video (data/cutscenes/cinematics/hd<id>.mp4) and Video `hd`,
+ * the window shows it with its sound while the game plays its own movie unseen and silent, then holds
+ * the game until the video ends; START stops it where the DS lets the movie be skipped. */
 #ifndef KHDAYS_MOVIE_HD_H
 #define KHDAYS_MOVIE_HD_H
 

@@ -1,12 +1,6 @@
-/* The ARM9 IRQ path: what the BIOS IRQ vector does, NitroSDK's dispatcher
- * (func_01ff8148, OS_IrqHandler) and its return path (func_01ff81a0,
- * OS_IrqHandler_ThreadSwitch), translated from libs/nitro/os/asm_stubs/calls.
- *
- * Natively an interrupt is taken where the runtime delivers it
- * (khdays_irq_deliver). The interrupted code is whatever execution context
- * is running there (host/app/context.h), and a thread switch at the end of the
- * IRQ is a context switch, which returns when that thread is scheduled
- * again, just as the DS resumes it from its saved context. */
+/* The ARM9 IRQ path: the BIOS IRQ vector, NitroSDK's dispatcher (OS_IrqHandler) and its return path
+ * (OS_IrqHandler_ThreadSwitch), translated. An interrupt is taken where the runtime delivers it
+ * (khdays_irq_deliver), and a thread switch at its end is a context switch (docs/PLATFORM.md). */
 #include "hal.h"
 #include "../runtime/core/io.h"
 

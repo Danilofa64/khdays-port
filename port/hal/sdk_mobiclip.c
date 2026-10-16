@@ -1,22 +1,7 @@
-/* ov024's MobiClip blit, which the decompilation keeps as hand-written ARM
- * (libs/mobiclip/video/asm_stubs/auto/Ov024_MobiClip_BlitRows.c, 0x02086004;
- * its header describes the algorithm), translated.
- *
- * The view it reads (+0x00 to +0x18): the luma plane, the chroma plane, the
- * destination, the destination's stride in bytes, the width in pixels, the
- * height in rows, and the ramp table.
- *
- * Each 2x2 luma quad and its chroma pair (Co, and Cg 128 bytes further in the
- * same 256-byte row) become four 15-bit pixels, through three windows into
- * one saturating ramp indexed signed (the table + 0x100): green at Cg, red at
- * Co - Cg, blue at red - 2 Co. The quad's anti-diagonal pixels index four
- * levels lower (the checkerboard dither). A word holds two pixels,
- * 0x8000 | R + (G << 5) + (B << 10) in each half, summed as the routine sums
- * them.
- *
- * Each pass does eight quads (the width counted down by 16) and two rows (the
- * height counted down by 2); both loops test the count after the step,
- * signed, as the routine does. */
+/* ov024's MobiClip blit (Ov024_MobiClip_BlitRows, 0x02086004), which the decompilation keeps as
+ * hand-written ARM, translated: each 2x2 luma quad and its chroma pair become four 15-bit pixels
+ * through one saturating ramp, with the checkerboard dither, eight quads and two rows a pass, as the
+ * routine does them (docs/PLATFORM.md, "The HAL's translations"). */
 #include "hal.h"
 
 

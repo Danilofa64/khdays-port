@@ -1,18 +1,7 @@
-/* How an HD movie runs (movie_hd.h), as a set of states:
- *
- *   Idle -> Playing       a movie's stream opens and its HD video plays;
- *   Playing -> Held       the game's movie ends first (the clock holds the game);
- *   Playing -> Finishing  the video ends first (by at most 1.13 s);
- *   Playing or Finishing -> Skipping
- *                         START where the DS lets the movie be skipped (the video closed, START
- *                         given to the game until it marks the skip);
- *   Held -> Idle          the video ends, or START;
- *   Finishing or Skipping -> Idle
- *                         the game's movie ends.
- *
- * The credits scene is held at the end of its staff roll instead, and ends with its video. The
- * game's thread brings the movie's events, the window's thread the video's and START while the game
- * is held; one lock keeps them in order. */
+/* How an HD movie runs (movie_hd.h), as states: Idle, Playing, Held (the game's movie ended first),
+ * Finishing (the video ended first), Skipping (START where the DS allows it); the credits scene held at
+ * its roll's end instead. The game's thread brings the movie's events, the window's the video's and
+ * START; one lock keeps them in order (docs/PLATFORM.md, "HD movies"). */
 #include "movie_hd.h"
 
 #include "../core/clock.h"

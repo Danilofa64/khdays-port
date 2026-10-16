@@ -1,16 +1,7 @@
-/* The SDK's tick and alarm timer on the PC's clock.
- *
- * NitroSDK counts its tick (OS_GetTick) with hardware timer 0, at 64 cycles
- * per tick, with the overflows carried in software by OSi_CountUpTick. It
- * wakes its alarms with timer 1, which OSi_SetTimer programs to overflow when
- * the alarm queue's head is due.
- *
- * Natively the tick is the port's clock in the same unit, and the alarm timer
- * is a deadline at which the frame loop raises timer 1's interrupt
- * (runtime/core/events.c). prepare.py HOOKS put these functions in place of the
- * timer registers in OS_InitTick, OS_GetTick, OS_GetTickLo, OS_SetTick,
- * OSi_SetTimer and OSi_ArrangeTimer. The alarm queue, its handler and their
- * callers stay the decomp's C. */
+/* The SDK's tick and alarm timer on the PC's clock: the tick in its own unit, the alarm timer a
+ * deadline at which the frame loop raises timer 1's interrupt (runtime/core/events.c). prepare.py's
+ * hooks put these in place of the timer registers; the alarm queue stays the decomp's C
+ * (docs/PLATFORM.md, "Threads, interrupts and time"). */
 #include "hal.h"
 #include "../runtime/core/clock.h"
 #include "../runtime/core/events.h"

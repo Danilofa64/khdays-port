@@ -1,10 +1,6 @@
-// The game card's ROM, rebuilt from the extracted data (rom.h): the game reads its files through the
-// card bus as on the DS, each file through the VFS so that a mod replaces it.
-//
-// The layout is the original's. A mod file of another size goes past the ROM's end, the FAT patched
-// to match. Gaps read as 0xff, as in this game's ROM. Three ranges the extraction does not keep
-// (0x200-0x4000, between the ARM9 binary and the overlay table, the banner) stop the process when
-// read.
+// The game card's ROM, rebuilt from the extracted data (rom.h): read through the card bus as on the DS,
+// each file through the VFS so a mod replaces it. The layout is the original's (a bigger mod file past
+// the end, the FAT patched); gaps read 0xff; the three ranges the extraction drops stop the process.
 #include "rom.h"
 #include "text_patches.h"
 

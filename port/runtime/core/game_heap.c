@@ -37,14 +37,10 @@ static KhdaysRef headers[2];
 static const KhdaysRef headers_span[2][2] = {{KHDAYS_HEADERS_MID, KHDAYS_HEADERS_END},
                                              {KHDAYS_HEADERS_BASE, KHDAYS_HEADERS_MID}};
 
-/* The game's resource cache (ResCache_FindSlot): gFileLoader's +8 points at its 128 entries of 0x30
- * bytes, each a reference count at +0 and at +0x10 the file's name, or a file handle with bit 31
- * set -- a header named by bits 9-30, an index into it below. The cache keeps an entry while it is
- * used, after its header is freed (Ov022_BuildActorSlot frees a character's weapons' header as soon
- * as their entry is made), so a header given out where a freed one was would be found under the
- * old one's entries: a second character's weapons were the first's. On the DS other blocks fill
- * that place first; here the headers' heaps hold headers alone, so a place still named in the cache
- * is kept aside (`parked`) until no entry names it. */
+/* The game's resource cache (ResCache_FindSlot): 128 entries of 0x30 bytes, a reference count and a
+ * file's name or handle, kept while used even after its header is freed. A header given out where a
+ * freed one was would be found under the old entries (a second character's weapons were the first's),
+ * so a place still named in the cache is kept aside (`parked`) until none names it (docs/PLATFORM.md). */
 #define FILE_LOADER 0x0204bbfcu /* gFileLoader */
 #define CACHE_ENTRIES 0x80
 #define CACHE_ENTRY 0x30u

@@ -1,9 +1,5 @@
-/* The game's language changed while it runs (language.h). The language is gLangPath's first halfword
- * (1-5), read each time a path holding '&' is opened. A scene loads its localized files when it is
- * built and keeps them, so a switch waits for the scene on show to end
- * (khdays_language_scene_ending): every scene is built in one language. Message databases still
- * loaded keep theirs until let go (the log counts them).
- *
+/* The game's language changed while it runs (language.h): gLangPath's first halfword (1-5), read at
+ * each '&' path; a switch waits for the scene on show to end, so every scene is built in one language.
  * KHDAYS_LANGUAGE_SWITCH=frame:language[,...] (test runs only) requests switches by itself. */
 #include "language.h"
 

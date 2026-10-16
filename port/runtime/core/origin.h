@@ -1,9 +1,6 @@
-/* Where the game's data comes from: which game file, and where in it, the bytes of main RAM and of
- * each VRAM bank hold, followed from the loads to the copies. It names the graphics the game uploads,
- * for replacements and the dump; data the game makes itself has no name.
- *
- * Followed through the game's loads (prepare.py HOOKS), the SDK's copies (hal/sdk_mi.c) and DMA
- * (io_regs.c). A store of the game's own C is not seen, so a user of a name checks the bytes too. */
+/* Where the game's data comes from: which game file, and where in it, main RAM's and each VRAM bank's
+ * bytes hold, followed from the loads through the copies and DMA. It names the graphics the game
+ * uploads; a store of the game's own C is not seen, so a user of a name checks the bytes too. */
 #ifndef KHDAYS_ORIGIN_H
 #define KHDAYS_ORIGIN_H
 

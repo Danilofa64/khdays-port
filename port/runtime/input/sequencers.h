@@ -1,11 +1,6 @@
-/* The command menu on the gamepad's D-pad (sequencers.c): pure C, testable on its own. The DS moves
- * through the menu with presses that depend on Config option 6 (Ov022_UpdateCommandInput):
- *
- *   option 6 = 1: a press of X moves the cursor down.
- *   option 6 = 0: X pressed alone, then a direction with X held: Up and Down step, Left and Right
- *                 change column.
- *
- * The sequencer turns a press of a menu direction into those presses, one game frame per step. */
+/* The command menu on the gamepad's D-pad (sequencers.c), pure C: a press of a menu direction becomes
+ * the presses the game's Config option 6 wants (X, or X held with a direction), one game frame a step
+ * (docs/PLATFORM.md, "The controls the DS did not have"). */
 #ifndef KHDAYS_SEQUENCERS_H
 #define KHDAYS_SEQUENCERS_H
 
@@ -39,14 +34,8 @@ int khdays_menu_direction_exists(int direction, int command_scheme);
 KhdaysMenuFrame khdays_menu_sequencer_frame(KhdaysMenuSequencer *s, uint32_t directions, int field,
                                             int command_scheme, int lockon_scheme, uint16_t held);
 
-/* Lock-on on its own buttons. The game locks on with R (Ov022_ReadSelectionInput):
- *
- *   not locked: R twice within 9 game frames locks on to the target the game picked.
- *   locked:     R twice lets go; R once moves to the next target; with Type B (option 0 = 1) L once
- *               moves to the previous one.
- *
- * R also works the camera; the presses played here are a player's, so the camera does what it does
- * for them. */
+/* Lock-on on its own buttons: the presses of R (twice to lock or let go, once for the next target) and
+ * L (Type B's previous target) the game's Ov022_ReadSelectionInput takes (docs/PLATFORM.md). */
 enum { KHDAYS_LOCK_ON, KHDAYS_LOCK_NEXT, KHDAYS_LOCK_PREV, KHDAYS_LOCK_ACTIONS };
 
 #define KHDAYS_LOCK_QUEUE 4

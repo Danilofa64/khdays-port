@@ -1,10 +1,6 @@
-/* The remaining assembly-only routines the native build replaces: the RTC
- * busy-wait and crt0 (the native entry, port/runtime/core/start.c, does its work).
- * The other assembly-only routines are C in their own files (sdk_dgt.c,
- * sdk_util.c, sdk_mobiclip.c, ...); MobiClip's kind-1 and kind-2 audio
- * decoders and its deblocking filter, which the game never reaches, are
- * not, and a call to one would stop the game (port/runtime/core/window.c,
- * prepare.py). */
+/* The remaining assembly-only routines the native build replaces: the RTC busy-wait and crt0 (the
+ * native entry, runtime/core/start.c, does its work). MobiClip's routines the game never reaches are
+ * not translated; a call to one stops the game (docs/BUILD.md). */
 #include "hal.h"
 
 /* RtcWaitBusy (RTC): spin while the PXI reply flag reads 1. Natively the

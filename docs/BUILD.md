@@ -255,3 +255,14 @@ produce are in `port/tools/regress_walks/`. The second form runs one script,
 for traces and experiments. `EXE` is the Release build's unless given;
 `--settings FILE` starts the game with a copy of FILE as its settings, `--mods
 DIR` with DIR as its mods.
+
+### The input scripts
+
+`KHDAYS_INPUT` names a script of presses for runs without a window
+(`runtime/input/input.c`; the walks' `.input` files): `FRAME+KEY` presses a key
+and `FRAME-KEY` releases it (`A B X Y L R START SELECT UP DOWN LEFT RIGHT`, or
+the port's `LOCK_ON TARGET_NEXT TARGET_PREV MENU_UP MENU_DOWN MENU_LEFT
+MENU_RIGHT`); `FRAME@X,Y` and `FRAME@-` touch and lift; `FRAME~X,Y` and
+`FRAME^X,Y` hold the movement and camera sticks (-32767..32767, y up; `0,0` lets
+go). After `sN` the frames count from scene N's first frame, after `uName` from
+the update `Name`'s first run, and wait for it.

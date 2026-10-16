@@ -1,9 +1,6 @@
-/* CodeWarrior's ARM runtime helpers, which the decompilation keeps as
- * assembly (libs/msl/runtime/asm_stubs, libs/msl/c/asm_stubs). Semantics
- * follow that assembly. The 32-bit divisions return the quotient in r0 and the
- * remainder in r1; natively both come back as one 64-bit value (RAX: the
- * quotient in the low half), which serves callers that declared an int
- * return and callers that read both. */
+/* CodeWarrior's ARM runtime helpers, which the decompilation keeps as assembly (libs/msl), as that
+ * assembly does them. The 32-bit divisions return the quotient and the remainder as one 64-bit value
+ * (the quotient in the low half), for callers that read an int and callers that read both. */
 #include "hal.h"
 
 /* _s32_div_f: truncating division; a zero divisor returns the dividend as the

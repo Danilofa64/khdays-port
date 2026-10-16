@@ -308,12 +308,9 @@ static void sound_service(u32 data, u32 err)
     }
 }
 
-/* Backup memory (tag 11, CARDi_Request): a request type with the error bit set; INIT is followed by
- * the address of the shared CARDiCommandArg (result +0, type +4, src +0xc, dst +0x10, len +0x14).
- * Types: 0 INIT, 2 IDENTIFY, 6 read, 7 write, 8 program, 9 verify.
- *
- * The chip lives in memory, loaded from saves/khdays.sav, and is written back whole and atomically
- * when a save ends (khdays_backup_commit). The game's slots go through saveslots.h's view. */
+/* Backup memory (tag 11, CARDi_Request): a request type with the error bit set (0 INIT, 2 IDENTIFY,
+ * 6 read, 7 write, 8 program, 9 verify), INIT followed by the shared CARDiCommandArg's address. The chip
+ * lives in memory from saves/khdays.sav, written back whole and atomically when a save ends. */
 #define TAG_FS 11
 #define CARD_CMD(offset) (*(volatile u32 *)KHDAYS_W(card_cmd + (offset)))
 

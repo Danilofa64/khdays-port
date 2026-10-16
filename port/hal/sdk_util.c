@@ -1,16 +1,6 @@
-/* NitroSDK's MATH_QSort, which the decompilation keeps as ARM assembly
- * (libs/nitro/math/asm_stubs/auto/Util_QuickSortWithWork.c, 0x0200fc00),
- * translated. The game calls it from
- * Ov003_RankPlayers.
- *
- * It is a quicksort without recursion, on a stack of ranges: `stack` when the
- * caller gives one, else one of 32 - clz(num) ranges on the routine's own
- * stack. A range of two elements is a single comparison. A longer range takes
- * as its pivot the element (right - left) >> (32 - clz(width)) elements from
- * its left, swaps it to the left, and is partitioned around it; the larger
- * part goes on the stack first, so the smaller one is sorted next. Elements
- * are swapped a word at a time when `width` is a multiple of 4, else a byte
- * at a time. The comparisons are signed, as the routine's branches are. */
+/* NitroSDK's MATH_QSort (0x0200fc00, called from Ov003_RankPlayers), which the decompilation keeps as
+ * ARM assembly, translated: a quicksort without recursion on a stack of ranges, its pivot, partition,
+ * swaps and signed comparisons as the routine's (docs/PLATFORM.md, "The HAL's translations"). */
 #include "hal.h"
 
 
