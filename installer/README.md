@@ -51,6 +51,9 @@ entries the tools need straight from the collections' archives (`collection_arch
 format and its encryption found by our own reverse engineering of the collections' executables;
 the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.exe`, never kept),
 runs the tools under a folder of their own and puts what they made in place whole.
+Either folder may be left empty: a choice whose collection is not given cannot be ticked. (The
+page is a text page with its own Browse buttons, because Inno's folder page refuses an empty
+folder.)
 
 ## Add to Steam
 

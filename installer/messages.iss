@@ -105,17 +105,17 @@ fr.HdPageText=Les menus et l'interface HD ont besoin des deux collections ; les 
 de.HdPageText=Die HD-Menüs und das HD-HUD brauchen beide Sammlungen; die HD-Videos brauchen KINGDOM HEARTS HD 1.5+2.5 ReMIX. Lass einen Ordner leer, wenn du diese Sammlung nicht hast.
 it.HdPageText=I menu e l'HUD HD richiedono entrambe le raccolte; i video HD richiedono KINGDOM HEARTS HD 1.5+2.5 ReMIX. Lascia vuota una cartella se non hai quella raccolta.
 
-en.Hd1525Label=KINGDOM HEARTS HD 1.5+2.5 ReMIX folder:
-es.Hd1525Label=Carpeta de KINGDOM HEARTS HD 1.5+2.5 ReMIX:
-fr.Hd1525Label=Dossier de KINGDOM HEARTS HD 1.5+2.5 ReMIX :
-de.Hd1525Label=Ordner von KINGDOM HEARTS HD 1.5+2.5 ReMIX:
-it.Hd1525Label=Cartella di KINGDOM HEARTS HD 1.5+2.5 ReMIX:
+en.Hd1525Label=KINGDOM HEARTS HD 1.5+2.5 ReMIX folder (optional):
+es.Hd1525Label=Carpeta de KINGDOM HEARTS HD 1.5+2.5 ReMIX (opcional):
+fr.Hd1525Label=Dossier de KINGDOM HEARTS HD 1.5+2.5 ReMIX (facultatif) :
+de.Hd1525Label=Ordner von KINGDOM HEARTS HD 1.5+2.5 ReMIX (optional):
+it.Hd1525Label=Cartella di KINGDOM HEARTS HD 1.5+2.5 ReMIX (facoltativa):
 
-en.Hd28Label=KINGDOM HEARTS HD 2.8 Final Chapter Prologue folder:
-es.Hd28Label=Carpeta de KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
-fr.Hd28Label=Dossier de KINGDOM HEARTS HD 2.8 Final Chapter Prologue :
-de.Hd28Label=Ordner von KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
-it.Hd28Label=Cartella di KINGDOM HEARTS HD 2.8 Final Chapter Prologue:
+en.Hd28Label=KINGDOM HEARTS HD 2.8 Final Chapter Prologue folder (optional):
+es.Hd28Label=Carpeta de KINGDOM HEARTS HD 2.8 Final Chapter Prologue (opcional):
+fr.Hd28Label=Dossier de KINGDOM HEARTS HD 2.8 Final Chapter Prologue (facultatif) :
+de.Hd28Label=Ordner von KINGDOM HEARTS HD 2.8 Final Chapter Prologue (optional):
+it.Hd28Label=Cartella di KINGDOM HEARTS HD 2.8 Final Chapter Prologue (facoltativa):
 
 en.HdMenus=HD menus and HUD (needs both collections)
 es.HdMenus=Menús y HUD HD (necesita las dos colecciones)

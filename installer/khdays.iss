@@ -95,7 +95,7 @@ var
   RomChecked: String;     { the file last found supported }
   HelperReady: Boolean;
   DataOk: Boolean;
-  HdPage: TInputDirWizardPage;
+  HdPage: TInputQueryWizardPage;
   HdMenus, HdVideos: TNewCheckBox;
   HdStatus: TNewStaticText;
   SteamPage: TWizardPage;
@@ -283,14 +283,49 @@ begin
   if not HdVideos.Enabled then HdVideos.Checked := False;
 end;
 
+{ A collection's folder as given (0 the 1.5+2.5, 1 the 2.8), or '' for none: without spaces around it
+  or a closing backslash, which would escape the quote after it on the helper's command line }
+function HdFolder(Index: Integer): String;
+begin
+  Result := RemoveBackslashUnlessRoot(Trim(HdPage.Values[Index]));
+  if (Result <> '') and (Result[Length(Result)] = '\') then
+    Result := Result + '.';
+end;
+
+{ The Browse button beside a folder (its Tag says which) }
+procedure HdBrowse(Sender: TObject);
+var
+  Folder: String;
+begin
+  Folder := HdFolder(TNewButton(Sender).Tag);
+  if BrowseForFolder(SetupMessage(msgBrowseDialogLabel), Folder, False) then
+    HdPage.Values[TNewButton(Sender).Tag] := Folder;
+end;
+
 procedure CreateHdPage;
 var
   Json, F1525, F28, Wanted: String;
+  I: Integer;
+  Browse: TNewButton;
 begin
-  HdPage := CreateInputDirPage(wpSelectDir, CustomMessage('HdPageCaption'), CustomMessage('HdPageDescription'),
-    CustomMessage('HdPageText'), False, '');
-  HdPage.Add(CustomMessage('Hd1525Label'));
-  HdPage.Add(CustomMessage('Hd28Label'));
+  { both folders are optional: a text page with its own Browse buttons, as Inno's folder page
+    refuses an empty folder on Next }
+  HdPage := CreateInputQueryPage(wpSelectDir, CustomMessage('HdPageCaption'), CustomMessage('HdPageDescription'),
+    CustomMessage('HdPageText'));
+  HdPage.Add(CustomMessage('Hd1525Label'), False);
+  HdPage.Add(CustomMessage('Hd28Label'), False);
+  for I := 0 to 1 do begin
+    Browse := TNewButton.Create(HdPage);
+    Browse.Parent := HdPage.Surface;
+    Browse.Caption := SetupMessage(msgButtonWizardBrowse);
+    Browse.Width := ScaleX(75);
+    Browse.Height := ScaleY(23);
+    Browse.Left := HdPage.SurfaceWidth - Browse.Width;
+    Browse.Top := HdPage.Edits[I].Top + (HdPage.Edits[I].Height - Browse.Height) div 2;
+    Browse.Tag := I;
+    Browse.OnClick := @HdBrowse;
+    HdPage.Edits[I].Width := Browse.Left - ScaleX(10) - HdPage.Edits[I].Left;
+  end;
   HdMenus := TNewCheckBox.Create(HdPage);
   HdMenus.Parent := HdPage.Surface;
   HdMenus.Top := HdPage.Edits[1].Top + HdPage.Edits[1].Height + ScaleY(14);
@@ -341,14 +376,14 @@ begin
   Result := True;
   HdStatus.Caption := CustomMessage('HdChecking');
   WizardForm.Refresh;
-  if (Trim(HdPage.Values[0]) <> '') and (HdMenus.Checked or HdVideos.Checked) then
-    if RunHelper('check-collection 1.5+2.5 "' + HdPage.Values[0] + '"', Json) <> 0 then begin
+  if (HdFolder(0) <> '') and (HdMenus.Checked or HdVideos.Checked) then
+    if RunHelper('check-collection 1.5+2.5 "' + HdFolder(0) + '"', Json) <> 0 then begin
       HdStatus.Caption := JsonValue(Json, 'message');
       Result := False;
       Exit;
     end;
-  if (Trim(HdPage.Values[1]) <> '') and HdMenus.Checked then
-    if RunHelper('check-collection 2.8 "' + HdPage.Values[1] + '"', Json) <> 0 then begin
+  if (HdFolder(1) <> '') and HdMenus.Checked then
+    if RunHelper('check-collection 2.8 "' + HdFolder(1) + '"', Json) <> 0 then begin
       HdStatus.Caption := JsonValue(Json, 'message');
       Result := False;
       Exit;
@@ -483,8 +518,8 @@ end;
 procedure RegisterPreviousData(PreviousDataKey: Integer);
 begin
   SetPreviousData(PreviousDataKey, 'RomPath', RomChecked);
-  SetPreviousData(PreviousDataKey, 'Hd1525', HdPage.Values[0]);
-  SetPreviousData(PreviousDataKey, 'Hd28', HdPage.Values[1]);
+  SetPreviousData(PreviousDataKey, 'Hd1525', HdFolder(0));
+  SetPreviousData(PreviousDataKey, 'Hd28', HdFolder(1));
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -586,8 +621,8 @@ begin
       Args := 'build-hd "' + ExpandConstant('{app}') + '"';
       if HdMenus.Checked then Args := Args + ' --menus';
       if HdVideos.Checked then Args := Args + ' --videos';
-      if Trim(HdPage.Values[0]) <> '' then Args := Args + ' --1525 "' + HdPage.Values[0] + '"';
-      if HdMenus.Checked then Args := Args + ' --28 "' + HdPage.Values[1] + '"';
+      if HdFolder(0) <> '' then Args := Args + ' --1525 "' + HdFolder(0) + '"';
+      if HdMenus.Checked then Args := Args + ' --28 "' + HdFolder(1) + '"';
       if RunHelperIn(ExpandConstant('{app}'), Args, Json) <> 0 then
         SuppressibleMsgBox(CustomMessage('HdFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
     end;
