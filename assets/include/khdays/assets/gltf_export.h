@@ -29,20 +29,11 @@ struct GltfAnimation final {
     std::vector<std::vector<std::array<float, 16>>> frames;
 };
 
-// `model` as one .gltf with its buffer embedded: a node per bone (its rest
-// matrix under its parent, NeutralModel::object_parents -- as translation,
-// rotation and scale when animations move it), one skin whose
-// joints are the bones and whose inverse binds are their rest world matrices
-// inverted, and the meshes in their rest pose -- each vertex weighted to the
-// bones its palette entry is made of (NeutralModel::palette_bones), with its
-// normal, texture coordinates over `textures`' sizes and colour. A mesh whose
-// texture_name is not in `textures` is written untextured.
-//
-// Each of `animations` (of a model with a skeleton) becomes a glTF animation:
-// at each of its frames, `frames_per_second` apart from 0, every bone's matrix
-// under its parent as the skeleton composes the object matrices, as translation, rotation and
-// scale keys (linear), every bone's, so that each animation sets the whole
-// skeleton; a track that keeps one value through the animation is one key.
+// `model` as one .gltf with its buffer embedded: a node per bone under its parent, one skin (the bones,
+// their rest world matrices inverted), the meshes in their rest pose weighted to their palette's bones,
+// textured over `textures`' sizes (untextured when missing). Each of `animations` becomes a glTF
+// animation: every bone's matrix under its parent at each frame as linear TRS keys, a constant track
+// one key.
 std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfTextureRef>& textures,
                     const std::vector<GltfAnimation>& animations = {}, float frames_per_second = 30.0F);
 

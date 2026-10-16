@@ -174,12 +174,9 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
         }
     }
 
-    // Build one palette block per skin: for joint j, the standard glTF skinning
-    // matrix jointGlobalTransform[j] * inverseBind[j]. In the authored pose this
-    // is the identity, so the mesh renders exactly as exported; replacing the
-    // joint transforms with animated ones re-poses it. The mesh node's own
-    // transform is assumed identity (true for apicula exports), matching the
-    // glTF rule that a skinned mesh ignores its node transform.
+    // One palette block per skin, joint j's jointGlobalTransform[j] * inverseBind[j]: the identity in
+    // the authored pose, re-posed by animated joints. A skinned mesh's node transform is ignored, as
+    // glTF says.
     std::map<const cgltf_skin*, std::uint32_t> skin_base;
     for (cgltf_size s = 0; s < data->skins_count; ++s) {
         const cgltf_skin& skin = data->skins[s];

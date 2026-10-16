@@ -15,17 +15,10 @@ namespace khdays::assets {
 // rebuilds the matrix palette from a set of bone matrices. Defined in mesh.cpp.
 struct SkinningProgram;
 
-// A single decoded vertex in a neutral, engine-independent form.
-//
-// The position is the *raw* coordinate emitted by the GPU command stream, in
-// the local space of whichever matrix applies to it. To get the final rest-pose
-// position, blend the model's palette matrices selected by `joints` with their
-// `weights` and apply the result. Keeping the raw position plus the palette
-// indices (instead of baking the transform in) is what lets the runtime re-pose
-// the model for animation, exactly as the Nintendo DS does.
-//
-// Texture coordinates are in *texels* (not normalized): divide by the bound
-// texture's width and height to get 0..1 UVs.
+// A decoded vertex: its *raw* position from the GPU command stream, in the local space of the matrix
+// that applies to it; blending the model's palette matrices by `joints` and `weights` gives its rest
+// pose, which is what lets the runtime re-pose it as the DS does. Texture coordinates in texels (divide
+// by the texture's size for 0..1).
 struct NeutralVertex final {
     std::array<float, 3> position{0.0F, 0.0F, 0.0F};
     std::array<float, 2> texcoord{0.0F, 0.0F};

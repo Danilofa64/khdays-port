@@ -105,3 +105,48 @@ without showing anything (add `/HD1525=<folder> /HD28=<folder> /HD=menus,videos`
 reopened); a file that is not the supported ROM stops it before anything is installed. The
 uninstaller takes `/VERYSILENT /SUPPRESSMSGBOXES` too (the saves are then kept; the Steam entry is
 taken out, closing Steam if it runs).
+
+## How it works
+
+**The helper** (`setup_steps.py`) runs each step the installer cannot do by itself, with the Python
+the installer carries:
+
+```
+python -I setup_steps.py <command> [arguments] --result <file.json> [--language es|en|fr|de|it]
+```
+
+Every command writes its result to `--result` as one JSON object and exits 0 on success, 1 on a
+refusal the player can fix (a wrong file, a missing folder), 2 on a failure (a bug, a full disk). A
+result's `message` is in the language asked for. Progress goes to the standard output as lines
+`progress <done> <total> <words>` for the installer's page.
+
+**The collections' archives** (`collection_archive.py`) are read as the collections' own code
+reads them, found by our own reverse engineering of their executables (the launcher's and KINGDOM
+HEARTS II FINAL MIX's `Axa::PackageFile`), nothing taken from other tools:
+
+- the `.hed` is a table of 0x20-byte entries: the MD5 of the entry's path as written (16 bytes),
+  its offset in the `.pkg` (int64), two lengths (int32);
+- at that offset a 16-byte header: the data's length, the count of remastered assets, the stored
+  length (-2: stored as is; -1: encrypted only; above 0: compressed with zlib, then encrypted) and a
+  date; then a 0x30-byte record per remastered asset (its name in 0x20 bytes, its length at +0x28,
+  its stored length at +0x2c); then the data; then each asset's data in turn, each taking its stored
+  length, or its length rounded up to 16 when not compressed;
+- 16 bytes or fewer are read as they are; otherwise the first 0x100 bytes' whole 16-byte blocks are
+  encrypted: each XORed with the XOR of eleven round keys made from the entry's header (its zero
+  bytes replaced by their index) by an AES-128 key expansion whose S-box is a table of the game's
+  own, taken from the player's KINGDOM HEARTS II FINAL MIX executable (never kept); an asset uses its
+  entry's header.
+
+`python collection_archive.py <archive without .hed/.pkg> <out folder> <kh2 exe> <path> [<path> ...]`
+writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`.
+
+**Steam** (`steam_shortcut.py`) keeps each user's non-Steam games in
+`userdata/<account>/config/shortcuts.vdf` (binary KeyValues) and a game's compatibility tool in
+`config/config.vdf` (text KeyValues). Both are read when Steam starts and written when it closes, so
+they are changed only while Steam is not running. The binary file is parsed into a plain list of
+fields keeping every byte, and a change is written only when the parse serialises back to exactly
+the original bytes. The port's `appid` is set here (Steam keeps an entry's own), so the same number
+keys the Proton mapping and finds the entry again to remove it. In `config.vdf` the compatibility
+tools live at `InstallConfigStore/Software/Valve/Steam/CompatToolMapping`, one block per app id; the
+port's entry is inserted into or removed from that block as text, so every other byte stays as
+Steam wrote it, and only when the block exists (the player has run a game under Proton).

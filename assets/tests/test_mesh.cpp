@@ -63,13 +63,9 @@ std::vector<std::uint8_t> make_dictionary(
     return data;
 }
 
-// Synthesize a BMD0 with one model whose render command stream draws a single
-// piece: a triangle from three VTX_16 vertices at (1,0,0), (0,1,0), (0,0,1).
-// The model has no bones, so the matrix palette is the identity and rest-pose
-// positions equal the raw positions. `scaled`: the piece's display list first
-// restores matrix 0 and scales it by 2 (MTX_RESTORE + MTX_SCALE, as the
-// models with a position scale do: the Darkside, DS01), so the triangle is
-// drawn twice as large.
+// A BMD0 with one bone-less model drawing one triangle (three VTX_16 at the unit axes), so the palette
+// is the identity; `scaled`: its display list first restores matrix 0 and scales it by 2, as models
+// with a position scale do (the Darkside, DS01).
 std::vector<std::uint8_t> wrap_bmd0(const std::vector<std::uint8_t>& mdl0, std::size_t mdl0_offset_in_file);
 
 std::vector<std::uint8_t> make_triangle_bmd0(const bool scaled = false) {

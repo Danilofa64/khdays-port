@@ -51,12 +51,9 @@ struct ResourceView final {
     explicit operator bool() const { return data != nullptr; }
 };
 
-// A parsed D2KP ("PK2D") pack — the game's UI containers (e.g. the sub-files of
-// UI/mlt/res.p2). A D2KP is a typed bank: a small header points at per-type
-// sections ({count, offsets[], sizes[]}), each listing Nitro resources. Every
-// vector holds raw (already decompressed) resource bytes, indexed as the game
-// indexes that type; decode with decode_nclr/decode_ncgr/decode_nscr (and the
-// NCER/NANR decoders in cell.h).
+// A parsed D2KP pack, the game's UI containers (the sub-files of UI/mlt/res.p2): typed sections of
+// Nitro resources, each vector the raw resource bytes indexed as the game indexes that type, to decode
+// with decode_nclr/ncgr/nscr and cell.h's.
 struct Pk2dPack final {
     std::vector<ResourceView> palettes;  // NCLR (RLCN)
     std::vector<ResourceView> tiles;     // NCGR (RGCN)
@@ -71,16 +68,9 @@ struct Pk2dPack final {
 // a non-D2KP blob yields an all-empty pack.
 Pk2dPack parse_pk2d(const std::uint8_t* data, std::size_t size);
 
-// A "KAPH" / "D2KP" slot container. Both magics share one layout: eight slot
-// pointers at header +0x08, each addressing a section
-// `{u32 count; u32 offsets[count]; u32 sizes[count]}` listing raw entries. The
-// game's 3D archives are KAPH (`ba/ch/**`, `mi/**`, and the rooms inside the
-// `mi/wd/wd_<code>` world archives); the UI packs are D2KP. By the game's own
-// convention **slot 7 holds the NSBMD model and slot 0 the NSBCA animation**
-// (slots 1..6 carry the material/texture/visibility animations).
-//
-// Views point into `data`, which must outlive the result. `valid` is false for
-// a blob that is neither magic; slots absent from the container stay empty.
+// A KAPH or D2KP slot container: eight slot pointers at +0x08, each a section {count, offsets, sizes}
+// of raw entries; the game's models in slot 7, their animations in slot 0 (docs/FORMATS.md). Views
+// point into `data`, which must outlive the result; `valid` false for a blob of neither magic.
 struct SlotContainer final {
     std::array<std::vector<ResourceView>, 8> slots{};
     bool valid = false;

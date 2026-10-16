@@ -1,17 +1,6 @@
-"""Add the installed port to Steam as a non-Steam game, and take it out again.
-
-Steam keeps each user's non-Steam games in `userdata/<account>/config/shortcuts.vdf` (a binary
-KeyValues file) and a game's compatibility tool (Proton, for a Windows game on Linux or a Steam
-Deck) in `config/config.vdf` (a text KeyValues file). Both are read when Steam starts and written
-when it closes, so they are only safe to change while Steam is not running -- the installer closes
-Steam first (asking the player). Nothing of Steam's or the collection's is changed beyond adding
-and removing the port's own entry.
-
-The binary file is parsed into a plain list of fields keeping every byte, and a change is written
-only when the parse serialises back to exactly the original bytes, so another program's shortcuts
-are never lost to a format this does not fully understand. The port's `appid` is set here (Steam
-keeps an entry's own appid), so the same number keys the Proton mapping and finds the entry again
-to remove it."""
+"""Add the installed port to Steam as a non-Steam game, and take it out again, while Steam is closed:
+shortcuts.vdf changed only when its parse writes back the same bytes, the Proton mapping in
+config.vdf edited as text, nothing else of Steam's touched (installer/README.md, "How it works")."""
 from __future__ import annotations
 
 import shutil
@@ -252,13 +241,8 @@ def write_shortcuts(path: Path, entries: list[Field], tail: bytes) -> None:
 
 
 # ---- The Proton mapping in config.vdf (a Windows game on Linux / a Steam Deck) ------------------
-#
-# config.vdf is a text KeyValues file; its compatibility tools live at
-# InstallConfigStore/Software/Valve/Steam/CompatToolMapping, one block per app id. Rather than
-# reformat the whole file, the port's entry is inserted into (or removed from) that block as text,
-# so every other byte stays as Steam wrote it. The block is only changed when it already exists
-# (the player has run at least one game under Proton); otherwise the player sets Proton in the
-# shortcut's properties, and the installer says so.
+# The port's entry is inserted into or removed from CompatToolMapping's block as text, so every other
+# byte stays as Steam wrote it; only when the block exists (the player has run a game under Proton).
 
 
 def _quoted(text: str, key: str, start: int = 0) -> int:

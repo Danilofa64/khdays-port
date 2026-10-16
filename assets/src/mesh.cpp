@@ -14,20 +14,10 @@
 #include <unordered_map>
 #include <vector>
 
-// Neutral-mesh decoder for Nintendo DS MDL0 geometry.
-//
-// This decoder executes the model's render command stream (SBC) the way the DS
-// does: it drives a small matrix-stack virtual machine that builds a palette of
-// rest-pose matrices from the model's bones (objects), inverse-bind matrices,
-// and skinning equations, then draws each piece's packed GPU command stream.
-// Every vertex keeps its raw local position and the palette index of the matrix
-// that transforms it to model space, so the runtime can re-pose the model for
-// animation instead of relying on a baked-in rest pose.
-//
-// The binary formats (bone TRS, pivot rotations, inverse binds, SBC opcodes,
-// and GPU vertex commands) follow the Nintendo DS documentation and the public
-// understanding captured by the apicula project; the implementation here is an
-// independent reimplementation.
+// Neutral-mesh decoder for the DS's MDL0 geometry: it runs the model's render command stream (SBC) as
+// the DS does, a matrix-stack machine building the palette of rest-pose matrices, then draws each
+// piece's GPU commands, every vertex keeping its raw position and palette index so the runtime can
+// re-pose it. The formats after the DS documentation and apicula's; an independent implementation.
 
 namespace {
 
@@ -536,15 +526,9 @@ struct MaterialInfo final {
     std::uint32_t tex_image_param = 0U;  // TEXIMAGE_PARAM (record +0x14)
 };
 
-// Reads each material's name, base polygon alpha and bound TEX0 texture. UVs
-// are decoded in texels and normalized by the real texture size at render
-// time, so the material's own size fields are not needed here.
-//
-// Layout (NitroSystem NNSG3dResMat / NNSG3dResMatData, as the decomp's G3D
-// material handler func_01ffbbf0 reads them): two u16 pairing-dictionary
-// offsets, then a dictionary whose entries are u32 offsets -- relative to the
-// block -- to each material record; a record's polyAttr sits at +0x0C with the
-// alpha in bits 16..20.
+// Each material's name, base polygon alpha and bound TEX0 texture (UVs in texels, normalized at
+// render time). Layout (NNSG3dResMat, as func_01ffbbf0 reads it): a dictionary of u32 offsets to the
+// records, a record's polyAttr at +0x0C with the alpha in bits 16..20.
 std::vector<MaterialInfo> read_materials(
     const ByteVector& mdl0,
     const std::size_t materials_offset,

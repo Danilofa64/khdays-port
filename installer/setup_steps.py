@@ -1,16 +1,7 @@
-"""The installer's helper: each step the installer cannot do by itself, run with the Python the
-installer carries.
-
+"""The installer's helper: each step the installer cannot do by itself, run with its Python. A result
+is one JSON object (exit 0 done, 1 a refusal the player can fix, 2 a failure); what a step makes is
+whole or absent (`.partial`, setup/state.json) (installer/README.md, "How it works").
   python -I setup_steps.py <command> [arguments] --result <file.json> [--language es|en|fr|de|it]
-
-Every command writes its result to --result as one JSON object and exits 0 on success, 1 on a
-refusal the player can fix (a wrong file, a missing folder), 2 on a failure (a bug, a full disk).
-A result's `message` is in the language asked for. Progress goes to the standard output as lines
-`progress <done> <total> <words>` for the installer's page.
-
-What a step makes is written under a `.partial` name and renamed when it is whole, so an
-interrupted install never leaves anything half made in use; `setup/state.json` records the steps
-done, so a rerun skips them or redoes the one left unfinished.
 """
 from __future__ import annotations
 

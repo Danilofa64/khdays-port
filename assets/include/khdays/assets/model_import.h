@@ -27,15 +27,10 @@ struct ImportedJoint final {
     int parent = -1;
 };
 
-// A model imported from a mod's file (glTF, gltf.h; FBX, fbx.h): neutral
-// geometry plus the textures it ships with, keyed by the name each mesh
-// references, in glTF's frame (Y up, metres). Rigged meshes are supported: each
-// skin contributes a block of palette matrices (jointGlobal * inverseBind) and
-// its vertices carry up to four bone indices and weights, so the model renders
-// in its authored pose and can be re-posed. Static meshes bake their node
-// transform and use the identity palette entry. Texture coordinates are in
-// texels relative to each texture, matching the DS convention, so the renderer
-// normalizes both the same way.
+// A model imported from a mod's file (glTF, FBX) in glTF's frame (Y up, metres), with the textures it
+// ships with: each skin a block of palette matrices (jointGlobal * inverseBind) and its vertices up to
+// four bones, so it renders in its authored pose and can be re-posed; static meshes baked. Texture
+// coordinates in texels, as the DS's.
 struct ImportedModel final {
     NeutralModel model;
     std::vector<std::pair<std::string, DecodedTexture>> textures;

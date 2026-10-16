@@ -1,22 +1,6 @@
 """The KINGDOM HEARTS collections' archives (a `.hed` index and its `.pkg`), read as the collections'
-own code reads them -- found by our own reverse engineering of their executables (the launcher's and
-KINGDOM HEARTS II FINAL MIX's `Axa::PackageFile`), nothing taken from other tools:
-
-- the `.hed` is a table of 0x20-byte entries: the MD5 of the entry's path as written (16 bytes),
-  its offset in the `.pkg` (int64), two lengths (int32);
-- at that offset a 16-byte header: the data's length, the count of remastered assets, the stored
-  length (-2: stored as is; -1: encrypted only; above 0: compressed with zlib, then encrypted) and
-  a date; then a 0x30-byte record per remastered asset (its name in 0x20 bytes, its length at
-  +0x28, its stored length at +0x2c); then the data; then each asset's data in turn, each taking
-  its stored length, or its length rounded up to 16 when not compressed;
-- 16 bytes or fewer are read as they are; otherwise the first 0x100 bytes' whole 16-byte blocks
-  are encrypted: each XORed with the XOR of eleven round keys made from the entry's header (its
-  zero bytes replaced by their index) by an AES-128 key expansion whose S-box is a table of the
-  game's own, taken here from the player's KINGDOM HEARTS II FINAL MIX executable (never kept);
-  an asset uses its entry's header.
-
+own code reads them, from our own reverse engineering (installer/README.md, "How it works").
   python collection_archive.py <archive without .hed/.pkg> <out folder> <kh2 exe> <path> [<path> ...]
-
 writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`.
 """
 from __future__ import annotations

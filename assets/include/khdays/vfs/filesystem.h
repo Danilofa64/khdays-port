@@ -6,12 +6,8 @@
 #include <string_view>
 #include <vector>
 
-// The game filesystem (VFS). The original game reads its data from the ROM's
-// NitroFS by path (e.g. "/db/db_en.p2"). This
-// layer resolves such a game path to a real file in the locally extracted data,
-// searching mod overrides first, then the decompressed and raw NitroFS views
-// produced by the extractor. It hands back raw bytes; callers
-// decode (and decompress ".z" blobs) as they already do.
+// The game filesystem (VFS): a game path ("/db/db_en.p2") resolved to a real file in the extracted
+// data -- mod overrides first, then the decompressed and raw NitroFS views -- handed back as raw bytes.
 namespace khdays::vfs {
 
 // Set (or auto-detect) the extracted-data root — the directory that contains

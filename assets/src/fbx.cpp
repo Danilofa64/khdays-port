@@ -22,16 +22,10 @@
 #pragma warning(pop)
 #endif
 
-// FBX to the neutral form import_gltf gives: read by
-// ufbx in glTF's frame (Y up, metres), each mesh instance a set of meshes
-// (one per material), each skin deformer a block of palette entries and joints.
-// ufbx scales the geometry but turns the axes in the nodes' transforms (its
-// "adjust" transforms), so a skinned mesh's vertices are carried here to where
-// the bind pose puts them (bind_to_world * geometry_to_bone, the turn
-// included) and each joint's inverse bind is the inverse of its bind_to_world:
-// jointWorld * inverseBind is the identity at rest and the vertices are in
-// the model's Y-up space, as glTF's are. Static vertices are carried by their
-// node.
+// FBX to the neutral form import_gltf gives, read by ufbx in glTF's frame: each mesh instance a set of
+// meshes (one per material), each skin deformer a block of palette entries. ufbx turns the axes in the
+// nodes' transforms, so skinned vertices are carried to where the bind pose puts them and each joint's
+// inverse bind is its bind_to_world's inverse: identity at rest, in the model's Y-up space.
 
 namespace {
 

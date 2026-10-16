@@ -1,16 +1,8 @@
-"""Builds the port's installer: the Release port, the Visual C++ runtime it imports, the tools the
-installer runs for the player and the Python they run with, packed by Inno Setup.
-
-  python installer/build_installer.py [--no-build] [--iscc PATH]
-
-The install's folder has the repository's layout at its root -- `tools/`, `port/tools/`,
-`installer/` beside `data/`, `mods/` and `saves/` -- because the tools find the data and
-write the mods from their own place (their root is two folders above them). Nothing of the game
-or of the collections is packed: the script stops if a file it would pack lies under `data/`,
-`saves/` or `mods/`.
-
-Output: build/installer/KH358-2-Days-Port-Setup-<date>-<commit>.exe
-"""
+"""Builds the port's installer: the Release port and server, the studio, the Visual C++ runtime, the
+tools the installer runs and the Python they run with, packed by Inno Setup. The install has the
+repository's layout (tools/, installer/ beside data/, mods/, saves/); nothing of the game or the
+collections is packed. Output: build/installer/KH358-2-Days-Port-Setup-<version>.exe
+  python installer/build_installer.py [--no-build] [--iscc PATH]"""
 from __future__ import annotations
 
 import argparse
