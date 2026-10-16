@@ -3172,7 +3172,7 @@ beside it and logs every frame where they differ.
 | thoughts | scene 10 | story walk f8754-9424 |
 | camp-menu, world-selector, save-menu | the loaded camp's screen (`khdays_camp_screen`, its table A's index): 0 the menu, Mission Mode's 2 Panels too; Mission Mode's 1 Holo-Missions; the story's 4 Save; -1 (between two, or the camp's Character page opening the character select) keeps the screen before | play walk f2475-2879 / f2881-3739; camp_panels script f3099-5297; save walk f3431-5267 |
 | settings | Mission Mode's camp screen 5 (Preferences) | camp_cfg script from f3501 |
-| shop | Mission Mode's shop: `Ov008_OpenShopState`, then `Ov008_WaitShopClosed` while it is open (the camp's screen -1 meanwhile) | camp_shop script f3097-4525 |
+| shop | Mission Mode's shop: `Ov008_OpenShopState`, then `Ov008_WaitShopClosed` while it is open (the camp's screen -1 meanwhile); the field's moogle: ov026 loaded, over the field's overlays (ov022, ov069, ov107, ov029, ov030 load again when it closes) | camp_shop script f3097-4525; a player's session (2026-10-16) f12604-12765, f14505 |
 | mission-review | scene 6 (ov005) | mission walk f6561-7730 |
 | game-over | ov027 loaded (`Ov027_GameOverFadeIn` .. `Ov027_GameOverIdle`) | mission walk f5565-6555 |
 | pause | `gPauseMode` != 0 | mission walk f5029-5529 (2) |
@@ -3181,7 +3181,7 @@ beside it and logs every frame where they differ.
 | field-3d-both | engine A changes screens at two VBlanks in a row (POWCNT1 bit 15; the game shows its 3D on both screens so, with the display capture) | -- |
 | field | scene 2 otherwise | -- |
 | info-upper | the panel of a mission's start (`data_ov002_0207f614`, its state +0x18c, 1-8 from f4207 to f4582 on the play walk) in 3-6: the mission's information on the upper screen, no deck | play walk f4229-4562 |
-| dialog | the field's event (ov023: `data_ov023_0208a784[1]`) has its status halfword's (+0x8758c) bit 1 set (`Ov023_SceneRun`) | story walk f10155-11926 |
+| dialog | the field's event (ov023: `data_ov023_0208a784[1]`) has its status halfword's (+0x8758c) bit 1 set (`Ov023_SceneRun`); or a person talks in the field: the panel of a mission's start in states 9-11, its box across the upper screen's lower half (no ov023 then; the story walk's input, then A through day 7's event, START on the tutorial's page, and UP and A towards Saix in the Grey Area) | story walk f10155-11926; Saix's words f12896-13079 |
 | hud | the field, tutorial or field-3d-both otherwise | -- |
 | challenge | the story's camp started the mission as a challenge: `data_0204c240` bit 1 (`Ov025_MissionList_StartMission`: 3 with the challenge's thresholds copied, 1 otherwise); after Mission Mode's camp the byte is its session's (`Ov008SessionInfo`: 3 a wireless host), so not a challenge | run07 walk from f5359; the multiplayer walk (host, 3) not one |
 | lower-3d | engine A on the lower screen (POWCNT1 bit 15 clear) and not changing screens | story walk f11933-11943 |

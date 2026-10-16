@@ -92,8 +92,17 @@ static int mission_start_info(const KhdaysSituationInputs *in)
     return in->mission_start >= 3 && in->mission_start <= 6;
 }
 
+/* The same panel's states 9-11: a person's words in the field, in a box across the upper screen's
+ * lower half where the deck and the party were (the story walk on to day 7's Grey Area, Saix's
+ * words f12896-13079; Ov002_HoldPanelScreen refills its tilemap in those states). */
+static int field_talk(const KhdaysSituationInputs *in)
+{
+    return in->mission_start >= 9 && in->mission_start <= 11;
+}
+
 /* The overlays the rules name (RUNTIME_MAP section 1). */
 #define OV_GAME_OVER 27 /* ov027_game_over: Ov027_GameOverFadeIn .. Ov027_GameOverIdle (mission walk f5571-6539) */
+#define OV_SHOP 26      /* ov026_shop: the field's moogle, a sub-scene of ov002 (Ov026_FillSceneHooks) */
 #define OV_CREDITS                                                                                                     \
     11 /* ov011: the credits (Ov011_CreateScene .. Ov011_StartTitleExit, khdays_movie_hd_credits' hooks) */
 
@@ -107,6 +116,11 @@ static int field_screens(const KhdaysSituationInputs *in)
     /* the game over (the field's sub-flow of kind 9, RUNTIME_MAP section 15) */
     if (loaded(in, OV_GAME_OVER)) {
         return KHDAYS_SIT_GAME_OVER;
+    }
+    /* the moogle's shop: ov026 loaded over the field's overlays, which load again when it closes
+     * (a player's session: f12604-12765 and from f14505) */
+    if (loaded(in, OV_SHOP)) {
+        return KHDAYS_SIT_SHOP;
     }
     /* the pause (gPauseMode, PauseMenu_SetMode: mission walk 2 from f5029 to f5529) */
     if (in->pause_mode != 0) {
@@ -178,11 +192,11 @@ static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
 #define ST(n) (1u << KHDAYS_ST_##n)
     if (scene == KHDAYS_SIT_FIELD || scene == KHDAYS_SIT_FIELD_3D_BOTH || scene == KHDAYS_SIT_TUTORIAL) {
         /* an event of the field runs its text (ov023's status bit 1, Ov023_SceneRun: story walk
-         * f10155-11926) -- to confirm on the walks */
+         * f10155-11926) -- to confirm on the walks -- or a person talks */
         const int event_text = in->event_status >= 0 && (in->event_status & 2) != 0;
         if (mission_start_info(in)) {
             s |= ST(INFO_UPPER);
-        } else if (event_text) {
+        } else if (event_text || field_talk(in)) {
             s |= ST(DIALOG);
         } else if (hud_mode != KHDAYS_HUD_NONE) {
             s |= ST(HUD);

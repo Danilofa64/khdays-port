@@ -82,7 +82,7 @@ typedef struct KhdaysSituationInputs {
     uint8_t party;         /* the battle's party members: data_ov022_020b2e78[1] + 0x34, ov022 loaded
                                * (func_ov022_020882f8; Ov022_Party_SyncAndUpdate walks that many) */
     int32_t mission_start; /* the panel of a mission's start (data_ov002_0207f614, ov002 loaded): its state +0x18c
-                               * (Ov002_Hud_IsPanelOpen: 1-8 open), -1 without the panel */
+                               * (Ov002_Hud_IsPanelOpen: 1-8 open; 9-11 a person's talk), -1 without the panel */
     int32_t event_status;  /* the field's event (ov023: data_ov023_0208a784[1]): its status halfword +0x8758c
                                * (bit 1 its dialogue raised, 2 text pending, 3 closing: Ov023_SceneRun,
                                * Ov023_SetPendingText, Ov023_BeginClose), -1 without the event */
