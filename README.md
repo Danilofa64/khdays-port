@@ -1,5 +1,7 @@
 # khdays-port
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/rVeTPhPbsx)
+
 A native PC port of **Kingdom Hearts 358/2 Days**, built on
 [`khdays-decomp`](https://github.com/Yokimitsuro/khdays-decomp).
 
