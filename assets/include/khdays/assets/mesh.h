@@ -131,20 +131,4 @@ NeutralModel decode_model_geometry(
 NeutralModel decode_model_geometry(
     const std::uint8_t* data, std::size_t size, std::size_t model_index = 0);
 
-// Apply a column-major 4x4 matrix to a point (affine; the bottom row is assumed
-// to be 0 0 0 1). Convenience for consumers that want rest-pose positions.
-std::array<float, 3> transform_point(
-    const std::array<float, 16>& matrix,
-    const std::array<float, 3>& point);
-
-// Rest-pose position of a vertex: the weighted blend of palette[joints[i]]
-// applied to the raw position.
-std::array<float, 3> posed_position(
-    const NeutralModel& model,
-    const NeutralVertex& vertex);
-
-// Serialize a decoded model as a Wavefront OBJ document, writing rest-pose
-// positions. Each mesh becomes a named group.
-std::string to_wavefront_obj(const NeutralModel& model);
-
 }  // namespace khdays::assets

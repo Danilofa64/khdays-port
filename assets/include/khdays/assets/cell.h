@@ -35,12 +35,4 @@ struct CellBank final {
 // Decode an NCER cell bank from an in-memory (decompressed) resource.
 CellBank decode_ncer(const std::uint8_t* data, std::size_t size);
 
-// Render one cell to RGBA, sized to span its OAM pieces, using the sprite tile
-// graphics (NCGR) and palette (NCLR). `tile_boundary` comes from the bank.
-DecodedTexture render_cell(
-    const Cell& cell,
-    const TileGraphics& tiles,
-    const Palette2D& palette,
-    int tile_boundary);
-
 }  // namespace khdays::assets

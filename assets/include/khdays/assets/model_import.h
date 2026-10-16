@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "khdays/assets/mesh.h"
-#include "khdays/assets/tex0.h"
+#include "khdays/assets/texture.h"
 
 namespace khdays::assets {
 

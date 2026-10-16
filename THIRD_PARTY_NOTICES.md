@@ -55,8 +55,7 @@ Pinned commit: `2c980bb59875b0d32144a71867fbdebb2f77cd20` (`stb_image.h` v2.30)
 License: public domain (Unlicense) or MIT, at your option.
 
 Usage: fetched by CMake and compiled in. `khdays-assets` (via
-`assets/src/png.cpp`) decodes PNG overrides with `stb_image.h` (when
-`KHDAYS_ENABLE_PNG` is on, the default). The native port
+`assets/src/image.cpp`) reads mods' textures with `stb_image.h`. The native port
 (`port/host/render/png_io.c`) reads PNG files with `stb_image.h` and writes them
 with `stb_image_write.h` (HD screenshots, and the graphics dump to come).
 khdays-studio, the mod tool (`studio/`, specs/018), compiles those same port
@@ -74,7 +73,7 @@ Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
 License: **MIT**.
 
 Usage: fetched by CMake and compiled in. `khdays-assets` (via
-`assets/src/gltf.cpp`, when `KHDAYS_ENABLE_GLTF` is on, the default) and the
+`assets/src/gltf.cpp`) and the
 native port (`port/runtime/mods/models.cpp`, through the same file) read the
 glTF models mods bring; khdays-studio (`studio/`) compiles the same file to
 read them as the port does, and lists a glTF's buffers and images with cgltf.
@@ -124,21 +123,6 @@ native port's sound library (`port/sound/third_party_decoders.c`) to decode
 FLAC files that replace the game's music, effects and voices from `mods/`;
 khdays-studio (`studio/`) compiles the same file to check and play them as the
 port does.
-
-## cgltf
-
-Project: cgltf — single-file glTF loader
-
-Upstream: <https://github.com/jkuhlmann/cgltf>
-
-Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
-
-License: MIT.
-
-Usage: compiled into `khdays-assets` (via `assets/src/gltf.cpp`) to import glTF
-model overrides. Fetched by CMake when `KHDAYS_ENABLE_GLTF` is on (the default,
-which also requires `KHDAYS_ENABLE_PNG`); with it off, glTF support is dropped
-and no fetch occurs.
 
 ## Vulkan SDK (build tools)
 

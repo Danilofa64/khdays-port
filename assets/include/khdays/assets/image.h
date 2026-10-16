@@ -6,7 +6,7 @@
 #include <optional>
 #include <string>
 
-#include "khdays/assets/tex0.h"  // DecodedTexture
+#include "khdays/assets/texture.h"  // DecodedTexture
 
 namespace khdays::assets {
 

@@ -96,29 +96,27 @@ int main() {
             }
         }
 
-        // WAV serialization: canonical 44-byte header, correct data size.
-        {
-            khdays::assets::DecodedAudio audio;
-            audio.sample_rate = 22050U;
-            audio.channels = 1U;
-            audio.samples = {0, 1, -1};
-            const auto wav = khdays::assets::to_wav(audio);
-            expect(wav.size() == 44U + 6U, "wav size");
-            expect(std::string(wav.begin(), wav.begin() + 4) == "RIFF",
-                   "wav RIFF tag");
-            expect(std::string(wav.begin() + 8, wav.begin() + 12) == "WAVE",
-                   "wav WAVE tag");
-            expect(std::string(wav.begin() + 36, wav.begin() + 40) == "data",
-                   "wav data tag");
-        }
-
-        // WAV round-trip: to_wav -> file -> load_wav reproduces the samples.
+        // load_wav reads a canonical 16-bit PCM WAV.
         {
             khdays::assets::DecodedAudio audio;
             audio.sample_rate = 32000U;
             audio.channels = 1U;
             audio.samples = {0, 1000, -1000, 32767, -32768, 42};
-            const auto wav = khdays::assets::to_wav(audio);
+            Bytes wav{'R', 'I', 'F', 'F'};
+            put32(wav, 36U + 12U);
+            wav.insert(wav.end(), {'W', 'A', 'V', 'E', 'f', 'm', 't', ' '});
+            put32(wav, 16U);
+            put16(wav, 1U);       // PCM
+            put16(wav, 1U);       // channels
+            put32(wav, 32000U);   // rate
+            put32(wav, 64000U);   // bytes per second
+            put16(wav, 2U);       // block align
+            put16(wav, 16U);      // bits
+            wav.insert(wav.end(), {'d', 'a', 't', 'a'});
+            put32(wav, 12U);
+            for (const auto s : audio.samples) {
+                put16(wav, static_cast<std::uint16_t>(s));
+            }
             const auto wav_path =
                 std::filesystem::temp_directory_path() / "khdays_wav_test.wav";
             {
@@ -129,9 +127,9 @@ int main() {
             }
             const auto back = khdays::assets::load_wav(wav_path);
             std::filesystem::remove(wav_path);
-            expect(back.sample_rate == 32000U, "wav round-trip rate");
-            expect(back.channels == 1U, "wav round-trip channels");
-            expect(back.samples == audio.samples, "wav round-trip samples");
+            expect(back.sample_rate == 32000U, "wav rate");
+            expect(back.channels == 1U, "wav channels");
+            expect(back.samples == audio.samples, "wav samples");
         }
 
         std::cout << "Audio decoder test passed\n";

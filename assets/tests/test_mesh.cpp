@@ -244,24 +244,6 @@ int main() {
             throw std::runtime_error("decoded positions are incorrect");
         }
 
-        // With no bones the palette is the identity, so rest-pose positions
-        // equal the raw positions.
-        if (model.palette.empty()) {
-            throw std::runtime_error("model palette is empty");
-        }
-        const auto posed = khdays::assets::posed_position(model, v[0]);
-        if (!close_to(posed[0], 1.0F)
-            || !close_to(posed[1], 0.0F)
-            || !close_to(posed[2], 0.0F)) {
-            throw std::runtime_error("posed position is incorrect");
-        }
-
-        const auto obj = khdays::assets::to_wavefront_obj(model);
-        if (obj.find("\nf ") == std::string::npos
-            || obj.find("tri_mesh") == std::string::npos) {
-            throw std::runtime_error("OBJ export is missing geometry");
-        }
-
         // A piece's MTX_SCALE scales the restored matrix (the DS's geometry
         // engine does; the Darkside's arms were half their size without it),
         // and the program replayed for animation gives the same matrix.
@@ -272,8 +254,23 @@ int main() {
                 throw std::runtime_error("scaled triangle not decoded");
             }
             const auto& sv = scaled.meshes.front().vertices;
-            const auto p0 = khdays::assets::posed_position(scaled, sv[0]);
-            const auto p2 = khdays::assets::posed_position(scaled, sv[2]);
+            const auto posed = [&](const khdays::assets::NeutralVertex& v) {
+                // the weighted blend of the palette's matrices applied to the raw position
+                std::array<float, 3> out{};
+                for (std::size_t j = 0U; j < v.joints.size(); ++j) {
+                    if (v.weights[j] == 0.0F) {
+                        continue;
+                    }
+                    const auto& m = scaled.palette[v.joints[j]];
+                    for (std::size_t r = 0U; r < 3U; ++r) {
+                        out[r] += v.weights[j] * (m[r] * v.position[0] + m[4U + r] * v.position[1]
+                                                  + m[8U + r] * v.position[2] + m[12U + r]);
+                    }
+                }
+                return out;
+            };
+            const auto p0 = posed(sv[0]);
+            const auto p2 = posed(sv[2]);
             if (!close_to(p0[0], 2.0F) || !close_to(p0[1], 0.0F) || !close_to(p2[2], 2.0F)) {
                 throw std::runtime_error("MTX_SCALE not applied to the piece's vertices");
             }

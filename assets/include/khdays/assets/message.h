@@ -8,44 +8,6 @@
 
 namespace khdays::assets {
 
-// A decoded "P2" message container (the game's `db/db_<lang>.p2`). The file is a
-// directory of sub-databases; each sub-database is an (optionally LZ11-packed)
-// blob of UTF-16LE strings with embedded control codes.
-//
-// On-disk layout (confirmed from the decompiled loader, see
-// docs/MESSAGE_DATA_P2.md):
-//   header: u16 'P2'; u16 (count = word & 0x1ff, bit 0x8000 = wide); ...; u32
-//           base_offset @0x0C.
-//   directory @0x10: u16 sizes[] (start sector of each sub-file, x0x200) then
-//           u32 desc[] (bit31 = LZ11-compressed, bits0..30 = size in bytes).
-//   sub-file k: [base_offset + sizes[k]*0x200, + (desc[k] & 0x7fffffff)); once
-//           decompressed it is {u32 count; u32 offsets[count]; u16 data[]}.
-struct MessageArchive final {
-    // subdbs[d] holds sub-database d's strings, in order. Each string is raw
-    // UTF-16LE code units with control codes preserved; the trailing NUL is
-    // stripped.
-    std::vector<std::vector<std::u16string>> subdbs;
-
-    // Total string count across every sub-database.
-    std::size_t string_count() const;
-};
-
-// Load and fully decode a P2 message container. Throws std::runtime_error on a
-// malformed header, directory, compression stream, or string blob.
-MessageArchive load_p2_archive(const std::filesystem::path& path);
-
-// Extract one raw sub-file from a P2 container (e.g. `ttl/ttl.p2`) by index:
-// locate it via the directory and LZ-decompress it if flagged, returning the raw
-// bytes with no text interpretation (a sub-file may be a nested resource pack).
-// Throws std::runtime_error on a bad index or container.
-std::vector<std::uint8_t> extract_p2_subfile(
-    const std::uint8_t* container, std::size_t size, std::size_t index);
-std::vector<std::uint8_t> extract_p2_subfile(
-    const std::filesystem::path& path, std::size_t index);
-
-// Load a UI string table: the game's `UI/**/*.s` files, a flat list of UTF-16LE
-// strings, usually shipped LZ-compressed as `.s.z`. Compression is auto-detected
-// from the leading type byte. The on-disk layout is `u32 header_size (=8);
 // u32 count; count * { u32 record_length (incl. this field); u16 utf16le[] }`.
 // Throws std::runtime_error on malformed data.
 std::vector<std::u16string> load_string_table(const std::filesystem::path& path);

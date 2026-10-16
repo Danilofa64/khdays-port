@@ -437,7 +437,6 @@ add_executable(khdays-native
     ../assets/src/image.cpp        # their textures in PNG, JPEG, TGA, BMP (its own stb_image)
     ../assets/src/graphics2d.cpp   # the game's 2D sheets, for the rooms' signal
     ../assets/src/cell.cpp         # their cells
-    ../assets/src/png.cpp          # their textures (stb_image kept to itself: STB_IMAGE_STATIC)
     ../assets/src/filesystem.cpp)  # the port's VFS: files and mods
 target_include_directories(khdays-native PRIVATE ../assets/include)
 # the frame decoder's state (runtime/movies/video.c)
@@ -449,8 +448,6 @@ set_source_files_properties(runtime/core/text_patches.cpp PROPERTIES COMPILE_OPT
 target_include_directories(khdays-native PRIVATE "${KHDAYS_GEN}")
 target_include_directories(khdays-native PRIVATE "${stb_SOURCE_DIR}" "${cgltf_SOURCE_DIR}" "${pl_mpeg_SOURCE_DIR}"
                                                   "${ufbx_SOURCE_DIR}")
-# host/render/png_io.c has stb_image's functions already: png.cpp's own stay in it.
-set_source_files_properties(../assets/src/png.cpp PROPERTIES COMPILE_DEFINITIONS STB_IMAGE_STATIC)
 target_compile_options(khdays-native PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)

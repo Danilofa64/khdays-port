@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "khdays/assets/cell.h"
-#include "khdays/assets/graphics2d.h"
 
 namespace {
 
@@ -53,23 +52,6 @@ int main() {
         const auto& piece = bank.cells[0].pieces[0];
         expect(piece.width == 8 && piece.height == 8, "piece size");
         expect(piece.x == 0 && piece.y == 0, "piece position");
-
-        // One 8x8 4bpp tile, every pixel index 1 -> palette red.
-        khdays::assets::TileGraphics tiles;
-        tiles.bpp = 4;
-        tiles.tile_count = 1;
-        tiles.indices.assign(64U, 1U);
-
-        khdays::assets::Palette2D palette;
-        palette.colors_per_palette = 16;
-        palette.colors = {{0, 0, 0, 255}, {255, 0, 0, 255}};
-
-        const auto image = khdays::assets::render_cell(
-            bank.cells[0], tiles, palette, bank.tile_boundary);
-        expect(image.width == 8 && image.height == 8, "rendered size");
-        expect(image.rgba[0] == 255 && image.rgba[1] == 0 && image.rgba[2] == 0
-                   && image.rgba[3] == 255,
-               "rendered pixel is red");
 
         std::cout << "Cell decoder test passed\n";
         return 0;
