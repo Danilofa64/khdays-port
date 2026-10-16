@@ -101,11 +101,6 @@ void khdays_situation_update_ran(uintptr_t update)
     }
 }
 
-const char *khdays_situation_update_name(int which)
-{
-    return which >= 0 && which < KHDAYS_UPDATES ? watched_names[which] : "?";
-}
-
 static uint8_t u8_at(u32 address) { return *(const volatile uint8_t *)KHDAYS_W(address); }
 static uint16_t u16_at(u32 address) { return *(const volatile uint16_t *)KHDAYS_W(address); }
 static uint32_t u32_at(u32 address) { return *(const volatile uint32_t *)KHDAYS_W(address); }

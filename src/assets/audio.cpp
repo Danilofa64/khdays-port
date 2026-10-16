@@ -277,25 +277,6 @@ std::shared_ptr<Sdat> open_sdat(const std::filesystem::path& path) {
     return sdat;
 }
 
-std::size_t sdat_stream_count(const Sdat& sdat) {
-    return sdat.stream_file_ids.size();
-}
-
-DecodedAudio decode_stream(const Sdat& sdat, const std::size_t index) {
-    if (index >= sdat.stream_file_ids.size()) {
-        throw std::runtime_error("stream index out of range");
-    }
-    const auto file_id = sdat.stream_file_ids[index];
-    if (file_id >= sdat.fat.size()) {
-        throw std::runtime_error("stream has no file");
-    }
-    const auto& [offset, size] = sdat.fat[file_id];
-    if (static_cast<std::size_t>(offset) + size > sdat.data.size()) {
-        throw std::runtime_error("stream is not a valid STRM");
-    }
-    return decode_strm(sdat.data.data() + offset, size);
-}
-
 DecodedAudio decode_strm(const std::uint8_t* strm, const std::size_t strm_size) {
     const ByteVector d(strm, strm + strm_size);
     if (strm_size < 0x68U || d[0] != 'S' || d[1] != 'T' || d[2] != 'R' || d[3] != 'M') {
@@ -372,10 +353,6 @@ DecodedAudio decode_strm(const std::uint8_t* strm, const std::size_t strm_size) 
     return audio;
 }
 
-std::size_t sdat_sequence_count(const Sdat& sdat) {
-    return sdat.sequences.size();
-}
-
 SdatSequence sdat_sequence(const Sdat& sdat, const std::size_t index) {
     if (index >= sdat.sequences.size()) {
         throw std::runtime_error("sequence index out of range");
@@ -419,10 +396,6 @@ SdatBank sdat_bank(const Sdat& sdat, const std::size_t index) {
     return bank;
 }
 
-std::size_t sdat_wave_archive_count(const Sdat& sdat) {
-    return sdat.wave_archive_file_ids.size();
-}
-
 // Locate the SWAR blob backing a wave archive; returns (offset, size).
 namespace {
 std::pair<std::size_t, std::size_t> wave_archive_blob(
@@ -444,12 +417,6 @@ std::pair<std::size_t, std::size_t> wave_archive_blob(
     return {offset, size};
 }
 }  // namespace
-
-std::size_t sdat_wave_count(const Sdat& sdat, const std::size_t index) {
-    const auto [offset, size] = wave_archive_blob(sdat, index);
-    (void)size;
-    return read_u32(sdat.data, offset + 0x38U);
-}
 
 DecodedAudio sdat_waveform(
     const Sdat& sdat,

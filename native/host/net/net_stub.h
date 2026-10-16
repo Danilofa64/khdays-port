@@ -15,9 +15,6 @@ void khdays_stub_reset(void);
 void khdays_stub_push_datagram(const KhdaysNetAddress *from, const void *data, size_t size);
 void khdays_stub_push_tcp(const void *data, size_t size);
 
-/* Moves the clock on by `ms` milliseconds. */
-void khdays_stub_advance(unsigned long long ms);
-
 /* If set, called with every datagram sent and every TCP request (with `to`
  * NULL for TCP). */
 extern void (*khdays_stub_sent)(const KhdaysNetAddress *to, const void *data, size_t size);

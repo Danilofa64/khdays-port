@@ -150,9 +150,6 @@ static inline int khdays_situation_ran(const KhdaysSituationInputs *in, int whic
     return (int)((in->updates[which / 64] >> (which % 64)) & 1u);
 }
 
-/* A watched update's name (the decomp's), for the logs. */
-const char *khdays_situation_update_name(int which);
-
 typedef struct KhdaysSituation {
     int scene;       /* KHDAYS_SIT_* */
     uint32_t states; /* 1 << KHDAYS_ST_* */

@@ -20,7 +20,6 @@ import argparse
 import ctypes
 import ctypes.wintypes as wt
 import glob
-import os
 import struct
 import subprocess
 import sys

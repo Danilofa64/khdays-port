@@ -74,8 +74,3 @@ int khdays_pxi_waiting(u32 tag)
     }
     return n;
 }
-
-int khdays_pxi_pending(void)
-{
-    return (int)queue_count;
-}

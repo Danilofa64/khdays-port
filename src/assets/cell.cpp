@@ -180,48 +180,4 @@ DecodedTexture render_cell(
     return image;
 }
 
-AnimBank decode_nanr(const std::uint8_t* data, const std::size_t size) {
-    if (size < 0x30U || data[0] != 'R' || data[1] != 'N' || data[2] != 'A'
-        || data[3] != 'N') {
-        throw std::runtime_error("not an NANR animation bank");
-    }
-    constexpr std::size_t kb = 0x10U;  // KNBA section
-    const std::size_t base = kb + 8U;  // section data start
-    const auto num_anims = u16(data, size, kb + 0x08U);
-    const std::size_t seq_array = base + u32(data, size, kb + 0x0CU);
-    const std::size_t frame_array = base + u32(data, size, kb + 0x10U);
-    const std::size_t frame_data = base + u32(data, size, kb + 0x14U);
-
-    AnimBank bank;
-    bank.animations.reserve(num_anims);
-    for (std::uint16_t a = 0; a < num_anims; ++a) {
-        const std::size_t e = seq_array + static_cast<std::size_t>(a) * 16U;
-        if (e + 16U > size) {
-            break;
-        }
-        const auto num_frames = u16(data, size, e);
-        const auto frame_off = u32(data, size, e + 0x0CU);
-        Animation anim;
-        anim.steps.reserve(num_frames);
-        for (std::uint16_t f = 0; f < num_frames; ++f) {
-            const std::size_t fr = frame_array + frame_off
-                + static_cast<std::size_t>(f) * 8U;
-            if (fr + 8U > size) {
-                break;
-            }
-            const auto data_off = u32(data, size, fr);
-            const auto duration = u16(data, size, fr + 4U);
-            AnimStep step;
-            step.duration = duration != 0 ? duration : 1;
-            const std::size_t cell_ref = frame_data + data_off;
-            if (cell_ref + 2U <= size) {
-                step.cell = u16(data, size, cell_ref);
-            }
-            anim.steps.push_back(step);
-        }
-        bank.animations.push_back(std::move(anim));
-    }
-    return bank;
-}
-
 }  // namespace khdays::assets

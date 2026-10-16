@@ -16,15 +16,6 @@ extern const KhdaysSnd7Driver khdays_snd7_native;
 /* Where the DS's address 0 is in the process. */
 void khdays_snd7_native_set_ds_base(uintptr_t base);
 
-/* The lockstep check (runtime/sound/sound_bridge.c): the shared work goes to
- * `shadow` (0x280 bytes) instead of where the ARM9 put it, and nothing else
- * of the ARM9's is written. NULL: the real one. */
-void khdays_snd7_native_shadow_shared_work(uint8_t *shadow);
-
-/* The shared work's address the ARM9 gave (SND_COMMAND_SHARED_WORK), 0
- * before it did. */
-uint32_t khdays_snd7_native_shared_work(void);
-
 /* The lockstep check: the sequencer's records, in the ARM7's layout --
  * player n's 0x24 bytes (the ARM7's at 0x03808258 + 0x24 * n) and the
  * first 0x3c bytes of track n (0x03808498 + 0x40 * n; the last word, its

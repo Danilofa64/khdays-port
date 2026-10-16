@@ -1301,56 +1301,17 @@ struct SkinningProgram final {
     std::vector<Matrix> inv_binds;
     float up_scale = 1.0F;
     float down_scale = 1.0F;
-
-    // Optional glTF retargeting. When non-empty, compute_palette drives a glTF
-    // palette from DS bone worlds instead of producing the DS palette.
-    std::vector<RetargetJoint> gltf_joints;
-    std::size_t gltf_palette_size = 0U;
 };
 
 std::vector<std::array<float, 16>> compute_palette(
     const SkinningProgram& program,
     const std::vector<std::array<float, 16>>& object_matrices) {
-    if (!program.gltf_joints.empty()) {
-        // Retarget: compute DS bone worlds, then jointGlobal = bone world for
-        // each glTF joint so the DS animation drives the glTF geometry.
-        const auto bone_world = build_bone_world(
-            program.render_ops,
-            object_matrices,
-            program.up_scale,
-            program.down_scale);
-        std::vector<Matrix> palette(program.gltf_palette_size, matrix_identity());
-        for (const auto& joint : program.gltf_joints) {
-            if (joint.palette_index >= palette.size()) {
-                continue;
-            }
-            if (joint.ds_bone >= 0
-                && static_cast<std::size_t>(joint.ds_bone) < bone_world.size()) {
-                palette[joint.palette_index] = matrix_multiply(
-                    bone_world[static_cast<std::size_t>(joint.ds_bone)],
-                    joint.inverse_bind);
-            } else {
-                palette[joint.palette_index] = joint.rest;
-            }
-        }
-        return palette;
-    }
     return build_palette(
         program.render_ops,
         object_matrices,
         program.inv_binds,
         program.up_scale,
         program.down_scale);
-}
-
-std::shared_ptr<const SkinningProgram> make_retarget_program(
-    const SkinningProgram& ds_program,
-    std::vector<RetargetJoint> joints,
-    const std::size_t palette_size) {
-    auto program = std::make_shared<SkinningProgram>(ds_program);
-    program->gltf_joints = std::move(joints);
-    program->gltf_palette_size = palette_size;
-    return program;
 }
 
 std::vector<std::array<float, 16>> compute_bone_world_matrices(

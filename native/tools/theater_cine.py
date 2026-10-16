@@ -39,7 +39,6 @@ chapter and takes the one of the theater's own ending (its DED.mp4).
 from __future__ import annotations
 
 import argparse
-import math
 import struct
 import sys
 from pathlib import Path
@@ -50,7 +49,6 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'decompress_data'))
 import save_screen as ss  # noqa: E402
-import theater_settings as ts  # noqa: E402
 import theater_movies as tm  # noqa: E402
 import theater_title as tt  # noqa: E402
 import decompress_data as dd  # noqa: E402

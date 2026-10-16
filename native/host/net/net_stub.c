@@ -66,11 +66,6 @@ void khdays_stub_push_tcp(const void *data, size_t size)
     push(1, NULL, data, size);
 }
 
-void khdays_stub_advance(unsigned long long ms)
-{
-    clock_ms += ms;
-}
-
 /* The next queued item of the kind asked for (earlier ones of the other
  * kind are left), or NULL. */
 static Item *next(int tcp)

@@ -26,7 +26,6 @@ public:
     std::string error() const;                           // why it could not start
     std::vector<std::string> lines() const;               // its output so far
     std::string last_line() const;                         // the latest line of it
-    std::size_t line_count() const;
     void stop();                                          // ends it (killed)
 
 private:

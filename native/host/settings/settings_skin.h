@@ -16,9 +16,6 @@
 // loaded (with the renderer's textures). Returns whether they are there.
 bool khdays_skin_use(SDL_Renderer *renderer, int language);
 
-// Whether pieces are loaded.
-bool khdays_skin_on();
-
 // The renderer goes: its textures are freed (loaded again with the next).
 void khdays_skin_renderer_gone();
 

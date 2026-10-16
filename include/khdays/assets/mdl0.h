@@ -61,6 +61,4 @@ struct ModelFileInfo final {
 
 ModelFileInfo inspect_mdl0(const std::filesystem::path& input_path);
 
-std::string format_model_report(const ModelFileInfo& file_info);
-
 }  // namespace khdays::assets

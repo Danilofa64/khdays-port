@@ -33,7 +33,4 @@ void khdays_ui_layout_frame(const char *const *ids, int count);
  * once, naming `file`. */
 void khdays_ui_layout_read(const char *file, const char *text);
 
-/* Forgets every entry (for the tests). */
-void khdays_ui_layout_reset(void);
-
 #endif

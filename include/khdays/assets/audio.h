@@ -47,28 +47,14 @@ struct SdatBank final {
     std::array<int, 4> wave_archives{-1, -1, -1, -1};
 };
 
-// Number of sequences, and access to one.
-std::size_t sdat_sequence_count(const Sdat& sdat);
 SdatSequence sdat_sequence(const Sdat& sdat, std::size_t index);
 
 // Access a bank by index.
 SdatBank sdat_bank(const Sdat& sdat, std::size_t index);
 
-// Number of streams (STRM) in the SDAT, and decode one to PCM16. A stream is a
-// pre-recorded track (PCM8/PCM16/IMA-ADPCM, mono or stereo, in interleaved
-// blocks) — e.g. the title BGM. Loop info comes from the STRM header.
-std::size_t sdat_stream_count(const Sdat& sdat);
-DecodedAudio decode_stream(const Sdat& sdat, std::size_t stream_index);
-
 // Decode one STRM file's bytes. A prefix of the file decodes the blocks it
 // holds (the settings menu's samples read only the first seconds).
 DecodedAudio decode_strm(const std::uint8_t* strm, std::size_t size);
-
-// Number of wave archives (SWAR) in the SDAT.
-std::size_t sdat_wave_archive_count(const Sdat& sdat);
-
-// Number of waveforms (SWAV) inside one wave archive.
-std::size_t sdat_wave_count(const Sdat& sdat, std::size_t wave_archive_index);
 
 // Decode waveform `swav_index` from wave archive `wave_archive_index`.
 DecodedAudio sdat_waveform(

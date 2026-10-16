@@ -259,11 +259,6 @@ bool khdays_skin_use(SDL_Renderer *renderer, int language)
     return s.on;
 }
 
-bool khdays_skin_on()
-{
-    return s.on;
-}
-
 void khdays_skin_renderer_gone()
 {
     if (s.atlas != nullptr) {

@@ -20,9 +20,6 @@ int khdays_pxi_take(u32 *word);
 /* How many replies of `tag` wait (the touch panel's samples wait for the ARM9's). */
 int khdays_pxi_waiting(u32 tag);
 
-/* All the replies that wait. */
-int khdays_pxi_pending(void);
-
 /* A reply (arm7.c's services): `tag | err << 5 | data << 6`, queued. */
 void khdays_pxi_queue(u32 word);
 

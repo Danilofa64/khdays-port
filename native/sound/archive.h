@@ -20,11 +20,9 @@ typedef struct KhdaysSoundArchive KhdaysSoundArchive;
 KhdaysSoundArchive *khdays_sound_archive_open(KhdaysArchiveRead read, void *context);
 void khdays_sound_archive_close(KhdaysSoundArchive *archive);
 
-/* The sequence players (by the archive's player number, NNSSndPlayer's) and
- * the stream players: how many, and each one's name ("" if it has none). */
-int khdays_sound_archive_players(const KhdaysSoundArchive *archive);
+/* A sequence player's name (by the archive's player number, NNSSndPlayer's) and a stream
+ * player's; "" if it has none. */
 const char *khdays_sound_archive_player_name(const KhdaysSoundArchive *archive, int player);
-int khdays_sound_archive_stream_players(const KhdaysSoundArchive *archive);
 const char *khdays_sound_archive_stream_player_name(const KhdaysSoundArchive *archive, int player);
 
 /* A sound's identifier, the path under

@@ -535,11 +535,6 @@ void khdays_onescreen_prepare(const KhdaysFramePackage *p, int columns, KhdaysCo
     draw->piece_count = composition->piece_count;
 }
 
-const KhdaysSituation *khdays_onescreen_situation(void)
-{
-    return &situation;
-}
-
 int khdays_onescreen_settling(const KhdaysFramePackage *package)
 {
     /* standing still: the game has gone past the VBlank after it without another package */

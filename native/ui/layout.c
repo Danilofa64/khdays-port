@@ -222,18 +222,6 @@ void khdays_ui_layout_read(const char *file, const char *text)
     }
 }
 
-void khdays_ui_layout_reset(void)
-{
-    for (int i = 0; i < entry_count; ++i) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
-        free(entries[i].id);
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
-        free(entries[i].when);
-    }
-    entry_count = 0;
-    loaded = 1;
-}
-
 /* Reads each part's file, through the mods' order. */
 static void load(void)
 {

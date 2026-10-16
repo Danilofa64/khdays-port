@@ -9,22 +9,10 @@
 
 /* 0x03807d14: where the ARM9 put the shared work. */
 uint32_t snd7_shared_work;
-/* The lockstep check's copy of it, written instead (snd7_native.h). */
-static uint8_t *shared_shadow;
-
-void khdays_snd7_native_shadow_shared_work(uint8_t *shadow)
-{
-    shared_shadow = shadow;
-}
-
-uint32_t khdays_snd7_native_shared_work(void)
-{
-    return snd7_shared_work;
-}
 
 static uint8_t *shared_at(uint32_t offset)
 {
-    return shared_shadow != NULL ? shared_shadow + offset : snd7_ds(snd7_shared_work + offset);
+    return snd7_ds(snd7_shared_work + offset);
 }
 
 uint32_t snd7_shared_read32(uint32_t offset)

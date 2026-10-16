@@ -822,7 +822,7 @@ in 12,760); a few words of 0 besides. By id (`include/nitro/snd.h`):
   volume and pan, output selector), 28 STOP_UNLOCKED_CHANNEL, 33
   READ_DRIVER_INFO.
 
-**The ARM7's driver, mapped** (`native/tools/arm7_listing.py`'s listing of
+**The ARM7's driver, mapped** (from a listing of
 the segment the native driver reads its tables from; ARM7 addresses; each
 role from what the code does):
 
@@ -3470,8 +3470,8 @@ message by its gate, the first halfword of the game's packet on port 12):
   host's copy of each is left out of the host's record when it comes (the
   first own shot with the same first four bytes: operation, owner, mode,
   channel, shot). At 10% loss, 172 of 172 shot commands applied at once and
-  their 172 copies left out, none different by a byte. Measured with
-  `native/tools/mp_latency.py`: the guest's attack at +10 to +11 frames at
+  their 172 copies left out, none different by a byte. Measured with two
+  copies on one PC: the guest's attack at +10 to +11 frames at
   round trips of 0.1 to 206 ms, the host's own at +11 (+17 to +27 before);
   its weapon's shot (the projectile's sound) at +14 to +15, as the host's run
   of the same shot at no delay (+24 and more before). **Off by default since

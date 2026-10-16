@@ -1282,14 +1282,6 @@ const char *stick_icon(int stick)
     return names[family == KHDAYS_PAD_PLAYSTATION ? 1 : family == KHDAYS_PAD_NINTENDO ? 2 : 0][stick];
 }
 
-const char *dpad_icon()
-{
-    const int family = pad_family();
-    return family == KHDAYS_PAD_PLAYSTATION ? "playstation_dpad_none"
-           : family == KHDAYS_PAD_NINTENDO  ? "switch_dpad_none"
-                                            : "xbox_dpad_none";
-}
-
 void draw_icon(ImDrawList *dl, SDL_Texture *texture, ImVec2 c, float size)
 {
     dl->AddImage((ImTextureID)(intptr_t)texture, ImVec2(c.x - size / 2, c.y - size / 2),

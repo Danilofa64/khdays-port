@@ -37,17 +37,6 @@ struct LoadedTexture final {
     int reference_height = 0;
 };
 
-// A model plus any textures that ship with it (glTF). DS models bundle no
-// textures — those are loaded by name via load_texture().
-struct LoadedModel final {
-    khdays::assets::NeutralModel model;
-    std::map<std::string, LoadedTexture> textures;
-};
-
-// Load a model through the resource layer. A path ending in .gltf/.glb is
-// imported as glTF (with its own textures); otherwise the DS model is decoded.
-LoadedModel load_model(const std::filesystem::path& path);
-
 // Load a skeletal animation.
 khdays::assets::SkeletalAnimation load_animation(
     const std::filesystem::path& ds_path,
@@ -95,9 +84,5 @@ khdays::assets::DecodedTexture load_background(
     const std::filesystem::path& nscr_path,
     const std::filesystem::path& nclr_path,
     const std::vector<std::filesystem::path>& ncgr_paths);
-
-// Load an NFTR font, or a mod override if present: a replacement font at
-// "<mods>/<any-mod>/fonts/**/<name>.nftr" wins.
-khdays::assets::Font load_font(const std::filesystem::path& nftr_path);
 
 }  // namespace khdays::resource

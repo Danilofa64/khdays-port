@@ -119,7 +119,6 @@ add_library(
         src/assets/mods_video.cpp
         external/khdays-decomp/libs/mobiclip/video/portable/mobiclip_reference.cpp
         src/assets/screen.cpp
-        src/assets/sdat.cpp
         src/assets/sequence.cpp
         src/assets/tex0.cpp
         src/assets/ui_layout.cpp

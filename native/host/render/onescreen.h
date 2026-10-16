@@ -16,9 +16,6 @@ typedef struct KhdaysFramePackage KhdaysFramePackage; /* runtime/display/frame_p
 void khdays_onescreen_prepare(const KhdaysFramePackage *package, int columns, KhdaysComposition *composition,
                               KhdaysOneScreenDraw *draw);
 
-/* The last situation decided. */
-const KhdaysSituation *khdays_onescreen_situation(void);
-
 /* Whether `package`, decided last, is to be decided again as the game's VBlanks pass: its picture
  * stands still and the situation's history is still settling (ui/situation.h). */
 int khdays_onescreen_settling(const KhdaysFramePackage *package);

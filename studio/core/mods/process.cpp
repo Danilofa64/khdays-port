@@ -31,11 +31,6 @@ std::string Job::last_line() const {
     return lines_.empty() ? std::string() : lines_.back();
 }
 
-std::size_t Job::line_count() const {
-    std::lock_guard lock(mutex_);
-    return lines_.size();
-}
-
 void Job::stop() {
     stop_ = true;
 }

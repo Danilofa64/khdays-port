@@ -171,19 +171,9 @@ static const char *name_of(const Names *names, int n)
     return n >= 0 && n < names->count ? names->name[n] : "";
 }
 
-int khdays_sound_archive_players(const KhdaysSoundArchive *archive)
-{
-    return archive->player.count;
-}
-
 const char *khdays_sound_archive_player_name(const KhdaysSoundArchive *archive, int player)
 {
     return name_of(&archive->player, player);
-}
-
-int khdays_sound_archive_stream_players(const KhdaysSoundArchive *archive)
-{
-    return archive->stream_player.count;
 }
 
 const char *khdays_sound_archive_stream_player_name(const KhdaysSoundArchive *archive, int player)
