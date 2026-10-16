@@ -58,6 +58,10 @@ void khdays_settings_renderer_gone(void);
  * whether the HD videos are installed. Set when the menu opens. */
 void khdays_settings_set_situation(int in_session, int hd_videos);
 
+/* Whether this copy is a guest in a multiplayer session (its gameplay mods' options are shown locked:
+ * the host's count). */
+void khdays_settings_set_guest(int guest);
+
 /* A line for the notice area (a problem in the settings file, a controller
  * that could not be used), shown while the menu is open (settings_corner.c). */
 void khdays_settings_add_notice(const char *text);

@@ -187,6 +187,18 @@ play), making a mission's enemies (`Ov002_CreateActorFromMarker` needs one of it
 there whenever it was tried), who dealt a hit, a loaded save's event, the mission's chests, telling
 a cleared mission from a lost one.
 
+## Multiplayer
+
+The host's game decides for everyone in a room, so a room takes only players with the same gameplay
+mods as its host: the same ids, versions and scripts (a fingerprint of them travels with the request
+to join). A player with other gameplay mods is not let in and the room list says which mods the room
+plays with. Visual mods are each player's own and never keep anyone out.
+
+In a room, a guest's scripts still run and hear the events, but what they would change in the game
+is refused (`nil, "guest"`): the host's mods make those changes, with the host's option values, and
+they reach the guests as the rest of the game does. A guest's gameplay mods' options are shown locked
+in the Mods page. A mod turned on, off or moved while in a room counts from the next room.
+
 ## Examples
 
 `port/mods_examples/`: copy a folder into `mods/` to try it.

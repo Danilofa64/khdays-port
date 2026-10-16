@@ -176,6 +176,7 @@ typedef struct KhdaysModelContext {
     int hd_videos;       /* the HD videos are installed (the movies' volume has a sample) */
     const char *gamepad; /* the gamepad's name, or NULL */
     int pad_family;      /* KhdaysPadFamily */
+    int guest;           /* a guest in a multiplayer session: the host's gameplay mods' options count */
 } KhdaysModelContext;
 
 /* The most rows a section can have: one binding per action, plus the

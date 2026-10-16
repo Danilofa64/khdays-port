@@ -75,7 +75,7 @@ struct Menu {
     std::vector<KhdaysRow> rows = std::vector<KhdaysRow>(KHDAYS_MODEL_ROWS_MAX);
     int count = 0;
     // The situation (khdays_settings_set_situation) and the graphics card.
-    int in_session = 0, hd_videos = 0, graphics_card = 1;
+    int in_session = 0, hd_videos = 0, graphics_card = 1, guest = 0;
     // Where the last drawing put things, in the renderer's pixels.
     std::vector<Place> places;
     float density = 1.0f;
@@ -147,6 +147,7 @@ void settle()
     KhdaysModelContext context{};
     context.graphics_card = m.graphics_card;
     context.in_session = m.in_session;
+    context.guest = m.guest;
     context.hd_videos = m.hd_videos;
     context.gamepad = khdays_devices_gamepad_name();
     context.pad_family = pad_family();
@@ -1957,6 +1958,11 @@ void khdays_settings_set_situation(int in_session, int hd_videos)
 {
     m.in_session = in_session;
     m.hd_videos = hd_videos;
+}
+
+void khdays_settings_set_guest(int guest)
+{
+    m.guest = guest;
 }
 
 void khdays_settings_set_graphics_card(int available)

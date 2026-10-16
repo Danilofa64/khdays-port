@@ -12,6 +12,8 @@
 #include "queue.h"
 #include "sandbox.h"
 #include "view.h"
+#include "../core/sha256.h"
+#include "../net/net_session.h"
 
 #include <lauxlib.h>
 #include <lua.h>
@@ -24,6 +26,7 @@ static KhdaysMod **mods; /* each its own block: its state keeps its address (lua
 static int count;
 static int changed; /* the mods' view is to be published again (view.h) */
 static void publish(void);
+static void tell_rooms(void);
 static int started;
 static int tracing = -1;
 static int field_begun; /* the field was made: its first run is the mission's start */
@@ -284,6 +287,7 @@ void khdays_scripts_start_in(const char *mods_path, const char *user)
         }
     }
     publish();
+    tell_rooms();
     changed = 0;
 }
 
@@ -355,6 +359,53 @@ static void publish(void)
         free(now.mods[i].options);
     }
     free(now.mods);
+}
+
+/* The gameplay mods running, for multiplayer rooms (runtime/net/net_session.h): their fingerprint, the
+ * first four bytes of SHA-256 over each one's id, a 0, its version, a 0 and its own fingerprint, in
+ * load order (0 with none; a digest whose first four bytes are 0 counts as 1), and their names and
+ * versions. Visual mods are not counted: each player's own. */
+static void tell_rooms(void)
+{
+    KhdaysSha256 sha;
+    unsigned char digest[32];
+    unsigned char *list = NULL;
+    size_t size = 0;
+    unsigned int counted = 0, fingerprint = 0;
+    khdays_sha256_begin(&sha);
+    for (int i = 0; i < count; ++i) {
+        const KhdaysMod *m = mods[i];
+        size_t name, version;
+        unsigned char *more;
+        if (m->state != KHDAYS_MOD_LOADED || m->manifest.kind != KHDAYS_MOD_GAMEPLAY) {
+            continue;
+        }
+        khdays_sha256_add(&sha, m->manifest.id, strlen(m->manifest.id) + 1);
+        khdays_sha256_add(&sha, m->manifest.version, strlen(m->manifest.version) + 1);
+        khdays_sha256_add(&sha, m->fingerprint, sizeof(m->fingerprint));
+        name = strlen(m->manifest.name) < 255 ? strlen(m->manifest.name) : 255;
+        version = strlen(m->manifest.version) < 255 ? strlen(m->manifest.version) : 255;
+        more = realloc(list, size + 2 + name + version);
+        if (more == NULL) {
+            continue;
+        }
+        list = more;
+        list[size++] = (unsigned char)name;
+        memcpy(list + size, m->manifest.name, name);
+        size += name;
+        list[size++] = (unsigned char)version;
+        memcpy(list + size, m->manifest.version, version);
+        size += version;
+        ++counted;
+    }
+    if (counted > 0) {
+        khdays_sha256_end(&sha, digest);
+        fingerprint = (unsigned int)digest[0] | (unsigned int)digest[1] << 8 | (unsigned int)digest[2] << 16 |
+                      (unsigned int)digest[3] << 24;
+        fingerprint = fingerprint != 0 ? fingerprint : 1;
+    }
+    khdays_net_set_mods(fingerprint, list, (unsigned int)size, counted);
+    free(list);
 }
 
 static KhdaysMod *by_folder(const char *folder)
@@ -529,6 +580,7 @@ void khdays_scripts_frame(void)
     if (changed) {
         changed = 0;
         publish();
+        tell_rooms(); /* the next room's: a session already joined keeps what it was joined with */
     }
 }
 

@@ -39,6 +39,9 @@ typedef struct KhdaysRoomView {
     int cursor;         /* the row selected */
     int editing;        /* the selected field takes what is typed */
     int wrong_password; /* the last join was refused for its password */
+    const char *mods_needed; /* the last join was refused for other gameplay mods: the host's ("name
+                              * version, ..."; empty otherwise), and how many its answer left out */
+    int mods_more;
     int16_t master;     /* the game's fade: its brightness, -16 black to 16 white */
     int row_count;
     KhdaysRoomRow *rows;

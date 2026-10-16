@@ -503,7 +503,14 @@ int khdays_room_screen_draw(SDL_Renderer *renderer)
         break;
     case KHDAYS_ROOMS_LIST:
         words(&fr, "heading", MLT_HEADING, 0, 0, 1.0f);
-        if (v->wrong_password) {
+        if (v->mods_needed[0] != 0) {
+            char needs[1200];
+            const int n = SDL_snprintf(needs, sizeof(needs), khdays_text(TXT_ROOM_NEEDS_MODS), v->mods_needed);
+            if (v->mods_more > 0 && n > 0 && n < (int)sizeof(needs)) {
+                SDL_snprintf(needs + n, sizeof(needs) - (size_t)n, " (+%d)", v->mods_more);
+            }
+            text(&fr, "notice", needs, 0, 0, 1.0f);
+        } else if (v->wrong_password) {
             text(&fr, "notice", khdays_text(TXT_ROOM_WRONG_PASSWORD), 0, 0, 1.0f);
         }
         draw_list(&fr, v);

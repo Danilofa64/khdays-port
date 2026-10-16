@@ -286,8 +286,11 @@ static struct {
     /* host: the pings of non-members answered in this second */
     u64 probes_since;
     unsigned int probes_answered;
-    /* guest: why the last join was refused (0: it was not) */
+    /* guest: why the last join was refused (0: it was not), and with KHDAYS_NET_REFUSE_MODS the host's
+     * mods as its answer listed them */
     unsigned int last_refusal;
+    char *refusal_mods;
+    int refusal_more;
     /* host only: guests the server introduced, to punch toward until they join */
     struct Introduced {
         unsigned int token;
@@ -433,6 +436,47 @@ static void transmit(const KhdaysNetAddress *to, const unsigned char *bytes, uns
 /* Sends a datagram of `kind` with a `size`-byte body along route `to`:
  * straight to its address, or, for a relayed pair, wrapped in a RELAY
  * datagram to the server (the pair's token, then the whole datagram). */
+/* This copy's gameplay mods (khdays_net_set_mods), under their own lock: the scripts set them on the
+ * game's thread, the session's thread reads them. */
+static SDL_Mutex *mods_lock;
+static SDL_InitState mods_once;
+static unsigned int mods_fingerprint, mods_count, mods_size;
+static unsigned char *mods_list;
+
+static void mods_ready(void)
+{
+    if (SDL_ShouldInit(&mods_once)) {
+        mods_lock = SDL_CreateMutex();
+        SDL_SetInitialized(&mods_once, mods_lock != NULL);
+    }
+}
+
+void khdays_net_set_mods(unsigned int fingerprint, const unsigned char *list, unsigned int size, unsigned int count)
+{
+    unsigned char *copy = size > 0 ? (unsigned char *)malloc(size) : NULL;
+    if (copy != NULL) {
+        memcpy(copy, list, size);
+    }
+    mods_ready();
+    SDL_LockMutex(mods_lock);
+    free(mods_list);
+    mods_list = copy;
+    mods_size = copy != NULL ? size : 0;
+    mods_count = copy != NULL ? count : 0;
+    mods_fingerprint = fingerprint;
+    SDL_UnlockMutex(mods_lock);
+}
+
+static unsigned int own_mods_fingerprint(void)
+{
+    unsigned int fingerprint;
+    mods_ready();
+    SDL_LockMutex(mods_lock);
+    fingerprint = mods_fingerprint;
+    SDL_UnlockMutex(mods_lock);
+    return fingerprint;
+}
+
 static void send_kind(const Route *to, int kind, const unsigned char *body, unsigned int size)
 {
     const unsigned int wrap = to->relay != 0 ? HEADER + 4 : 0;
@@ -1123,6 +1167,68 @@ static int password_proven(const unsigned char *sender, const unsigned char *bod
     return memcmp(body + at, expected, DIGEST_SIZE) == 0;
 }
 
+/* The refusal for other gameplay mods: the reason, how many the host plays with (u16), then as many of
+ * them as one datagram holds, each its name and version as a u8 size and the bytes. */
+static void refuse_for_mods(const Route *to)
+{
+    unsigned char body[DATAGRAM_RECORDS];
+    unsigned int at = 3, read = 0, listed = 0;
+    body[0] = KHDAYS_NET_REFUSE_MODS;
+    mods_ready();
+    SDL_LockMutex(mods_lock);
+    while (listed < mods_count && read < mods_size) {
+        unsigned int entry = 0;
+        for (int part = 0; part < 2 && read + entry < mods_size; ++part) {
+            entry += 1u + mods_list[read + entry];
+        }
+        if (read + entry > mods_size || at + entry > sizeof(body)) {
+            break;
+        }
+        memcpy(body + at, mods_list + read, entry);
+        at += entry;
+        read += entry;
+        ++listed;
+    }
+    put16(body + 1, (unsigned short)mods_count);
+    SDL_UnlockMutex(mods_lock);
+    send_kind(to, REFUSE, body, at);
+}
+
+/* A guest's reading of that refusal: "name version, ..." and how many were left out. */
+static void take_refusal_mods(const unsigned char *body, unsigned int size)
+{
+    const unsigned int count = size >= 3 ? get16(body + 1) : 0;
+    unsigned int at = 3, shown = 0, length = 0;
+    char *text = (char *)malloc(size * 2 + 1);
+    free(net.refusal_mods);
+    net.refusal_mods = text;
+    net.refusal_more = 0;
+    if (text == NULL) {
+        return;
+    }
+    while (at < size && shown < count) {
+        for (int part = 0; part < 2; ++part) {
+            const unsigned int n = at < size ? body[at] : 0;
+            if (at + 1 + n > size) {
+                at = size;
+                break;
+            }
+            if (part == 0 && shown > 0) {
+                text[length++] = ',';
+                text[length++] = ' ';
+            } else if (part == 1) {
+                text[length++] = ' ';
+            }
+            memcpy(text + length, body + at + 1, n);
+            length += n;
+            at += 1 + n;
+        }
+        ++shown;
+    }
+    text[length] = 0;
+    net.refusal_more = (int)(count - shown);
+}
+
 static void on_datagram(const Route *from, const unsigned char *d, long got, u64 now)
 {
     const unsigned char *sender, *body;
@@ -1198,10 +1304,16 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
             return;
         }
         refuse = get32(body) != net.build                     ? KHDAYS_NET_REFUSE_BUILD
+                 : get32(body + 4) != own_mods_fingerprint()  ? KHDAYS_NET_REFUSE_MODS
                  : !net.open                                  ? KHDAYS_NET_REFUSE_CLOSED
                  : (unsigned int)members() >= net.max_members ? KHDAYS_NET_REFUSE_FULL
                  : !password_proven(sender, body, size)       ? KHDAYS_NET_REFUSE_PASSWORD
                                                               : 0;
+        if (refuse == KHDAYS_NET_REFUSE_MODS) {
+            refuse_for_mods(from);
+            khdays_log("net: a join refused: other gameplay mods");
+            return;
+        }
         if (refuse != 0) {
             send_kind(from, REFUSE, &refuse, 1);
             khdays_log("net: a join refused (reason %u)", refuse);
@@ -1251,6 +1363,9 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
         }
         net.joining = 0;
         net.last_refusal = body[0];
+        if (body[0] == KHDAYS_NET_REFUSE_MODS) {
+            take_refusal_mods(body, size);
+        }
         push(KHDAYS_NET_REFUSED, 0, NULL, 0)->event.reason = body[0];
         khdays_log("net: the join was refused (reason %u)", body[0]);
         return;
@@ -1525,6 +1640,7 @@ static void join_step(u64 now)
             unsigned int size = 10 + net.ssid_size;
             memset(body, 0, sizeof(body));
             put32(body, net.build);
+            put32(body + 4, own_mods_fingerprint()); /* the gameplay mods this copy plays with */
             body[8] = (unsigned char)net.ssid_size;
             memcpy(body + 10, net.ssid, net.ssid_size);
             if (net.join_locked && net.join_password) {
@@ -2627,6 +2743,21 @@ int khdays_net_room_at(int index, KhdaysNetRoomView *out, char *name, unsigned i
 int khdays_net_last_refusal(void)
 {
     return (int)net.last_refusal;
+}
+
+void khdays_net_last_refusal_mods(char *text, int room, int *more)
+{
+    text[0] = 0;
+    *more = 0;
+    if (!net.started) {
+        return;
+    }
+    SDL_LockMutex(net.lock);
+    if (net.refusal_mods != NULL) {
+        SDL_strlcpy(text, net.refusal_mods, (size_t)room);
+        *more = net.refusal_more;
+    }
+    SDL_UnlockMutex(net.lock);
 }
 
 int khdays_net_own_aid(void)

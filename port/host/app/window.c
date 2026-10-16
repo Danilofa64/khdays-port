@@ -406,6 +406,7 @@ static void open_settings(void)
         khdays_settings_add_notice(text);
     }
     khdays_settings_set_situation(!settings_stopped, khdays_settings_sample_has_movies());
+    khdays_settings_set_guest(khdays_net_own_aid() > 0);
     khdays_settings_open(khdays_devices_profile());
     heard = khdays_settings_profile()->sound;
     khdays_scripts_ask(KHDAYS_ASK_SETTINGS_OPENED, NULL, NULL, 0); /* the mods hear it */

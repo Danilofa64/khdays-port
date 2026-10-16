@@ -547,6 +547,10 @@ static void build_mods(Builder *b)
             r->layer = i;
             r->action = o;
             r->note = khdays_scripts_text(ov->description, language);
+            if (b->context->guest && v->kind == KHDAYS_MOD_GAMEPLAY) {
+                r->available = 0; /* a guest's gameplay mods change nothing: the host's do */
+                r->note = khdays_text(TXT_MOD_HOST_SETS);
+            }
             if (ov->kind != KHDAYS_OPTION_BUTTON) {
                 r->value = &mod_values[mod_first[i] + o];
             }

@@ -20,7 +20,8 @@ enum {
     KHDAYS_NET_REFUSE_JUDGE,    /* the host's game said no */
     KHDAYS_NET_REFUSE_BUILD,    /* another build of the port */
     KHDAYS_NET_REFUSE_SILENT,   /* no answer */
-    KHDAYS_NET_REFUSE_PASSWORD  /* the room's password not proven */
+    KHDAYS_NET_REFUSE_PASSWORD, /* the room's password not proven */
+    KHDAYS_NET_REFUSE_MODS      /* other gameplay mods than the host's (khdays_net_last_refusal_mods) */
 };
 
 typedef struct KhdaysNetEvent {
@@ -161,6 +162,16 @@ int khdays_net_own_aid(void);
 
 /* Why the last join was refused (KHDAYS_NET_REFUSE_*), 0 when it was not. */
 int khdays_net_last_refusal(void);
+
+/* The gameplay mods this copy plays with (runtime/scripts): their fingerprint, sent when joining and
+ * compared by a host (0: none), and their names and versions, each a u8 size and its UTF-8 bytes,
+ * name then version, `count` of them, told to a guest the host refuses. Any thread; the strings are
+ * copied. */
+void khdays_net_set_mods(unsigned int fingerprint, const unsigned char *list, unsigned int size, unsigned int count);
+
+/* After a KHDAYS_NET_REFUSE_MODS: the host's gameplay mods as "name version, name version" (cut to
+ * `room` bytes, ended), and how many of them the host's answer could not hold. */
+void khdays_net_last_refusal_mods(char *text, int room, int *more);
 
 /* How many rooms of the group being scanned are known now. */
 int khdays_net_room_count(void);

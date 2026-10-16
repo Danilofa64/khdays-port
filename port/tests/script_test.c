@@ -160,6 +160,16 @@ void khdays_link_trace_hp(const void *entity, int before)
 }
 
 static char fake_sound[64], fake_notice[64];
+static unsigned int fake_mods_fingerprint, fake_mods_count;
+static unsigned char fake_mods_list[256];
+
+void khdays_net_set_mods(unsigned int fingerprint, const unsigned char *list, unsigned int size, unsigned int count)
+{
+    fake_mods_fingerprint = fingerprint;
+    fake_mods_count = count;
+    memset(fake_mods_list, 0, sizeof(fake_mods_list));
+    memcpy(fake_mods_list, list, size < sizeof(fake_mods_list) ? size : sizeof(fake_mods_list));
+}
 
 const char *khdays_link_play_sound(const char *sequence_archive, const char *entry)
 {
@@ -769,6 +779,34 @@ static void test_files_and_notices(void)
     end_case();
 }
 
+static void test_room_fingerprint(void)
+{
+    unsigned int first, second;
+    begin_case("rooms");
+    mod_folder("Look", "test.look", "visual", "print('a visual mod')\n");
+    start();
+    CHECK(fake_mods_fingerprint == 0 && fake_mods_count == 0); /* visual mods are each player's own */
+    khdays_scripts_stop();
+    mod_folder("Play", "test.play", "gameplay", "print('a gameplay mod')\n");
+    start();
+    first = fake_mods_fingerprint;
+    CHECK(first != 0 && fake_mods_count == 1 && fake_mods_list[0] == 9 &&
+          memcmp(fake_mods_list + 1, "test.play", 9) == 0 && fake_mods_list[10] == 3 &&
+          memcmp(fake_mods_list + 11, "1.0", 3) == 0);
+    khdays_scripts_stop();
+    start();
+    CHECK(fake_mods_fingerprint == first); /* the same mods, the same fingerprint */
+    khdays_scripts_stop();
+    put("mods/Play/scripts/main.lua", "print('changed')\n");
+    start();
+    second = fake_mods_fingerprint;
+    CHECK(second != 0 && second != first); /* a script changed: another fingerprint */
+    khdays_scripts_ask(KHDAYS_ASK_ENABLE, "Play", NULL, 0);
+    frames(1);
+    CHECK(fake_mods_fingerprint == 0 && fake_mods_count == 0);
+    end_case();
+}
+
 static void test_guest(void)
 {
     begin_case("guest");
@@ -798,6 +836,7 @@ int main(void)
     RUN(test_menu_asks);
     RUN(test_actions);
     RUN(test_files_and_notices);
+    RUN(test_room_fingerprint);
     RUN(test_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);

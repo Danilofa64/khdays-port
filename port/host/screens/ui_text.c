@@ -810,6 +810,14 @@ static const char *const texts[TXT_COUNT][5] = {
                             "Spätere Mods der Liste laufen nach den früheren: ihre Änderungen gelten.",
                             "I mod più in basso nell'elenco vengono dopo gli altri: valgono le loro modifiche.",
                             "Los mods más abajo en la lista van después de los demás: sus cambios prevalecen."},
+    [TXT_ROOM_NEEDS_MODS] = {"This room plays with these mods: %s", "Ce salon joue avec ces mods : %s",
+                             "Dieser Raum spielt mit diesen Mods: %s", "Questa stanza gioca con questi mod: %s",
+                             "Esta sala juega con estos mods: %s"},
+    [TXT_MOD_HOST_SETS] = {"In a room, the host's options are the ones that count.",
+                           "Dans un salon, ce sont les options de l'hôte qui comptent.",
+                           "In einem Raum gelten die Optionen des Hosts.",
+                           "In una stanza contano le opzioni dell'host.",
+                           "En una sala cuentan las opciones del anfitrión."},
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;

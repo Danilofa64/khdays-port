@@ -87,6 +87,8 @@ static u32 members_seen;
 static Text session_name; /* the room's name, as chosen or joined here */
 static int host_view, self_view, proceed_view;
 static int mode = KHDAYS_ROOMS_NONE, cursor, editing, wrong_password;
+static char mods_needed[1024]; /* the host's gameplay mods when the last join was refused for them */
+static int mods_more;
 /* Without the HD screens' pieces the game's own screens draw the list (ui/rooms2d.c): its rows in
  * the game's order, the action last on the game's button, the others on its four plates from `top` */
 static int look_game, top;
@@ -619,7 +621,7 @@ void khdays_roomlist_edit(int key)
 static void publish(int screen, int master)
 {
     KhdaysRoomView *v, *old;
-    size_t texts = names.n + session_name.n + 1, at;
+    size_t texts = names.n + session_name.n + 1 + strlen(mods_needed) + 1, at;
     const int fields[3] = {KHDAYS_ROOMFIELD_SEARCH, KHDAYS_ROOMFIELD_NAME, KHDAYS_ROOMFIELD_PASSWORD};
     char *pool;
     for (int f = 0; f < 3; ++f) {
@@ -658,6 +660,10 @@ static void publish(int screen, int master)
     }
     memcpy(pool + at, text_of(&session_name), session_name.n + 1);
     v->title = pool + at;
+    at += session_name.n + 1;
+    memcpy(pool + at, mods_needed, strlen(mods_needed) + 1);
+    v->mods_needed = pool + at;
+    v->mods_more = mods_more;
     AcquireSRWLockExclusive(&view_lock);
     old = shown;
     shown = v;
@@ -703,6 +709,8 @@ static void start_join(const unsigned char *id)
     join_pending = 1;
     join_since = khdays_events_vblank_count();
     wrong_password = 0;
+    mods_needed[0] = 0;
+    mods_more = 0;
     khdays_net_scan_only(target);
 }
 
@@ -766,6 +774,12 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
         selected_room = 0;
         editing = 0;
         wrong_password = khdays_net_last_refusal() == KHDAYS_NET_REFUSE_PASSWORD;
+        if (khdays_net_last_refusal() == KHDAYS_NET_REFUSE_MODS) {
+            khdays_net_last_refusal_mods(mods_needed, sizeof(mods_needed), &mods_more);
+        } else {
+            mods_needed[0] = 0;
+            mods_more = 0;
+        }
         opened = 1;
     }
     if (create_pending) {

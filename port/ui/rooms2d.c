@@ -272,11 +272,21 @@ void *khdays_rooms2d_text(int id, void *game, void *out_buffer, int units)
     void *out = game;
     if (v != NULL && id == 0x3d) {
         /* the note: why the last join failed, else what the step asks */
-        const int said = v->screen == KHDAYS_ROOMS_LIST && v->wrong_password ? TXT_ROOM_WRONG_PASSWORD
+        const int said = v->screen == KHDAYS_ROOMS_LIST && v->mods_needed[0] != 0 ? TXT_ROOM_NEEDS_MODS
+                         : v->screen == KHDAYS_ROOMS_LIST && v->wrong_password ? TXT_ROOM_WRONG_PASSWORD
                          : v->screen == KHDAYS_ROOMS_CREATE                  ? TXT_ROOM_PASSWORD_NOTE
                          : v->screen == KHDAYS_ROOMS_PASSWORD                ? TXT_ROOM_PASSWORD_ASK
                                                                              : -1;
-        if (said >= 0) {
+        if (said == TXT_ROOM_NEEDS_MODS) {
+            char line[1200];
+            const int n = snprintf(line, sizeof(line), word(said, v->language), v->mods_needed);
+            if (v->mods_more > 0 && n > 0 && n < (int)sizeof(line)) {
+                snprintf(line + n, sizeof(line) - (size_t)n, " (+%d)", v->mods_more);
+            }
+            clear(&built);
+            wrapped(&built, line);
+            out = give(&built, out_buffer, units);
+        } else if (said >= 0) {
             clear(&built);
             wrapped(&built, word(said, v->language));
             out = give(&built, out_buffer, units);
