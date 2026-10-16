@@ -22,6 +22,8 @@ game code is the original's, readable and moddable; the platform layer is new.
 > [Discord](https://discord.gg/rVeTPhPbsx): what happened and what you were
 > doing when it did.
 
+AI-assisted coding tools were used to help make this possible.
+
 ## Status
 
 The whole game runs natively from the decompilation: the title and its menus,
