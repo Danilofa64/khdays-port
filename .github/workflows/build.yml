@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   # The data-format library, the mod layer and the filesystem, with their
-  # tests, on each platform. (The native game build, native/build.py, needs
+  # tests, on each platform. (The native game build, port/build.py, needs
   # the user's game data and is not built here.)
   build:
     name: ${{ matrix.name }}
@@ -53,7 +53,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake -S . -B build `
+          cmake -S assets -B build `
             -G "Visual Studio 18 2026" `
             -A x64 `
             -DBUILD_TESTING=ON
@@ -62,7 +62,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          cmake -S . -B build \
+          cmake -S assets -B build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON
@@ -74,7 +74,7 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Run Python tool tests
-        run: python -m unittest discover -s tests -p "test_*.py"
+        run: python -m unittest discover -s tools/tests -p "test_*.py"
 
   sanitizers:
     name: Sanitizers (Linux x64)
@@ -95,14 +95,14 @@ jobs:
       - name: Configure with sanitizers
         shell: bash
         run: |
-          cmake -S . -B build-san \
+          cmake -S assets -B build-san \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DBUILD_TESTING=ON \
             -DKHDAYS_ENABLE_SANITIZERS=ON
 
       - name: Build sanitized tests
-        # One aggregate target defined in CMakeLists.txt next to the tests, so a
+        # One aggregate target defined in assets/CMakeLists.txt next to the tests, so a
         # new test never needs a matching edit here.
         run: cmake --build build-san --target khdays-asset-tests
 

@@ -72,7 +72,7 @@ std::vector<std::string> lookup_paths(const Item& item) {
         return {"sounds/" + item.key + ".wav", "sounds/" + item.key + ".flac", "sounds/" + item.key + ".ogg"};
     case Kind::text_file:
         return {"files/" + item.key};
-    case Kind::movie:  // native/runtime/movies/video_mod.c, which wins; then movie_hd.c with the movies set to HD
+    case Kind::movie:  // port/runtime/movies/video_mod.c, which wins; then movie_hd.c with the movies set to HD
         return {"movies/" + item.key + ".mpg", "movies/hd" + item.key + ".mp4"};
     case Kind::room:
         return {"files/" + item.group};  // the world's file

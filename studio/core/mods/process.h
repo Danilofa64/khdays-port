@@ -43,7 +43,7 @@ private:
 };
 
 // The port's dump of `kind` ("graphics" or "sounds") into `directory`: the
-// port's executable run from the port's folder (native/runtime/core/start.c: it
+// port's executable run from the port's folder (port/runtime/core/start.c: it
 // writes the dump without starting the game).
 std::unique_ptr<Job> start_port_dump(const std::filesystem::path& port_exe, const std::filesystem::path& root,
                                      const std::string& kind, const std::filesystem::path& directory);

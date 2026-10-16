@@ -99,7 +99,7 @@ is chosen). It changes at once and is kept in the settings.
    blend. Drop an FBX, glTF or glb model on the window (or choose one): it is
    read as the port reads it and shown beside the game's -- or over its
    skeleton -- moved by the game's animation exactly as the port will move it
-   (its rules are mirrored from `native/runtime/mods/models.cpp`). A `bones.txt`
+   (its rules are mirrored from `port/runtime/mods/models.cpp`). A `bones.txt`
    beside your model is read with it.
    - **Joints**: those named like the game's nodes follow them; pair the others
      in the table (or click a joint of each model in the picture); the tool

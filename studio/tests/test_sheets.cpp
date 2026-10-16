@@ -595,7 +595,7 @@ TEST(the_sheet_as_it_is_takes_the_rows_of_the_screen_standing_for_it) {
 
 namespace {
 
-// The port's record of the colours a sheet was drawn with (native/runtime/mods/sheet_colours.h):
+// The port's record of the colours a sheet was drawn with (port/runtime/mods/sheet_colours.h):
 // tiles 0-1 in row 3 (blues), tile 2 in row 0 (greys), tile 3 never seen.
 void write_seen(const std::filesystem::path& dump, const std::string& key) {
     std::filesystem::create_directories((dump / (key + ".colours")).parent_path());

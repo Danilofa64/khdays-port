@@ -15,7 +15,7 @@ struct Mod {
     std::filesystem::path dir;   // mods/<name>
 };
 
-// The mods in the port's order (src/vfs/filesystem.cpp find_in_mods: the
+// The mods in the port's order (assets/src/filesystem.cpp find_in_mods: the
 // folders' paths sorted).
 std::vector<Mod> list_mods(const std::filesystem::path& mods_root);
 

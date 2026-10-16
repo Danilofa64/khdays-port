@@ -57,7 +57,7 @@ std::string text_language(std::string_view game_path);
 
 // A texture's key without its palette (`.../tex/<texture>@<palette>` ->
 // `.../tex/<texture>`): the name the port also looks for, for every palette
-// (native/runtime/mods/textures.c lines 216-226). Empty when the key has none.
+// (port/runtime/mods/textures.c lines 216-226). Empty when the key has none.
 std::string any_palette_key(const Item& item);
 
 }  // namespace studio

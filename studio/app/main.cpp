@@ -142,7 +142,7 @@ int run_window(App& app) {
     }
     SDL_SetWindowPosition(app.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(app.window);
-    // the formats the port's own device asks for (native/host/render/gpu_present.c)
+    // the formats the port's own device asks for (port/host/render/gpu_present.c)
     app.device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL,
                                      false, nullptr);
     if (app.device == nullptr || !SDL_ClaimWindowForGPUDevice(app.device, app.window)) {

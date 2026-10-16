@@ -53,20 +53,20 @@ struct CheckResult {
 bool png_size(const std::filesystem::path& png, int* width, int* height, std::string* why);
 
 // A 3D texture replacing one of `original_w` x `original_h` (the port:
-// native/runtime/mods/textures.c lines 235-245 -- any PNG; not the same whole
+// port/runtime/mods/textures.c lines 235-245 -- any PNG; not the same whole
 // multiple on both sides: stretched, with a warning).
 CheckResult check_texture(const std::filesystem::path& png, int original_w, int original_h);
 
 // A 2D tile sheet replacing one of `sheet_w` x `sheet_h` (the port:
-// native/runtime/mods/tiles2d.c lines 89-107 -- an indexed PNG is the game's
+// port/runtime/mods/tiles2d.c lines 89-107 -- an indexed PNG is the game's
 // palette indices, any other is true colour; width = s x the sheet's for a
 // whole s in 1..255 and height at least s x its height, else not drawn).
 CheckResult check_sheet(const std::filesystem::path& png, int sheet_w, int sheet_h);
 
-// A sound (the port: native/sound/replace.c khdays_replacement_load).
+// A sound (the port: port/sound/replace.c khdays_replacement_load).
 CheckResult check_sound(const std::filesystem::path& file);
 
-// Any image the port's model textures may be (src/assets/image.cpp: PNG,
+// Any image the port's model textures may be (assets/src/image.cpp: PNG,
 // JPEG, TGA, BMP) written as PNG; empty, or the reason.
 std::string convert_to_png(const std::filesystem::path& from, const std::filesystem::path& to);
 

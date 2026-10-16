@@ -67,8 +67,8 @@ Mission Mode's multiplayer.
 1. Check and extract your copy of the game (Python 3.11+):
 
    ```powershell
-   py .\tools\verify_rom\verify_rom.py "E:\path\game.nds"
-   py .\tools\extract_data\extract_data.py "E:\path\game.nds"
+   py .\tools\verify_rom.py "E:\path\game.nds"
+   py .\tools\extract_data.py "E:\path\game.nds"
    ```
 
    The data goes to `data/extracted/<hash>/`, which is never committed.
@@ -78,20 +78,20 @@ Mission Mode's multiplayer.
 
    ```powershell
    py -m pip install pycparser
-   py .\native\build.py --config Release
+   py .\port\build.py --config Release
    ```
 
-   `native/tools/prepare.py` generates the build's sources from the
+   `port/tools/prepare.py` generates the build's sources from the
    decompilation -- the game's C rewritten with every pointer a reference
-   (`build/native/gen-x64`); the executable is
-   `build/native/obj-release-x64/khdays-native.exe` (`--config Debug`:
-   `build/native/obj-x64/`).
+   (`build/port/gen-x64`); the executable is
+   `build/port/obj-release-x64/khdays-native.exe` (`--config Debug`:
+   `build/port/obj-x64/`).
 
 3. Run it from the repository root, so it finds `data/` and keeps the save in
    `saves/khdays.sav`:
 
    ```powershell
-   .\build\native\obj-release-x64\khdays-native.exe 2> khdays.log
+   .\build\port\obj-release-x64\khdays-native.exe 2> khdays.log
    ```
 
    The runtime reports to stderr; `2>` keeps it for a bug report. Started
@@ -314,7 +314,7 @@ own font -- yours by your bar, the others' by theirs. The DS shows only the
 labels.
 
 **The title as the HD collection's theater menu.** If you have KINGDOM HEARTS
-HD 1.5+2.5 ReMIX, `native/tools/theater_title.py` makes a mod from your copy
+HD 1.5+2.5 ReMIX, `tools/hd/theater_title.py` makes a mod from your copy
 (nothing of the collection is in the port) that shows the title's menu, on
 one screen, as the collection's 358/2 Days theater draws its main menu -- its
 logo, key art, bars and settings key, animated as there -- with the game's
@@ -322,7 +322,7 @@ own options in its font, in the five languages. It reads the theater's
 files as OpenKh's extractor writes them (`Image/Mare.hed_out/original`):
 
 ```bash
-python native/tools/theater_title.py "<collection>/Image/Mare.hed_out/original"
+python tools/hd/theater_title.py "<collection>/Image/Mare.hed_out/original"
 ```
 
 The pictures go to `mods/Theater title/layouts/title/`; the screens after the
@@ -336,7 +336,7 @@ theater's too: its Disney, SQUARE ENIX and copyright screens in the DS's three
 turns.
 
 **The new game's dialogs as in Dream Drop Distance HD.** If you also have
-KINGDOM HEARTS HD 2.8 Final Chapter Prologue, `native/tools/newgame_dialog.py`
+KINGDOM HEARTS HD 2.8 Final Chapter Prologue, `tools/hd/newgame_dialog.py`
 adds to the same mod the new game's steps as Dream Drop Distance HD draws its
 own -- the game's difficulty, then the port's question whether the movies show
 their subtitles, then the review of both ("Continue with these settings?") --
@@ -348,10 +348,10 @@ glove of KINGDOM HEARTS II's title sheet (DDD's own is not among those files;
 OpenKh's KH2 data: `remastered/menu/fm/title.2ld/UK_title_2ld0.png`):
 
 ```bash
-python native/tools/newgame_dialog.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<kh2>/remastered/menu/fm/title.2ld/UK_title_2ld0.png"
+python tools/hd/newgame_dialog.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<kh2>/remastered/menu/fm/title.2ld/UK_title_2ld0.png"
 ```
 
-**The settings menu as the HD collection's.** `native/tools/theater_settings.py`
+**The settings menu as the HD collection's.** `tools/hd/theater_settings.py`
 makes, from the same copy, the collection's own settings menu's pieces in the
 new game's dialogs' tones -- its screen and heading's tab, a faded picture for
 each section, the sections' tabs, the rows' capsules, a switch's check, a
@@ -360,21 +360,21 @@ and its font; the port's settings menu draws itself with them (its rows, keys
 and mouse unchanged), the selected pieces red with a silver rim:
 
 ```bash
-python native/tools/theater_settings.py "<collection>/Image/SettingMenu.hed_out/original"
+python tools/hd/theater_settings.py "<collection>/Image/SettingMenu.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/settings/<lang>/`; without them the
 menu keeps its own look.
 
 **The save list as Dream Drop Distance HD's, with 99 files.**
-`native/tools/save_screen.py` makes, from DDD's files (as above) and the
+`tools/hd/save_screen.py` makes, from DDD's files (as above) and the
 port's extracted game data, the pieces of DDD's own save screen in Days's
 tones -- its screen, the list's rows (the selected one red), the scrollbar, the
 crown, the questions' buttons -- with DDD's font and input icons, Days's
 three faces and the theater's hand (the 1.5+2.5 collection's, as below):
 
 ```bash
-python native/tools/save_screen.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original"
+python tools/hd/save_screen.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/save/<lang>/`. With them, the lists of
@@ -392,14 +392,14 @@ of three: past the first or last row the list moves on, each row numbered, file
 99 tagged AUTO (the autosave's), the game's questions naming the file. In
 `saves/settings.ini`, `[save] files = 3` keeps the DS's three.
 
-**THEATER MODE as the HD collection's theater.** `native/tools/theater_cine.py`
+**THEATER MODE as the HD collection's theater.** `tools/hd/theater_cine.py`
 makes, from the same copy of the collection and the port's extracted game
 data, the theater's chapter list -- its heading, its rows (the selected one
 red, the glove), its DAY and digits, its scrollbar and help bar, its font and
 button and key icons -- and the artwork of each scene's chapter:
 
 ```bash
-python native/tools/theater_cine.py "<collection>/Image/Mare.hed_out/original"
+python tools/hd/theater_cine.py "<collection>/Image/Mare.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/cine/` (`<lang>/` and `art/`). With
@@ -410,13 +410,13 @@ selected scene's chapter. The game's own list runs underneath (its keys,
 pages and movies).
 
 **Mission Mode's rooms and character select on one screen.**
-`native/tools/theater_mission.py` makes, from the same copy, the faces of the
+`tools/hd/theater_mission.py` makes, from the same copy, the faces of the
 game's nineteen characters as the theater has them (in colour and in grey)
 and its hooded figure, the rows, scroll bar and help bar of its chapter list,
 its veil, one of its artworks, its font and its icons:
 
 ```bash
-python native/tools/theater_mission.py "<collection>/Image/Mare.hed_out/original"
+python tools/hd/theater_mission.py "<collection>/Image/Mare.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/select/` and `layouts/rooms/`. With
@@ -428,13 +428,13 @@ bought are not there, as in the game) in rows; each player's place along the
 bottom, in its colour and label (J1-J4), ringed once it has chosen. The
 directions move on that grid; A, B and START are the game's.
 
-**The camp menus on one screen.** `native/tools/ddd_camp.py` makes,
+**The camp menus on one screen.** `tools/hd/ddd_camp.py` makes,
 from your copy of KINGDOM HEARTS HD 2.8 Final Chapter Prologue (Dream Drop
 Distance's camp menu) and the theater of the 1.5+2.5 collection, Mission Mode's
 and the story's camp menus as one screen in DDD's pieces in Days's greys:
 
 ```bash
-python native/tools/ddd_camp.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<collection>/Image/SettingMenu.hed_out/original"
+python tools/hd/ddd_camp.py "<2.8>/Image/dt/kh3d_first.hed_out" "<collection>/Image/Mare.hed_out/original" "<collection>/Image/SettingMenu.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/camp/<lang>/`. With them the camp's
@@ -467,7 +467,7 @@ hand) and the free fonts of Televo's *Kingdom Hearts Re:Collection*
 language:
 
 ```bash
-python native/tools/hd_pause.py <your pictures> "<Re:Collection>/Fonts" --mod "mods/HD HUD"
+python tools/hd/hd_pause.py <your pictures> "<Re:Collection>/Fonts" --mod "mods/HD HUD"
 ```
 
 They go to `mods/HD HUD/layouts/pause/` (see the tool for the pictures' names).
@@ -476,13 +476,13 @@ They go to `mods/HD HUD/layouts/pause/` (see the tool for the pictures' names).
 and the new game's question where those dialogs show): off, the game's movies
 show without the subtitles the DS draws over them. With `movies = hd`, the HD
 videos show the theater's own subtitles when it is on -- in its event font, in
-your language -- if you made them from your copy; `native/tools/theater_movies.py`
+your language -- if you made them from your copy; `tools/hd/theater_movies.py`
 also copies the theater's videos, which carry no subtitles in the picture (a
 video with them drawn in: leave subtitles off). A video you already have is
 kept unless `--force`:
 
 ```bash
-python native/tools/theater_movies.py "<collection>/Image/Mare.hed_out/original"
+python tools/hd/theater_movies.py "<collection>/Image/Mare.hed_out/original"
 ```
 
 The videos go to `data/cutscenes/cinematics/hd<id>.mp4` (the opening's from
@@ -578,7 +578,7 @@ as the original.
 
 **HD movies.** If you own KINGDOM HEARTS HD 1.5+2.5 ReMIX, the HD videos of
 this game's movies its 358/2 Days theater holds can play in their place: make
-them from your copy with `native/tools/theater_movies.py --videos` (see
+them from your copy with `tools/hd/theater_movies.py --videos` (see
 *Subtitles* below), which writes them to the port's
 `data/cutscenes/cinematics/` (`hd802.mp4` to `hd848.mp4`). They are yours:
 nothing of them is in this repository, and `data/` is never committed. With the Movies setting on HD, a movie that has one shows it over
@@ -638,7 +638,7 @@ words those texts itself keeps its own.
   and its window says the address the players write as the server. On a
   home PC it asks the router to open its UDP port 35821 by itself
   (NAT-PMP or UPnP), and says so when the router or the provider (a shared
-  internet address) will not; on a Linux server, `native/server/README.md`
+  internet address) will not; on a Linux server, `port/server/README.md`
   says how to run it as a service.
 - **Your name** in the group list is your *Nickname* (settings,
   Multiplayer; 10 characters, as the DS's), or else an automatic one
@@ -693,51 +693,50 @@ the connection error -- the port boots it again in the same window.
 
 | Path | What it is |
 |---|---|
-| `native/` | The port. `build.py` builds it; `tools/prepare.py` turns the decompilation's C into the game's PC sources |
-| `native/runtime/` | The game's side: what stands in for the DS while the game runs. `core/` memory, I/O registers, events, clock, ARM7, threads, overlays, ROM and files, logs; `input/` the controls as the game reads them; `display/` each frame handed to the window; `sound/` the game's sound driver; `net/` the multiplayer session; `menus/` the port's menus over the game's; `movies/` the game's movies and their HD or mod replacements; `mods/` textures, models and 2D sheets mods replace |
-| `native/host/` | The PC's side. `app/` window, devices, profile, audio out; `render/` the graphics card and the one-screen picture; `screens/` the port's own screens; `settings/` the settings menu; `net/` sockets; `movies/` video decoding |
-| `native/hal/` | The NitroSDK's hardware layer, in C |
-| `native/gfx/`, `native/gpu/` | The 2D's description and composition and the 3D's geometry; the DS's graphics engines in software, the reference the picture is checked against |
-| `native/ui/` | The port's parts over the game's picture: text, HUD, pause, the one-screen situations and compositions |
-| `native/sound/` | The DS's sound (the ARM7's driver) in C, and mods' sounds |
-| `native/server/` | The multiplayer's matchmaking server |
-| `native/shaders/` | The graphics card's shaders (HLSL), and `native/host/render/generated/` what `native/tools/build_shaders.py` makes of them (committed, so building needs no shader tools) |
-| `native/tests/`, `native/fuzz/` | The port's tests (`ctest`) and fuzz targets |
-| `native/tools/` | Build, regression and research tools |
+| `port/` | The port. `build.py` builds it; `tools/prepare.py` turns the decompilation's C into the game's PC sources |
+| `port/runtime/` | The game's side: what stands in for the DS while the game runs. `core/` memory, I/O registers, events, clock, ARM7, threads, overlays, ROM and files, logs; `input/` the controls as the game reads them; `display/` each frame handed to the window; `sound/` the game's sound driver; `net/` the multiplayer session; `menus/` the port's menus over the game's; `movies/` the game's movies and their HD or mod replacements; `mods/` textures, models and 2D sheets mods replace |
+| `port/host/` | The PC's side. `app/` window, devices, profile, audio out; `render/` the graphics card and the one-screen picture; `screens/` the port's own screens; `settings/` the settings menu; `net/` sockets; `movies/` video decoding |
+| `port/hal/` | The NitroSDK's hardware layer, in C |
+| `port/gfx/`, `port/gpu/` | The 2D's description and composition and the 3D's geometry; the DS's graphics engines in software, the reference the picture is checked against |
+| `port/ui/` | The port's parts over the game's picture: text, HUD, pause, the one-screen situations and compositions |
+| `port/sound/` | The DS's sound (the ARM7's driver) in C, and mods' sounds |
+| `port/server/` | The multiplayer's matchmaking server |
+| `port/shaders/` | The graphics card's shaders (HLSL), and `port/host/render/generated/` what `port/tools/build_shaders.py` makes of them (committed, so building needs no shader tools) |
+| `port/tests/`, `port/fuzz/` | The port's tests (`ctest`) and fuzz targets |
+| `port/tools/` | Build, regression and research tools |
 | `studio/` | khdays-studio, the mod tool. `app/` its window, `app/views/` each view; `core/` what it does, by subject: `files/`, `mods/`, `models/`, `rooms/`, `missions/`, `texts/`, `sheets/` |
-| `src/assets/`, `include/khdays/assets/` | The game's data formats decoded to neutral forms (textures, 2D graphics, fonts, text, models and animation, sound, video) and the open formats mods use (PNG, BMP, glTF) |
-| `src/resource/`, `src/vfs/` | The mod layer and the game filesystem |
-| `tools/` | ROM verification and data extraction, decompression and unpacking |
-| `tests/` | Tests of the formats, the filesystem and the tools (`ctest`, `python -m unittest`) |
+| `assets/` | The library the port and the studio share: the game's data formats decoded to neutral forms (textures, 2D graphics, fonts, text, models and animation, sound, video), the open formats mods use (PNG, BMP, glTF, FBX), the mod layer and the game filesystem; `tests/` its tests (`ctest`) |
+| `installer/` | The Windows installer (Inno Setup) and the helper that runs its steps |
+| `tools/` | ROM verification, data extraction and decompression; `hd/` the HD mods made from the player's HD collections; `tests/` their tests (`python -m unittest`) |
 | `docs/` | [`DECOMP_FINDINGS.md`](docs/DECOMP_FINDINGS.md), what the decompilation's C should say differently; [`RUNTIME_MAP.md`](docs/RUNTIME_MAP.md), what the running game does (scenes, overlays, menus, data); [`MESSAGE_DATA_P2.md`](docs/MESSAGE_DATA_P2.md), the text containers |
 | `external/khdays-decomp` | The decompilation, pinned; updated deliberately and tested |
 
 ### Checking the port
 
-- `ctest --test-dir build/native/obj-release-x64` runs the port's tests. In
+- `ctest --test-dir build/port/obj-release-x64` runs the port's tests. In
   the Release tree they include the static analysis
-  (`native/tools/analyze.py`: the port's own sources and the HAL compiled
+  (`port/tools/analyze.py`: the port's own sources and the HAL compiled
   again with MSVC's `/analyze`; any finding left fails it -- each is fixed,
   or suppressed at its line with the reason beside it), 15 seconds of each
   fuzzer (libFuzzer with AddressSanitizer over what arrives from outside:
   the server's datagrams, a router's answers, the game's session), and the
   server under a flood.
-- `py native/tools/fuzz.py --target server --minutes 60` fuzzes one of them
+- `py port/tools/fuzz.py --target server --minutes 60` fuzzes one of them
   (`server`, `portmap`, `session`) for longer, on several cores; an input
-  that breaks a reader is kept in `native/fuzz/<target>/` and replayed by
+  that breaks a reader is kept in `port/fuzz/<target>/` and replayed by
   the tests from then on.
-- `py native/build.py --asan` makes the memory-checking build
-  (`build/native/obj-asan-x64`): AddressSanitizer on the port's own code and
+- `py port/build.py --asan` makes the memory-checking build
+  (`build/port/obj-asan-x64`): AddressSanitizer on the port's own code and
   the server -- not on the decompilation's, whose memory is the window the
   port maps itself, which AddressSanitizer does not track.
-  `py native/tools/regress.py build/native/obj-asan-x64/khdays-native.exe --walk-save OLD.sav`
+  `py port/tools/regress.py build/port/obj-asan-x64/khdays-native.exe --walk-save OLD.sav`
   plays the regression walks with it (from copies of the save given, never
   the save itself); a report fails the walk.
 
 The format library and its tests build on any platform:
 
 ```bash
-cmake -S . -B build
+cmake -S assets -B build
 cmake --build build --config Release
 ctest --test-dir build -C Release
 ```
@@ -749,7 +748,7 @@ ctest --test-dir build -C Release
 - **`khdays-port`** compiles that code for the PC and provides the platform.
 
 The port never edits the decompilation: what its C needs to run on another CPU
-is rewritten at build time (`native/tools/prepare.py`), and what that reveals
+is rewritten at build time (`port/tools/prepare.py`), and what that reveals
 about the C is reported back in `docs/DECOMP_FINDINGS.md`.
 
 ## Non-goals

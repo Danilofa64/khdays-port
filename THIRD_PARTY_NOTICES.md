@@ -41,7 +41,7 @@ Usage: **not linked or embedded**. apicula is used as an external command-line
 tool to convert user-provided NSBMD models to glTF for cross-checking the native
 mesh decoder, and its public source was read as a reference for the Nintendo DS
 MDL0 binary layout (bones, inverse-bind matrices, render commands, and GPU
-vertex commands). The decoder in `src/assets/mesh.cpp` is an independent
+vertex commands). The decoder in `assets/src/mesh.cpp` is an independent
 reimplementation; no apicula code was copied.
 
 ## stb_image and stb_image_write
@@ -55,12 +55,12 @@ Pinned commit: `2c980bb59875b0d32144a71867fbdebb2f77cd20` (`stb_image.h` v2.30)
 License: public domain (Unlicense) or MIT, at your option.
 
 Usage: fetched by CMake and compiled in. `khdays-assets` (via
-`src/assets/png.cpp`) decodes PNG overrides with `stb_image.h` (when
+`assets/src/png.cpp`) decodes PNG overrides with `stb_image.h` (when
 `KHDAYS_ENABLE_PNG` is on, the default). The native port
-(`native/host/render/png_io.c`) reads PNG files with `stb_image.h` and writes them
+(`port/host/render/png_io.c`) reads PNG files with `stb_image.h` and writes them
 with `stb_image_write.h` (HD screenshots, and the graphics dump to come).
 khdays-studio, the mod tool (`studio/`, specs/018), compiles those same port
-files (`native/host/render/png_io.c`, `src/assets/image.cpp`) as they are, at the same
+files (`port/host/render/png_io.c`, `assets/src/image.cpp`) as they are, at the same
 commit.
 
 ## cgltf
@@ -74,8 +74,8 @@ Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
 License: **MIT**.
 
 Usage: fetched by CMake and compiled in. `khdays-assets` (via
-`src/assets/gltf.cpp`, when `KHDAYS_ENABLE_GLTF` is on, the default) and the
-native port (`native/runtime/mods/models.cpp`, through the same file) read the
+`assets/src/gltf.cpp`, when `KHDAYS_ENABLE_GLTF` is on, the default) and the
+native port (`port/runtime/mods/models.cpp`, through the same file) read the
 glTF models mods bring; khdays-studio (`studio/`) compiles the same file to
 read them as the port does, and lists a glTF's buffers and images with cgltf.
 
@@ -91,7 +91,7 @@ stb_image above.
 License: public domain (Unlicense) or MIT, at your option.
 
 Usage: compiled into the native port's sound library
-(`native/sound/third_party_decoders.c`) to decode Ogg Vorbis files that
+(`port/sound/third_party_decoders.c`) to decode Ogg Vorbis files that
 replace the game's music, effects and voices from `mods/`; khdays-studio
 (`studio/`) compiles the same file to check and play them as the port does.
 
@@ -106,7 +106,7 @@ Pinned commit: `c871f2be022ece7ef4f64230b4fb8e1fb9eb6023`
 License: MIT (SPDX header in `pl_mpeg.h`), Copyright Dominic Szablewski.
 
 Usage: fetched by CMake (only `pl_mpeg.h` is used) and compiled into the
-native port (`native/runtime/movies/video_mod.c`) to decode the MPEG-1 movies a mod
+native port (`port/runtime/movies/video_mod.c`) to decode the MPEG-1 movies a mod
 puts in the place of the game's (`mods/<Mod>/movies/<id>.mpg`).
 
 ## dr_flac
@@ -120,7 +120,7 @@ Pinned commit: `dfe8377631000664666519fdb83da193fd8037f4`
 License: public domain (Unlicense) or MIT No Attribution, at your option.
 
 Usage: fetched by CMake (only this header is used) and compiled into the
-native port's sound library (`native/sound/third_party_decoders.c`) to decode
+native port's sound library (`port/sound/third_party_decoders.c`) to decode
 FLAC files that replace the game's music, effects and voices from `mods/`;
 khdays-studio (`studio/`) compiles the same file to check and play them as the
 port does.
@@ -135,7 +135,7 @@ Pinned commit: `85cd62382dfea638278962690cf515023f33ed00`
 
 License: MIT.
 
-Usage: compiled into `khdays-assets` (via `src/assets/gltf.cpp`) to import glTF
+Usage: compiled into `khdays-assets` (via `assets/src/gltf.cpp`) to import glTF
 model overrides. Fetched by CMake when `KHDAYS_ENABLE_GLTF` is on (the default,
 which also requires `KHDAYS_ENABLE_PNG`); with it off, glTF support is dropped
 and no fetch occurs.
@@ -148,10 +148,10 @@ Project: LunarG Vulkan SDK — `dxc` (the DirectX Shader Compiler) and
 Upstream: <https://vulkan.lunarg.com/>
 
 Usage: **build tools only, not linked or redistributed**.
-`native/tools/build_shaders.py` compiles the HLSL shaders in `native/shaders/`
+`port/tools/build_shaders.py` compiles the HLSL shaders in `port/shaders/`
 with `dxc` to DXIL (Direct3D 12) and SPIR-V (Vulkan), and with `spirv-cross`
 from the SPIR-V to MSL (Metal); the results are committed as C arrays in
-`native/host/render/generated/` and compiled into the executable, so building the port
+`port/host/render/generated/` and compiled into the executable, so building the port
 needs neither tool. At runtime SDL3's GPU API hands them to the system's
 graphics driver.
 
@@ -163,14 +163,14 @@ Upstream repository: <https://github.com/ufbx/ufbx>
 
 Pinned version: **v0.23.1** (tag object `35a37776ee1163a74609f4ee75d162b7ada099ac`, commit
 `26a482ae66871d7de36eb722aa060bce95bce274`, 2026-09-25). Only its three files are fetched, each
-checked by its SHA-256 (`cmake/fetch_ufbx.cmake`):
+checked by its SHA-256 (`assets/fetch_ufbx.cmake`):
 
 - `ufbx.c`, 1,181,511 bytes, `4a956c26a708e40d82ecb0aeaee54da709d5ba7c144c9642174970059bda7e1d`
 - `ufbx.h`, 223,898 bytes, `f787be529af577efc04f3e3e735844a08556718dbb613d1211c2b313d72895dc`
 - `LICENSE`, 2,631 bytes, `0dd48ebadf52273c736256325c8f078c03c8bb4facee22a4122de0ad3f615391`
 
 Usage: downloaded by CMake, compiled unmodified as a static library and linked into the native
-runtime and the asset library, to read a mod's FBX models (`src/assets/fbx.cpp`, specs/014); also
+runtime and the asset library, to read a mod's FBX models (`assets/src/fbx.cpp`, specs/014); also
 into khdays-studio (`studio/`), which reads them as the port does and lists an FBX's textures.
 
 License: **MIT or Unlicense (public domain)**, the user's choice (its `LICENSE`); this repository
@@ -185,7 +185,7 @@ Upstream repository: <https://github.com/ocornut/imgui>
 Pinned version: **v1.92.9b** (2026-07-31), fetched by CMake as
 `https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz`, 2,123,074 bytes, checked by
 its SHA-256 `21d8a0a565e85dce943e375db00812c2f3f0ab21f3f0f7964e364a63422d7f99`
-(`studio/CMakeLists.txt`, `native/CMakeLists.txt`).
+(`studio/CMakeLists.txt`, `port/CMakeLists.txt`).
 
 Usage: compiled unmodified as static libraries into two programs:
 
@@ -204,7 +204,7 @@ License: **MIT**, copyright (c) 2014-2026 Omar Cornut.
 Font: Roboto Medium, by Christian Robertson (Google), `misc/fonts/Roboto-Medium.ttf` (162,588 bytes)
 of the same Dear ImGui archive as above.
 
-Usage: embedded unmodified, as bytes generated at configure time (`native/CMakeLists.txt`), in
+Usage: embedded unmodified, as bytes generated at configure time (`port/CMakeLists.txt`), in
 `khdays-native.exe`, for the port's settings menu (specs/019).
 
 License: **Apache License 2.0** (<https://www.apache.org/licenses/LICENSE-2.0>), as Dear ImGui's
@@ -216,7 +216,7 @@ Project: Input Prompts 1.5A, by Kenney (<https://kenney.nl/assets/input-prompts>
 
 Pinned archive: `kenney_input-prompts_1.5.zip` (5,070,075 bytes), fetched by CMake from
 `https://kenney.nl/media/pages/assets/input-prompts/8de120163f-1783763952/kenney_input-prompts_1.5.zip`, checked
-by its SHA-256 `ac2fcf599080b0f3ba2d174c9474db6df1a0e96ff0662580e2da79a122ab78a1` (`native/CMakeLists.txt`).
+by its SHA-256 `ac2fcf599080b0f3ba2d174c9474db6df1a0e96ff0662580e2da79a122ab78a1` (`port/CMakeLists.txt`).
 
 Usage: 72 of its 128-pixel PNGs (the `Double` folders of `Xbox Series`, `PlayStation Series` and
 `Nintendo Switch`: the buttons, triggers, sticks and D-pads the menu names, and five gamepads' pictures:
@@ -233,7 +233,7 @@ Component: Microsoft Media Foundation, part of Windows (`mfplat.dll`, `mfreadwri
 its import libraries from the Windows SDK (`mfplat.lib`, `mfreadwrite.lib`, `mfuuid.lib`).
 
 Usage: linked by the native runtime and loaded from the system on first use
-(`native/host/movies/movie_hd_win.c`) to decode the player's own HD videos (H.264 and AAC, specs/013).
+(`port/host/movies/movie_hd_win.c`) to decode the player's own HD videos (H.264 and AAC, specs/013).
 Nothing of it is distributed with this repository; it is the operating system's.
 
 License: part of Windows, under the operating system's license.

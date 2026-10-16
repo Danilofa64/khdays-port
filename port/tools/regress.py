@@ -1,0 +1,436 @@
+#!/usr/bin/env python3
+"""Play the native build through scripted input, without touching anyone's save.
+
+Two ways to use it:
+
+  The regression walks -- nine routes through the game that every change must
+  still complete, scene for scene, the save untouched except by the one that
+  saves (whose file must hold every copy it signed whole, port/tools/save_file.py);
+  the multiplayer walk plays two copies of the game together, each its own player:
+
+    python port/tools/regress.py [EXE] --walk-save OLD.sav [--player-save saves/khdays.sav]
+                                       [--only NAME] [--record] [--env NAME=VALUE ...]
+
+  One script -- for traces and experiments:
+
+    python port/tools/regress.py [EXE] --input FILE --save PATH --log PATH
+                                       [--env NAME=VALUE ...] [--timeout SECONDS]
+                                       [--window] [--keep]
+
+EXE is the Release build's (build/port/obj-release-x64/khdays-native.exe)
+unless given. Every run happens in a new temporary directory that holds a link to the
+repository's data/ and a *copy* of the save, so whatever the game writes stays
+there; --settings FILE starts the game with a copy of FILE as its settings
+(the walks with `[video] screens = one`), --mods DIR with DIR as
+its mods/. The walks' scripts and the scene sequences they must produce live in
+port/tools/regress_walks/.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import save_file  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
+WALKS_DIR = ROOT / "port" / "tools" / "regress_walks"
+DEFAULT_EXE = ROOT / "build" / "port" / "obj-release-x64" / "khdays-native.exe"  # port/build.py --config Release
+EXPECTED = WALKS_DIR / "expected.txt"
+
+
+@dataclass
+class Walk:
+    name: str
+    timeout: int        # seconds; a walk ends when its time is up
+    player_save: bool   # the player's save (else the walks' own old save)
+    saves: bool = False # the walk saves the game (else the save must stay as it was)
+    players: int = 1    # copies of the game playing it together, each with its script
+    script: str | None = None  # the scripts' name, if not the walk's
+    # "direct" or "relay": the players meet through a khdays-server of this
+    # PC (the one next to EXE), not the local network; "relay" never tries
+    # the host straight
+    server: str | None = None
+
+
+# The routes: the Mission Mode loop, Story Mode, a mission in play, and
+# challenge 07 with the player's save (the order the old regress_all.sh used);
+# then a save with the player's save: the camp menu's Save, a new file in
+# slot 2; the camp's "main menu", whose reset boots the game again
+# in the same process, back to the camp; and Mission Mode's multiplayer, two
+# copies on this PC from the title to the Mission Review of a mission quit
+# together: on the local network, then through a khdays-server of
+# this PC -- met through it, then relayed by it.
+WALKS = [
+    Walk("mission", 250, player_save=False),
+    Walk("story", 250, player_save=False),
+    Walk("play", 200, player_save=False),
+    Walk("run07", 300, player_save=True),
+    Walk("save", 120, player_save=True, saves=True),
+    Walk("reset", 180, player_save=False),
+    Walk("multiplayer", 240, player_save=False, players=2),
+    Walk("online", 240, player_save=False, players=2, script="multiplayer", server="direct"),
+    Walk("relayed", 240, player_save=False, players=2, script="multiplayer", server="relay"),
+    # four players: a host and three guests through a server of this PC
+    Walk("multiplayer4", 300, player_save=False, players=4, script="multiplayer4", server="direct"),
+]
+
+# The runtime reports the current scene once a second, and at each change,
+# on stderr:
+#   khdays-native: frame 1200, scene 2 (object 020b1234, pending 0 arg 0)
+SCENE_LINE = re.compile(r"^khdays-native: frame \d+, scene (\d+)")
+
+# Lines that mean the run went wrong, whatever the scenes say.
+# An AddressSanitizer report (the --asan build) is trouble too, and
+# the game's memory the port could not reach (sound data it could
+# not read, a file handle's header outside the headers' heaps, a heap full) --
+# a silent title once passed every walk's scenes.
+TROUBLE = re.compile(r"Run-Time Check|reached a call|exception 0x|outside the modelled|"
+                     r"no native function|gap|AddressSanitizer|played as silence|"
+                     r"outside the headers' heaps|could not give")
+# The server's log: only a sanitizer's report means it went wrong.
+SERVER_TROUBLE = re.compile(r"AddressSanitizer")
+
+
+def player_saves(work: Path, player: int) -> Path:
+    """Where player `player`'s copy of the game keeps its files in `work`:
+    saves/, or saves/player<N>/ for a further player (host/app/instance.h)."""
+    return work / "saves" if player == 1 else work / "saves" / f"player{player}"
+
+
+def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | None = None,
+                 player: int = 1) -> Path:
+    """A fresh directory with data/ linked in and, if given, a copy of the save
+    (where player `player` keeps it), the mods folder linked in as mods/ and a
+    copy of a settings file as saves/settings.ini (screens = one for the
+    one-screen walks)."""
+    work = Path(tempfile.mkdtemp(prefix="khdays-run-"))
+    link = work / "data"
+    # A junction, not a copy: data/ is gigabytes. `mklink /J` needs no
+    # administrator rights.
+    subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(ROOT / "data")],
+                   check=True, capture_output=True)
+    if mods is not None:
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(work / "mods"), str(mods.resolve())],
+                       check=True, capture_output=True)
+    if save is not None:
+        player_saves(work, player).mkdir(parents=True)
+        shutil.copy2(save, player_saves(work, player) / "khdays.sav")
+    if settings is not None:
+        (work / "saves").mkdir(exist_ok=True)
+        shutil.copy2(settings, work / "saves" / "settings.ini")
+    return work
+
+
+def remove_workdir(work: Path) -> None:
+    """Delete the directory, removing the data/ and mods/ links first so that
+    nothing they point to can ever be deleted with it."""
+    for link in (work / "data", work / "mods"):
+        if link.exists() or os.path.lexists(link):
+            os.rmdir(link)  # removes the junction itself, never its target
+    shutil.rmtree(work)
+
+
+def keep_session_log(work: Path, to: Path) -> None:
+    """The session log the game wrote in `work` (KHDAYS_LOG, saves/logs/ or a
+    further player's saves/player<N>/logs/), copied to `to` before the
+    directory goes."""
+    if (work / "saves").exists():
+        for session in sorted((work / "saves").rglob("session-*.log")):
+            shutil.copy2(session, to)
+
+
+def start_server(exe: Path, log: Path) -> tuple[subprocess.Popen, int]:
+    """The khdays-server next to `exe` started on a port free now, its output to `log`: the process and its port."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    with log.open("wb") as out:
+        # never the PC's router: a walk opens no port on it
+        server = subprocess.Popen([str(exe.parent / "khdays-server.exe"), "--port", str(port), "--router", "off"],
+                                  stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT)
+    return server, port
+
+
+def run_game(exe: Path, work: Path, script: str, extra_env: dict[str, str], timeout: int,
+             log: Path, window: bool) -> int | None:
+    """Run the game in `work` with `script` as its input until it exits or its
+    time is up. stdout and stderr go to `log`. Returns the exit code, or None
+    when the time ran out (the normal end of a walk)."""
+    return run_games(exe, [(work, script, log)], extra_env, timeout, window)[0]
+
+
+def run_games(exe: Path, players: list[tuple[Path, str, Path]], extra_env: dict[str, str], timeout: int,
+              window: bool) -> list[int | None]:
+    """Run a copy of the game for each (work, script, log), all at once --
+    player 1, 2, ... in that order, as the copies of a multiplayer walk -- each
+    until it exits or the time is up. Returns each one's exit code, or None
+    when the time ran out (the normal end of a walk)."""
+    games = []
+    try:
+        for player, (work, script, log) in enumerate(players, start=1):
+            env = dict(os.environ)
+            env["KHDAYS_INPUT"] = script
+            # the player this copy is, whatever copies of the port run on the
+            # PC (host/app/instance.h): a walk alone is player 1
+            env.setdefault("KHDAYS_PLAYER_SLOT", "1")
+            if len(players) > 1:
+                env["KHDAYS_PLAYER_SLOT"] = str(player)
+            # no walk reaches the internet: the public server only when a
+            # walk names a server of this PC
+            env.setdefault("KHDAYS_NET_SERVER", "")
+            if not window:
+                env["KHDAYS_HEADLESS"] = "1"
+            # --env N:NAME=VALUE is player N's alone (a guest under a testing
+            # knob the host has not, e.g. KHDAYS_DS_MEMORY)
+            for name, value in extra_env.items():
+                slot, sep, own = name.partition(":")
+                if not sep:
+                    env[name] = value
+                elif slot == str(player):
+                    env[own] = value
+            with log.open("wb") as out:
+                games.append(subprocess.Popen([str(exe)], cwd=work, env=env, stdout=out,
+                                              stderr=subprocess.STDOUT))
+        deadline = time.monotonic() + timeout
+        codes: list[int | None] = []
+        for game in games:
+            try:
+                codes.append(game.wait(timeout=max(0.0, deadline - time.monotonic())))
+            except subprocess.TimeoutExpired:
+                codes.append(None)
+        return codes
+    finally:
+        for game in games:
+            if game.poll() is None:
+                game.kill()
+                game.wait()
+
+
+def scenes_and_trouble(log: Path) -> tuple[list[str], str | None]:
+    """The scenes the log went through (repeats removed) and its first line
+    of trouble, if any.
+
+    Scene 0 between two other scenes is dropped: it is the moment one scene
+    has ended and the next not yet begun, and whether the once-a-second report
+    happens to fall on it depends on timing (the Debug and Release builds of
+    the same code differ there). A walk that ends in scene 0 keeps it."""
+    scenes: list[str] = []
+    trouble = None
+    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = SCENE_LINE.match(line)
+        if match and (not scenes or scenes[-1] != match.group(1)):
+            if scenes and scenes[-1] == "0":
+                scenes.pop()  # it was only between two scenes
+            if not scenes or scenes[-1] != match.group(1):
+                scenes.append(match.group(1))
+        if trouble is None and TROUBLE.search(line):
+            trouble = line.strip()
+    return scenes, trouble
+
+
+def first_line(log: Path, pattern: re.Pattern[str]) -> str | None:
+    """The first line of `log` that `pattern` finds, if any."""
+    if not log.exists():
+        return None
+    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+        if pattern.search(line):
+            return line.strip()
+    return None
+
+
+def read_expected() -> dict[str, list[str]]:
+    expected: dict[str, list[str]] = {}
+    if EXPECTED.exists():
+        for line in EXPECTED.read_text(encoding="utf-8").splitlines():
+            if ":" in line and not line.startswith("#"):
+                name, scenes = line.split(":", 1)
+                expected[name.strip()] = scenes.split()
+    return expected
+
+
+def run_walks(args: argparse.Namespace) -> int:
+    expected = read_expected()
+    walks = [w for w in WALKS if args.only is None or w.name == args.only]
+    if not walks:
+        sys.exit(f"no walk named {args.only}")
+    results: dict[str, list[str]] = {}
+    failed = False
+    for walk in walks:
+        save = args.player_save if walk.player_save else args.walk_save
+        # one copy of the game per player, each in its own directory with its
+        # script (<walk>.input, or <walk>_<player>.input for several) and its
+        # copy of the save; every player must go through the same scenes
+        names = [walk.name] if walk.players == 1 else [f"{walk.name}_{n}" for n in range(1, walk.players + 1)]
+        base = walk.script or walk.name
+        scripts = [base] if walk.players == 1 else [f"{base}_{n}" for n in range(1, walk.players + 1)]
+        works: list[Path] = []
+        server = None
+        try:
+            players = []
+            for player, (name, script_name) in enumerate(zip(names, scripts), start=1):
+                works.append(make_workdir(save, args.mods, args.settings, player))
+                script = (WALKS_DIR / f"{script_name}.input").read_text(encoding="utf-8").strip()
+                players.append((works[-1], script, works[-1] / "game.log"))
+            env = extra_env_of(args)
+            if walk.server is not None:
+                server, port = start_server(args.exe, works[0] / "server.log")
+                env.update({"KHDAYS_NET_SERVER": f"127.0.0.1:{port}", "KHDAYS_NET_LAN": "0"})
+                if walk.server == "relay":
+                    env["KHDAYS_NET_PUNCH"] = "0"
+            exit_codes = run_games(args.exe, players, env, walk.timeout, window=False)
+            outcomes = []
+            if server is not None:
+                server.kill()
+                server.wait()
+                server_trouble = first_line(works[0] / "server.log", SERVER_TROUBLE)
+                if server_trouble is not None:
+                    outcomes.append((f"{walk.name} server", [], server_trouble, None, None))
+            for player, (name, work, exit_code) in enumerate(zip(names, works, exit_codes), start=1):
+                log = work / "game.log"
+                kept_save = player_saves(work, player) / "khdays.sav"
+                scenes, trouble = scenes_and_trouble(log)
+                outcomes.append((name, scenes, trouble, exit_code, save_check(walk, save, kept_save)))
+                if args.logs is not None:
+                    args.logs.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(log, args.logs / f"{name}.log")
+                    keep_session_log(work, args.logs / f"{name}.session.log")
+                    if kept_save.exists():
+                        shutil.copy2(kept_save, args.logs / f"{name}.sav")
+        finally:
+            if server is not None:
+                if server.poll() is None:
+                    server.kill()
+                    server.wait()
+                if args.logs is not None and (works[0] / "server.log").exists():
+                    shutil.copy2(works[0] / "server.log", args.logs / f"{walk.name}.server.log")
+            for work in works:
+                remove_workdir(work)
+        results[walk.name] = outcomes[0][1]
+        want = expected.get(walk.name)
+        for name, scenes, trouble, exit_code, save_verdict in outcomes:
+            verdict = "ok"
+            if trouble is not None:
+                verdict = "TROUBLE"
+            elif exit_code is not None:
+                verdict = f"EXITED ({exit_code})"
+            elif want is None:
+                verdict = "no expected sequence yet"
+            elif scenes != want:
+                verdict = "DIFFERENT (expected: " + " ".join(want) + ")"
+            elif save_verdict is not None:
+                verdict = save_verdict
+            if verdict != "ok" and not (args.record and verdict == "no expected sequence yet"):
+                failed = True
+            print(f"{name:13} {verdict:10} scenes: {' '.join(scenes)}")
+            if trouble is not None:
+                print(f"              first trouble line: {trouble}")
+    if args.record:
+        merged = read_expected()
+        merged.update(results)
+        lines = ["# The scene sequence each regression walk must produce (port/tools/regress.py)."]
+        lines += [f"{w.name}: {' '.join(merged[w.name])}" for w in WALKS if w.name in merged]
+        EXPECTED.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+        print(f"recorded {EXPECTED.relative_to(ROOT)}")
+    return 1 if failed else 0
+
+
+def save_check(walk: Walk, before: Path | None, after: Path) -> str | None:
+    """None if the save is as the walk must leave it: untouched, or -- for the
+    walk that saves -- changed, every copy the game signed whole."""
+    if before is None:
+        return None
+    old = before.read_bytes()
+    new = after.read_bytes() if after.exists() else b""
+    if not walk.saves:
+        return None if new == old else "SAVE WRITTEN (nothing should save)"
+    if new == old:
+        return "NOT SAVED"
+    broken = save_file.broken_copies(new)
+    return None if not broken else f"SAVE BROKEN (copy at 0x{broken[0]:05x})"
+
+
+def extra_env_of(args: argparse.Namespace) -> dict[str, str]:
+    """The --env NAME=VALUE pairs."""
+    extra_env = {}
+    for item in args.env:
+        name, sep, value = item.partition("=")
+        if not sep:
+            sys.exit(f"--env takes NAME=VALUE, not {item}")
+        extra_env[name] = value
+    return extra_env
+
+
+def run_script(args: argparse.Namespace) -> int:
+    script = " ".join(args.input.read_text(encoding="utf-8").split())
+    extra_env = extra_env_of(args)
+    work = make_workdir(args.save, args.mods, args.settings)
+    try:
+        exit_code = run_game(args.exe, work, script, extra_env, args.timeout, args.log, args.window)
+        keep_session_log(work, args.log.with_suffix(".session.log"))
+    finally:
+        if args.keep:
+            print(f"kept the working directory: {work}")
+        else:
+            remove_workdir(work)
+    scenes, trouble = scenes_and_trouble(args.log)
+    ended = "time ran out" if exit_code is None else f"exited with {exit_code}"
+    print(f"{ended}; scenes: {' '.join(scenes)}; log: {args.log}")
+    if trouble is not None:
+        print(f"first trouble line: {trouble}")
+        return 1
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("exe", type=Path, nargs="?", default=DEFAULT_EXE,
+                        help=f"the khdays-native.exe to run (default: {DEFAULT_EXE.relative_to(ROOT)})")
+    walks = parser.add_argument_group("regression walks")
+    walks.add_argument("--walk-save", type=Path, help="the save the mission, story and play walks start from")
+    walks.add_argument("--player-save", type=Path, default=ROOT / "saves" / "khdays.sav",
+                       help="the save the run07 walk starts from (default: saves/khdays.sav)")
+    walks.add_argument("--only", help="run only this walk")
+    walks.add_argument("--record", action="store_true",
+                       help="write the scene sequences of this run to regress_walks/expected.txt")
+    walks.add_argument("--logs", type=Path, help="keep each walk's log in this directory")
+    parser.add_argument("--mods", type=Path, help="a mods folder to play with, linked in as mods/ (the walks or the "
+                        "script)")
+    parser.add_argument("--settings", type=Path, help="a settings file the game starts with, copied as "
+                        "saves/settings.ini (the walks or the script)")
+    parser.add_argument("--env", action="append", default=[],
+                        help="an extra NAME=VALUE for the game (the walks or the script); N:NAME=VALUE for player N alone")
+    one = parser.add_argument_group("one script")
+    one.add_argument("--input", type=Path, help="a file holding a KHDAYS_INPUT script")
+    one.add_argument("--save", type=Path, help="the save to start from (copied; none = a new game)")
+    one.add_argument("--log", type=Path, help="where the game's output goes")
+
+    one.add_argument("--timeout", type=int, default=300, help="seconds before the run is stopped")
+    one.add_argument("--window", action="store_true", help="open the window instead of running headless")
+    one.add_argument("--keep", action="store_true", help="keep the working directory (shots, saves)")
+    args = parser.parse_args()
+
+    if not args.exe.exists():
+        sys.exit(f"{args.exe} does not exist")
+    args.exe = args.exe.resolve()
+    if args.input is not None:
+        if args.log is None:
+            sys.exit("--input needs --log")
+        return run_script(args)
+    if args.walk_save is None:
+        sys.exit("the walks need --walk-save (the old save the first three walks start from)")
+    return run_walks(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

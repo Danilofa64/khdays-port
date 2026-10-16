@@ -1,6 +1,6 @@
 // A mod's model and the files it needs beside it: a glTF's buffers and
 // images, an FBX's textures -- found as the port's importers find them
-// (src/assets/image.cpp find_texture: the stored path relative to the model's
+// (assets/src/image.cpp find_texture: the stored path relative to the model's
 // folder, then as it is, then its file name beside the model).
 #pragma once
 

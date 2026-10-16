@@ -4,7 +4,7 @@
 // the P2 archives' compressed entries 5,164 are 0x11 and 2,921 0x10.
 // A rebuilt file keeps its original's type: whether
 // the game reads the other type in its place is not known. Any valid stream
-// decodes to the same bytes (the port's decoder: src/assets/message.cpp
+// decodes to the same bytes (the port's decoder: assets/src/message.cpp
 // lz_decompress); Nintendo's own compressor's bytes are not matched.
 #pragma once
 

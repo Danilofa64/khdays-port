@@ -1,6 +1,6 @@
 # What the running game does
 
-A map of the game as the native build (`native/`) runs it: which overlays
+A map of the game as the native build (`port/`) runs it: which overlays
 each scene loads, what the screens' object updates are, what the buttons do
 in each menu, and what the data at an address holds. It is for naming and
 commenting the decompilation; what its C should say differently is in
@@ -47,7 +47,7 @@ pass -2: `Ov008_MainMenuExit` (Mission Mode's "Principal"),
 `PageTeardown` of ov008, ov009 and ov025, and `Ov010_TeardownWorkArea`. Seen:
 booted with 0x80000000, the game shows scene 12; A there resets with
 0xfffffffe and the game comes back on the title. The port boots the game
-again in its own process, the window staying (`native/runtime/core/start.c`
+again in its own process, the window staying (`port/runtime/core/start.c`
 `reset_boot`, since 2026-10-05; before, the process started itself again):
 the game's threads' contexts deleted, the ARM7's services and sound driver
 started anew, main RAM, the shared WRAM and the data area cleared, the
@@ -57,7 +57,7 @@ again with the parameter, then crt0 and `main`. Seen: Mission Mode's
 and its music; a multiplayer session losing a member: reset with
 0x80000000, scene 12, A, reset with 0xfffffffe, the title, and a mission
 played after it -- three boots in one process. The `reset` walk
-(`native/tools/regress.py`) takes the first path and plays on to the camp
+(`port/tools/regress.py`) takes the first path and plays on to the camp
 again; the scripted input carries on across the reset.
 
 Inside the field (scene 2), without a scene change:
@@ -312,7 +312,7 @@ Normal: "Slide right / SELECT & D-pad: Pan camera right"; Cam Y-Axis Normal:
 "Slide up / SELECT & D-pad: Tilt camera up"; Command List X + D-pad: "Hold
 down X and you can use the D-pad to navigate the list", X Only: "Turn off
 list navigation using the D-pad. You can still cycle through commands by
-pressing X". The route there is `native/tools/regress_walks/config.input`
+pressing X". The route there is `port/tools/regress_walks/config.input`
 (the player's save: title, load, the camp menu, Config).
 
 ## 4. Data
@@ -356,25 +356,25 @@ The native build prints these to stderr when the variable is set:
 - `KHDAYS_TRACE_CONTROLS` -- what the field does with its controls, when it
   changes: the camera's input bits and targets, the lock-on and command-menu
   input and the calls they make, the movement heading and speed, the local
-  player's states, the frame-rate mode (`native/runtime/input/controls_hooks.c`).
+  player's states, the frame-rate mode (`port/runtime/input/controls_hooks.c`).
 
 `KHDAYS_HEADLESS=1` runs without a window; `KHDAYS_INPUT` plays a script of
-key presses, touches and stick positions (`native/runtime/input/input.h`).
+key presses, touches and stick positions (`port/runtime/input/input.h`).
 
 **No ARM code runs** (since 2026-10-02, specs/006 US5): the port has no ARM
 interpreter. A call into DS code that no compiled function answers stops
 the game, on stderr and in the session log:
 `khdays-native: a call through a function reference with no native
-function: 0xADDRESS (from CALLER, ...): stopped` (`native/runtime/core/window.c`,
+function: 0xADDRESS (from CALLER, ...): stopped` (`port/runtime/core/window.c`,
 exit code 5; until specs/010 `ds_calls.c`, exit code 16). Before,
 the interpreter ran it, and `KHDAYS_TRACE_ARM` listed what it ran; on the
 regression walks nothing by the end: the movies' decoder and blit are
 native (section 9), the ITCM's functions run natively when called by
 address (section 7, "Texture matrices"), and `DGTi_Hash2ProcessBlock` (the
 SHA-1 the save's load ran) and `Util_QuickSortWithWork` (the ranking sort
-of ov003) are C (`native/hal/sdk_dgt.c`, `sdk_util.c`). What the build
+of ov003) are C (`port/hal/sdk_dgt.c`, `sdk_util.c`). What the build
 still keeps as the ROM's bytes only is listed in
-`build/native/gen-x64/rom_code.txt`: MobiClip's routines the game never
+`build/port/gen-x64/rom_code.txt`: MobiClip's routines the game never
 reaches -- the audio decoders of kinds 1 and 2
 (`Ov024_MobiClip_AudioTransformDecode`, `func_ov024_02087318_unk`: every
 movie with sound is kind 3, section 9) and the deblocking filter
@@ -390,7 +390,7 @@ stop.
 For the sound (section 6):
 
 - `KHDAYS_SOUND=0` -- no sound driver (the command lists taken as run,
-  `native/runtime/core/arm7.c`); unset, the native one (`native/sound/snd7_*.c`).
+  `port/runtime/core/arm7.c`); unset, the native one (`port/sound/snd7_*.c`).
 - `KHDAYS_TRACE_SOUND_COMMANDS` -- the commands the ARM9 sends, counted by
   id, and how many lists a VBlank carries, every 600 VBlanks; and for each
   stream the game asks for, the milliseconds until it is prepared and until
@@ -428,37 +428,37 @@ For the sound (section 6):
   and from the ARM9 on the sound's tag, the driver's periodic alarms, and
   each replaced sound as it starts and ends.
 
-For the picture (`native/runtime/display/display.c`, `native/host/render/gpu_present.c`):
+For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present.c`):
 
 - `KHDAYS_GFX` -- whose 2D the window shows: unset, the port's own
-  (`native/gfx`, `native/host/render/gfx_render.c`); `reference`, the 2D engines'
-  (`native/gpu/gpu2d.c`) with engine A drawn again at N x by
+  (`port/gfx`, `port/host/render/gfx_render.c`); `reference`, the 2D engines'
+  (`port/gpu/gpu2d.c`) with engine A drawn again at N x by
   `gpu_raster3d.c`'s composition, as before spec 004; `check`, the port's,
   read back each frame and compared -- at 1x with the 2D engines' (the
   software's 3D on, under both), at N x with the old composition -- every
   300 frames how many pixels differed.
 - `KHDAYS_GFX_CHECK=N` -- at one VBlank in N, the port's 2D composed on the
-  CPU (`native/gfx/compose_cpu.c`, the code the GPU runs) and compared with
+  CPU (`port/gfx/compose_cpu.c`, the code the GPU runs) and compared with
   the 2D engines', even headless; the first differing frames written out as
   BMPs into `KHDAYS_SHOT_DIR`, and every 600 VBlanks a count and the time a
   screen took. At N = 1 on a headless walk the game's thread had no time
   left (it stopped making frames): N of 2 or more.
 - `KHDAYS_TRACE_ORIGIN=1` -- where the game's data comes from
-  (`native/runtime/core/origin.c`): each file the engine loads (its path, `@hex`
+  (`port/runtime/core/origin.c`): each file the engine loads (its path, `@hex`
   for a packed entry, into which buffer), and each copy of 32 bytes or more
   into a VRAM bank with the file and offset its bytes came from, or "no
   file" with the first non-zero bytes and the callers.
 - `KHDAYS_DUMP_GRAPHICS=DIR` -- each 3D texture the game draws, written the
-  first time it is drawn as `DIR/<name>.png` (`native/runtime/mods/textures.c`):
+  first time it is drawn as `DIR/<name>.png` (`port/runtime/mods/textures.c`):
   decoded as the port draws it, with the palette it is drawn with, named
   `<file>[#<entry>]/tex/<texture>[@<palette>]` (`names.cpp`); and with the
   window, each 2D tile sheet the layers and sprites are found drawing, as
-  `--dump-graphics` writes it (`native/runtime/mods/tiles2d.c`). With a window
+  `--dump-graphics` writes it (`port/runtime/mods/tiles2d.c`). With a window
   the video settings' "Dump graphics" does the same into
   `saves/dump/graphics`. `KHDAYS_TRACE_TEXTURES=1` reports each texture's
   name as it is first drawn, or why it has none. With or without a window,
   the colours each 2D sheet is drawn with too
-  (`native/runtime/mods/sheet_colours.c`, for the studio): every 8 VBlanks, each
+  (`port/runtime/mods/sheet_colours.c`, for the studio): every 8 VBlanks, each
   shown cell of the text and affine layers and each sprite that may show,
   of 4 or 8 bits, its tile traced to a sheet by the bytes' origin (only
   while they are still the sheet's); per tile the colours it was drawn with
@@ -488,7 +488,7 @@ For the picture (`native/runtime/display/display.c`, `native/host/render/gpu_pre
   pattern animations pair it with, else its `<texture>_pl`; one paired
   with none is written with the first palette under the texture's name
   alone. And every model as `DIR/<file>[#<entry>]/mdl/<model>.gltf`
-  (`src/assets/gltf_export.cpp`): a node per bone at its rest matrix under
+  (`assets/src/gltf_export.cpp`): a node per bone at its rest matrix under
   its parent, one skin, the meshes in their rest pose with each vertex
   weighted to the bones its matrix is made of, their normals, colours and
   texture coordinates, and the textures the dump wrote beside them. And
@@ -503,10 +503,10 @@ For the picture (`native/runtime/display/display.c`, `native/host/render/gpu_pre
   `mods/<Mod>/graphics/<name>.png` drawn instead of the texture of that name,
   or `<file>/tex/<texture>.png` for it with any palette, and
   `mods/<Mod>/graphics/<file>/mdl/<model>.gltf` drawn instead of that model
-  (`native/runtime/mods/models.h`). The 2D's sheets need the window (the port's
+  (`port/runtime/mods/models.h`). The 2D's sheets need the window (the port's
   own 2D).
 - `KHDAYS_TRACE_TILES=1` -- each 2D tile sheet the layers and the sprites
-  are found drawing (`native/runtime/mods/tiles2d.c`), named, the first time: its
+  are found drawing (`port/runtime/mods/tiles2d.c`), named, the first time: its
   tiles, their size and how many a row (the dump's and a replacement's
   layout).
 - `KHDAYS_TRACE_MODELS=1` -- each model the game draws, named, the first
@@ -535,7 +535,7 @@ For the picture (`native/runtime/display/display.c`, `native/host/render/gpu_pre
   `DIR/frame_NNNNN_upper.png` and `_lower.png`.
 - `KHDAYS_RECORD_FRAMES=DIR` -- (with `KHDAYS_SHOTS`, only the frames it
   lists) each frame drawn as the frame package the
-  game thread hands the host (`native/runtime/display/frame_package.h`: the screens,
+  game thread hands the host (`port/runtime/display/frame_package.h`: the screens,
   the 3D list, the texture VRAM, the 2D composition records), as
   `DIR/frame_NNNNN.pkg`, the 3D list's polygons and vertices after it, then
   the same polygons before clipping with their keys, then the port's elements
@@ -631,7 +631,7 @@ second, so at about every other VBlank nothing the display reads has changed
 -- the display registers, VRAMCNT, the palettes, OAM, VRAM, the 3D list and
 what the 3D engine drew. Such a VBlank shows the frame before it again, so it
 is not drawn again and the window keeps showing that frame
-(`native/runtime/display/display.c` `unchanged`, compared byte for byte). At the title
+(`port/runtime/display/display.c` `unchanged`, compared byte for byte). At the title
 this took the game thread from running flat out (11-41 waits a second at 1x,
 2-14 at 4x and 16:9) to 66-80 waits a second at 1x and 67-74 at 4x and 16:9
 (there, with the widescreen records made only where the HUD's pieces land). Recording, the composition
@@ -650,7 +650,7 @@ Story Mode day screens (5, 10), results (6).
 **Graphics card** (checked 2026-09-30 on the maintainer's machine, Windows 10,
 the 32-bit build): SDL gives the port a Direct3D 12 device, and its renderer
 runs on it. The device is made on the host's thread, which starts after the
-DS's address ranges are claimed (`native/runtime/core/start.c` claims them first
+DS's address ranges are claimed (`port/runtime/core/start.c` claims them first
 thing in `main`, `khdays_host_start` comes after), so the graphics driver's
 libraries load into a process whose DS ranges are already taken, as the
 delay-loaded DLLs do. With the device refused (`SDL_GPU_DRIVER=nothing`) the
@@ -672,7 +672,7 @@ and in the pause menu; spec E12):
 | Pause dialog (PAUSA, Sí/No) | engine A's BG2, the hearts counter's layer | the middle | stays (it crosses the middle) |
 
 The port marks the polygons `Ov002_SceneStepPanel` sends with the panel's
-camera (and `Ov002_SceneStepPanelHud`'s) as the HUD's (`native/tools/prepare.py`
+camera (and `Ov002_SceneStepPanelHud`'s) as the HUD's (`port/tools/prepare.py`
 HOOKS, `khdays_hud_3d`), and in widescreen moves them and the BG layers'
 pieces to the sides (`gpu2d.h` KhdaysGpu2dWide, `host/render/gpu_raster3d.c`):
 a piece is the 2D cells or HUD polygons that touch one another; wholly in the
@@ -717,12 +717,12 @@ How the port plays the game's sound, and what running it showed
 **The two sides.** The ARM9's sound code -- NitroSDK's (`libs/nitro/snd`),
 NitroSystem's (`libs/nns/snd`) and the game's own sound manager
 (`src/engine/SoundMgr_*`) -- runs as the decomp's C. The ARM7's side is the
-sound bridge (`native/runtime/sound/sound_bridge.c`):
+sound bridge (`port/runtime/sound/sound_bridge.c`):
 
 - A word the ARM9 sends on the sound's FIFO tag (7) goes to the ARM7's sound
   driver at once, on the game's thread, the driver first brought up to the
   DS clock -- as the ARM7 takes it within microseconds.
-- The sound thread (`native/host/app/sound_output.c`) runs the driver and the
+- The sound thread (`port/host/app/sound_output.c`) runs the driver and the
   channels up to the clock every millisecond, so the sound keeps its time
   whatever the game's thread is doing.
 - The driver's replies wait in a queue that the game's thread moves into the
@@ -733,11 +733,11 @@ sound bridge (`native/runtime/sound/sound_bridge.c`):
   shared work the ARM9 reads changes only when the driver does something.
 
 **The driver** is the native one: the ARM7 binary's sound driver written in
-C (`native/sound/snd7_*.c`), each function citing the ARM7 address of the
+C (`port/sound/snd7_*.c`), each function citing the ARM7 address of the
 routine it is (the map below), its tables read from the ROM's copy of the
 ARM7 binary. It was checked against the binary's own driver, interpreted,
 until the ARM interpreter left the port (2026-10-02, specs/006 US5). **The
-channels and the DS's mixer** are `native/sound`'s (`channels.c`, `mix_ds.c`). **The
+channels and the DS's mixer** are `port/sound`'s (`channels.c`, `mix_ds.c`). **The
 mixer** heard is the PC's by default (`mix_pc.c`: each channel as it is at
 each output sample, at the device's rate, in floats, without the DS's
 10-bit rounding or its bias); `ds_exact = on` in the settings file gives
@@ -910,9 +910,9 @@ looks for a flag at 0x03807cf8 that nothing in its driver sets.
   `ForceStopStrm` and `ShutdownStrm`) stops the channels and the alarm and
   waits for the ARM7 to have done it.
 
-**The port's own reading of the streams** (`native/sound/stream_reader.c`):
+**The port's own reading of the streams** (`port/sound/stream_reader.c`):
 
-- Where `PrepareStrm` returns TRUE, a hook (`native/tools/prepare.py`) hands
+- Where `PrepareStrm` returns TRUE, a hook (`port/tools/prepare.py`) hands
   the bridge the player's channels and rings, the file's header, the first
   sample and where the file is: the sound archive's file in the ROM
   (`player->file.prop.file.top` and `bottom`: 0x0037ce00 to 0x03f817ac,
@@ -980,9 +980,9 @@ the decomp's C, `libs/nns/snd/calls`, and the sound archive's SYMB and INFO):
   window, the DS's mixer to a WAV file), the title's music is silent (every
   second 0 in RMS) and the menu's effects remain.
 
-**Replaced sounds** (`native/runtime/sound/sound_mods.c`, `native/sound/replace.c`;
+**Replaced sounds** (`port/runtime/sound/sound_mods.c`, `port/sound/replace.c`;
 the files a mod gives under `mods/<Mod>/sounds/`, named as
-`native/sound/archive.h` names each sound from the archive's SYMB):
+`port/sound/archive.h` names each sound from the archive's SYMB):
 
 - Found once per identifier through the mods' order
   (`khdays::vfs::find_in_mods`), decoded once on a thread of their own to
@@ -1015,7 +1015,7 @@ the files a mod gives under `mods/<Mod>/sounds/`, named as
   another rate they are interpolated (Catmull-Rom).
 
 **The originals written out** (`khdays-native --dump-sounds [DIR]`,
-`native/runtime/sound/sound_dump.c`; default `saves/dump/sounds`, and inside a
+`port/runtime/sound/sound_dump.c`; default `saves/dump/sounds`, and inside a
 repository only under its `saves/`):
 
 - Headless: the ROM and the static module's image (decompressed as crt0
@@ -1027,7 +1027,7 @@ repository only under its `saves/`):
 - `strm/<name>.wav`: each stream once through, made by the port's stream
   reader as NitroSystem's player makes it, at its rate, its loop in `smpl`.
 - `seq/<name>.wav`, `seqarc/<archive>/<entry>.wav`: each sequence and each
-  entry, played offline (`native/sound/render.c`) by the native driver and
+  entry, played offline (`port/sound/render.c`) by the native driver and
   the PC's mixer at 48,000 Hz. The bank, its four wave archives (assigned as
   `SND_AssignWaveArc` does) and the sequence go to free main RAM
   (0x02200000); the commands are `StartSeq`'s and `StartSeqArc`'s --
@@ -1089,7 +1089,7 @@ frame. The positive forms searched: an HBlank or VCount interrupt (IE bits
 the card's (`OS_EnableIrqMask`, `OS_SetIrqFunction`); the SDK sets DMAs
 immediately, at VBlank, from the card and to the geometry FIFO
 (`MIi_DmaSetParams`' callers); and the port stops on any other DMA start
-mode (`native/runtime/core/io_regs.c`, `dma_control_written`), which no walk or
+mode (`port/runtime/core/io_regs.c`, `dma_control_written`), which no walk or
 player's run has met. So one set of registers draws a whole frame.
 
 **Display capture** (gate G4, from the C): three users --
@@ -1109,7 +1109,7 @@ player's run has met. So one set of registers draws a whole frame.
   not 16; in the dual-3D mode (the global mode's bit 3) the weight goes to the
   dual-3D block instead.
 
-**The port's own 2D** (spec 004, `native/gfx`): each frame both screens'
+**The port's own 2D** (spec 004, `port/gfx`): each frame both screens'
 display control, layers, sprites, windows and effects are decoded at VBlank
 into a frame description (`frame.h`; the windows' vertical flags carried
 from frame to frame as the 2D engines carry them), and composed per pixel by
@@ -1190,7 +1190,7 @@ the ITCM's own `Mtx44_SetIdentity2D` (0x01ffa42c) and `Mtx44_SetIdentity2D_2`
 because the MobiClip decoder is copied over the ITCM while a movie plays, so
 those two ran interpreted: about 21,000 calls on the play walk. The ITCM's
 functions are now listed with their sizes and run natively while their bytes
-are still the game's (`native/runtime/core/overlays.c`, against a copy of the
+are still the game's (`port/runtime/core/overlays.c`, against a copy of the
 ITCM as the game starts); on the play walk no ARM9 instruction is
 interpreted.
 
@@ -1271,7 +1271,7 @@ by address, in the game or the libraries. So the joints' matrices have to be
 where the callbacks and `NNS_G3dGetResultMtx` ask for them, as the DS
 computes them, and nothing else of the geometry is read.
 
-**The port's own 3D geometry** (spec 004, `native/gfx/g3d_geometry.c`):
+**The port's own 3D geometry** (spec 004, `port/gfx/g3d_geometry.c`):
 what the game and NitroSystem send the geometry engine -- packed words to
 GXFIFO, stores to the command ports, display lists by DMA -- is run at once
 by the port's geometry, whose state (the four matrix stacks, the vertex's
@@ -1395,7 +1395,7 @@ gave:
   a few short ones matched, the large ones none. These are the game's own
   drawing (spec 004 US3), not files.
 
-**The 3D's textures by name** (spec 004 US5, `native/runtime/mods/textures.c`,
+**The 3D's textures by name** (spec 004 US5, `port/runtime/mods/textures.c`,
 `names.cpp`): a polygon's TEXIMAGE_PARAM and PLTT_BASE say where its
 texture and palette sit in the slots; the slots' pages say which bank,
 origin.c which file and offset, and the NitroSystem resources in that
@@ -1454,7 +1454,7 @@ The same pass writes 2,912 models as glTF. Roxas's (`ba/ch/ro/def_hb.p.z`,
 biped's bones, `ro_w_tg_R`, `roxas00`, `roxas_tg`), its textures and its
 rest pose: arms lowered, 1.603 units tall.
 
-**HD 2D from mods** (spec 004 US4, `native/runtime/mods/tiles2d.c`,
+**HD 2D from mods** (spec 004 US4, `port/runtime/mods/tiles2d.c`,
 2026-10-01): with "HD graphics" on, a 2D tile sheet whose name has a PNG in
 a mod (`mods/<Mod>/graphics/<file>[#<entry>]/chr/<n>.png`, the dump's name
 and layout, any whole multiple of the sheet's size) is drawn instead of the
@@ -1474,7 +1474,7 @@ brightness. SDL's GPU API binds at most 8 storage buffers to a pass
 (`MAX_STORAGE_BUFFERS_PER_STAGE`): the maps follow the layers' and sprites'
 memory in their buffers, the palettes the descriptions, and every
 replacement (the 3D's textures, models' and 2D sheets) shares one buffer
-(`native/host/render/gpu_hd.c`); with 11 bound the composition failed intermittently,
+(`port/host/render/gpu_hd.c`); with 11 bound the composition failed intermittently,
 showing frames it had not drawn.
 
 Seen (the play script, 2026-10-01): 40 sheets drawn (the title's, the
@@ -1485,7 +1485,7 @@ sheet four times larger (Scale2x twice, indices kept) at 4x: the command
 deck's rounded ends smooth where the DS's are steps, in the game's colours;
 the same sheet as a smoothed true-colour PNG: drawn in its own colours.
 
-**Models from mods** (spec 004 US5, `native/runtime/mods/models.cpp`,
+**Models from mods** (spec 004 US5, `port/runtime/mods/models.cpp`,
 2026-10-01): with "HD graphics" on, a model whose name has a glTF in a mod
 (`mods/<Mod>/graphics/<file>[#<entry>]/mdl/<model>.gltf`, the name the dump
 writes it under) is drawn instead of the game's. The game draws its model
@@ -1525,7 +1525,7 @@ its turn from rest is not his body's (in the combat stance, against
 paired with it, swung up behind his head; paired with nothing (moving with
 the chest), and his neck with `Bip01_Head`, it stays down.
 
-**FBX and `.glb` models** (specs/014; `src/assets/fbx.cpp` with ufbx, `gltf.cpp`,
+**FBX and `.glb` models** (specs/014; `assets/src/fbx.cpp` with ufbx, `gltf.cpp`,
 `models.cpp`): the mod's model is `<model>.gltf`, else `.glb`, else `.fbx`, the
 same neutral form from each. ufbx scales an FBX's geometry to metres but turns
 its axes in the nodes' transforms, so a skinned FBX mesh's vertices are carried
@@ -1618,10 +1618,10 @@ cache, then the read function card command by card command), checks the
 card is still in (`CARDi_ReadRomIDCore`), sets the result, clears the busy
 flags, wakes the threads waiting and calls the callback (`FSi_OnRomReadDone`).
 
-With the port's reads (`KHDAYS_FILES` unset; `native/tools/prepare.py`
-HOOKS, `native/runtime/core/files.c`) the DMA is not tried, and
+With the port's reads (`KHDAYS_FILES` unset; `port/tools/prepare.py`
+HOOKS, `port/runtime/core/files.c`) the DMA is not tried, and
 `CARDi_ReadRomSyncCore`'s copy is one copy of the length from the port's
-image of the ROM (`native/runtime/core/rom.cpp`: a mod's file first, then the
+image of the ROM (`port/runtime/core/rom.cpp`: a mod's file first, then the
 extracted data) into the destination; the rest runs as the SDK runs it.
 
 **The rest of the card.** Every other piece of code that names the card's
@@ -1633,12 +1633,12 @@ registers (`CARDi_SetRomOp`, ROMCTRL `0x040001a4`, the data port
 | `CARDi_ReadRomIDCore` (0x0200edb0) | the chip ID (command 0xb8, 4 bytes), after every read, for `CARDi_CheckPulledOutCore` to compare with the copy kept at boot (0x027ff800 / 0x027ffc00) | the value the card answers (`KHDAYS_CARD_CHIP_ID`, which boot.c records), without the command |
 | `Ov028_DSProt_ROMUtil_Read` (DS Protect's ROM read) | six 0x200-byte pages for its flashcart check (`Ov028_DSProt_ROMTest_IsBad`): 0, 0x200, 0x400, 0x8000, 0x8200, 0x8400, by driving the registers itself; a cartridge answers the first three from 0x8000 (a page read below 0x8000 returns 0x8000 + (address & 0x1ff)), a flashcart does not | each page from the port's image with that rule, its words where its loop puts the card's (`prepare.py` FILE_HOOKS); seen in the session log: 0x8000 three times, 0x8200, 0x8400, twice at boot |
 | `CARDi_TryReadCardDma`, `CARDi_SetCardDma`, `CARDi_OnReadCard` | the card DMA | not reached |
-| `func_01ff84b8` (`Boot_ReloadModules`, `OSi_FinalizeReset`) | the binaries again after `OS_ResetSystem` | not run: the port boots the game again in its process (`native/runtime/core/start.c` `reset_boot`) |
+| `func_01ff84b8` (`Boot_ReloadModules`, `OSi_FinalizeReset`) | the binaries again after `OS_ResetSystem` | not run: the port boots the game again in its process (`port/runtime/core/start.c` `reset_boot`) |
 
 The save does not go through the card's bus: the backup's requests are PXI
-messages to the ARM7, which `native/runtime/core/arm7.c` answers. With the port's
+messages to the ARM7, which `port/runtime/core/arm7.c` answers. With the port's
 reads the emulated card gets no command: on the play walk `files:` says
-`card: 0 commands` every second, and `native/runtime/core/card.c` would name the
+`card: 0 commands` every second, and `port/runtime/core/card.c` would name the
 first ones that still arrived (none did).
 
 **Measured** (the play walk's script, Release, with a window,
@@ -1723,7 +1723,7 @@ heap's walk in `Ov027_ExitScene`. A scene ends only by itself
 (`Scene_AdvanceToPending` waits for `Instance_ReleaseIfDead`), so the screen
 on show cannot be built again without leaving it.
 
-**What the port does when the language changes** (`native/runtime/core/language.c`):
+**What the port does when the language changes** (`port/runtime/core/language.c`):
 the settings menu's request waits for the scene on show to end; at
 `Scene_AdvanceToPending`'s hook (the scene has ended, the next is not built
 yet) the halfword and the firmware's take the new language, so every scene is
@@ -1751,12 +1751,12 @@ story walk four of them, 160 rows of 512 bytes -- `0x06008000` and
 `0x06208000` (BG VRAM of engines A and B), `0x06400000` and `0x06600000` (their
 OBJ VRAM). The opening shows on the upper screen with its subtitles.
 
-**Native** (`native/tools/prepare.py` HOOKS, `native/runtime/movies/video.c`): the
+**Native** (`port/tools/prepare.py` HOOKS, `port/runtime/movies/video.c`): the
 decoder is the decomp's portable reconstruction
 (`libs/mobiclip/video/portable`, `MobiClip_DecodeFrameCore`), called where
 `Ov024_MobiClip_DecodeFrame` calls the payload; the payload is still copied
 to the ITCM, as the game does, and nothing runs it. `Ov024_MobiClip_BlitRows`
-is C translated from its assembly (`native/hal/sdk_mobiclip.c`). The sound:
+is C translated from its assembly (`port/hal/sdk_mobiclip.c`). The sound:
 `Ov024_MobiClip_StepAudio` decodes kind 3 (`Ov024_MobiClip_DecodeAdpcm`) in C
 into rings that channels 0 and 1 play; kind 1's `Ov024_MobiClip_AudioTransformDecode`
 and kind 2's `func_ov024_02087318_unk` (FastAudio; both assembly) are never
@@ -1777,7 +1777,7 @@ frames, decoded and blitted by the native code and by the ROM's payload and
 blit interpreted, each with its own state from the first frame: every frame
 the same.
 
-**The picture** (`native/runtime/movies/video.c`, `tiles2d.c`, `gfx/compose.h`):
+**The picture** (`port/runtime/movies/video.c`, `tiles2d.c`, `gfx/compose.h`):
 after each blit the port keeps the frame where it went -- the VRAM bank and
 offset of the front buffer, what the blit wrote there -- and converts its
 planes at full precision: the blit's own equations (G = Y + Cg, R = Y + Co -
@@ -1798,7 +1798,7 @@ pixels differed in every report; with `pc`, only while a movie plays, about
 of scene 2. Seen side by side, the DS's checkerboard and the port's smooth
 picture.
 
-**The sound** (`native/runtime/sound/sound_bridge.c`): the channels
+**The sound** (`port/runtime/sound/sound_bridge.c`): the channels
 `Ov024_MobiClip_StartAudio` locks (mask 3: channels 0 and 1, the left and
 right rings) are the category `movies` until
 `Ov024_MobiClip_ReleaseAudioChannel` unlocks them, with their own volume
@@ -1807,7 +1807,7 @@ right rings) are the category `movies` until
 log): at `movies = 50` the movie's sound has half the level it has at 100
 (RMS ratio 0.500), the title's music before it the same (0.993).
 
-**A mod's movie** (`native/runtime/movies/video_mod.c`; `mods/<Mod>/movies/<id>.mpg`,
+**A mod's movie** (`port/runtime/movies/video_mod.c`; `mods/<Mod>/movies/<id>.mpg`,
 pl_mpeg): `Ov024_MobiClip_OpenStreamSlot` gives each stream's path as the game
 built it -- the opening's is slot 1's, `/mv/802.mods`, its only stream -- and
 `Ov024_MobiClip_StopPlayback` its end; a movie of one stream whose `<id>` a
@@ -1824,8 +1824,8 @@ stopping it; the same scenes. A truncated file: the game's movie, said once.
 **Times** (the story walk, Release, the game's thread): interpreted, 2.19 ms
 to decode a frame and 2.34 ms to blit it; native, 0.25 ms and 0.03 ms.
 
-**HD videos in the movies' place** (specs/013; `native/runtime/movies/movie_hd.c`,
-`native/host/movies/movie_hd_win.c`; the player's `data/cutscenes/cinematics/hd<id>.mp4`,
+**HD videos in the movies' place** (specs/013; `port/runtime/movies/movie_hd.c`,
+`port/host/movies/movie_hd_win.c`; the player's `data/cutscenes/cinematics/hd<id>.mp4`,
 `[video] movies = hd`). Read in the decomp for it:
 
 - Every movie is bracketed by `Session_SetMoviePlaying(1)` and `(0)`
@@ -1895,18 +1895,18 @@ identified*; neither decoder on its own is affected (the checks above).
 ## 10. Time and interrupts
 
 The game's time is the port's own (specs/007): the PC's clock, counted in the
-DS's cycles (33,513,982 a second, `native/runtime/core/clock.c`) -- the unit the
+DS's cycles (33,513,982 a second, `port/runtime/core/clock.c`) -- the unit the
 SDK's tick, the sound driver and the game's data count in -- less the time the
 settings screen pauses.
 
-**The frame loop** (`native/runtime/core/events.c`): a VBlank every 560,190 cycles
+**The frame loop** (`port/runtime/core/events.c`): a VBlank every 560,190 cycles
 (59.826 a second, the game's rate); at each, as before, the frame the game
 finished goes to the host, the input for the next, the VBlank interrupt's bit,
 the DMAs armed for VBlank and the ARM7's per-frame services. The game's main
 loop (`src/engine/main.c`) waits one VBlank to begin a logic frame and, in
 frame-rate mode 0, one more: one logic frame per two VBlanks.
 
-**The SDK's tick and alarm timer** (`native/hal/sdk_time.c`, prepare.py
+**The SDK's tick and alarm timer** (`port/hal/sdk_time.c`, prepare.py
 HOOKS): NitroSDK's tick is timer 0 at 64 cycles a tick, its overflows carried
 by `OSi_CountUpTick`; its alarms wake on timer 1, which `OSi_SetTimer`
 programs to overflow `delta + 1` ticks on for the queue's head (2 when past
@@ -1981,7 +1981,7 @@ from the strips (2026-10-10): English Continue, Skip, Withdraw, Yes, No, PAUSE,
 PAUSE, "Sicher?"; Italian Continua, Salta, Ritirati, Sì, No, PAUSA, "Sei
 sicuro?"; Spanish Continuar, Omitir, Retirarse, Sí, No, PAUSA, "¿Seguro?".
 The pause part reads these (`khdays_pause_view`) to draw a mod's pictures of
-each piece in its place (`ui/pause.cpp`, `native/tools/hd_pause.py`).
+each piece in its place (`ui/pause.cpp`, `tools/hd/hd_pause.py`).
 
 **The display line** (spec 007 research R2): no scan of 263 lines. VCOUNT's
 readers are two: `Ov024_MobiClip_PresentOnVBlank`, which runs in the VBlank
@@ -2085,7 +2085,7 @@ NitroSystem's billboards, the ARM7's FIFO). The sound ran dry no second.
 the trap was there: each trapped access by the game's instruction, register,
 width and direction), the five walks made about 2.2 million trapped accesses,
 1,305 kinds in 215 functions: the geometry's ports, the DMA's control,
-EXMEMCNT, GXSTAT, engine B's 2D... Then `native/tools/registers.py`, which
+EXMEMCNT, GXSTAT, engine B's 2D... Then `port/tools/registers.py`, which
 prepare.py runs on every decompiled file, gives each access its register's
 kind, read off `io_regs.c`:
 
@@ -2114,7 +2114,7 @@ is. Five files the rewrite does not follow were read by hand (its
 `REVIEWED_PLAIN_FILES`); `compat/include/nitro/mi.h` routes the DMA's waits;
 two hooks (`MIi_DmaSetChannelRegs`, `CARDi_ReadCard`'s data port). What
 still names a register in another form is listed in
-`build/native/gen-x64/registers_left.txt` -- empty at this revision.
+`build/port/gen-x64/registers_left.txt` -- empty at this revision.
 
 The five walks then make no trapped access, in Debug and in Release; the
 fight script's field costs the game's thread 36.8 ms a second (38.8 before,
@@ -2151,7 +2151,7 @@ keeps at 0x027ffc3c -- read by power management and the wireless code,
 written by nothing on the ARM9 -- is not kept (the multiplayer
 specification's).
 
-**The transport** (`native/runtime/core/pxi.c`). NitroSDK's PXI is the port's own:
+**The transport** (`port/runtime/core/pxi.c`). NitroSDK's PXI is the port's own:
 the three SDK functions that touched the IPC registers (`PXI_InitFifo`,
 `PXI_SendWordByFifo`, `PXIi_HandlerRecvFifoNotEmpty`, prepare.py HOOKS) hand
 their words to it. A send goes to the ARM7's service for its tag at once; a
@@ -2176,7 +2176,7 @@ over it (`host/app/files.h`). A crash leaves the old save or the new one; a
 commit that fails leaves the file as it was and is the game's failed save
 (`CARD_RESULT_FAILURE`). The camp menu's Save writes the file twice, once
 per copy of the slot the game keeps (the slot's two copies of 0x2018 bytes,
-each signed with SHA-1: `native/tools/save_file.py`), about 2 ms each. The
+each signed with SHA-1: `port/tools/save_file.py`), about 2 ms each. The
 file keeps its length or reaches the end of what the game wrote.
 
 **A request without an answer** is said once for its tag and kind, with the
@@ -2193,7 +2193,7 @@ Where the game's memory is, the game's C rewritten with references
 (2026-10-03).
 
 **A pointer of the game's is a reference**: 4 bytes, the DS address it had.
-The game's C and the HAL are rewritten so (`native/tools/references`, run by
+The game's C and the HAL are rewritten so (`port/tools/references`, run by
 `prepare.py` on all 24,531 files): a dereference adds the
 window's start to the reference (`KHDAYS_W`), pointer arithmetic is scaled
 by the pointee's size, an object at a DS address is its address as a
@@ -2230,7 +2230,7 @@ definition word for word on the DS's stack and nowhere else (DECOMP_FINDINGS
 in a block of 4-byte slots in the caller's frame, the same on x86 and x64.
 The calls through a declaration without a prototype (7,787) were checked
 against their definitions too, their arguments promoted: the 8 whose words
-differ are calls of those 59. The ABI repairs (`native/abi`: the arguments
+differ are calls of those 59. The ABI repairs (`port/abi`: the arguments
 passed for missing ones, the narrow parameters and returns, the tail calls
 that forward four words) are written in the C, and mean the same on x64.
 
@@ -2257,7 +2257,7 @@ The port draws the game's presentation itself in parts (`KHDAYS_UI`,
 section 5), each an element standing in one slot of the DS's composition --
 a BG layer, or the sprites at a priority -- with what the part stands for
 left out of that slot: a text layer's map cells, or sprites
-(`native/gfx/elements.h`). What each part draws is read here before its code
+(`port/gfx/elements.h`). What each part draws is read here before its code
 (the spec's gates); the check (`KHDAYS_UI=<part>=check`) composes the game's
 picture and the port's in the same frame and says the first difference.
 
@@ -2497,8 +2497,8 @@ again once a VBlank (`khdays_present_refresh_settling`); the port's own reads
 the game's state at each frame and needs no history (`khdays_situation_settling`
 is 0).
 
-**The picture** (`native/host/render/onescreen.c`, `native/gfx/onescreen.h`,
-`native/shaders/onescreen.hlsl`): both screens are composed as in two-screen
+**The picture** (`port/host/render/onescreen.c`, `port/gfx/onescreen.h`,
+`port/shaders/onescreen.hlsl`): both screens are composed as in two-screen
 mode, at the internal resolution, with their elements and a mod's HD sheets,
 but without master brightness and engine A's 2D apart from its 3D: each
 texel K and F such that the screen shows K + F x X for the 3D's colour X
@@ -2537,7 +2537,7 @@ portal at a multiplayer mission's end lost its hundreds digit, wholly left of
 the middle, to the hearts counter's shape). Side by side and stacked
 situations show both screens whole, without the pass.
 
-**The compositions** (`native/ui/compositions/port_days.txt`, compiled in; a
+**The compositions** (`port/ui/compositions/port_days.txt`, compiled in; a
 mod's `layouts/compositions.txt` beginning with `units port` replaces it
 whole; the format in `ui/composition.h`): a layout of the port's for each
 screen (15.6). The lengths are the port's units, the HUD size's factor (15.6);
@@ -2576,7 +2576,7 @@ maintainer's picture).
 
 - *The field's HUD, the port's own layout* (2026-10-08, after the
   maintainer's sketches): the HUD of the field and of the field with the 3D
-  on both screens in `native/ui/compositions/port_days.txt`. Measured on the screens of missions 17 and 18: the mission's panel is the
+  on both screens in `port/ui/compositions/port_days.txt`. Measured on the screens of missions 17 and 18: the mission's panel is the
   lower screen's 4,152-252,192 (the bevels' outside the backdrop, 8-bit 36
   36 36, made transparent), its text row y 156-168, the separator y 171-172,
   the chest icon at (216, 160) and the counter's glyphs at 228-240; the
@@ -2614,7 +2614,7 @@ maintainer's picture).
 
 Asked for by the maintainer: the title's menu as the 358/2 Days theater of
 KINGDOM HEARTS HD 1.5+2.5 ReMIX draws its main menu, with the game's
-options. `native/tools/theater_title.py` makes it from the player's own copy
+options. `tools/hd/theater_title.py` makes it from the player's own copy
 (nothing of the collection is in the repository) as a mod of animated
 pictures (`ui/composition.h`, `backdrop <file>.txt`); `port_days.txt`'s
 `[title]` shows them. They fit inside the window's picture (`backdrop ... fit`,
@@ -2703,7 +2703,7 @@ three in the DS's three turns, held, the game's fades through white kept.
 
 Asked for by the maintainer: NEW GAME's steps as KINGDOM HEARTS Dream Drop
 Distance HD (HD 2.8) draws its new game's, without its vibration question
-and with one for the subtitles. `native/tools/newgame_dialog.py` makes the
+and with one for the subtitles. `tools/hd/newgame_dialog.py` makes the
 pictures from the player's copies; `runtime/menus/newgame.c` follows the game and
 asks the port's question.
 
@@ -2798,7 +2798,7 @@ every language; also `DOP`, the opening, 299.7 s; `DED`, 382.4 s, and `CED`,
 215.3 s, neither the DS's ending's length) are 1280 x 720, 30 frames a
 second, without subtitles. Their first 0x100 bytes are XORed with a 16-byte
 pattern (the header's zeros show it); the rest is a plain MP4
-(`native/tools/theater_movies.py` writes them as the port plays them).
+(`tools/hd/theater_movies.py` writes them as the port plays them).
 
 **The theater's subtitles.** It draws them over its videos from each video's
 event, `<lang folder>/event/<lang>/hd/hd<id>/hd<id>.exia2` (XML, `EXUSIA2_XML`;
@@ -2843,7 +2843,7 @@ Asked for by the maintainer: the port's settings menu as the collection's own
 `Image/SettingMenu.hed_out/original/<lang folder>/l2d/setting_1525.l2d` (the
 theater's L2D; `setting_28.l2d` its HD 2.8 twin), four blocks of texture, 21
 layouts the menu's code places (its words are drawn by code: the nodes 161-167,
-711, 861, 961 have no sprite). Read (`native/tools/theater_settings.py`):
+711, 861, 961 have no sprite). Read (`tools/hd/theater_settings.py`):
 
 - **100** the screen: 101 its ground (crowns and hearts), 102 the heading's
   tab with the menu's name in its texels (localized) and the band's lines (y
@@ -2953,7 +2953,7 @@ cursor to slot 1 (a press at a time) and hands the game the button; its
 questions, reading, deleting and fades are the game's, shown by the port in
 its words (`host/screens/save_screen.c`), the files' levels counted by the game's own
 functions on the game's thread with its state under `gGameState` for that
-while. The pieces: `native/tools/save_screen.py`, from DDD's
+while. The pieces: `tools/hd/save_screen.py`, from DDD's
 `menu/<lang>/camp/save/bin/save00_n.l2d` (layout 1 node 2 the screen, 500 the
 heading's tab; 5 node 210 the list's window, 5555 the scrollbar's track, 5556
 its thumb; 4 node 2 a file's row, control 4 selected, node 14 the crown; 7
@@ -3139,7 +3139,7 @@ pads' buttons and the keyboard's keys (`FontIcon.inf`: u32 the count at 4,
 square and DAY (day 0 the square only), the chapters after it on the same day
 neither.
 
-**The port's list.** `native/tools/theater_cine.py` writes those pieces, the
+**The port's list.** `tools/hd/theater_cine.py` writes those pieces, the
 font and the artworks; `runtime/menus/cinelist.c` reads the game's list (its context
 taken when one of its updates runs, `diag.c`'s check); `host/screens/cine_screen.c`
 draws it over the window while it runs: the game's page of ten in the
@@ -3153,11 +3153,11 @@ the same save): the list, DOWN, RIGHT (the second page, rows 10-19), A on
 
 ### 15.6 The port's own situations (2026-10-14)
 
-`native/ui/situation_decide.c` tells the screen from what the game runs, measured on the
-regression walks (`native/tools/regress_walks/`, frames from the start) with
+`port/ui/situation_decide.c` tells the screen from what the game runs, measured on the
+regression walks (`port/tools/regress_walks/`, frames from the start) with
 `KHDAYS_TRACE_UPDATES=all` (the object updates each frame runs, when the set changes),
 `KHDAYS_TRACE_SITUATION` (the inputs below), `KHDAYS_TRACE_CAMP` and shots; the update
-functions it watches are listed in `native/ui/situation_updates.h` (their bits in the inputs,
+functions it watches are listed in `port/ui/situation_updates.h` (their bits in the inputs,
 `khdays_situation_ran`; a VBlank in which no object ran keeps the set before, as the game steps
 every two VBlanks in its menus). `KHDAYS_SITUATION_COMPARE=1` runs the decision it replaces
 beside it and logs every frame where they differ.
@@ -3188,7 +3188,7 @@ beside it and logs every frame where they differ.
 | party-4 | ov022's member count (`func_ov022_020882f8`'s root +0x34) >= 4 | -- |
 | event | the pause opened while an event of the field runs (ov023's scene there: `data_ov023_0208a784[1]` set): a cutscene's pause, "Continue" and "Skip", the lower screen without the field's HUD | story walk with START in its dialog, f10737-11034; none in the mission walk's battle pause (f5029-5529) |
 
-**The compositions' units** (2026-10-14): `native/ui/compositions/port_days.txt` begins with
+**The compositions' units** (2026-10-14): `port/ui/compositions/port_days.txt` begins with
 `units port`: a margin or an offset is in the picture's DS dots and a scale makes a DS dot that
 many of them, both times the HUD's factor for the player's HUD size 1-8 -- 0.6, 0.7, 0.85, 1, 1.15,
 1.3, 1.5, 1.75 (the maintainer's choice from the field's HUD drawn at each size); `fixed(N)` does
@@ -3278,7 +3278,7 @@ of the port's that needs one names it, and its signal is measured then.
 Seen 2026-10-05 with two copies of the Release build on one PC (a host and a
 guest, each in its own directory with a copy of the walks' save, scripted
 input, `KHDAYS_TRACE_WM=1`), on the port's wireless layer
-(`native/hal/sdk_wireless.c`; ov105, NitroSDK's WM and `wh.c`, is not built):
+(`port/hal/sdk_wireless.c`; ov105, NitroSDK's WM and `wh.c`, is not built):
 
 - **The way in.** Title, Mission Mode, Multiplayer, the save list (Guest Play
   with this save), "Begin playing as a guest?", then "Begin DS Wireless
@@ -3308,7 +3308,7 @@ input, `KHDAYS_TRACE_WM=1`), on the port's wireless layer
 - **The mission.** Scene 2 on both in the same frame (8989): each copy plays
   its own character and sees the other's move.
 - **The players' names in the field (2026-10-08).** The field shows only
-  the J labels; the names are the port's (`native/ui/player_names.cpp`). The
+  the J labels; the names are the port's (`port/ui/player_names.cpp`). The
   game holds them while the group forms, in the Mission Mode context's
   selection message (+0x42c: the members present at +8, a bit per player
   number, their names at +0xa, 11 UTF-16 characters each): ov006's context
@@ -3378,7 +3378,7 @@ input, `KHDAYS_TRACE_WM=1`), on the port's wireless layer
   introductions no faster than every 250 ms, and a host punches toward at
   most as many guests as its group has free places.
 - **The walks.** `multiplayer`, `online` and `relayed`
-  (`native/tools/regress.py`) play this route with two copies of the build
+  (`port/tools/regress.py`) play this route with two copies of the build
   at once, players 1 and 2, from the title to the Mission Review of the
   mission quit together -- on the local network, met through a server,
   relayed by it; both players must go through the same scenes.
@@ -3544,7 +3544,7 @@ the server (LIST to ROOMS) and the host's (REGISTER to REGISTERED), or on the
 local network a ping straight to the host.
 
 **The port's list** (`runtime/net/roomlist.c`, `host/screens/room_screen.c`, in the HD
-theater's chapter list's pieces from `native/tools/theater_mission.py`):
+theater's chapter list's pieces from `tools/hd/theater_mission.py`):
 Create a Group and the search first, then every room known (the client
 already asked the server for every page); on a room, the game is told of that room only
 (`khdays_net_scan_only`), and A puts the game's cursor on its row and hands
@@ -3685,7 +3685,7 @@ camp's menu with Donald's model, face and numbers. What it holds:
   0x36 or 0x33, 0x3b or 0x38).
 
 The port draws it on one screen (`runtime/menus/charselect.c`, `host/screens/select_screen.c`,
-the pieces from `native/tools/theater_mission.py`): the characters the game
+the pieces from `tools/hd/theater_mission.py`): the characters the game
 lets be chosen, in its order, five a row; the directions are the port's, and
 a move is written as the game's own request right after its update, under the
 same conditions, so it is one step whatever the grids (an A pressed before it
@@ -3761,7 +3761,7 @@ menu but the holo-missions' world map (`Ov008_MainMenu_StateTick`: its
   offsets (+0x1dc, +0x1e0).
 
 The port draws the menu page on one screen (`runtime/menus/camp.c`,
-`host/screens/camp_screen.c`, the pieces from `native/tools/ddd_camp.py`; prepare.py
+`host/screens/camp_screen.c`, the pieces from `tools/hd/ddd_camp.py`; prepare.py
 joins `Ov008_DrawStatusField` to the port): the one-screen picture shows the
 screen's backdrop and the game's own 3D model -- the upper screen's whole 3D, its
 frame (117, 29, 87 x 101, before BG0's scroll) moved and scaled so that the frame's
@@ -4066,7 +4066,7 @@ khdays-studio (`--check-missions`, `--mission-commands`).
   -- its point at +0x104, its tag at +0x4a -- and adds each part's enemies, `limit == 0xff ? count :
   min(limit, count)` of them. The table of slots is made first by `InitObjectTables` (a step of the
   same script); an area without that step has no spawners. Checked in the game with
-  `KHDAYS_TRACE_MISSION` (native/runtime/core/runtime.c: the slots of `*data_ov002_0207fa14`): the play
+  `KHDAYS_TRACE_MISSION` (port/runtime/core/runtime.c: the slots of `*data_ov002_0207fa14`): the play
   walk's mission is 0010 (its first area, rooms 0 and 1 of `tt`, has no `InitObjectTables` and no slot
   table appears); with mission 0101 served as 0010 by a mod, its first area made one spawner, group 0,
   tag 5, at (-2.622, 1.249, -24.931) -- the step at 0x0e4 of that area's `_i`.
@@ -4141,7 +4141,7 @@ Read from the decompilation and measured in the port (specs/022 research.md).
   blocks fill such a place first. The port keeps a header's place that a cache entry in use still
   names aside until none does (`game_heap.c`, the session log says the first time); seen with the
   same session: Axel's chakrams, both copies to the Mission Review.
-- **The joins** (`native/tools/prepare.py`): `Ov001_CreateMainAndSubHeaps`'s two creations go to
+- **The joins** (`port/tools/prepare.py`): `Ov001_CreateMainAndSubHeaps`'s two creations go to
   `khdays_game_heap` (`runtime/core/game_heap.c`); `MIi_CheckDma0SourceAddress` (main 0x02004084), whose
   panic for a channel-0 source at or above 0x08000000 is the DS's cartridge bus, lets a source in
   the game's memory pass; `NNS_FndAllocFromExpHeapEx` (main 0x020107fc) tells the port when a heap

@@ -28,12 +28,12 @@ std::string trim(const std::string& s) {
     return s.substr(a, b - a + 1);
 }
 
-// The port's executable the build left most recently (native/build.py's
+// The port's executable the build left most recently (port/build.py's
 // folders: Release, then Debug).
 std::string newest_port(const fs::path& root) {
     std::string best;
     fs::file_time_type best_time{};
-    for (const char* dir : {"build/native/obj-release-x64", "build/native/obj-x64"}) {
+    for (const char* dir : {"build/port/obj-release-x64", "build/port/obj-x64"}) {
         const fs::path exe = root / dir / (std::string("khdays-native") + kExe);
         std::error_code ec;
         if (!fs::is_regular_file(exe, ec)) continue;

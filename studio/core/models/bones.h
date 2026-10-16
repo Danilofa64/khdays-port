@@ -1,6 +1,6 @@
 // A mod's model on the game's skeleton, by the port's rules.
 // The port pairs and poses a mod's model in
-// native/runtime/mods/models.cpp; that code is bound to the running game, so these
+// port/runtime/mods/models.cpp; that code is bound to the running game, so these
 // rules are mirrored here, each citing the lines it follows. A change there
 // must be made here too: the tests and the in-game comparison check
 // the two agree.

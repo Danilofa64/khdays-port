@@ -3,7 +3,7 @@
 // screens, cell banks and palettes in the same data, a picture assembled from
 // one of them (the modder's choice: which goes with which is the game's code,
 // not its data), and an edited picture taken back into the sheet the port
-// reads (native/runtime/mods/tiles2d.c: an indexed PNG is the game's palette
+// reads (port/runtime/mods/tiles2d.c: an indexed PNG is the game's palette
 // indices, any other its own colours, a whole multiple of the sheet's size).
 #pragma once
 
@@ -27,7 +27,7 @@ struct SheetSource {
     std::string label;  // the data (`UI/mlt/res.p2#3`)
     int number = 0;     // its n-th sheet (from 0)
     std::vector<std::uint8_t> data;
-    // the sheet as the port takes it (native/runtime/mods/names.cpp read_sheet)
+    // the sheet as the port takes it (port/runtime/mods/names.cpp read_sheet)
     std::size_t tiles_at = 0;
     int tile_bytes = 32;  // 32: 4 bits a pixel, 64: 8
     int tiles = 0, columns = 0;
@@ -81,7 +81,7 @@ bool tile_draws(const SheetSource& s, int tile);
 
 // The colours the game was seen drawing the sheet `key` with, from the
 // graphics dump `dump`: the port writes "<key>.colours" there while the game
-// is played with the dump on (native/runtime/mods/sheet_colours.h) -- each
+// is played with the dump on (port/runtime/mods/sheet_colours.h) -- each
 // palette row's colours and the row each tile was drawn with. Made a palette
 // of `s` (the one it would be coloured with, the rows seen as the game had
 // them, kUnseenRow's greys after them) that fitting_arrangements chooses, the

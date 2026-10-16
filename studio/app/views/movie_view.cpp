@@ -2,16 +2,16 @@
 // game's own (its preview converted to MP4 in data/preview), the player's HD
 // video, each mod's -- and a video saved into the mod in its place. The port
 // takes two: an MPEG-1 `movies/<id>.mpg`, played in the game's movie wherever
-// it shows (native/runtime/movies/video_mod.c), and an MP4 `movies/hd<id>.mp4`,
-// played instead with the movies set to HD (native/runtime/movies/movie_hd.c). A mod
+// it shows (port/runtime/movies/video_mod.c), and an MP4 `movies/hd<id>.mp4`,
+// played instead with the movies set to HD (port/runtime/movies/movie_hd.c). A mod
 // holds one of them per movie. The videos play through the port's own player
-// (native/host/movies/movie_hd_win.c: Media Foundation, which reads both).
+// (port/host/movies/movie_hd_win.c: Media Foundation, which reads both).
 #include "../app.h"
 
 #include "core/mods/mods.h"
 #include "core/files/paths.h"
 
-#include "../../../native/host/movies/movie_hd.h"
+#include "../../../port/host/movies/movie_hd.h"
 
 #include "imgui.h"
 

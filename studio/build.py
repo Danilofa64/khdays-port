@@ -4,7 +4,7 @@
   python studio/build.py [--config Debug|Release] [--test] [--jobs N]
 
 Configures studio/CMakeLists.txt with Ninja inside Visual Studio's x64
-environment -- found the way native/build.py finds it, by importing that
+environment -- found the way port/build.py finds it, by importing that
 script -- and builds. Output: build/studio/debug/khdays-studio.exe (Release:
 build/studio/release/). --test runs the tool's tests afterwards. The port's
 own build is not touched.
@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def native_build():
-    """native/build.py as a module: its Visual Studio environment and runner."""
-    spec = importlib.util.spec_from_file_location("khdays_native_build", ROOT / "native" / "build.py")
+    """port/build.py as a module: its Visual Studio environment and runner."""
+    spec = importlib.util.spec_from_file_location("khdays_native_build", ROOT / "port" / "build.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

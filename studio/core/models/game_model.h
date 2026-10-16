@@ -1,5 +1,5 @@
 // One of the game's models as the port pairs a mod's model with it
-// (native/runtime/mods/models.cpp load(): its nodes' names, parents and rest
+// (port/runtime/mods/models.cpp load(): its nodes' names, parents and rest
 // matrices) and the animations beside it.
 #pragma once
 
@@ -18,7 +18,7 @@ namespace studio {
 using Mat = std::array<float, 16>;
 
 // A game file's pieces of data, as the port's graphics dump walks them
-// (native/runtime/mods/names.cpp each_data): each entry of a "P2" archive, labelled
+// (port/runtime/mods/names.cpp each_data): each entry of a "P2" archive, labelled
 // `<path>#<entry>` and LZ-decompressed when its flag says so, or the whole
 // file, LZ-decompressed when its path ends in ".z".
 struct GameData {
@@ -64,7 +64,7 @@ bool fits_skeleton(const khdays::assets::NeutralModel& model, const khdays::asse
 bool load_game_model(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump,
                      const std::string& key, GameModel* out, std::string* why);
 
-// An animation's data, decoded by the port's reader (src/assets/animation.cpp).
+// An animation's data, decoded by the port's reader (assets/src/animation.cpp).
 bool load_game_animation(const std::filesystem::path& nitrofs, const GameAnimation& a,
                          khdays::assets::SkeletalAnimation* out, std::string* why);
 

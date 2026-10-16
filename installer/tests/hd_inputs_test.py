@@ -1,0 +1,38 @@
+"""hd_inputs.txt (the collection files the HD tools read, traced by `setup_steps.py trace-inputs`) is
+not stale: it was traced with the HD tools as they are now, and every line names a known archive."""
+import hashlib
+import sys
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+import setup_steps as s  # noqa: E402
+
+ARCHIVES = {"Mare", "SettingMenu", "kh2_first", "kh3d_first", "movies"}
+
+
+class Inputs(unittest.TestCase):
+    def test_traced_with_these_tools(self):
+        repository = HERE.parent.parent
+        digest = hashlib.sha256(b"".join((repository / "tools" / "hd" / t).read_bytes()
+                                         for t, _ in s.HD_MENU_TOOLS + s.HD_VIDEO_TOOLS)).hexdigest()
+        lines = s.INPUTS_FILE.read_text(encoding="utf-8").splitlines()
+        recorded = [line.split()[-1] for line in lines if line.startswith("# tools ")]
+        self.assertEqual(recorded, [digest],
+                         "an HD tool changed since hd_inputs.txt was traced: run setup_steps.py trace-inputs")
+
+    def test_lines(self):
+        entries = [line for line in s.INPUTS_FILE.read_text(encoding="utf-8").splitlines()
+                   if line and not line.startswith("#")]
+        self.assertTrue(entries)
+        for line in entries:
+            archive, _, path = line.partition(" ")
+            self.assertIn(archive, ARCHIVES, line)
+            self.assertTrue(path and not path.startswith("/"), line)
+        # the glove's sheet newgame_dialog takes from KH2
+        self.assertIn(f"kh2_first {s.HAND}", entries)
+
+
+if __name__ == "__main__":
+    unittest.main()

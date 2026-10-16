@@ -61,7 +61,7 @@ assets::Palette2D effective(const SheetSource& s, const assets::Palette2D& p) {
 
 // The colour of index `i` of row `row`: a 256-colour sheet whose palette has
 // no such row takes the first, as the DS does without extended palettes; a
-// 16-colour row past the palette is black (src/assets/graphics2d.cpp
+// 16-colour row past the palette is black (assets/src/graphics2d.cpp
 // palette_color).
 std::array<std::uint8_t, 4> colour(const SheetSource& s, const assets::Palette2D& p, int row, int i) {
     const int per = s.bpp() == 8 ? 256 : 16;

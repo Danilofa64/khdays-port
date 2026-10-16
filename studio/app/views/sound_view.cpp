@@ -1,5 +1,5 @@
 // Sounds: the original, the replacement in the game now and a
-// candidate, each played as the port decodes it (native/sound/replace.c),
+// candidate, each played as the port decodes it (port/sound/replace.c),
 // and the candidate saved under the sound's name.
 #include "../app.h"
 

@@ -1,5 +1,5 @@
 // A BCA0 (NSBCA) with one of its animations replaced.
-// The format as the port reads it (src/assets/animation.cpp,
+// The format as the port reads it (assets/src/animation.cpp,
 // after apicula): a JNT0 section whose Nitro dictionary names the animations
 // and gives each one's J0AC block; a J0AC holds the frame count, the node
 // count, a word kept as it is, the pivot and basis rotation tables, and per

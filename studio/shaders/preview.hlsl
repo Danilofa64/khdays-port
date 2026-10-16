@@ -4,7 +4,7 @@
 // axis in the sampler) times the vertex colour, a light from the viewer's
 // side on vertices that have a normal, alpha cut and blended.
 //
-// Resource layout as SDL3's GPU API expects (native/tools/build_shaders.py):
+// Resource layout as SDL3's GPU API expects (port/tools/build_shaders.py):
 // vertex uniforms in space1; pixel textures and samplers in space2, combined
 // for SPIR-V; pixel uniforms in space3. Built by studio/tools/build_shaders.py.
 

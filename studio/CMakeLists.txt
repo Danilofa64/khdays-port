@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
 project(khdays_studio C CXX)
 if(WIN32)
-    enable_language(RC)  # the executable icon (native/resources/studio.rc)
+    enable_language(RC)  # the executable icon (resources/studio.rc)
 endif()
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -18,7 +18,7 @@ endif()
 set(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 include(FetchContent)
 
-# SDL3: the release the port pins (native/CMakeLists.txt), static.
+# SDL3: the release the port pins (port/CMakeLists.txt), static.
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -45,7 +45,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(imgui)
 
 # What the reused port files need, at the commits the port pins
-# (native/CMakeLists.txt; THIRD_PARTY_NOTICES.md).
+# (port/CMakeLists.txt; THIRD_PARTY_NOTICES.md).
 FetchContent_Declare(
     stb
     GIT_REPOSITORY https://github.com/nothings/stb.git
@@ -67,7 +67,7 @@ FetchContent_Declare(
     SOURCE_SUBDIR none
 )
 FetchContent_MakeAvailable(cgltf)
-include("${ROOT}/cmake/fetch_ufbx.cmake")  # sets ufbx_SOURCE_DIR (the port's pin and hashes)
+include("${ROOT}/assets/fetch_ufbx.cmake")  # sets ufbx_SOURCE_DIR (the port's pin and hashes)
 
 # --- Dear ImGui, as it is -------------------------------------------------------------
 add_library(khdays-studio-imgui STATIC
@@ -85,37 +85,37 @@ target_compile_options(khdays-studio-imgui PRIVATE /W0 /std:c++20)
 
 # --- The port's files, compiled as they are -------------------------------------------
 add_library(khdays-studio-port STATIC
-    "${ROOT}/src/vfs/filesystem.cpp"            # the game's files, and which mod wins
-    "${ROOT}/src/assets/image.cpp"              # images in PNG, JPEG, TGA, BMP (its own stb_image)
-    "${ROOT}/src/assets/gltf.cpp"               # a mod's models, as the port imports them
-    "${ROOT}/src/assets/gltf_export.cpp"        # a room written to build on (specs/020)
-    "${ROOT}/src/assets/fbx.cpp"
-    "${ROOT}/src/assets/mesh.cpp"               # the game's models
-    "${ROOT}/src/assets/animation.cpp"          # and their animations
-    "${ROOT}/src/assets/message.cpp"            # lz_decompress
-    "${ROOT}/src/assets/font.cpp"               # the game's font: which characters it draws
-    "${ROOT}/src/assets/graphics2d.cpp"         # 2D: palettes, tile sheets, screens
-    "${ROOT}/src/assets/cell.cpp"               # and sprite cells
-    "${ROOT}/native/sound/replace.c"            # a mod's sound read as the port reads it
-    "${ROOT}/native/sound/third_party_decoders.c"
-    "${ROOT}/native/host/render/png_io.c"              # PNG in and out, indexed included
-    "${ROOT}/native/host/movies/movie_hd_win.c")       # videos played as the port plays them (Media Foundation)
-target_include_directories(khdays-studio-port PUBLIC "${ROOT}/include")
+    "${ROOT}/assets/src/filesystem.cpp"            # the game's files, and which mod wins
+    "${ROOT}/assets/src/image.cpp"              # images in PNG, JPEG, TGA, BMP (its own stb_image)
+    "${ROOT}/assets/src/gltf.cpp"               # a mod's models, as the port imports them
+    "${ROOT}/assets/src/gltf_export.cpp"        # a room written to build on (specs/020)
+    "${ROOT}/assets/src/fbx.cpp"
+    "${ROOT}/assets/src/mesh.cpp"               # the game's models
+    "${ROOT}/assets/src/animation.cpp"          # and their animations
+    "${ROOT}/assets/src/message.cpp"            # lz_decompress
+    "${ROOT}/assets/src/font.cpp"               # the game's font: which characters it draws
+    "${ROOT}/assets/src/graphics2d.cpp"         # 2D: palettes, tile sheets, screens
+    "${ROOT}/assets/src/cell.cpp"               # and sprite cells
+    "${ROOT}/port/sound/replace.c"            # a mod's sound read as the port reads it
+    "${ROOT}/port/sound/third_party_decoders.c"
+    "${ROOT}/port/host/render/png_io.c"              # PNG in and out, indexed included
+    "${ROOT}/port/host/movies/movie_hd_win.c")       # videos played as the port plays them (Media Foundation)
+target_include_directories(khdays-studio-port PUBLIC "${ROOT}/assets/include")
 target_include_directories(khdays-studio-port PUBLIC "${cgltf_SOURCE_DIR}" "${ufbx_SOURCE_DIR}")
 target_include_directories(khdays-studio-port PRIVATE "${stb_SOURCE_DIR}" "${dr_libs_SOURCE_DIR}")
-# ufbx as it is: third-party, not held to these warnings (as native/CMakeLists.txt)
+# ufbx as it is: third-party, not held to these warnings (as port/CMakeLists.txt)
 add_library(khdays-studio-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 target_compile_options(khdays-studio-ufbx PRIVATE /W0)
 target_link_libraries(khdays-studio-port PUBLIC SDL3::SDL3 khdays-studio-ufbx mfplat mfreadwrite mfuuid ole32)
 target_compile_options(khdays-studio-port PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
-set_source_files_properties("${ROOT}/native/sound/third_party_decoders.c" PROPERTIES COMPILE_OPTIONS "/W0")
+set_source_files_properties("${ROOT}/port/sound/third_party_decoders.c" PROPERTIES COMPILE_OPTIONS "/W0")
 # The port's files as they are: their C library and C++20 deprecation notes
 # are the port's to decide on, not this build's.
 target_compile_definitions(khdays-studio-port PRIVATE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING)
 # The tool's own code reaches these by their directories.
-set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/native/sound" "${ROOT}/native/host")
+set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/port/sound" "${ROOT}/port/host")
 
 # --- The tool -------------------------------------------------------------------------
 set(KHDAYS_STUDIO_FLAGS /W4 /std:c++20 /EHsc /utf-8 /permissive-)
@@ -155,7 +155,7 @@ target_link_libraries(khdays-studio-core PUBLIC khdays-studio-port SDL3::SDL3)
 target_compile_options(khdays-studio-core PRIVATE ${KHDAYS_STUDIO_FLAGS})
 
 add_executable(khdays-studio
-    ${CMAKE_CURRENT_SOURCE_DIR}/../native/resources/studio.rc   # the executable's icon (studio.ico)
+    ${CMAKE_CURRENT_SOURCE_DIR}/resources/studio.rc   # the executable's icon (studio.ico)
     app/app.cpp
     app/views/browser.cpp
     app/cli.cpp

@@ -1,6 +1,6 @@
 # Findings for khdays-decomp from the native build
 
-The port's native build (`native/`, branch `native-port`) compiles the
+The port's native build (`port/`, branch `native-port`) compiles the
 decompilation's C with MSVC for x64 and runs it on a PC -- rewritten at build
 time with every pointer a 4-byte reference, the DS address it had, into a
 range Windows places (specs/010; until 2026-10-03 compiled for 32-bit x86,
@@ -16,7 +16,7 @@ the file's git history keeps it.
 
 Every claim cites the ROM (addresses are ARM9; overlay code is given with its
 overlay). Names are the decomp's own at the revision below. Sections marked
-*generated* are refreshed by `python native/tools/decomp_findings.py`.
+*generated* are refreshed by `python port/tools/decomp_findings.py`.
 
 <!-- BEGIN generated:revision -->
 Checked against khdays-decomp `a2b0478b8`.
@@ -86,7 +86,7 @@ regression walks (Story Mode to the field, a Mission Mode mission in play
 and its Retirarse, the player's save into challenge 07).
 
 Routines the decomp keeps as assembly run as C the port wrote from them
-(`native/hal`, each citing its source): the MTX routines, the BIOS and OS
+(`port/hal`, each citing its source): the MTX routines, the BIOS and OS
 stand-ins, and since 2026-10-01 DGT's SHA-1 block transform
 (`DGTi_Hash2ProcessBlock`, `libs/nitro/dgt/asm_stubs/auto/`): the same
 state as the ROM's routine, interpreted, on the six calls loading the
@@ -95,7 +95,7 @@ SHA-1("abc"). It is SHA-1's plain compression, except that it hashes one
 block even for a length of 0 (it checks the length after the block).
 `Util_QuickSortWithWork` (NitroSDK's MATH_QSort,
 `libs/nitro/math/asm_stubs/auto/`, which ov003's `Ov003_RankPlayers` calls)
-is C since 2026-10-02 (`native/hal/sdk_util.c`): 1,952 sorts -- element
+is C since 2026-10-02 (`port/hal/sdk_util.c`): 1,952 sorts -- element
 widths 1, 2, 3, 4, 5, 8, 12 and 16 bytes, 0 to 300 elements, compared by a
 signed first byte so that ties show the algorithm's order, one run in four
 with many ties -- each the same, byte for byte, as the ROM's routine,
@@ -114,7 +114,7 @@ a mode other than 0, and the one call reaching it, from
 The movies' frame decoder is the decomp's portable reconstruction
 (`libs/mobiclip/video/portable`), called where `Ov024_MobiClip_DecodeFrame`
 calls the payload, and `Ov024_MobiClip_BlitRows` is C written from its
-assembly (`native/hal/sdk_mobiclip.c`): every frame of the 46 movies (37,185)
+assembly (`port/hal/sdk_mobiclip.c`): every frame of the 46 movies (37,185)
 the same as the ROM's payload and blit give (RUNTIME_MAP section 9).
 
 ### 1.3 Seen, not identified yet
@@ -145,7 +145,7 @@ the same as the ROM's payload and blit give (RUNTIME_MAP section 9).
   **It is the port's, not the C's** (spec 007, 2026-10-02, Debug, the
   interpreter long gone): with the port's interrupt watcher on (an
   interrupt injected between two of the game's instructions by suspending
-  its thread, `native/runtime/async_irq.c`), 2 of 10 story walks had the
+  its thread, `port/runtime/async_irq.c`), 2 of 10 story walks had the
   check at that epilogue; with the watcher off and the movie's loops waiting
   natively for their interrupts, 0 of 20 story walks and 0 of 20 play walks.
   The watcher is off by default since. What in the injection moves ESP is
@@ -155,7 +155,7 @@ the same as the ROM's payload and blit give (RUNTIME_MAP section 9).
   the play script's field load. Both functions spin in the game's code --
   one on the card's registers, one on `Ov024_MobiClip_PlayerPollAbort` --
   where the port's watcher may deliver an interrupt between any two
-  instructions (`native/runtime/async_irq.c`): a lead, *not identified*.
+  instructions (`port/runtime/async_irq.c`): a lead, *not identified*.
   Since the port answers the game's ROM reads itself (RUNTIME_MAP §8),
   `CARDi_ReadCard` no longer runs unless `KHDAYS_FILES=card`.
 
@@ -171,7 +171,7 @@ the port follows its names since. Left open:
   -- because their bodies are encrypted in the ROM; the C defines them as
   functions, several to a file. A tool that goes by the symbols' kinds finds
   no function there (the port's build hooks the file instead,
-  `native/tools/prepare.py` FILE_HOOKS). Found for the port's spec 005,
+  `port/tools/prepare.py` FILE_HOOKS). Found for the port's spec 005,
   2026-10-01.
 - ov008's `Ov008_MainMenu_*` (`Ov008_MainMenu_StateTick` and the functions
   it calls: `_SetupTextSurfaces`, `_UpdateSelectionText`, ...) are the camp's
