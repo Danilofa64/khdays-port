@@ -222,6 +222,27 @@ Nothing of it is distributed with this repository; it is the operating system's.
 
 License: part of Windows, under the operating system's license.
 
+## The installer's parts
+
+The Windows installer (`installer/`, built by `installer/build_installer.py`) carries, besides the
+port, the components below, each unmodified. Their own license files travel with them in the install
+(`setup/python/`, and each wheel's `.dist-info` folder).
+
+- **CPython 3.13.16**, the Windows embeddable package (<https://www.python.org>), in
+  `setup/python/`: it runs the installer's helper and the tools it uses. License: the Python Software
+  Foundation License Agreement.
+- **numpy 2.2.2** (<https://numpy.org>), installed into `setup/python/` for the HD tools. License:
+  BSD-3-Clause, with the licenses of the libraries it bundles in its `.dist-info`.
+- **Pillow 11.2.1** (<https://python-pillow.org>), installed likewise. License: MIT-CMU (HPND), with
+  its bundled libraries' licenses in its `.dist-info`.
+- **The Microsoft Visual C++ runtime** (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`,
+  `msvcp140_2.dll`), copied beside the executables from Visual Studio's redistributable folder, as
+  Microsoft's Visual Studio license allows for its redistributable code.
+- **Inno Setup 6.7.3** (<https://jrsoftware.org/isinfo.php>, Jordan Russell and Martijn Laan): the
+  setup program is built with it and carries its runtime. License: the Inno Setup License.
+
+`installer/pinned.json` pins each downloaded file by its SHA-256.
+
 ## KH Melon Mix (acknowledgement)
 
 KH Melon Mix (by vitor251093, justedni, Kite2810 and contributors,

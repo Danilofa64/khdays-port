@@ -62,7 +62,20 @@ Then a new edition of the game on top: new HD models, maps, textures, audio
 and videos from content the user provides, a single-screen mode, and
 Mission Mode's multiplayer.
 
+## Installing
+
+On Windows, the installer from the releases page is all you need besides your
+own copy of the game: it asks for your ROM (the European release of KINGDOM
+HEARTS 358/2 Days; it finds it by itself where KH Melon Mix keeps one in your
+KINGDOM HEARTS HD 1.5+2.5 ReMIX folder), prepares the game's data from it, and
+can also make the HD pack from your HD collections, add the port to Steam (PC
+and Steam Deck), and install the mod studio. Nothing of the game comes with
+it. The port tells you when a newer release is out. More:
+[`installer/README.md`](installer/README.md).
+
 ## Getting started
+
+To build the port from source instead:
 
 1. Check and extract your copy of the game (Python 3.11+):
 

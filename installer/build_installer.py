@@ -215,6 +215,9 @@ def main() -> int:
         copy(dll, STAGE / "studio" / dll.name, packed)
     for rel in TOOLS:
         copy(ROOT / rel, STAGE / rel, packed)
+    # the port's license and the third parties' notices, at the install's root
+    for name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
+        copy(ROOT / name, STAGE / name, packed)
     for source in sorted(HERE.iterdir()):
         if source.is_file() and source.suffix in (".py", ".json", ".txt", ".ini") and source.name not in INSTALLER_KEEP:
             copy(source, STAGE / "installer" / source.name, packed)
