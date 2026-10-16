@@ -1,12 +1,7 @@
-/* The port's multiplayer session (net_session.h). The game was made for the DS's wireless; here its
- * messages travel over UDP:
- *   - rooms are announced on the local network, and online through khdays-server (which can also
- *     relay datagrams between two players);
- *   - one copy hosts, the others join it (a star around the host);
- *   - the game's messages travel as numbered records, each resent until acknowledged and handed to
- *     the game in order.
- * A thread of its own receives and resends; the game's thread sends and takes what arrived
- * (khdays_net_next). Every list grows as needed. */
+/* The port's multiplayer session (net_session.h): the game's messages over UDP, rooms announced on the
+ * local network and through khdays-server, a star around the host, numbered records resent until
+ * acknowledged and handed in order. A thread of its own receives and resends; the game's thread sends
+ * and takes what arrived (khdays_net_next). docs/MULTIPLAYER.md. */
 #include "net_session.h"
 #include "../core/session_log.h"
 #include "../core/sha1.h"
@@ -150,19 +145,10 @@ typedef struct Peer {
     u64 control_tick;
     unsigned int controls_held, controls_dropped;
 
-    /* Host only: the "playout store". The network delivers a guest's controls
-     * unevenly (two in one tick, none in the next); handed as they come, the
-     * host would hold a button a tick longer or shorter than the guest did.
-     * So the host keeps a few controls in store and hands them one per tick.
-     *   play_depth    how many controls the store keeps ahead
-     *   play_filling  the store is filling up before it starts handing out
-     *   play_started  a battle's controls have started
-     *   play_trim     the store was too full for a whole second: drop one
-     *                 repeated control (never a command)
-     *   play_calm     ticks since the store last ran dry
-     *   play_window   ticks into the current second
-     *   play_least    the fewest controls in store during that second
-     *   play_dry, play_trimmed   counts for the report */
+    /* Host only: the playout store, which hands a guest's controls to the game one per tick however
+     * the network delivers them (docs/MULTIPLAYER.md): its depth, whether it is filling, whether a
+     * battle's controls started, the trim and calm counters, the second's window and least depth,
+     * and the report's counts. */
     unsigned int play_depth;
     int play_filling, play_started, play_trim;
     unsigned int play_calm, play_window, play_least;
@@ -2173,13 +2159,9 @@ void khdays_net_trace(const char *what, unsigned int a, unsigned int b)
 
 static void join_waiting(KhdaysNetEvent *event, unsigned char *data, unsigned int room, int from);
 
-/* Looks for a control packet in a record. A control packet (gate 3,
- * Ov022_SendControlPacket) holds a halfword, then the slot and the buttons
- * held, the command chosen (its kind in the low 4 bits of the second word;
- * CHOSEN_NONE = 7 means no command) and the target.
- * Returns 0 if there is none, 1 if there is one, 2 if one carries a command.
- * *only_control says whether the record holds nothing but one control packet;
- * *payload and *length_out point at the packet's payload. */
+/* Looks for a control packet (gate 3) in a record: 0 none, 1 one, 2 one carrying a command (its kind
+ * in the low 4 bits of the second word, CHOSEN_NONE none). *only_control: the record holds nothing but
+ * it; *payload and *length_out: its payload. */
 enum { GATE_CONTROL = 3, CHOSEN_NONE = 7 };
 static int control_in(const unsigned char *d, unsigned int size, int *only_control, const unsigned char **payload,
                       unsigned int *length_out)
@@ -2288,18 +2270,10 @@ static void control_came(Peer *p, unsigned int port, const unsigned char *data, 
 /* What to do with member `p`'s record `q`. */
 enum { HAND_OVER, WAIT, DROP };
 
-/* Host only: decides whether record `q` of member `p` goes to the game now.
- *
- * In a battle a member's controls go to the game one per tick, from the playout store (see Peer): the
- * guest made them one per tick, but the network delivers them unevenly, and handed as they came the
- * host would hold a button a tick longer or shorter than the guest did.
- * The store's rules:
- *   - it fills up to its depth before handing out the first control;
- *   - each tick that passes with no control handed (it "ran dry"), the depth grows by one, up to the
- *     longest recent gap (gap_cover);
- *   - if it stayed too full for a whole second, one repeated control (never a command) is dropped;
- *   - after ten seconds without running dry, the depth shrinks by one (and every ten seconds to the
- *     longest gap if it is deeper). */
+/* Host only: whether record `q` of member `p` goes to the game now. In a battle a member's controls go
+ * one per tick from the playout store, which fills to its depth first, deepens by one each tick it runs
+ * dry, drops one repeated control after a whole second too full, and shrinks after ten seconds without
+ * running dry (docs/MULTIPLAYER.md, "The playout store"). */
 static int control_waits(Peer *p, const Queued *q, int index)
 {
     const int control = control_in(q->data, q->event.size, NULL, NULL, NULL);

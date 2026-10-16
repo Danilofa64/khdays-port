@@ -1,12 +1,7 @@
-/* Fuzz test of the server's logic.
- *
- * Each input is turned into a series of datagrams: each comes from one of a
- * few addresses (or a forged one) after some time, with a valid header or
- * with raw bytes. They are fed to the server's core with a small memory
- * budget, on a fake network. Besides AddressSanitizer's checks, the run
- * stops if one of two rules breaks: an answer is never longer than the
- * datagram that asked, and the memory in use never
- * passes the budget. */
+/* Fuzz test of the server's logic: each input becomes datagrams from a few addresses (or a forged one),
+ * valid or raw, fed to the server's core with a small memory budget on a fake network. Besides
+ * AddressSanitizer, it stops if an answer is longer than the datagram that asked or the memory passes
+ * the budget (docs/MULTIPLAYER.md, "Fuzzing"). */
 #include "../server/server_core.h"
 #include "../host/net/net_stub.h"
 

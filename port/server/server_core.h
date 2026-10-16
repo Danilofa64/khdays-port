@@ -1,9 +1,6 @@
-/* The server's logic, kept apart from its program (server.c) so that the
- * fuzzer (fuzz_server.c) tests the very same code.
- *
- * What it keeps never grows past a memory budget, and each datagram takes the
- * same time however much it keeps. It logs nothing per datagram, only counts:
- * no player's address is ever written anywhere. */
+/* The server's logic, apart from its program (server.c) so the fuzzer (fuzz_server.c) tests the same
+ * code. It never passes a memory budget, takes the same time per datagram however much it keeps, and
+ * logs only counts: no player's address is ever written. */
 #ifndef KHDAYS_SERVER_CORE_H
 #define KHDAYS_SERVER_CORE_H
 

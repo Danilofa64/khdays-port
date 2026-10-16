@@ -1,14 +1,8 @@
-/* The port's list of rooms (roomlist.c): Mission Mode's "Select a group to join" drawn by the
- * port (host/screens/room_screen.c, in the HD theater's pieces: layouts/rooms/<lang>/rooms.txt; without
- * them by the game's own screens, ui/rooms2d.c) with every
- * room there is -- its name, the players in it, the ping a session with it would take, whether
- * it asks for a password -- a search by name, and a room's name and password when one is
- * created (runtime/net/net_session.h's details).
- *
- * The game's own list runs underneath (ov006's, and the Mission Mode camp's in ov008): the port
- * tells it of the room under its cursor only (khdays_net_scan_only), and to join one or create
- * one it takes the game's cursor there and hands it A. The game's joining, its member screen
- * and its errors are its own. */
+/* The port's list of rooms (roomlist.c): every room with its name, players, ping and lock, a search,
+ * and a created room's name and password, drawn by the port (host/screens/room_screen.c) or by the
+ * game's own screens (ui/rooms2d.c). The game's list runs underneath: the port takes its cursor to a
+ * room and hands it A, and the joining, members' screen and errors are the game's own
+ * (docs/MULTIPLAYER.md, "The list of rooms"). */
 #ifndef KHDAYS_ROOMLIST_H
 #define KHDAYS_ROOMLIST_H
 

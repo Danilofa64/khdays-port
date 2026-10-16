@@ -1,15 +1,8 @@
-/* A guest's prediction of its own character, off by default (KHDAYS_NET_PREDICT=1 turns it on: online
- * the host corrected it often, once by 46 units after an area change, and the character fell through
- * the floor). The battle runs on the host, so a guest's own character reacts a round trip late; with
- * the prediction the guest runs it itself, as a host does, through prepare.py's hooks:
- *   - ROLE_QUERY: the game's "am I the host?" checks answer host while the own character updates
- *     (not ROLE_KEPT's: those touching the others or the world);
- *   - Ov022_Party_SyncAndUpdate: the own character's update is the window (khdays_mp_predict_open);
- *   - Ov022_Party_ApplyNetState: the host's record is compared with the predicted path
- *     (khdays_mp_predict_keep): moved by the difference, or the host's version shown during a hit;
- *   - MsgQueue_SendGate: what the game sends in the window is left to the host, but for its shots,
- *     applied at once (the host's copies are filtered out when they come).
- * docs/RUNTIME_MAP.md, "A guest's own character, predicted", has the details and measurements. */
+/* A guest's prediction of its own character, off by default (KHDAYS_NET_PREDICT=1): the battle runs
+ * on the host, so a guest's character reacts a round trip late; predicted, the guest runs it itself
+ * through prepare.py's hooks (ROLE_QUERY, Ov022_Party_SyncAndUpdate, Ov022_Party_ApplyNetState,
+ * MsgQueue_SendGate), the host's records correcting it. docs/MULTIPLAYER.md; the measurements in
+ * docs/RUNTIME_MAP.md, "A guest's own character, predicted". */
 #include "net_session.h"
 #include "../core/session_log.h"
 #include "../core/window.h"
@@ -27,12 +20,9 @@ extern void Ov022_LoadNodeFromResource(int node, int index);
 extern int Ov022_ActorSetState(int actor, int state);
 extern int GetEntryField20ByIndex(int index);
 
-/* A control packet (Ov022_SendControlPacket) is 12 bytes; its second
- * halfword holds the slot (bits 0-2) and the buttons held (bits 3-14).
- * The input table, from its base (Ov022_PublishRequestToSlot,
- * func_ov022_0208a1fc): a "taken" flag at +0x10 + slot, the packet at
- * +0x14 + slot * 12, and the buttons held, pressed and held before at
- * +0x84, +0x86 and +0x88 + slot * 6. */
+/* A control packet is 12 bytes, its second halfword the slot (bits 0-2) and the buttons held (3-14).
+ * The input table: a "taken" flag at +0x10 + slot, the packet at +0x14 + slot * 12, the buttons held,
+ * pressed and held before at +0x84, +0x86 and +0x88 + slot * 6. */
 enum { CONTROL = 12, SLOTS = 8 };
 
 static int enabled = -1;                /* -1 until KHDAYS_NET_PREDICT is read */
@@ -61,24 +51,17 @@ static unsigned int free_count, free_room;
 /* how many host records in a row had an animation the path never showed,
  * and how far ahead of the host (in ticks) the path was at the last match */
 static unsigned int unmatched_run, lead_at_match;
-/* The predicted path: the own character's positions since the host's record
- * last matched one. Each step is STEP ints: x, y, z (fx32), the animation
- * (+0x6bc), the tick, and the heading (the node's angle at +0x80 minus
- * 0x8000, as func_ov022_02088254 puts it in the host's record). The host runs
- * the same buttons a round trip later, so its record is compared with the
- * closest step that shows the same animation. */
+/* The predicted path: the own character's positions since the host's record last matched one, STEP
+ * ints a step (x, y, z, the animation at +0x6bc, the tick, the heading). The host's record is compared
+ * with the closest step showing the same animation. */
 enum { STEP = 6 };
 static int *path;
 static unsigned int path_count, path_room;
 static int farthest;                    /* the farthest a host record was off the path, fx32 */
 static int current;                     /* the own character's actor, while the window is open */
 
-/* The own character's shots the guest applied at once (gate 9, the commands
- * of Ov022_RunShotCommand: operation, owner and mode in the first byte, the
- * channel in the second, the shot or its descriptor in the third and fourth),
- * each with the tick it was made in. Each is kept until the host's copy comes
- * (and is removed), or until the host's records are past that tick without
- * it (the host never made that shot). */
+/* The own character's shots applied at once (gate 9, Ov022_RunShotCommand's commands), each with its
+ * tick, kept until the host's copy comes or the host's records pass that tick without it. */
 enum { SHOT_GATE = 9, SHOT_ROOM = 32, SHOT_KEY = 4 };
 typedef struct OwnShot {
     unsigned char data[SHOT_ROOM];
@@ -572,14 +555,9 @@ static unsigned int leave_out_own(unsigned char *d, unsigned int size)
     return size;
 }
 
-/* A predicted shot the host never made gives back the unit of budget it
- * spent. Only the host's commands refill the budget, so the guest must spend
- * exactly what the host does.
- * Layout (Ov022_RunShotCommand, Ov022_SendPlacementMessage): the actor's
- * channels at +0x2644, 0x30 bytes each, with the budget at +0x18 and its
- * maximum at +0x19, and descriptors at +0x10, 0x50 bytes each, whose flag 1
- * makes a shot free. The command's channel is in the low 3 bits of its second
- * byte, its descriptor in bits 3-5 of byte 0x16. */
+/* A predicted shot the host never made gives back the unit of budget it spent: only the host's commands
+ * refill it, so the guest must spend exactly what the host does. The channels' budget layout:
+ * docs/MULTIPLAYER.md. */
 static void give_back(const OwnShot *shot)
 {
     unsigned int channels, descriptors, flags;

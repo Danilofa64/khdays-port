@@ -1,10 +1,7 @@
-/* The port's multiplayer session. Rooms are announced on the local network (copies on the same PC see
- * them too) and, online, through khdays-server; the members form a star around the host. Every record
- * reaches its destinations once and in order, whatever the network loses or reorders, and a thread of
- * its own keeps the session alive while the game is busy or paused.
- *
- * The port's wireless layer (hal/sdk_wireless.c) uses this. Everything here takes plain values and
- * the events hold no pointer, so the game's side and the port's read them the same way. */
+/* The port's multiplayer session: rooms on the local network and through khdays-server, a star around
+ * the host, every record delivered once and in order, a thread keeping the session alive while the
+ * game is busy. The port's wireless layer (hal/sdk_wireless.c) uses it; it takes plain values and its
+ * events hold no pointer, so both sides read them the same way. */
 #ifndef KHDAYS_NET_SESSION_H
 #define KHDAYS_NET_SESSION_H
 

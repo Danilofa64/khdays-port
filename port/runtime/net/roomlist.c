@@ -1,10 +1,7 @@
-/* The port's list of rooms (roomlist.h), over the game's "Select a group to join"
- * (Ov006_UpdateMissionMenuOptionScreen in scene 7, Ov008_... in the camp, scene 19), and its members'
- * screen; the game keeps taking the buttons. The rooms the game knows are in its session context,
- * its cursor in its menu (0 "Create a Group", 1-4 the rooms). Both screens' data and the states between
- * them, also drawn so the DS's screen never shows: docs/RUNTIME_MAP.md section 16.2. Without the HD
- * screens' pieces the same list in the game's look: its rows in the game's order, drawn by the game's
- * own screens (ui/rooms2d.c, ui/room_icons.cpp). */
+/* The port's list of rooms (roomlist.h) over the game's "Select a group to join" (ov006 in scene 7,
+ * ov008 in the camp, scene 19) and its members' screen; the game keeps taking the buttons, its rooms
+ * in its session context and its cursor in its menu. Without the HD screens' pieces the same list in
+ * the game's look (ui/rooms2d.c). docs/RUNTIME_MAP.md section 16.2. */
 #include "roomlist.h"
 
 #include "../input/input.h"

@@ -1,15 +1,7 @@
-/* khdays-server: where players meet for multiplayer over the internet.
- *
- * Hosts register their rooms and guests ask for the list. When a guest picks
- * a room, the server tells each side the other's public address so they can
- * talk directly; if their networks do not allow it, the server relays their
- * datagrams. The protocol itself is in server_core.c; this file is the
- * program around it: options, messages in the window, the router, the loop.
- *
- * Everything is kept in memory, and no player's address is ever written,
- * not in the window nor in the log. The same code runs on Windows
- * next to the game and as a service on Linux (host/net/net.h: net_win.c,
- * net_posix.c). */
+/* khdays-server: where players meet for multiplayer over the internet. Hosts register rooms, guests
+ * list them, and the server introduces the two sides (relaying their datagrams if they cannot reach
+ * each other). The protocol is server_core.c; this is the program around it. No player's address is
+ * ever written, in the window or the log; Windows and Linux alike (docs/MULTIPLAYER.md). */
 #if !defined(_WIN32)
 #define _POSIX_C_SOURCE 200809L /* localtime_r */
 #endif

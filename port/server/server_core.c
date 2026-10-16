@@ -1,18 +1,7 @@
-/* The server's logic: what it keeps and how it answers each datagram.
- * (server.c owns the socket and the main loop.)
- *
- * The server keeps three kinds of records:
- *   - groups:  rooms that hosts have registered, so that guests can list them;
- *   - pairs:   a guest introduced to a host. The server keeps it so it can
- *              relay their datagrams when they cannot reach each other;
- *   - indexes: for each game and build, the list of its groups (what LIST
- *              pages through).
- *
- * Records live in "slabs": growing arrays whose slots never move, with a list
- * of free slots to reuse. Hash tables find them by key. Groups and pairs are
- * also chained from the least to the most recently heard from: when the memory
- * budget is full the oldest record is evicted, and records that stay silent
- * too long are forgotten. */
+/* The server's logic: what it keeps (groups, pairs and per-game indexes, in slabs found by hash
+ * tables, chained by when they were last heard from) and how it answers each datagram; server.c owns
+ * the socket and the loop. Past the memory budget the oldest record goes, and silent ones are
+ * forgotten (docs/MULTIPLAYER.md, "khdays-server"). */
 #include "server_core.h"
 
 #include <stdio.h>

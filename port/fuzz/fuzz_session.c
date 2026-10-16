@@ -1,12 +1,7 @@
-/* Fuzzing the multiplayer session's reader.
- *
- * runtime/net/net_session.c is compiled into this file, so its static reader can
- * be reached, and runs on the stand-in network (net_stub.h). It plays one of
- * these roles: a host, a guest joining on the local network or through the
- * server, or a player looking for groups. The fuzzer's input is turned into a
- * run of datagrams from a few addresses (the server's among them); between
- * them the session's timer and its delivery to the game run, and a join is
- * accepted when one comes. */
+/* Fuzzing the multiplayer session's reader: runtime/net/net_session.c compiled in (to reach its static
+ * reader) on the stand-in network (net_stub.h), as a host, a guest or a player looking for groups;
+ * the input becomes datagrams from a few addresses, the session's timer and delivery running between
+ * them (docs/MULTIPLAYER.md, "Fuzzing"). */
 #include "../runtime/net/net_session.c"
 #include "../host/net/net_stub.h"
 
