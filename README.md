@@ -16,6 +16,12 @@ game code is the original's, readable and moddable; the platform layer is new.
 > This repository contains no ROM, game assets, audio, video, text, SDK files or
 > game binaries. You need your own legally obtained copy of the game.
 
+> [!WARNING]
+> The port is a work in progress and may have bugs. Reports are very welcome,
+> in the [issues](https://github.com/Yokimitsuro/khdays-port/issues) or on
+> [Discord](https://discord.gg/rVeTPhPbsx): what happened and what you were
+> doing when it did.
+
 ## Status
 
 The whole game runs natively from the decompilation: the title and its menus,
