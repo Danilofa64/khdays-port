@@ -318,13 +318,9 @@ void khdays_sound_player_assigned(int arm7_player, int archive_player)
     ReleaseSRWLockExclusive(&lock);
 }
 
-/* Sets each channel's gain from what it plays:
- *   - a stream: its stream player's category;
- *   - a sequence note: its ARM7 player's category;
- *   - neither (a channel the game set up itself, as the movies do): an
- *     effect's;
- *   - 0 when a mod's file plays in its place.
- * A note whose track let it go keeps what it was. */
+/* Sets each channel's gain from its category: a stream's stream player's, a sequence note's ARM7
+ * player's, an effect's for a channel the game set up itself (the movies), 0 when a mod's file plays
+ * in its place. A note whose track let it go keeps what it was. */
 static void update_gains(void)
 {
     static int told;

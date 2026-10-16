@@ -1,10 +1,6 @@
-/* The DS's sixteen sound channels, as GBATEK describes them ("DS Sound
- * Channels 0..15", "DS Sound Notes"): their registers and what each plays.
- * Plain C, no operating system and no SDL, so the tests, the offline tools
- * and the sound driver each keep a set of their own.
- *
- * The mixers (mix_ds.c, and later the PC's) read the channels' current
- * samples; nothing here decides how they are mixed. */
+/* The DS's sixteen sound channels, as GBATEK describes them: their registers and what each plays.
+ * Plain C, no operating system and no SDL, so the tests, the offline tools and the sound driver each
+ * keep a set of their own. The mixers read the channels' current samples. */
 #ifndef KHDAYS_SOUND_CHANNELS_H
 #define KHDAYS_SOUND_CHANNELS_H
 
@@ -35,14 +31,10 @@ typedef struct KhdaysSoundChannel {
  * an address the channel cannot read (it plays silence). */
 typedef const uint8_t *(*KhdaysSoundMemory)(uint32_t address, int channel);
 
-/* Samples from elsewhere than a channel's data in memory: a music stream the
- * port reads itself (stream_reader.h), a wave a mod replaces
- * (runtime/sound/sound_mods.h). At each start of a PCM or IMA-ADPCM channel the
- * source is asked whether that data (SAD, LEN in words, the format) is one
- * of its own; if so, the channel's samples, counted from its start (after
- * ADPCM's header), come from it -- until it answers 0, and the channel
- * reads its memory again (a PCM one; an ADPCM one keeps to its source,
- * having no decoder state of its own by then). */
+/* Samples from elsewhere than a channel's data in memory: a music stream the port reads itself
+ * (stream_reader.h), a wave a mod replaces (runtime/sound/sound_mods.h). At each start of a PCM or
+ * ADPCM channel the source is asked whether that data is its own; if so the channel's samples come
+ * from it until it answers 0. */
 typedef struct KhdaysSoundSource {
     void *context;
     int (*bind)(void *context, int channel, uint32_t sad, uint32_t len, int format); /* a handle, or -1 */

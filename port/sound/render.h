@@ -1,15 +1,8 @@
-/* A sequence played offline, as the game plays it: the native driver (snd7_native.h) takes the commands
- * StartSeq and StartSeqArc send, its time runs as fast as the mixing goes, and the PC's mixer
- * (mix_pc.h) makes the output. The player's volume stays at 0 dB (a replacement plays under the game's
- * volume, so a rendered sequence put back sounds as the original); the sequence's variables stay as
- * SND_PrepareSeq leaves them.
- *
- * How long: a sequence that ends, until its last note has died away; one that loops, until it has
- * played its loop twice (found where the sequencer's state first comes back to one it had), the second
- * time as the file's loop; anything else up to a limit.
- *
- * The caller gives the driver its ARM7 segment and the DS's memory, with the sequence, its bank and
- * wave archives in it. One render at a time. */
+/* A sequence played offline as the game plays it: the native driver takes StartSeq's commands, its
+ * time as fast as the mixing goes, the PC's mixer makes the output, the player's volume at 0 dB. A
+ * sequence that ends plays until its last note dies away, one that loops twice (docs/SOUND.md). The
+ * caller gives the driver its ARM7 segment and the DS's memory with the sequence, bank and wave
+ * archives in it. One render at a time. */
 #ifndef KHDAYS_SOUND_RENDER_H
 #define KHDAYS_SOUND_RENDER_H
 

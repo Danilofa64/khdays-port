@@ -1,9 +1,6 @@
-/* The PC's mixer (see mix_pc.h): the DS's steps (mix_ds.c) at full
- * precision. Each channel's sample is divided by its divider (1, 2, 4 or 16),
- * multiplied by its volume and by each side's share of its pan (N/128, with
- * 127 as 128/128), and summed; channels 1 and 3 are routed as SOUNDCNT says;
- * then the master volume is applied, and the result is divided by 32768 and
- * clipped to [-1, 1], where the DS clips its 10 bits. */
+/* The PC's mixer (mix_pc.h): the DS's steps (mix_ds.c) at full precision -- divider, volume and each
+ * side's share of the pan, channels 1 and 3 routed as SOUNDCNT says, the master volume -- divided by
+ * 32768 and clipped to [-1, 1], where the DS clips its 10 bits. */
 #include "mix_pc.h"
 
 #include <stddef.h>

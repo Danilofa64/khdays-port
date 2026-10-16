@@ -1,10 +1,7 @@
-/* The native sound driver's channel registers (snd7_internal.h): how the
- * ARM7's driver sets a channel up, stops it and changes its volume, timer
- * and pan; the master pan and the surround decay it lays over every channel
- * but 1 and 3; and its timer and volume arithmetic. Each function is the
- * routine at the ARM7 address it names, the registers written in the same
- * order and with the same access sizes (the channels react to each write:
- * a CNT without its start bit stops a channel). */
+/* The native sound driver's channel registers (snd7_internal.h): set up, stop, volume, timer and pan,
+ * the master pan and surround decay, and its timer and volume arithmetic. Each function is the routine
+ * at the ARM7 address it names, the registers written in the same order and sizes (the channels react
+ * to each write). */
 #include "snd7_internal.h"
 
 /* The layer's state, at its ARM7 addresses. */

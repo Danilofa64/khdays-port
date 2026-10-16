@@ -1,13 +1,6 @@
-/* The native sound driver's sequencer (snd7_internal.h): the 16 sequence
- * players and the 32 tracks they take, which read the sequences (SSEQ) the
- * ARM9 loaded and play their notes on the channels (snd7_channel.c) with
- * the bank's instruments (snd7_bank.c). Each function is the routine at
- * the ARM7 address it names.
- *
- * The ARM9 sets a player's or a track's fields by their offsets in the
- * ARM7's records (SND_COMMAND_PLAYER_PARAM, TRACK_PARAM), so both keep the
- * ARM7's layout, field for field -- which also lets the lockstep check
- * compare them with the ARM7's byte for byte (snd7_native.h). */
+/* The native sound driver's sequencer (snd7_internal.h): the 16 sequence players and the 32 tracks
+ * they take, playing the sequences' notes with the bank's instruments. Each function is the routine at
+ * the ARM7 address it names; the records keep the ARM7's layout, which the ARM9 sets by offset. */
 #include "snd7_internal.h"
 #include "snd7_native.h"
 

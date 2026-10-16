@@ -1,14 +1,6 @@
-/* The sound archive (archive.h). The layout, as NitroSystem's sndarc.c and
- * its structures in khdays-decomp's include/nnsys/snd.h have it:
- *
- *   +0x00 the file header ("SDAT"), then NNSSndArcHeader's offsets and sizes:
- *   +0x10 the symbols (SYMB), +0x18 the records (INFO), +0x20 FAT, +0x28 files.
- *   SYMB and INFO: a block header (kind, size), then 8 offsets from the
- *   block's start to tables -- sequences, sequence archives, banks, wave
- *   archives, players, groups, stream players, streams -- each a count and
- *   as many offsets from the block's start (0: none): in SYMB to names, in
- *   INFO to records. SYMB's sequence archive table has two words an entry,
- *   the archive's name and a table of its entries' names. */
+/* The sound archive (archive.h), read as NitroSystem's sndarc.c reads it: the header's offsets to the
+ * symbols (SYMB), the records (INFO), the FAT and the files; SYMB and INFO each 8 tables of a count and
+ * offsets (docs/SOUND.md, "The categories"). */
 #include "archive.h"
 
 #include <stdio.h>

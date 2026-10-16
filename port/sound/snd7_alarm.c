@@ -1,9 +1,6 @@
-/* The native sound driver's alarms for the ARM9 (0x03808c98, 8 of 0x40
- * bytes): the ARM9 sets one up (SND_COMMAND_SETUP_ALARM) and starts it
- * with its channels (SND_COMMAND_START_TIMER); each time it fires, the
- * ARM9 hears its number and id on the sound's tag -- the streams' and the
- * movies' refills. Each function is the routine at the ARM7 address it
- * names. */
+/* The native sound driver's alarms for the ARM9 (0x03808c98, 8 of 0x40 bytes): set up and started by
+ * the ARM9, each firing tells it its number and id -- the streams' and the movies' refills. Each
+ * function is the routine at the ARM7 address it names. */
 #include "snd7_internal.h"
 #include "snd7_os.h"
 

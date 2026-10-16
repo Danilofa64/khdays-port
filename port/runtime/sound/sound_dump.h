@@ -1,13 +1,7 @@
 /* The originals written out, to make replacements from: `khdays-native --dump-sounds [DIR]`, headless.
- * Every sound of the game's archive as WAV, under the identifier a replacement takes
- * (port/sound/archive.h):
- *
- *   - wave/<archive>/<index>.wav: each wave an instrument plays, as the DS's channel decodes it;
- *   - strm/<name>.wav: each stream, as NitroSystem's stream player makes it;
- *   - seq/<name>.wav, seqarc/<archive>/<entry>.wav: each sequence and archive entry, played by the
- *     native driver and the PC's mixer at 48,000 Hz.
- *
- * Loops go in `smpl`. The dump is the game's data: only under saves/, never elsewhere in a repository. */
+ * Every sound of the game's archive as WAV under the identifier a replacement takes (waves, streams,
+ * sequences and archive entries), loops in `smpl` (docs/SOUND.md). The dump is the game's data: only
+ * under saves/, never in a repository. */
 #ifndef KHDAYS_SOUND_DUMP_H
 #define KHDAYS_SOUND_DUMP_H
 

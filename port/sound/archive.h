@@ -1,11 +1,7 @@
-/* The sound archive the game's sound comes from (SDAT, snd/sound_data.sdat):
- * what the port needs of it besides what the game's own NitroSystem code
- * reads -- the names of its players, which say what they play
- * (categories.h), and of its sounds, which name the replacements
- * (replace.h). Read as NitroSystem's sndarc.c reads it: the header, the
- * symbols (SYMB) and the records (INFO), each table a count and offsets.
- *
- * Plain C: the archive's bytes come through a read callback. */
+/* The sound archive the game's sound comes from (SDAT, snd/sound_data.sdat): what the port needs of it
+ * besides what the game's NitroSystem code reads -- its players' names, which say what they play
+ * (categories.h), and its sounds', which name the replacements (replace.h). Plain C: the archive's
+ * bytes come through a read callback. */
 #ifndef KHDAYS_SOUND_ARCHIVE_H
 #define KHDAYS_SOUND_ARCHIVE_H
 

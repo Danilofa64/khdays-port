@@ -1,15 +1,7 @@
 /* The sounds mods replace: a sequence, a sequence archive's entry, a stream or a wave, played from
- * mods/<Mod>/sounds/<identifier>.<wav|flac|ogg> while the original goes on unheard (what the game
- * reads back stays the original's). Each file is decoded once on a thread of its own and played at
- * its own rate:
- *
- *   a sequence or entry from when its ARM7 player starts, under that player's volume;
- *   a stream at the sample its channels play, through their volume and pan;
- *   a wave by each channel that plays it, at its pitch, through its envelope, volume and pan.
- *
- * At the original's rate the samples are held as the channel holds its own (a dumped original put
- * back plays the same); at another they are interpolated. Everything but the decoding runs under the
- * sound bridge's lock. */
+ * mods/<Mod>/sounds/<identifier>.<wav|flac|ogg> while the original goes on unheard (what the game reads
+ * back stays the original's), each decoded once on a thread of its own and played at its own rate
+ * (docs/SOUND.md, "Mods' sounds"). All but the decoding runs under the sound bridge's lock. */
 #ifndef KHDAYS_SOUND_MODS_H
 #define KHDAYS_SOUND_MODS_H
 

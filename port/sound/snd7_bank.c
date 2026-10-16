@@ -1,15 +1,6 @@
-/* The native sound driver's banks (snd7_internal.h): the instrument a
- * bank's program gives a key, and the note it starts on a channel. Each
- * function is the routine at the ARM7 address it names.
- *
- * A bank (SBNK, as the ARM9 loaded it): +0x18 its four wave archives, 8
- * bytes each, the archive's address first; +0x38 how many programs it has;
- * +0x3c a word per program, its instrument's type in the low byte and
- * where it is in the bank above. An instrument's settings are 10 bytes: the
- * wave (2), the archive (2), the original key, attack, decay, sustain,
- * release and pan. A wave archive (SWAR): +0x38 how many waves it has,
- * +0x3c a word per wave, where it is -- from the archive below 0x02000000,
- * else in memory; a wave is its 12 bytes of parameters, then its data. */
+/* The native sound driver's banks (snd7_internal.h): the instrument a bank's program gives a key, and
+ * the note it starts on a channel. Each function is the routine at the ARM7 address it names; the
+ * SBNK and SWAR layouts: docs/SOUND.md, "The driver". */
 #include "snd7_internal.h"
 
 /* An instrument's 10 bytes of settings at `address`. */

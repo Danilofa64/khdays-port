@@ -1,9 +1,6 @@
-/* The DS's mixer (mix_ds.h): volume divider (16.4), volume factor (16.11),
- * panning (16.18), rounded down to 16.8, summed (20.8), master volume, the
- * fraction stripped (14.0), the bias added and the result clipped to 10
- * bits. The mixer runs faster inside the chip (1.04876 MHz), but GBATEK does
- * not say how the PWM takes its value from it, so the channels are read as
- * each output sample is due. */
+/* The DS's mixer (mix_ds.h): divider, volume and pan in GBATEK's fixed point, summed, master volume,
+ * the bias added and clipped to 10 bits (docs/SOUND.md). The channels are read as each output sample
+ * is due. */
 #include "mix_ds.h"
 
 #include <stddef.h>

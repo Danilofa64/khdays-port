@@ -1,15 +1,6 @@
-/* The DS's sixteen sound channels (channels.h), as GBATEK describes them:
- *
- *  - a channel plays PCM8, PCM16 or IMA-ADPCM from memory, or a PSG square
- *    wave (channels 8-13) or noise (14, 15), a sample per overflow of its
- *    timer, which counts at half the clock from SOUNDxTMR;
- *  - a start takes effect after 3 samples (PCM), 11 (ADPCM: 3 and the
- *    header's 8) or 1 (PSG, noise); a one-shot sound clears its busy bit as
- *    its last sample begins and stops when it ends, keeping that sample out
- *    while Hold is set; a looped one plays the part before the loop start
- *    once and the rest forever, ADPCM taking back the state it had there.
- *
- * The capture units are not modelled: a capture that starts is reported. */
+/* The DS's sixteen sound channels (channels.h) as GBATEK describes them: PCM8, PCM16, IMA-ADPCM, PSG
+ * and noise, each start's delay, one-shot and looped sounds (docs/SOUND.md, "The channels and the
+ * mixers"). The capture units are not modelled: a capture that starts is reported. */
 #include "channels.h"
 
 #include <stdio.h>

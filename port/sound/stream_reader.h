@@ -1,16 +1,7 @@
-/* The music streams, read by the port itself.
- *
- * NitroSystem's stream player loads each channel's ring (docs/RUNTIME_MAP.md
- * section 6, "The music streams' ring"). The port makes the same samples
- * here from the stream's file, by the same steps
- * (NNSi_SndArcStrm_MakeWaveData's), with its own state for each stream. A
- * channel that plays a stream's ring then gets the samples the ring holds
- * when every load is in time, whether or not the game's stream thread has
- * had its turn yet. The game's own player goes on as before: its loads, its
- * position and its end are still what the game reads.
- *
- * Plain C: the stream's file comes through a read callback. It is also the
- * channels' sample source (channels.h), through khdays_streams_source. */
+/* The music streams, read by the port itself: the same samples NitroSystem's stream player loads into
+ * each channel's ring, made from the stream's file by the same steps, so a channel gets them when every
+ * load is in time whatever the game's stream thread does; the game's own player goes on as before.
+ * Plain C, the file through a read callback; the channels' source too (docs/SOUND.md). */
 #ifndef KHDAYS_SOUND_STREAM_READER_H
 #define KHDAYS_SOUND_STREAM_READER_H
 

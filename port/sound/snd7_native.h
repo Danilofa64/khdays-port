@@ -1,9 +1,6 @@
-/* The native sound driver: the ARM7 binary's sound driver written in C
- * (port/sound/snd7_*.c), each function citing the ARM7 address it comes
- * from (docs/RUNTIME_MAP.md section 6 maps them). It keeps its state in C,
- * not in the ARM7's memory, and reaches the DS's memory -- the ARM9's
- * command lists, sequences, banks and waves, and the shared work it writes
- * -- through `ds_base`, where the game's memory starts (runtime/core/window.h). */
+/* The native sound driver: the ARM7 binary's sound driver written in C (snd7_*.c), each function
+ * citing its ARM7 address (docs/RUNTIME_MAP.md section 6). Its state is C's; it reaches the DS's
+ * memory (the command lists, sequences, banks, waves and the shared work) through `ds_base`. */
 #ifndef KHDAYS_SOUND_SND7_NATIVE_H
 #define KHDAYS_SOUND_SND7_NATIVE_H
 

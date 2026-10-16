@@ -1,10 +1,6 @@
-/* A sound a mod replaces: the file at
- * mods/<Mod>/sounds/<identifier>.<wav|flac|ogg>, decoded once to 16 bits,
- * with its loop -- a WAV's `smpl` loop, else the Vorbis comments LOOPSTART
- * and LOOPLENGTH of a FLAC or Ogg file, else the original's loop scaled to
- * the file's rate. A sound the original plays once plays once.
- *
- * Plain C (the C library's files; the decoders in third_party_decoders.c). */
+/* A sound a mod replaces: mods/<Mod>/sounds/<identifier>.<wav|flac|ogg>, decoded once to 16 bits with
+ * its loop -- a WAV's `smpl`, else a FLAC or Ogg file's LOOPSTART and LOOPLENGTH, else the original's
+ * scaled to the file's rate. Plain C (the decoders in third_party_decoders.c). */
 #ifndef KHDAYS_SOUND_REPLACE_H
 #define KHDAYS_SOUND_REPLACE_H
 

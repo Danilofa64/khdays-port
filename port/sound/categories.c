@@ -1,11 +1,6 @@
-/* The categories (see categories.h), decided by how the player's name in the
- * sound archive starts (read from snd/sound_data.sdat's SYMB and
- * INFO):
- *   - sequence players: PLAYER_BGM and PLAYER_BGM_EVENT carry all 37 music
- *     sequences; PLAYER_SE, PLAYER_MAGIC, PLAYER_WEAPON, PLAYER_GIMMICK and
- *     PLAYER_SE_EVENT the effects; PLAYER_VO1-4 the voices;
- *   - stream players: PLAYER_STRM_BGM (the menus' music) and PLAYER_STRM (the
- *     jingles) carry music; PLAYER_STRM_V01 the 106 voice lines. */
+/* The categories (categories.h), by how the player's name in the sound archive starts: PLAYER_BGM*
+ * and the stream players PLAYER_STRM_BGM and PLAYER_STRM music, PLAYER_SE/MAGIC/WEAPON/GIMMICK/
+ * SE_EVENT effects, PLAYER_VO1-4 and PLAYER_STRM_V01 voices (docs/SOUND.md). */
 #include "categories.h"
 
 #include <stdio.h>

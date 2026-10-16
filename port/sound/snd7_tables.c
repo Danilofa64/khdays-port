@@ -1,12 +1,6 @@
-/* The two BIOS tables the ARM7's sound driver calls (GBATEK "BIOS Sound
- * Functions"): GetPitchTable (SWI 1Bh) and GetVolumeTable (SWI 1Ch); the
- * native driver reads them here, as the interpreted one's BIOS calls did.
- *
- * GBATEK gives their ranges, not their contents: the pitch table is
- * 0x10000 * (2^(i/768) - 1) rounded, which matches a dump of the BIOS table
- * in all 768 entries (and GBATEK's last value, FF8Ah); the volume table is
- * the ARM9's own copy of it, for its SND_CalcChannelVolume, byte for byte
- * the BIOS's (checked against a dump). */
+/* The two BIOS tables the ARM7's sound driver calls (GBATEK "BIOS Sound Functions"): GetPitchTable
+ * (0x10000 x (2^(i/768) - 1) rounded, matching a dump in all 768 entries) and GetVolumeTable (the
+ * ARM9's own copy, the BIOS's byte for byte). */
 #include "snd7_internal.h"
 #include "snd7_native.h"
 

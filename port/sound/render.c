@@ -73,14 +73,9 @@ static uint32_t command(const KhdaysRenderRequest *q, uint32_t previous, uint32_
 
 /* --- The loop ---------------------------------------------------------------------- */
 
-/* The sequencer's state at a tick: the player's record and each of its
- * tracks' (the ARM7's layout, snd7_native.h), which the sequence alone
- * changes -- but for the tempo's counter (+0x1c), which only says where
- * the tick fell between two of the driver's steps: with it, a loop whose
- * ticks are not a whole number of steps would come back only after as
- * many loops as it takes to fall the same way again (7 at 140 beats a
- * minute). Without it the loop is found the second time round, joining
- * within one step (5.21 ms). */
+/* The sequencer's state at a tick (the player's and its tracks' records), but for the tempo's counter:
+ * with it a loop whose ticks are not a whole number of steps would come back only after several loops
+ * (7 at 140 beats a minute); without it the loop is found the second time round, within one step. */
 static uint64_t state_hash(void)
 {
     const uint8_t *player = khdays_snd7_native_player_record(PLAYER);

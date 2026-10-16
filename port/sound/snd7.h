@@ -1,14 +1,7 @@
-/* The ARM7's sound driver, as the port runs it: the part of the DS the game
- * hands its sound to (NitroSDK's protocol: command lists sent as words on
- * the FIFO's sound tag, replies and alarms sent back, the shared work the
- * ARM9 reads). The native driver (port/sound/snd7_*.c) implements it: the
- * ARM7 binary's own driver written in C from its code, checked against that
- * code interpreted until the ARM interpreter left the port;
- * the tests give one of their own.
- *
- * The bridge between the game's thread and the sound thread
- * (runtime/sound/sound_bridge.c) owns the time and the lock and calls the driver
- * through this interface. */
+/* The ARM7's sound driver as the port runs it: the part of the DS the game hands its sound to
+ * (NitroSDK's protocol on the FIFO's sound tag, replies and alarms back, the shared work). The native
+ * driver (snd7_*.c) implements it, the tests one of their own; the bridge (runtime/sound/
+ * sound_bridge.c) owns the time and the lock and calls it through this interface (docs/SOUND.md). */
 #ifndef KHDAYS_SOUND_SND7_H
 #define KHDAYS_SOUND_SND7_H
 
