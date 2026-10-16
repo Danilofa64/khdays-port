@@ -17,7 +17,6 @@
 #define REPOSITORY "Yokimitsuro/khdays-port"
 #define LATEST "https://api.github.com/repos/" REPOSITORY "/releases/latest"
 #define STATE "saves/updates.txt"
-#define A_DAY (24LL * 60 * 60)
 
 /* a version's tag is short: a longer one is no tag of the port's */
 enum { TAG = 64 };
@@ -131,8 +130,8 @@ static int SDLCALL ask(void *unused)
 
 void khdays_updates_start(int enabled)
 {
-    const char *off = SDL_getenv("KHDAYS_UPDATES"), *source = SDL_getenv("KHDAYS_UPDATE_SOURCE");
-    const long long now = (long long)time(NULL);
+    const char *off = SDL_getenv("KHDAYS_UPDATES");
+    SDL_Thread *thread;
     if (!enabled || SDL_getenv("KHDAYS_INPUT") != NULL || SDL_getenv("KHDAYS_HEADLESS") != NULL ||
         (off != NULL && SDL_strcasecmp(off, "off") == 0)) {
         return; /* turned off, or a run nobody watches */
@@ -143,11 +142,11 @@ void khdays_updates_start(int enabled)
     }
     read_state();
     looking = 1;
-    if ((source != NULL && *source != '\0') || now - asked >= A_DAY || asked > now) {
-        SDL_Thread *thread = SDL_CreateThread(ask, "updates", NULL);
-        if (thread != NULL) {
-            SDL_DetachThread(thread);
-        }
+    /* at every start: a release is seen the first time the game starts after it (GitHub answers an
+     * address 60 times an hour without signing in) */
+    thread = SDL_CreateThread(ask, "updates", NULL);
+    if (thread != NULL) {
+        SDL_DetachThread(thread);
     }
 }
 

@@ -98,7 +98,7 @@ version with the commit after it (`0.1.0+e593a05`, `-modified` when files change
 
 A newer installer run over an install updates it in place: the port's files are replaced, and the
 game's data (already made), the HD pieces, the saves, the settings and the mods are kept. The port
-itself tells the player when a newer release is out (once a day it asks GitHub for the latest
+itself tells the player when a newer release is out (at each start it asks GitHub for the latest
 release, `host/app/updates.c`; a setting turns it off), with a link to the release's page.
 
 ## Without its pages

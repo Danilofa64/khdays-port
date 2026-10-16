@@ -1,6 +1,6 @@
-/* Whether a newer release of the port is out. At most once a day a thread asks GitHub for the
- * latest release (KHDAYS_UPDATE_SOURCE, an address, asks there instead, at every start: for a
- * test); what it found is kept in saves/updates.txt, and the window tells the player on the title
+/* Whether a newer release of the port is out. At every start a thread asks GitHub for the latest
+ * release (KHDAYS_UPDATE_SOURCE, an address, asks there instead: for a test); what it found is
+ * kept in saves/updates.txt, and the window tells the player on the title
  * screen (the settings menu's question). A scripted or headless run (KHDAYS_INPUT,
  * KHDAYS_HEADLESS: the walks, the tests) never asks, nor does KHDAYS_UPDATES=off. */
 #ifndef KHDAYS_HOST_UPDATES_H
