@@ -17,7 +17,7 @@ order while their conditions hold. Their lines:
 |---|---|
 | `screens <upper\|lower\|stacked\|side-by-side>` | the picture's ground (the first section that says it) |
 | `brightness <default\|upper\|lower\|halves\|own>` | whose master brightness the picture takes |
-| `shape <upper\|lower> [<x> <y> <w> <h>] at <corner> [margin <l> <t> <r> <b>] [scale <s> [<sy>] \| scale cover] [effects]` | a piece of a screen (all of it without a rectangle), scaled (a DS dot becomes `s` picture dots), at a corner of the picture (`centre`, `top-left`, `top`, ..., `left`), moved by its margins; the first shape that gives a texel shows it (the effects: `composition.c` `read_shape`) |
+| `shape <upper\|lower> [<x> <y> <w> <h>] at <corner> [margin <l> <t> <r> <b>] [scale <s> [<sy>] [at-most <m>] \| scale cover] [effects]` | a piece of a screen (all of it without a rectangle), scaled (a DS dot becomes `s` picture dots, never more than `m`), at a corner of the picture (`centre`, `top-left`, `top`, ..., `left`), moved by its margins; the first shape that gives a texel shows it (the effects: `composition.c` `read_shape`) |
 | `shape3d <hud\|all> [<x> <y>] [<w> <h>] at <corner> [margin ...] [scale <s>]` | the HUD's screen-space 3D (or all the 3D) in a rectangle, moved |
 | `hide3d <hud\|all>` | not drawn |
 | `menu` | the common rule: the screens that show something, whole, as large as the picture allows (a situation no section names takes it too) |

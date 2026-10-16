@@ -92,12 +92,14 @@ static int mission_start_info(const KhdaysSituationInputs *in)
     return in->mission_start >= 3 && in->mission_start <= 6;
 }
 
-/* The same panel's states 9-11: a person's words in the field, in a box across the upper screen's
- * lower half where the deck and the party were (the story walk on to day 7's Grey Area, Saix's
- * words f12896-13079; Ov002_HoldPanelScreen refills its tilemap in those states). */
+/* The same panel's state 10: a person's words in the field, in a box across the upper screen's
+ * lower half where the deck and the party were. In 9 before it the HUD is still drawn
+ * (Ov002_LeavePanelForMap clears BG1 and BG3 as it moves to 10), in 11 after it the HUD comes
+ * back (the story walk on to day 7's Grey Area, Saix's words: the box f12954-13064 of state 10
+ * f12954-13067, the HUD again from f13082 in state 11, f13068-13090). */
 static int field_talk(const KhdaysSituationInputs *in)
 {
-    return in->mission_start >= 9 && in->mission_start <= 11;
+    return in->mission_start == 10;
 }
 
 /* The overlays the rules name (RUNTIME_MAP section 1). */

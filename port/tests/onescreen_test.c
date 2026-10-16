@@ -34,6 +34,7 @@ const unsigned char khdays_compositions_port[] =
     "shape lower 10 20 64 32 at centre scale fixed(2)\n"
     "shape lower 0 0 40 20 at top margin 0 2+fixed(3) 0 0 scale 1+fixed(0.5)\n"
     "shape upper at right margin 0 0 fixed(4) 0 scale cover\n"
+    "shape upper at bottom scale 1 at-most fixed(1)\n"
     "shape3d hud 0 0 128 64 at top-left margin 3 2 0 0 scale 0.5\n"
     "shape3d all 0 0 256 192 at centre scale fixed(1)\n"
     "[pause]\n"
@@ -123,7 +124,8 @@ static void check_place(const KhdaysShape *s, float x1, float y1, float w, float
 }
 
 /* The test's compositions at 4:3, 16:10 and 16:9 and HUD sizes 1, 4 and 8: lengths, `fixed`, scales,
- * corners and margins, `cover`, the 3D shapes, `menu` and the common rule, `wide` and `narrow`. */
+ * corners and margins, `cover`, `at-most`, the 3D shapes, `menu` and the common rule, `wide` and
+ * `narrow`. */
 static void test_places(void)
 {
     static const int columns[] = {256, 308, 342};
@@ -143,8 +145,8 @@ static void test_places(void)
             const float c = (float)columns[n];
             khdays_composition_for(&field, columns[n], &comp);
             CHECK(comp.screens == KHDAYS_SCREENS_UPPER);
-            CHECK(comp.shape_count == 5 && comp.shape3d_count == 2);
-            if (comp.shape_count != 5 || comp.shape3d_count != 2) {
+            CHECK(comp.shape_count == 6 && comp.shape3d_count == 2);
+            if (comp.shape_count != 6 || comp.shape3d_count != 2) {
                 continue;
             }
             check_place(&comp.shapes[0], 4.0f * f, 6.0f * f, 100.0f * f, 50.0f * f, f);
@@ -155,6 +157,11 @@ static void test_places(void)
                         20.0f * (f + 0.5f), f + 0.5f);
             check_place(&comp.shapes[4], -4.0f, (192.0f - 192.0f * c / 256.0f) / 2.0f, c, 192.0f * c / 256.0f,
                         c / 256.0f);
+            {
+                /* `at-most fixed(1)`: the HUD's size up to the DS's, at the bottom */
+                const float s = f < 1.0f ? f : 1.0f;
+                check_place(&comp.shapes[5], (c - 256.0f * s) / 2.0f, 192.0f - 192.0f * s, 256.0f * s, 192.0f * s, s);
+            }
             CHECK((comp.shapes[2].words[KO_FLAGS] & KOF_LOWER) != 0u &&
                   (comp.shapes[0].words[KO_FLAGS] & KOF_LOWER) == 0u);
             CHECK(word_float(comp.shapes[2].words, KO_SRC_X) == 10.0f &&
@@ -196,7 +203,7 @@ static void test_places(void)
     mods_file = test_file("old.txt", "# a file\n[field]\nscreens lower\n");
     khdays_composition_load();
     khdays_composition_for(&field, 342, &comp);
-    CHECK(comp.screens == KHDAYS_SCREENS_UPPER && comp.shape_count == 5);
+    CHECK(comp.screens == KHDAYS_SCREENS_UPPER && comp.shape_count == 6);
     remove(mods_file);
     mods_file = test_file("new.txt", "  # a file\n\nunits port   # its units\n[field]\nscreens lower\n");
     khdays_composition_load();

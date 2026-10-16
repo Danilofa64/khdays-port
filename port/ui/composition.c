@@ -49,8 +49,10 @@ typedef struct ShapeDef {
     float margin_fixed[4]; /* their `fixed(N)` parts */
     float sx, sy;
     float sx_fixed, sy_fixed;
-    int cover;      /* `scale cover`: as large as covers the picture, its proportions kept */
-    uint32_t flags; /* KOF_* */
+    int capped;           /* `at-most <length>` after the scale: never larger than it */
+    float cap, cap_fixed; /* that length, at the HUD's scale and fixed */
+    int cover;            /* `scale cover`: as large as covers the picture, its proportions kept */
+    uint32_t flags;       /* KOF_* */
     float fade[4], opacity;
     float round;          /* `round <r>`: the corners' radius, source dots */
     uint32_t see_through; /* KO_SEE_THROUGH: a colour and its opacity */
@@ -418,6 +420,15 @@ static int read_shape(char **t, int n, ShapeDef *s, const char **why)
                 s->sy_fixed < 0.0f || s->sy + s->sy_fixed <= 0.0f) {
                 *why = "a scale is above 0";
                 return 0;
+            }
+            if (i + 1 < n && strcmp(t[i], "at-most") == 0) {
+                if (!measure(t[i + 1], &s->cap, &s->cap_fixed) || s->cap < 0.0f || s->cap_fixed < 0.0f ||
+                    s->cap + s->cap_fixed <= 0.0f) {
+                    *why = "`at-most` and a length above 0";
+                    return 0;
+                }
+                s->capped = 1;
+                i += 2;
             }
         } else if (strcmp(w, "mirror") == 0 && i + 1 < n &&
                    (strcmp(t[i + 1], "x") == 0 || strcmp(t[i + 1], "y") == 0 || strcmp(t[i + 1], "xy") == 0)) {
@@ -1464,8 +1475,13 @@ static void build_shape(const ShapeDef *d, int columns, KhdaysShape *out, int ke
     const float c = (float)columns;
     const float w = d->w, h = d->h;
     const float cover = d->cover ? ((float)columns / w > 192.0f / h ? (float)columns / w : 192.0f / h) : 0.0f;
-    const float sx = d->cover ? cover : d->sx * f + d->sx_fixed, sy = d->cover ? cover : d->sy * f + d->sy_fixed;
+    const float cap = d->capped ? d->cap * f + d->cap_fixed : 0.0f;
+    float sx = d->cover ? cover : d->sx * f + d->sx_fixed, sy = d->cover ? cover : d->sy * f + d->sy_fixed;
     float margin[4];
+    if (d->capped) {
+        sx = sx < cap ? sx : cap;
+        sy = sy < cap ? sy : cap;
+    }
     const float width = w * sx, height = h * sy;
     float x1 = 0.0f, y1 = 0.0f;
     uint32_t *words = out->words;
