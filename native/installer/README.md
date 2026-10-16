@@ -39,6 +39,9 @@ takes a `.partial` extraction), so an interrupted install is finished by running
 again. Updating or repairing keeps the player's saves, settings and mods; uninstalling removes
 what the installer made and asks whether the saves and settings go too (to the Recycle Bin).
 
+The multiplayer server (`khdays-server.exe`) is always installed beside the game, for a player
+who wants to host their own; the game's default server is the maintainer's.
+
 ## The HD pieces
 
 Optional, from the player's own copies, on the HD page: **HD menus and HUD** (both KINGDOM HEARTS

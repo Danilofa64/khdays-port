@@ -203,6 +203,15 @@ def main() -> int:
     copy(exe, STAGE / exe.name, packed)
     for dll in runtime_dlls(exe, env):
         copy(dll, STAGE / dll.name, packed)
+    # the multiplayer server, always, beside the game (for a player who hosts; the game's default
+    # server is the maintainer's)
+    server_exe = RELEASE / "khdays-server.exe"
+    if not server_exe.is_file():
+        sys.exit(f"build_installer: {server_exe} is not built")
+    copy(server_exe, STAGE / server_exe.name, packed)
+    for dll in runtime_dlls(server_exe, env):
+        if not (STAGE / dll.name).exists():
+            copy(dll, STAGE / dll.name, packed)
     # the mod studio and its runtime, in studio/ so the installer can make it an optional task
     copy(studio_exe, STAGE / "studio" / studio_exe.name, packed)
     for dll in runtime_dlls(studio_exe, env):
