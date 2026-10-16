@@ -54,7 +54,9 @@ __pycache__/
 *.log
 *.tmp
 *.bak
-mods/
+
+# The player's mods at the root (port/runtime/mods and studio/core/mods are source).
+/mods/
 
 # Frames the native build saves (KHDAYS_SHOTS, into shots/ by default).
 /shots/
