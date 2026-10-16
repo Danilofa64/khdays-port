@@ -1,10 +1,7 @@
-/* The crowns on the story's day list (crowns.h). The story's Holo-Missions (ov025) list the days
- * (page B, Ov025_ScrollList_*: a row a span of days, 16 dots a row); each day's missions show how
- * far they are only on the list a day opens (Ov025_DrawMissionRow): the cleared seal (the save's
- * field 0x28e4 + 3 x the mission is 3), the chests found of the room's (Ov025_CountGroupFlagsSet)
- * and the badges (field 0x92b + 4 x the mission, as badges.c reads them). The port puts the list
- * sheet's gold crown at the right of a day whose missions all have all three. The formats:
- * mission_list.h; docs/RUNTIME_MAP.md section 14, "The crowns on the story's day list". */
+/* The crowns on the story's day list (crowns.h): the port puts the list sheet's gold crown right of
+ * a day whose missions all have the cleared seal, every chest and every badge (the game shows those
+ * only on the list a day opens). docs/RUNTIME_MAP.md section 14, "The crowns on the story's day
+ * list". */
 #include "crowns.h"
 #include "elements.h"
 #include "mission_list.h"
@@ -33,12 +30,9 @@ int khdays_overlay_loaded(int id); /* overlays.c */
 #define FIELD_STATUS 0x28e4     /* 3: cleared */
 #define FIELD_BADGES 0x92b
 
-/* The crown: the gold one of the list sheet's four (black, bronze, silver, gold: characters
- * 0x40-0x47 over 0x60-0x67), 16 x 16, its dots in columns 2-15 and rows 1-13; on a row, inside its
- * plate's right end (the plates take dots 16-214 and rows 18-30 of each 16, the first row's at
- * y 16 less the list's scroll); only the rows the list shows, in its area from y 16 to 176 (the
- * touch area Ov025_ScrollList_Open gives it, 0xe0 x 0xa0 at (16, 16)). The list is on engine B, its
- * row text in BG1 over the plates in BG2 and BG3. */
+/* The crown: the gold one of the list sheet's four (characters 0x40-0x47 over 0x60-0x67), 16 x 16,
+ * inside a row's plate's right end; only the rows the list shows, from y 16 to 176. The list is on
+ * engine B, its row text in BG1 over the plates in BG2 and BG3. */
 #define CROWN_CHARACTER 0x46
 #define CROWN_X 195
 #define CROWN_Y 17

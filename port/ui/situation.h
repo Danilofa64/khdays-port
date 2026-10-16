@@ -110,13 +110,10 @@ typedef struct KhdaysSituationInputs {
     uint8_t title_extra;
     uint8_t title_lang;       /* the language chosen (khdays_language_wanted), else GetLanguage(): the firmware's
                                * 1-5 (English, French, German, Italian, Spanish) */
-    /* whether the menu shows: the object's update (+0x14, Obj_UpdateAll's obj[5]) one of its
-     * states -- KHDAYS_TITLE_SHOWN in its loop, a level's cross-fade, the fades to black its
-     * choices start, its way back from the screens after it (Ov000_ReentryState, then
-     * Ov000_TickBootFadeIn's fade from black), and its fade-in from frame 0x3c of its counter
-     * (+0x0) on, when it begins to show (Ov000_MenuFadeInState); KHDAYS_TITLE_WHITE in that
-     * fade-in before then, the lower screen white; 0 in the screens after it (the difficulty,
-     * the save list, the theater, the character select) */
+    /* whether the menu shows: KHDAYS_TITLE_SHOWN from its fade-in's frame 0x3c on, in its loop, a
+     * level's cross-fade and its fades out and back; KHDAYS_TITLE_WHITE in the fade-in before then;
+     * 0 in the screens after it (difficulty, save list, theater, character select). Read from the
+     * object's update (+0x14). */
     uint8_t title_shown;
     /* the boot logos' screen (1-3) while the object's update is one of their states
      * (Ov000_LogoFadeState, ...2, ...3; Ov000_HandoffState after them, the third), else 0 */
@@ -163,12 +160,10 @@ typedef struct KhdaysSituation {
     uint32_t content; /* the screens that show something (1 the upper, 2 the lower; host/render/onescreen.c) */
 } KhdaysSituation;
 
-/* the title's levels; KHDAYS_TITLE_INTRO its fade-in while the lower screen is white;
- * KHDAYS_TITLE_LOGO the boot logos (title_count 3, title_row the screen, 0-2); KHDAYS_TITLE_NEWGAME
- * the new game's dialogs over the story level with NEW GAME alone, KHDAYS_TITLE_NEWGAME_LOAD over it
- * with CONTINUE too (title_count the step: 1 the difficulty, 2 the subtitles, 3 the review;
- * title_row the difficulty selected, the question's button, or difficulty x 4 + subtitles x 2 +
- * the review's button, 0 yes) */
+/* the title's levels; INTRO its fade-in while the lower screen is white, LOGO the boot logos (count 3,
+ * row the one on show), NEWGAME the new game's dialogs (NEWGAME_LOAD with CONTINUE too: count the
+ * step -- 1 difficulty, 2 subtitles, 3 review -- and row the choice, for the review difficulty x 4 +
+ * subtitles x 2 + its button) */
 enum { KHDAYS_TITLE_NONE, KHDAYS_TITLE_ROOT, KHDAYS_TITLE_STORY, KHDAYS_TITLE_MISSION, KHDAYS_TITLE_INTRO,
        KHDAYS_TITLE_LOGO, KHDAYS_TITLE_NEWGAME, KHDAYS_TITLE_NEWGAME_LOAD };
 

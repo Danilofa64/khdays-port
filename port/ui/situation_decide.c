@@ -1,10 +1,7 @@
-/* The port's own decision of what the game shows, for the one-screen picture (situation.h).
- *
- * It reads what the game runs -- its scene and overlays, the update functions of its objects
- * by the decomp's names, the state the decomp names -- and the display's registers where a
- * fact is the display's; each rule says where it was measured (docs/RUNTIME_MAP.md section
- * 15.6; "play walk" is port/tools/regress_walks/play.input, its frames counted from the
- * start). */
+/* The port's own decision of what the game shows, for the one-screen picture (situation.h): from its
+ * scene, overlays, objects' updates and state by the decomp's names, and the display's registers where
+ * a fact is the display's. Each rule says where it was measured (docs/RUNTIME_MAP.md section 15.6;
+ * "play walk" is port/tools/regress_walks/play.input, frames from its start). */
 #include "situation.h"
 #include "../runtime/menus/camp.h"
 

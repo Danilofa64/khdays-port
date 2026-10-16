@@ -1,11 +1,7 @@
-/* The field's HUD (docs/RUNTIME_MAP.md section 14): the game's BG cells, grouped in pieces (the
- * command deck, the portrait, the lower screen's panels) by the region of a screen's layers where the
- * game lays each out; a piece counts as there while its cells show characters from its files
- * (runtime/core/origin.h). A piece there becomes one element per layer -- its cells as VRAM and the map
- * hold them -- and those cells are left out of their layer (cells the text part stands for stay its).
- *
- * KHDAYS_TRACE_HUD="FRAME FRAME ...": at those VBlanks, each text layer's groups of touching cells that
- * show anything, with their place, cells, characters, palettes and files. */
+/* The field's HUD (docs/RUNTIME_MAP.md section 14): the game's BG cells grouped in pieces (the command
+ * deck, the portrait, the lower panels) by where the game lays each out, each piece one element per
+ * layer while its cells show its files' characters (runtime/core/origin.h). KHDAYS_TRACE_HUD="FRAME
+ * ...": at those VBlanks, each text layer's groups of touching cells. */
 #include "hud.h"
 #include "badges.h"
 #include "crowns.h"

@@ -1,11 +1,7 @@
-// Each room's signal and lock on the game's own list of rooms (room_icons.h). The game's members'
-// screen shows the connection's quality with its own icon, a 16x16 sprite of UI/mlt/res.p2 entry 1
-// (cells 12 to 15: one bar in red to four in green, the link levels 0 to 3; engine B's sprites, 256
-// colours): each room's plate gets that icon for the level a session with it would have, its ping read
-// as the port's session reads a member's round trip (khdays_net_link_level: under 100 ms 3, under 200
-// ms 2, else 1), right of the plate. A room that asks for a password gets a lock before its players,
-// drawn in the icon's own two colours (the game has no lock: none of its fonts holds one).
-// docs/RUNTIME_MAP.md 16.2.
+// Each room's signal and lock on the game's own list of rooms (room_icons.h): the members' screen's
+// own link icon (UI/mlt/res.p2 entry 1, cells 12-15) for the level a session with the room would have
+// (khdays_net_link_level of its ping), and a lock before the players of a room with a password, in
+// the icon's colours (no game font has one). docs/RUNTIME_MAP.md 16.2.
 #include "room_icons.h"
 
 extern "C" {

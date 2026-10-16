@@ -1,9 +1,7 @@
-/* The text part (text.h). The game draws its text into NitroSystem character canvases as ever, and the
- * SDK's loads (GX_LoadBGnChar, GXS_LoadBGnChar) put a canvas's characters into a BG layer's memory,
- * where its map shows them. The port follows each canvas from the surface that makes it to those
- * loads: what VRAM holds of it is an element's image, drawn at the internal resolution; where the map
- * shows it, the element's place; those map cells are left out of their layer. The game's state is the
- * same whatever the part's mode. */
+/* The text part (text.h): the game draws its text into NitroSystem character canvases and the SDK
+ * loads their characters into a BG layer, where the map shows them. The port follows each canvas to
+ * those loads: what VRAM holds of it is an element's image at the internal resolution, where the map
+ * shows it its place; those cells are left out of their layer. The game's state is the same. */
 #include "text.h"
 #include "bg.h"
 #include "elements.h"
@@ -179,14 +177,9 @@ void khdays_ui_text_surface_canvas(const void *surface, int current, const void 
     }
 }
 
-/* A tile surface's canvases are let go with their surface (TileSurface_Release,
- * FreeAllListNodeSubBuffers: each canvas's buffer, then its object), which
- * tells nothing else: the canvas's structure, freed, still names its buffer
- * until the memory is used again. The memory a file is read into next can be
- * that buffer, and a load of the file's characters would then pass for the
- * canvas's: on the tutorial list (ov025), the localised heading's characters
- * (UI/cm/cmb_&.p2's) are read where the camp menu's canvas of 32x2 characters
- * was, and were drawn as its text, torn. A canvas whose buffer is freed is gone. */
+/* A canvas is gone once its buffer is freed: the freed structure still names its buffer, and the next
+ * file read there would pass for the canvas's characters (the tutorial list's heading, read where the
+ * camp menu's canvas was, drew torn). */
 void khdays_ui_text_freed(const void *heap, const void *block)
 {
     const KhdaysRef ref = KHDAYS_REF(block);

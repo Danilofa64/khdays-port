@@ -1,4 +1,4 @@
-# The port's compositions for the one-screen picture (ui/composition.h: the
+# The port's compositions for the one-screen picture (docs/COMPOSITIONS.md: the
 # lines), a layout of its own for each of the game's screens, each made from
 # the game's pieces measured on its screens. The field's HUD on one screen, laid
 # out for the PC (asked for on 2026-10-08, after the maintainer's sketch):

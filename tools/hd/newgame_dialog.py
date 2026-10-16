@@ -14,7 +14,7 @@ the port: run this on your copies. --preview draws each state, as the port does,
 
 The pictures go beside the title's (mods/NAME/layouts/title/<lang>/, NAME "Theater title" by
 default): newgame_atlas.png and, for each state of the new game's dialogs,
-newgame<options>_<step>_<row>.txt (the port's animated pictures, ui/composition.h): options the
+newgame<options>_<step>_<row>.txt (the port's animated pictures, docs/COMPOSITIONS.md): options the
 story level's options behind the dialogs (1 NEW GAME alone, 2 with CONTINUE: a save is there),
 step 1 the difficulty (row: the one selected), 2 the subtitles (row: 0 yes, 1 no), 3 the settings
 to confirm (row: difficulty x 4 + subtitles x 2 + the button selected, 0 yes, 1 no). Each opens as

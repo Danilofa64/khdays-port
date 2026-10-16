@@ -43,12 +43,10 @@ void khdays_ui_image_end(int image);
 /* The scale the images are drawn at: the internal resolution's (1 without a window). */
 int khdays_ui_scale(void);
 
-/* At VBlank, gathers the elements of every part that is not off and applies
- * the layout (`wide_margin`: engine A's columns beside the DS's on each side,
- * 0 at 4:3; `upper`: the engine on the upper screen). An element the layout
- * puts on the other screen is drawn there in direct colour from its own
- * engine's palettes. An element no line places, lying inside one a line
- * places, moves with it. */
+/* At VBlank, gathers the elements of every part that is not off and applies the layout
+ * (`wide_margin`: engine A's columns beside the DS's on each side, 0 at 4:3; `upper`: the engine on
+ * the upper screen). An element placed on the other screen is drawn in direct colour from its own
+ * engine's palettes; one no line places moves with the one it lies inside. */
 void khdays_ui_collect(int wide_margin, int upper);
 
 /* This frame's records (KE_WORDS words each, the topmost of a slot first):

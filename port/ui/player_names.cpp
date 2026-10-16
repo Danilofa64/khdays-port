@@ -1,9 +1,7 @@
-// The players' names on the field's HUD in multiplayer (player_names.h). The game knows every name
-// only while the group forms, in the selection message of the Mission Mode context (ov006's at
-// 0x020565e4, ov008's at 0x02090f24; +0x42c: the members present at +8, their names at +0xa, 11 UTF-16
-// characters each by player number); the port keeps them for the mission. In the field each name goes
-// left of its player's J label (the own label at 199,175; the allies' rows at y 120, 96 and 72 from x
-// 216), in the game's 8-dot font, white with a black edge, in the party's layer.
+// The players' names on the field's HUD in multiplayer (player_names.h): the game knows them only
+// while the group forms (the Mission Mode context's selection message, +0x42c), so the port keeps them
+// for the mission and draws each left of its player's J label, in the game's 8-dot font, white with a
+// black edge, in the party's layer.
 #include "player_names.h"
 
 extern "C" {

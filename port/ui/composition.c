@@ -1343,13 +1343,10 @@ static const AnimIcon *prompt_icon(const Animation *an)
     return NULL;
 }
 
-/* The animated picture's pieces at the game's frame, into pieces_now; their count. When it
- * follows another picture (or none: `none`), the clip that names that one's group plays from
- * this frame, then the loop at the frame it reached; with no such clip, the loop from this
- * frame; with no loop, the clip's last frame stays. When it follows another of its own group
- * (another row selected), the clip and the loop go on from the frame they were at -- the clip
- * that follows the same groups -- not from their start (a loop's first frame can be far from
- * the one on show: the new game's selected button's glow). */
+/* The animated picture's pieces at the game's frame, into pieces_now; their count. After another
+ * picture the clip naming that one's group plays, then the loop; after another of its own group (a
+ * row selected) the clip and loop go on from where they were, not from their start (a loop's first
+ * frame can be far from the one on show). docs/COMPOSITIONS.md. */
 static int animation_now(int a, uint32_t frame)
 {
     const Animation *an = &animations[a];

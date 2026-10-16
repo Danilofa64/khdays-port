@@ -2539,7 +2539,7 @@ situations show both screens whole, without the pass.
 
 **The compositions** (`port/ui/compositions/port_days.txt`, compiled in; a
 mod's `layouts/compositions.txt` beginning with `units port` replaces it
-whole; the format in `ui/composition.h`): a layout of the port's for each
+whole; the format in `docs/COMPOSITIONS.md`): a layout of the port's for each
 screen (15.6). The lengths are the port's units, the HUD size's factor (15.6);
 with two screens nothing changed (2026-10-04: the walks, the graphics check
 at 1x, 2x 16:9 and 4x 4:3, the fight's cost -- the game's thread 24.8 ms a
@@ -2616,7 +2616,7 @@ Asked for by the maintainer: the title's menu as the 358/2 Days theater of
 KINGDOM HEARTS HD 1.5+2.5 ReMIX draws its main menu, with the game's
 options. `tools/hd/theater_title.py` makes it from the player's own copy
 (nothing of the collection is in the repository) as a mod of animated
-pictures (`ui/composition.h`, `backdrop <file>.txt`); `port_days.txt`'s
+pictures (`docs/COMPOSITIONS.md`, `backdrop <file>.txt`); `port_days.txt`'s
 `[title]` shows them. They fit inside the window's picture (`backdrop ... fit`,
 2026-10-14): covering it, as at first, at 4:3 or 16:10 the 16:9 menu lost its
 sides -- the logo, DEVELOPED BY and the settings key cut (a tester's Steam
@@ -2778,7 +2778,7 @@ the dialogs' atlas, read only when NEW GAME was chosen, held the picture
 for 110 ms. Since then the tools hold such controls on their last frame,
 the port goes on with a picture's clip and loop where another of its group
 left them, and the dialogs' pictures are read ahead from the first logo on
-(`preload`, `ui/composition.h`).
+(`preload`, `docs/COMPOSITIONS.md`).
 
 **The movies' subtitles** (`Ov024_MobiClip_SetUpMainEngine`,
 `Ov024_MobiClip_SetUpSubEngine`): the movie's engine in mode 3, its picture in

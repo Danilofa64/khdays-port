@@ -39,12 +39,9 @@ extern void Ov000_FadeOutAndStartMovie(void);
 #define OV_BATTLE 22 /* ov022_battle: the party's characters */
 #define OV_EVENT 23  /* ov023_event_script: the field's events */
 
-/* The fields the inputs read inside the decomp's structures: the scene
- * controller (src/engine/Scene_AdvanceToPending.c SceneCtl: obj, entry,
- * curId, pendId, pendArg) and NitroSystem's frame texture VRAM manager's
- * regions (include/nnsys/gfd.h NNSGfdFrmTexRegionState: head, tail, bActive, ...,
- * 0x18 bytes each; libs/nitro/nns/calls/NNS_GfdAllocFrmTexVram.c declares
- * gGfdFrmTexRegions[5] so). */
+/* The fields read inside the decomp's structures: the scene controller (SceneCtl: obj, entry, curId,
+ * pendId, pendArg) and NitroSystem's frame texture VRAM regions (NNSGfdFrmTexRegionState, 0x18 bytes
+ * each, gGfdFrmTexRegions[5]). */
 #define SCENE_CUR 0x8u
 #define SCENE_PENDING 0xcu
 /* the scene object's heap (NNSi_FndGetCurrentRootHeap: the running object's word 8), and the

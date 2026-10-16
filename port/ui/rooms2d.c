@@ -1,11 +1,7 @@
-/* The port's list of rooms on the game's own screens (rooms2d.h). The game's list draws its four
- * plates, its labels at (0x57, 0x23 + 0x18 * plate) left-aligned in its colour 1 (white) or 3 (grey),
- * its button's word (0x3e) centred at (128, 152), its note (0x3d) centred on the upper screen, and its
- * hand where the scene's +0x95ac says (0 the button, 1-4 the plates): the strings and the place here
- * are the port's view's (runtime/net/roomlist.c in the game look), the drawing the game's. Its text
- * call aligns 0 left, 1 right, 3 centred (Ov006_MissionDrawTextRun). The strings go into the buffers the
- * hooked function lends (on the game's stack: the game reads only its own memory), cut to fit them.
- * docs/RUNTIME_MAP.md 16.2. */
+/* The port's list of rooms on the game's own screens (rooms2d.h): the game draws its four plates,
+ * labels, button, note and hand as ever; the strings and the hand's place are the port's view's
+ * (runtime/net/roomlist.c), written into buffers the hooked function lends on the game's stack (the
+ * game reads only its own memory), cut to fit. docs/RUNTIME_MAP.md 16.2. */
 #include "rooms2d.h"
 
 #include "../host/screens/ui_text.h"

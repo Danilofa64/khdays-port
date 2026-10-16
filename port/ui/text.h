@@ -1,12 +1,7 @@
-/* The text part: each NitroSystem character
- * canvas the game shows becomes an element where the game shows the canvas,
- * its image being what VRAM holds of the canvas, drawn at the internal
- * resolution.
- *
- * The functions below are what the game's hooks call (port/tools/
- * prepare.py UI_HOOKS), handed what the game's routines are: host pointers
- * to the game's structures, which lie in the game's memory with the DS's
- * layout (their pointers are references). */
+/* The text part: each NitroSystem character canvas the game shows becomes an element where the game
+ * shows it, its image what VRAM holds of it, drawn at the internal resolution. The functions below are
+ * what the game's hooks call (prepare.py UI_HOOKS), handed host pointers to the game's structures in
+ * the DS's layout. */
 #ifndef KHDAYS_UI_TEXT_H
 #define KHDAYS_UI_TEXT_H
 
@@ -15,13 +10,9 @@
 /* Registers the part's elements (at start). */
 void khdays_ui_text_init(void);
 
-/* What the hooks follow: a text renderer attached to a layer
- * (TileTextRenderer_Init) and let go (TileTextRenderer_Destroy); a canvas
- * added to a tile surface (TileSurface_AddCanvas); a block of the game's
- * heaps freed (NNS_FndFreeToExpHeap: a canvas whose buffer it was is gone);
- * and characters loaded into a BG layer's memory (GX_LoadBG0Char-BG3Char,
- * GXS_LoadBG0Char-BG3Char: both the transfer queue's loads and the
- * routines' own) or into the sprites' (GX_LoadOBJ, GXS_LoadOBJ). */
+/* What the hooks follow: a text renderer attached to a layer and let go; a canvas added to a tile
+ * surface; a block of the game's heaps freed (a canvas whose buffer it was is gone); and characters
+ * loaded into a BG layer's memory or the sprites' (GX/GXS_LoadBGnChar, GX/GXS_LoadOBJ). */
 void khdays_ui_text_renderer(const void *renderer, int layer, const void *resource, const void *frame, int result);
 void khdays_ui_text_renderer_gone(const void *renderer, int result);
 void khdays_ui_text_surface_canvas(const void *surface, int current, const void *canvas_object);

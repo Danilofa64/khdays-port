@@ -1,15 +1,8 @@
-// The file numbers on the rows of the game's own save lists in pages (save_numbers.h). The DS's rows
-// number its three files "01" to "03", each row with two 8x8 sprites of the list's sheet's white digits
-// (UI/cm/cmo_&.p2 entry 3: its 8-bit characters 44, 42, 46 and 48 are 0, 1, 2 and 3, every other
-// character the sprites' 128-byte steps leave unused; the title's list draws them as OBJ tiles 22, 21,
-// 23 and 24). While the lists page through the port's files (runtime/menus/savelist.c) a row's file is
-// the page's first + the row, so the port draws that number instead: the sheet has its digits 0-9 in
-// the same shapes in cyan (characters 22 to 40, every other one), drawn here in the white digits' colours -- the white 0 against the cyan 0 gives, row by row, the colour each cyan one
-// becomes, checked against the white 1, 2 and 3. The game's sprites are found by their pixels (any
-// list, wherever its sprites lie), their own digit telling their row. Over file 99's number, the
-// autosave's, a short tag in the game's 8-dot font (text/font_eu_08.nftr) in the same colours: the
-// plate's dots above the number are free up to its day's label (the maintainer's choice, 2026-10-15).
-// docs/RUNTIME_MAP.md 15.4.
+// The file numbers on the rows of the game's own save lists in pages (save_numbers.h): the DS numbers
+// its three rows "01"-"03" with sprites of the list sheet's white digits (UI/cm/cmo_&.p2 entry 3);
+// while the lists page through the port's files (runtime/menus/savelist.c) the port draws the row's
+// file number with the sheet's cyan digits in the white ones' colours, and a tag over file 99's (the
+// autosave). The game's sprites are found by their pixels. docs/RUNTIME_MAP.md 15.4.
 #include "save_numbers.h"
 
 extern "C" {

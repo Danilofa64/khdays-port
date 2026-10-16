@@ -1,10 +1,7 @@
-/* The badges' icons on the field's mission panel (badges.h). The DS shows a mission's badges (the
- * ordeal badge, the blazon, the unity badge) only on the camp's mission list; the port draws them on
- * the field's panel too, left of the chest icon, from the list's own pieces: which badges a mission
- * has from UI/cm/msl_<language>.msi.z, the icons from UI/cm/cm.p2 (entries 17, 19, 20), lit by the
- * save's field 0x92b + 4 x the mission's number or by the field context's byte when one is picked up.
- * None in Mission Mode; on one screen a badge and "found/total" instead. The formats and offsets:
- * docs/RUNTIME_MAP.md section 14, "The badges on the mission's panel". */
+/* The badges' icons on the field's mission panel (badges.h): the DS shows a mission's badges only on
+ * the camp's mission list; the port draws them left of the chest icon too, from the list's own pieces
+ * (UI/cm/msl_<language>.msi.z, UI/cm/cm.p2 entries 17, 19, 20), lit from the save or a pickup. None in
+ * Mission Mode. docs/RUNTIME_MAP.md section 14, "The badges on the mission's panel". */
 #include "badges.h"
 #include "bg.h"
 #include "elements.h"

@@ -8,7 +8,7 @@ MARE is the theater's files as OpenKh's extractor writes them from your own copy
 collection: <collection>/Image/Mare.hed_out/original (Mare.pkg is the 358/2 Days theater). The
 pictures go to mods/NAME/layouts/title/<lang>/ (NAME "Theater title" by default): atlas.png, the
 texels of every piece, and for each state of the title's menu <menu>_<count>_<row>.txt, its
-pieces and how they move (the port's animated picture, ui/composition.h), which the port shows
+pieces and how they move (the port's animated picture, docs/COMPOSITIONS.md), which the port shows
 on one screen while the game's title menu shows (ui/compositions/port_days.txt), and
 intro_0_0.txt, the white ground alone, for the menu's fade-in while the lower screen is still
 white, and logo_3_0.txt to logo_3_2.txt, the theater's own boot screens (Disney, SQUARE ENIX, its
@@ -553,7 +553,7 @@ def write_clips(path: Path, group: str, clips, atlas: Atlas, icons=(), button=No
     the loop."""
     lines = ['# The title as the 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX draws its main',
              '# menu, made by tools/hd/theater_title.py from the player\'s own copy: the port\'s',
-             '# animated picture (ui/composition.h).',
+             '# animated picture (docs/COMPOSITIONS.md).',
              f'picture {PICTURE[0]} {PICTURE[1]}',
              'ground ' + ' '.join(f'{g:g}' for g in GROUND),
              f'atlas {atlas_name}',
