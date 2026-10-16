@@ -28,6 +28,7 @@
 #include "../../runtime/movies/movie_hd.h"
 #include "../../runtime/net/net_session.h"
 #include "../../runtime/scripts/queue.h"
+#include "../../runtime/scripts/view.h"
 #include "../../runtime/core/runtime.h"
 #include "../../runtime/core/session_log.h"
 #include "../../ui/situation.h"
@@ -197,12 +198,67 @@ static char *ping_line(void)
     return line;
 }
 
+/* The mods' notices shown now (runtime/scripts/view.h), each for five seconds; each also kept for the
+ * settings menu's notice line. */
+typedef struct ModNotice {
+    char *line;
+    Uint64 until;
+} ModNotice;
+static ModNotice *mod_notices;
+static int mod_notice_count, mod_notice_capacity;
+
+static void take_mod_notices(void)
+{
+    const Uint64 now = SDL_GetTicks();
+    int kind, kept = 0;
+    char *mod, *text;
+    for (int i = 0; i < mod_notice_count; ++i) {
+        if (mod_notices[i].until > now) {
+            mod_notices[kept++] = mod_notices[i];
+        } else {
+            SDL_free(mod_notices[i].line);
+        }
+    }
+    mod_notice_count = kept;
+    while (khdays_scripts_take_notice(&kind, &mod, &text)) {
+        static const int formats[] = {[KHDAYS_NOTICE_STOPPED] = TXT_MOD_STOPPED,
+                                      [KHDAYS_NOTICE_PAUSED] = TXT_MOD_PAUSED,
+                                      [KHDAYS_NOTICE_REFUSED] = TXT_MOD_REFUSED};
+        char said[400], *line = NULL;
+        if (kind == KHDAYS_NOTICE_SAID) {
+            SDL_snprintf(said, sizeof(said), "%s", text);
+        } else {
+            SDL_snprintf(said, sizeof(said), khdays_text(formats[kind]), text);
+        }
+        if (SDL_asprintf(&line, "%s: %s", mod, said) >= 0) {
+            khdays_settings_add_notice(line);
+            if (mod_notice_count == mod_notice_capacity) {
+                const int grown = mod_notice_capacity == 0 ? 4 : mod_notice_capacity * 2;
+                ModNotice *more = SDL_realloc(mod_notices, (size_t)grown * sizeof(*more));
+                if (more != NULL) {
+                    mod_notices = more;
+                    mod_notice_capacity = grown;
+                }
+            }
+            if (mod_notice_count < mod_notice_capacity) {
+                mod_notices[mod_notice_count].line = line;
+                mod_notices[mod_notice_count].until = now + 5000;
+                ++mod_notice_count;
+            } else {
+                SDL_free(line);
+            }
+        }
+        free(mod);
+        free(text);
+    }
+}
+
 /* Draws the last frame, with the FPS and ping displays and the settings menu
  * over it. Draws nothing while the graphics card is lost (the loop recreates
  * it). */
 static void redraw(SDL_Window *window, SDL_Renderer *renderer)
 {
-    int pictures, frames, fps;
+    int pictures, frames, fps, corner_rows;
     char *ping;
     if (khdays_present_lost()) {
         return;
@@ -218,9 +274,14 @@ static void redraw(SDL_Window *window, SDL_Renderer *renderer)
         khdays_settings_fps_draw(renderer, pictures, frames);
     }
     ping = ping_line();
+    corner_rows = (fps != 0) + (ping != NULL);
     if (ping != NULL) {
         khdays_settings_ping_draw(renderer, ping, fps);
         SDL_free(ping);
+    }
+    take_mod_notices();
+    for (int i = 0; i < mod_notice_count; ++i) {
+        khdays_settings_corner_draw(renderer, mod_notices[i].line, corner_rows + i);
     }
     khdays_settings_draw(renderer, window);
     SDL_RenderPresent(renderer);

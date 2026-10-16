@@ -72,6 +72,10 @@ void khdays_settings_fps_draw(SDL_Renderer *renderer, int pictures, int frames);
  * below the FPS display when `under_fps`. */
 void khdays_settings_ping_draw(SDL_Renderer *renderer, const char *line, int under_fps);
 
+/* A line of the mods' notices in the top-left corner, at the row given (0 the first, under the FPS
+ * and ping lines when they show). */
+void khdays_settings_corner_draw(SDL_Renderer *renderer, const char *line, int row);
+
 /* Whether the picture is drawn by the graphics card. Without it, the Video
  * settings that need it are shown as unavailable. */
 void khdays_settings_set_graphics_card(int available);

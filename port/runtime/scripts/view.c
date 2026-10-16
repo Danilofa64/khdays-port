@@ -9,6 +9,13 @@ static SDL_Mutex *lock;
 static SDL_InitState once;
 static KhdaysModsView published;
 
+typedef struct Notice {
+    int kind;
+    char *mod, *text;
+} Notice;
+static Notice *notices;
+static int notice_count, notice_capacity;
+
 static void ready(void)
 {
     if (SDL_ShouldInit(&once)) {
@@ -124,6 +131,44 @@ void khdays_scripts_view_set(const KhdaysModsView *now)
         published.serial = serial;
     }
     SDL_UnlockMutex(lock);
+}
+
+void khdays_scripts_notice(int kind, const char *mod, const char *text)
+{
+    ready();
+    SDL_LockMutex(lock);
+    if (notice_count == notice_capacity) {
+        const int grown = notice_capacity == 0 ? 8 : notice_capacity * 2;
+        Notice *more = realloc(notices, (size_t)grown * sizeof(*more));
+        if (more == NULL) {
+            SDL_UnlockMutex(lock);
+            return;
+        }
+        notices = more;
+        notice_capacity = grown;
+    }
+    notices[notice_count].kind = kind;
+    notices[notice_count].mod = copy(mod != NULL ? mod : "");
+    notices[notice_count].text = copy(text != NULL ? text : "");
+    ++notice_count;
+    SDL_UnlockMutex(lock);
+}
+
+int khdays_scripts_take_notice(int *kind, char **mod, char **text)
+{
+    int taken = 0;
+    ready();
+    SDL_LockMutex(lock);
+    if (notice_count > 0) {
+        *kind = notices[0].kind;
+        *mod = notices[0].mod;
+        *text = notices[0].text;
+        memmove(notices, notices + 1, (size_t)(notice_count - 1) * sizeof(*notices));
+        --notice_count;
+        taken = 1;
+    }
+    SDL_UnlockMutex(lock);
+    return taken;
 }
 
 int khdays_scripts_view(KhdaysModsView *view)

@@ -717,6 +717,58 @@ static void test_actions(void)
     end_case();
 }
 
+/* Every notice waiting, dropped. */
+static void drop_notices(void)
+{
+    int kind;
+    char *mod, *text;
+    while (khdays_scripts_take_notice(&kind, &mod, &text)) {
+        free(mod);
+        free(text);
+    }
+}
+
+static void test_files_and_notices(void)
+{
+    char path[600], *text;
+    int kind;
+    char *mod, *said;
+    begin_case("files");
+    drop_notices();
+    put("mods/Files/data/shipped.txt", "from the mod");
+    mod_folder("Files", "test.files", "gameplay",
+               "local n = 0\n"
+               "local function ok(c) if c then n = n + 1 else print('not ok') end end\n"
+               "ok(mod.read('shipped.txt') == 'from the mod')\n"
+               "ok(mod.write('notes/kept.txt', 'kept'))\n"
+               "ok(mod.read('notes/kept.txt') == 'kept')\n"
+               "for _, bad in ipairs({ '../x', '/x', 'C:/x', 'a/../../x', 'a\\\\b', '', 'a//b', 'a/' }) do\n"
+               "  local a, why = mod.write(bad, 'x')\n"
+               "  ok(a == nil and why == \"not a path of the mod's\")\n"
+               "  ok(mod.read(bad) == nil)\n"
+               "end\n"
+               "ok(select(2, mod.read('missing.txt')) == 'not found')\n"
+               "mod.notice('hello there')\n"
+               "print('files', n)\n");
+    mod_folder("Broken", "test.broken", "gameplay", "mod.on('frame', function() error('on purpose') end)\n");
+    start();
+    CHECK(log_has("test.files print scripts/main.lua:13 files\t20"));
+    snprintf(path, sizeof(path), "%s/saves/mods/test.files/notes/kept.txt", root);
+    text = khdays_folders_read(path, NULL);
+    CHECK(text != NULL && strcmp(text, "kept") == 0);
+    free(text);
+    CHECK(khdays_scripts_take_notice(&kind, &mod, &said) && kind == KHDAYS_NOTICE_SAID &&
+          strcmp(mod, "test.files") == 0 && strcmp(said, "hello there") == 0);
+    free(mod);
+    free(said);
+    frames(1);
+    CHECK(khdays_scripts_take_notice(&kind, &mod, &said) && kind == KHDAYS_NOTICE_STOPPED &&
+          strcmp(mod, "test.broken") == 0 && strstr(said, "on purpose") != NULL);
+    free(mod);
+    free(said);
+    end_case();
+}
+
 static void test_guest(void)
 {
     begin_case("guest");
@@ -745,6 +797,7 @@ int main(void)
     RUN(test_options);
     RUN(test_menu_asks);
     RUN(test_actions);
+    RUN(test_files_and_notices);
     RUN(test_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);

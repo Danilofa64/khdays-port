@@ -56,9 +56,15 @@ the same thing in a frame, the later one's change stands.
 Metatables cannot have `__gc`.
 
 Each mod may hold 64 MB; past that, an allocation fails (`not enough memory`). Each mod has a time
-allowance per game frame (1 ms; its main script has 250 ms when it loads). A mod past its allowance
-is paused; an error in a script stops that mod only. Either is written to the mods' log with the
-script's file and line, and the game and the other mods go on.
+allowance per game frame (8 ms; its main script has 250 ms when it loads). A mod past its allowance
+is paused, even inside its own `pcall`; an error in a script stops that mod only. Either is written
+to the mods' log with the script's file and line, the player sees it over the game for five seconds
+(and on the settings menu's notice line), and the game and the other mods go on. The Mods page
+resumes a paused mod.
+
+For a measure: ten mods each reading the player's HP, munny and 64 item counts and sorting a table
+every frame (`port/tests/mods_load`) took 45 microseconds each a frame on average, 0.2 ms at most,
+and the game kept its 30 frames a second.
 
 A known limit: the time is looked at between the script's own instructions, so a single library call
 that takes long (a string pattern over a very long text) is only stopped once it returns.
@@ -91,6 +97,9 @@ or the call's own); they never raise. A wrong argument type raises an error (the
 | `mod.on(event, function(e) ... end)` | listens to an event (below); returns a handle |
 | `mod.off(handle)` | stops listening |
 | `mod.frame()` | the game's frame count |
+| `mod.notice(text)` | a line the player sees over the game for five seconds, with the mod's name |
+| `mod.read(path)` | a text file of the mod's: its `data/<path>`, else what it wrote; `nil` and a reason if neither |
+| `mod.write(path, text)` | keeps a text file in `saves/mods/<id>/<path>` (its folders made); paths stay inside: no `..`, no absolute path, no drive, no backslash |
 | `print(...)` | a line in the mods' log |
 | `mod.option{...}` | an option in the settings menu's Mods page (below) |
 

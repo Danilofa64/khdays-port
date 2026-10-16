@@ -41,6 +41,17 @@ int khdays_scripts_view(KhdaysModsView *view);
 
 void khdays_scripts_view_free(KhdaysModsView *view);
 
+/* What the player is told of the mods, over the game: a mod's own words (mod.notice), or a mod
+ * stopped, paused or not loaded with its reason. */
+enum KhdaysModNoticeKind { KHDAYS_NOTICE_SAID, KHDAYS_NOTICE_STOPPED, KHDAYS_NOTICE_PAUSED, KHDAYS_NOTICE_REFUSED };
+
+/* The game's thread: a notice for the window (the strings are copied). */
+void khdays_scripts_notice(int kind, const char *mod, const char *text);
+
+/* The window's thread: the oldest notice not taken yet (its strings to free()). Returns 0 when there
+ * is none. */
+int khdays_scripts_take_notice(int *kind, char **mod, char **text);
+
 /* A text of a label or description in a language (1..5), else the one for every language, else
  * English, else any. NULL when there is none. */
 const char *khdays_scripts_text(char *const texts[KHDAYS_OPTION_LANGUAGES], int language);

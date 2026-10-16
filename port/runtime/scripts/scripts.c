@@ -66,10 +66,16 @@ static char *joined(const char *a, const char *b)
 
 void khdays_mod_set_state(KhdaysMod *m, int state, const char *reason)
 {
+    static const int told[] = {[KHDAYS_MOD_STOPPED] = KHDAYS_NOTICE_STOPPED + 1,
+                               [KHDAYS_MOD_PAUSED] = KHDAYS_NOTICE_PAUSED + 1,
+                               [KHDAYS_MOD_REFUSED] = KHDAYS_NOTICE_REFUSED + 1};
     changed = 1;
     m->state = state;
     free(m->reason);
     m->reason = reason != NULL ? copy(reason) : NULL;
+    if (state >= 0 && state < (int)(sizeof(told) / sizeof(told[0])) && told[state] != 0) {
+        khdays_scripts_notice(told[state] - 1, m->manifest.name != NULL ? m->manifest.name : m->folder, reason);
+    }
 }
 
 static const char *name_of(const KhdaysMod *m)
@@ -476,6 +482,25 @@ static void take_messages(void)
     }
 }
 
+/* KHDAYS_TRACE_MODS: each mod's time in its scripts per frame, every 600 frames. */
+static void trace_time(void)
+{
+    for (int i = 0; i < count; ++i) {
+        KhdaysMod *m = mods[i];
+        if (m->state != KHDAYS_MOD_LOADED) {
+            continue;
+        }
+        m->traced_sum += m->spent;
+        m->traced_max = m->spent > m->traced_max ? m->spent : m->traced_max;
+        if (++m->traced_frames == 600) {
+            fprintf(stderr, "mods-trace: time: %s %.1f us a frame, at most %.1f us\n", m->manifest.id,
+                    (double)m->traced_sum / 600e3, (double)m->traced_max / 1e3);
+            m->traced_sum = m->traced_max = 0;
+            m->traced_frames = 0;
+        }
+    }
+}
+
 void khdays_scripts_frame(void)
 {
     if (tracing < 0) {
@@ -498,6 +523,9 @@ void khdays_scripts_frame(void)
     }
     take_messages();
     khdays_script_events_frame();
+    if (tracing > 0) {
+        trace_time();
+    }
     if (changed) {
         changed = 0;
         publish();

@@ -13,7 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-uint64_t khdays_sandbox_frame_allowance = 1000000u; /* 1 ms */
+/* 8 ms: measured, ten mods doing a mod's usual work took 45 us each a frame on average and 213 us at
+ * most (port/tests/mods_load); a whole 1 ms was once passed by a pause of the thread itself. */
+uint64_t khdays_sandbox_frame_allowance = 8000000u;
 uint64_t khdays_sandbox_load_allowance = 250000000u; /* 250 ms */
 
 #define HOOK_EVERY 10000 /* instructions between two looks at the time */
@@ -60,7 +62,9 @@ static int over_allowance(KhdaysMod *m)
 static int raise_over(lua_State *L)
 {
     const KhdaysMod *m = khdays_sandbox_mod(L);
-    return luaL_error(L, "over its time allowance (%.1f ms)", (double)m->allowance / 1e6);
+    char why[64]; /* lua_pushfstring has no %.1f */
+    snprintf(why, sizeof(why), "over its time allowance (%.1f ms)", (double)m->allowance / 1e6);
+    return luaL_error(L, "%s", why);
 }
 
 static void count_hook(lua_State *L, lua_Debug *ar)

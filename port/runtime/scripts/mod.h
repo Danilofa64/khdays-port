@@ -61,6 +61,8 @@ typedef struct KhdaysMod {
     KhdaysOption *options;
     int option_count, option_capacity;
     long long stamp; /* the newest time among its files when it was loaded */
+    uint64_t traced_sum, traced_max; /* KHDAYS_TRACE_MODS: its time per frame since the last report */
+    unsigned traced_frames;
 } KhdaysMod;
 
 /* The mods, in load order (scripts.c). */
