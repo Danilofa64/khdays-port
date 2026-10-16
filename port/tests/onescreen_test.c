@@ -310,10 +310,9 @@ static void test_real_file(void)
 
 /* The field's HUD at the default HUD size as the port's own file lays it out, digested: for each
  * of its states and the 16:9, 16:10 and 4:3 pictures, every shape's rectangles, scale, effects
- * and colours, every 3D shape's place, each length rounded to 1/64 of a dot. The reference is the
- * port's own output made before its units and its effects' words changed, so those changes keep the
- * same picture. */
-#define FIELD_HUD_REFERENCE 0xa7dbf8e40e172982ull
+ * and colours, every 3D shape's place, each length rounded to 1/64 of a dot: a change of the file
+ * changes it (the last, the INFORMATION banners as the game draws them, fading out where cut). */
+#define FIELD_HUD_REFERENCE 0xf556c443eacec027ull
 
 static uint64_t digest_word(uint64_t d, uint32_t v)
 {

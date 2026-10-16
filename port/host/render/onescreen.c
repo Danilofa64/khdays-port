@@ -211,6 +211,25 @@ static void info_lower(KhdaysSituation *s)
 #define INFO_FRAMES 300       /* 5 seconds */
 #define INFO_SETTLE_FRAMES 30 /* a line unchanged so long stands still */
 
+/* Whether the INFORMATION line holds a message: a pixel of its text rows that stands out from its ground
+ * (the line's left end), dimmed or not -- a fade darkens both (white 255 or grey 134 text over black). */
+static int info_has_text(void)
+{
+    const uint32_t ground = pixel(&pixels, 1, 6, 15);
+    for (int y = 11; y <= 19; ++y) {
+        for (int x = 8; x < 224; ++x) {
+            const uint32_t c = pixel(&pixels, 1, x, y);
+            for (int n = 0; n < 3; ++n) {
+                const int d = (int)((c >> (8 * n)) & 0xffu) - (int)((ground >> (8 * n)) & 0xffu);
+                if (d > 40 || d < -40) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 static void info_new(const KhdaysFramePackage *p, KhdaysSituation *s)
 {
     static uint32_t last_sum, changed, still_since;
@@ -224,6 +243,12 @@ static void info_new(const KhdaysFramePackage *p, KhdaysSituation *s)
     }
     if (!(s->states & (1u << KHDAYS_ST_INFO_LOWER))) {
         seen = 0; /* the same message coming back is shown again */
+        return;
+    }
+    if (!info_has_text()) {
+        /* the line emptied (a message over): no banner, and the next message is a new one */
+        seen = 0;
+        changed = p->frame - INFO_FRAMES;
         return;
     }
     for (int y = 10; y <= 20; y += 2) {

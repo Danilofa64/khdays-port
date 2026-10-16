@@ -31,23 +31,20 @@ brightness default
 [field if !hud]
 hide3d hud
 
-# The INFORMATION banner, whole (its label and its line, the lower screen's
-# 0,0-224,24), against the picture's left edge at the top, scale 0.75,
-# opaque, above everything, for a few seconds after its message changes
-# (info-new); the DS keeps it on the screen. Its ground (8-bit 36 36 36) not shown. The DS's line goes on past
-# the screen's edge with no end of its own (bl000.NCGR's characters 11 and
-# 12 repeated); it is closed with its label's own end -- the white slant of
-# 64,1-72,9, at twice its size over the line's 16 rows -- as the label is.
+# The INFORMATION banner as the game draws it (its label and its line, the
+# lower screen's 0,0-232,24, short of the players' tags), against the
+# picture's left edge at the top, above everything, for a few seconds after a
+# message comes (info-new; not when the line empties). Its ground (8-bit 36 36
+# 36) not shown. The line runs on to the DS's edge with no end of its own, so
+# where it is cut it fades out.
 [field if hud info-new]
-shape lower 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36
-shape lower 64 1 8 8 at top-left margin 112 9 0 0 scale 1 key 36 36 36
+shape lower 0 0 232 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36 fade 0 0 16 0
 
 # The mission's information the upper screen shows at its start (the same
-# banner, the upper screen's 0,0-224,24, closed the same way), in the same
-# place: the game takes it away after about five seconds.
+# banner, the upper screen's 0,0-256,24, fading out at the DS's edge), in the
+# same place: the game takes it away after about five seconds.
 [field if info-upper mission-panel]
-shape upper 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5
-shape lower 64 1 8 8 at top-left margin 112 9 0 0 scale 1 key 36 36 36
+shape upper 0 0 256 24 at top-left margin 0 5 0 0 scale 0.5 fade 0 0 16 0
 
 # The mission's panel (the lower screen's 4,152-252,192) at the top left,
 # scale 0.75; the backdrop around its bevelled corners (8-bit 36 36 36) made
@@ -116,8 +113,7 @@ brightness upper
 [field-3d-both if !hud]
 hide3d hud
 [field-3d-both if hud info-new]
-shape lower 0 0 224 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36
-shape lower 64 1 8 8 at top-left margin 112 9 0 0 scale 1 key 36 36 36
+shape lower 0 0 232 24 at top-left margin 0 5 0 0 scale 0.5 key 36 36 36 fade 0 0 16 0
 [field-3d-both if hud]
 shape3d hud -64 -64 191.5 141 at top-left margin -37.666667 -13.666667 0 0 scale 0.666667
 [field-3d-both if info-upper]
