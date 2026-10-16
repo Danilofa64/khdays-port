@@ -1,40 +1,8 @@
-"""The game's accesses to the DS's registers, rewritten so that none faults
-(prepare.py runs it on every decompiled file).
-
-The I/O pages stay protected in the game's view: an access this misses still
-faults, and the trap reports it. What this rewrites, by the register's kind
-(io_regs.c is where each kind's effect is):
-
-- a register that only holds a value (the 2D of both engines, the DMA's
-  sources, destinations and fill, EXMEMCNT, POWCNT, the 3D's settings...):
-  its macro, the casts of its address, a pointer set to it, an SDK function
-  given it -- all reach the register model's own view,
-  `khdays_io_plain(offset)`: plain memory, the bytes the port reads when it
-  draws. Only where everything the access can reach holds values: a pointer's
-  reach is read off its uses in the C (constant indexes and offsets), an SDK
-  function's off its own C (PLAIN_CALLEES);
-- a register that acts when written (DMA control, IF, VRAMCNT, the card's
-  ROMCTRL, the geometry's ports and GXSTAT, DISPSTAT) or is computed when read
-  (DISPSTAT, KEYINPUT, the geometry's results, the card's data port): its
-  statements become calls -- `khdays_io_store(address, width, value)`, a
-  compound assignment loading first -- and its reads
-  `khdays_io_load(address, width)`;
-- a register reached through an address computed at run time (a DMA
-  channel's, a timer's, a pointer the C moves) or a pointer that reaches one
-  that acts: the pointer keeps the DS address, and each access through it is
-  routed the same way, at `&(lvalue)` -- right whatever the register's kind.
-
-Before that, the C's own spellings of an address are brought to one literal:
-its macros for addresses and pointers (and the shared headers'), constant
-sums (`HW_REG_BASE + 0x440`), `#define NAME(p) (*(T *)(p))`; a struct laid
-over registers is laid out from its definition. The math unit (0x280-0x2bf)
-and IME/IE are prepare.py's UNTRAPPED_REGISTER's; the geometry's word stores
-through casts its GEOMETRY_STORE's; the port's own SDK routines (HAL_CALLEES)
-and the DMA's (VALUE_CALLEES) take a register's DS address as it is; a few
-files read by hand are REVIEWED_PLAIN_FILES. Whatever else still names a
-register -- a form this does not know -- is listed (`left`, prepare.py's
-registers_left.txt) with its line, for a hook or a rule.
-"""
+"""The game's accesses to the DS's registers, rewritten so that none faults (prepare.py runs it on
+every decompiled file): a register that only holds a value reaches plain memory (khdays_io_plain),
+one that acts or is computed becomes khdays_io_store/khdays_io_load calls, one reached through a
+run-time address is routed at each access; registers_left.txt lists what it does not know.
+docs/BUILD.md, "The registers"."""
 from __future__ import annotations
 
 import re
@@ -701,12 +669,9 @@ class Use:
 
 
 def pointer_uses(view: str, name: str, inits: list[Init], layouts: dict[str, Layout]) -> list[Use] | None:
-    """Each use of a pointer `name` but its initializers: 'deref' (an lvalue
-    through it), 'callee' (given to a PLAIN_CALLEES function), 'address' (its
-    DS address as it is: given to a khdays_io_ call or a HAL routine, cast to
-    void), 'step' (moved by an amount), 'set' (set to something else); None
-    when a use is in a form not known. A pointer to a struct (`layouts`): its
-    fields' offsets and widths."""
+    """Each use of a pointer `name` but its initializers: 'deref', 'callee' (given to a
+    PLAIN_CALLEES function), 'address' (its DS address as it is), 'step', 'set'; None for a form not
+    known. A pointer to a struct (`layouts`): its fields' offsets and widths."""
     init_spans = [(i.name_start, i.end) for i in inits]
     pointees = {base_type(i.type_text) for i in inits}
     layout = layouts.get(next(iter(pointees))) if len(pointees) == 1 else None

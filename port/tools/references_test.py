@@ -1,10 +1,6 @@
-"""Unit tests of the rewrite of the game's C (port/tools/references):
-a C fragment through the type pass and the emission, compared with the C
-expected (both normalised by the parser's own generator, so spacing and
-parentheses that change nothing do not count). One case per form the
-rewrite handles.
-
-python port/tools/references_test.py   (also run by ctest: khdays-references)
+"""Unit tests of the rewrite of the game's C (port/tools/references): a C fragment through the type
+pass and the emission, compared with the C expected (both normalised by the parser), one case per
+form. python port/tools/references_test.py (also ctest: khdays-references)
 """
 from __future__ import annotations
 

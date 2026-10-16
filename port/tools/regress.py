@@ -1,29 +1,8 @@
 #!/usr/bin/env python3
-"""Play the native build through scripted input, without touching anyone's save.
-
-Two ways to use it:
-
-  The regression walks -- nine routes through the game that every change must
-  still complete, scene for scene, the save untouched except by the one that
-  saves (whose file must hold every copy it signed whole, port/tools/save_file.py);
-  the multiplayer walk plays two copies of the game together, each its own player:
-
-    python port/tools/regress.py [EXE] --walk-save OLD.sav [--player-save saves/khdays.sav]
-                                       [--only NAME] [--record] [--env NAME=VALUE ...]
-
-  One script -- for traces and experiments:
-
-    python port/tools/regress.py [EXE] --input FILE --save PATH --log PATH
-                                       [--env NAME=VALUE ...] [--timeout SECONDS]
-                                       [--window] [--keep]
-
-EXE is the Release build's (build/port/obj-release-x64/khdays-native.exe)
-unless given. Every run happens in a new temporary directory that holds a link to the
-repository's data/ and a *copy* of the save, so whatever the game writes stays
-there; --settings FILE starts the game with a copy of FILE as its settings
-(the walks with `[video] screens = one`), --mods DIR with DIR as
-its mods/. The walks' scripts and the scene sequences they must produce live in
-port/tools/regress_walks/.
+"""Play the native build through scripted input, without touching anyone's save: the regression
+walks (port/tools/regress_walks/: --walk-save OLD.sav [--only NAME] [--record]) or one script for
+traces (--input FILE --save PATH --log PATH). Each run is in a temporary directory with a link to
+data/ and a copy of the save. docs/BUILD.md, "The regression walks".
 """
 from __future__ import annotations
 
@@ -62,14 +41,10 @@ class Walk:
     server: str | None = None
 
 
-# The routes: the Mission Mode loop, Story Mode, a mission in play, and
-# challenge 07 with the player's save (the order the old regress_all.sh used);
-# then a save with the player's save: the camp menu's Save, a new file in
-# slot 2; the camp's "main menu", whose reset boots the game again
-# in the same process, back to the camp; and Mission Mode's multiplayer, two
-# copies on this PC from the title to the Mission Review of a mission quit
-# together: on the local network, then through a khdays-server of
-# this PC -- met through it, then relayed by it.
+# The routes: the Mission Mode loop, Story Mode, a mission in play, challenge 07, a save (the camp
+# menu's, a new file in slot 2), the camp's reset back to the camp, and multiplayer: two copies on
+# this PC from the title to a mission's review, on the local network, then met through and relayed
+# by a khdays-server of this PC.
 WALKS = [
     Walk("mission", 250, player_save=False),
     Walk("story", 250, player_save=False),
@@ -218,13 +193,9 @@ def run_games(exe: Path, players: list[tuple[Path, str, Path]], extra_env: dict[
 
 
 def scenes_and_trouble(log: Path) -> tuple[list[str], str | None]:
-    """The scenes the log went through (repeats removed) and its first line
-    of trouble, if any.
-
-    Scene 0 between two other scenes is dropped: it is the moment one scene
-    has ended and the next not yet begun, and whether the once-a-second report
-    happens to fall on it depends on timing (the Debug and Release builds of
-    the same code differ there). A walk that ends in scene 0 keeps it."""
+    """The scenes the log went through (repeats removed) and its first line of trouble, if any.
+    Scene 0 between two scenes (one ended, the next not begun) is dropped: whether the report falls
+    on it depends on timing. A walk that ends in scene 0 keeps it."""
     scenes: list[str] = []
     trouble = None
     for line in log.read_text(encoding="utf-8", errors="replace").splitlines():

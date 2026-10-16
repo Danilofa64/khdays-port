@@ -1,29 +1,7 @@
 #!/usr/bin/env python3
-"""Prepare the pinned khdays-decomp for the native (x64) build.
-
-The decomp is consumed read-only. This script decides which sources build
-the game, writes patched copies of the few that need a mechanical change
-for MSVC (its C++ turned into C), and generates what the DS linker used to
-provide:
-
-  * hal_symbols.txt    -- files whose only source is ARM assembly; port/hal
-                          implements what they define
-  * duplicates.txt     -- globals several split files defined; one keeps the
-                          definition, the rest become extern
-  * ds_functions.c     -- the native function at each DS address
-
-Then the game's C and the HAL are rewritten with every pointer a 4-byte
-reference, the DS address it had (port/tools/references):
-their rewritten copies in rewritten/, the data area's and the function
-references' numbers in khdays_data_area.h, the DS addresses the port's side
-reads in khdays_ds_symbols.h, and sources.cmake lists the rewritten files
-(KHDAYS_REWRITTEN). The symbols at fixed DS addresses -- the BSS no C file
-defines, OVERLAY_n_ID, the decomp's own linker-absolute symbols -- are
-constants of the rewrite.
-
-The source list comes from each module's delinks.txt: it names exactly the
-files the DS build links, so every function has one provider.
-
+"""Prepare the pinned khdays-decomp for the native (x64) build: choose the files the DS build links,
+patch the few MSVC cannot take, generate what the DS linker provided, and rewrite the game's C with
+every pointer a 4-byte reference (docs/BUILD.md).
 Usage: python port/tools/prepare.py [--out build/port/gen-x64]
 """
 from __future__ import annotations
@@ -160,13 +138,9 @@ SPLIT_HEADER = re.compile(
 EMPTY_FUNCTION = re.compile(r"^void[ \t]+(\w+)[ \t]*\([ \t]*(?:void)?[ \t]*\)[ \t]*\{[ \t]*\}[ \t]*$", re.MULTILINE)
 
 
-# Whole modules the port replaces: none of their files
-# is built; the HAL defines the functions the rest of the game calls in them,
-# and a call to any other stops the game naming it (runtime/ds_calls.c).
-# ov105 is NitroSDK's wireless library -- WM, the ARM7's protocol under it,
-# and its helper wh.c -- which the game calls at 24 functions (every
-# relocation into ov105 from main, the ITCM and the overlays): the port's
-# wireless layer, port/hal/sdk_wireless.c, is them.
+# Whole modules the port replaces, none of their files built: the HAL defines what the game calls
+# in them, and a call to anything else stops the game, naming it (runtime/ds_calls.c). ov105 is
+# NitroSDK's wireless library (WM, its ARM7 protocol, wh.c): port/hal/sdk_wireless.c is it.
 REPLACED_MODULES = {"ov105"}
 
 
@@ -239,17 +213,9 @@ HOOKS = {
         "            case 3:\n                { extern void khdays_wait_point(void); khdays_wait_point(); }\n"
         "                break;\n",
     )],
-    # NitroSDK's PXI without the IPC registers:
-    # the three functions that touch them hand the words to the port's
-    # transport (runtime/core/pxi.h) -- a send to the ARM7's service at once, a
-    # reply from the queue the receive interrupt's handler drains; the
-    # callback table, the interrupt's installation, the interrupt masks
-    # around each access and the dispatch stay the SDK's.
-    # The save written whole once a save action of the game's ends:
-    # every backup write, program or erase the game makes
-    # goes through this stream command, which ends here; a changed chip is
-    # committed to saves/khdays.sav atomically, and a commit that fails is the
-    # game's failed save (as a failed write on the DS's chip would be).
+    # The save written whole once a save action of the game's ends: every backup write, program or
+    # erase ends in this stream command; a changed chip is committed to saves/khdays.sav atomically,
+    # and a commit that fails is the game's failed save.
     "main@0200e4e8": [  # CARDi_RequestStreamCommandCore
         ("\tCARDi_EndTask(p, TRUE);\n",
          "\t{\n"
@@ -260,6 +226,9 @@ HOOKS = {
          "\t}\n"
          "\tCARDi_EndTask(p, TRUE);\n"),
     ],
+    # NitroSDK's PXI without the IPC registers: the three functions that touch them hand the words
+    # to the port's transport (runtime/core/pxi.h); the callbacks, the interrupt and the dispatch
+    # stay the SDK's.
     "main@02009278": [  # PXI_InitFifo
         ("        *(volatile unsigned short *)0x04000184 = 0xc408;\n",
          "        { extern void khdays_pxi_init(void); khdays_pxi_init(); } /* IPCFIFOCNT's enable */\n"),
@@ -361,12 +330,9 @@ HOOKS = {
     "main@02004000": [  # MIi_CheckAnotherAutoDMA
         ("        cnt = *cntp;\n", "        cnt = khdays_io_load((u32)cntp, 4);\n"),
     ],
-    # The game's heaps in the port's region of its memory: DMA
-    # channel 0 cannot read the DS's cartridge bus, so NitroSDK's check panics
-    # for a source at or above 0x08000000 (0x020040b0-0x020040d4) -- where the
-    # heaps now are. The port's DMA copies within the game's memory
-    # (runtime/core/io_regs.c dma_unit) and has no such bus: a source wholly in the
-    # game's RAM passes; the DS's own ranges keep the ROM's panic.
+    # NitroSDK panics on a DMA 0 source at or above 0x08000000 (the cartridge bus), where the game's
+    # heaps now are. The port's DMA has no such bus: a source in the game's RAM passes, the DS's own
+    # ranges keep the panic (runtime/core/io_regs.c).
     "main@02004084": [  # MIi_CheckDma0SourceAddress
         ("/* MIi_CheckDma0SourceAddress -- NitroSDK mi_dma.c. */\n",
          "/* MIi_CheckDma0SourceAddress -- NitroSDK mi_dma.c. */\n"
@@ -378,15 +344,8 @@ HOOKS = {
          "            !(khdays_game_ram_ref(src) &&\n"
          "              khdays_game_ram_ref(dir == MI_DMA_SRC_DEC ? src - size : src + size - 1))) {\n"),
     ],
-    # The game's two heaps: the main heap
-    # (0xc8000 bytes from the main arena's low end, 0x0204ce88-0x0204cea0) and
-    # the sub heap (the rest of the arena, or half of it under DS Protect's
-    # emulator answer, 0x0204cee8-0x0204cf40) made by the port over its region
-    # of the game's memory (runtime/core/game_heap.c) -- or, under its testing knob,
-    # from the arena exactly as here.
-    # A heap that gives no block: said in
-    # the port's log with the heap's figures (runtime/core/game_heap.c); what the
-    # game does with the 0 stays its own.
+    # A heap that gives no block: said in the port's log with the heap's figures
+    # (runtime/core/game_heap.c); what the game does with the 0 stays its own.
     "main@020107fc": [  # NNS_FndAllocFromExpHeapEx
         ("void *NNS_FndAllocFromExpHeapEx(void *heap, unsigned int size, int align) {\n",
          "extern void khdays_game_heap_failed(void *heap, unsigned int size);  /* runtime/core/game_heap.c */\n"
@@ -402,15 +361,10 @@ HOOKS = {
          "    }\n"
          "    return khdays_block;\n"),
     ],
-    # The headers' heaps: the game names a packed
-    # archive's header in its file handles by 24 bits from 0x01ff8000
-    # (`((header + 0x8000) & 0xfffffc) << 7 | 0x80000000 | index`, made in
-    # some 200 places, read back by the two decoders below), so a header must
-    # lie below 0x02ff8000. The headers Msg_OpenContainerAndReadHeader reads
-    # (0x02024ee8, its one NNS_FndAllocFromDefaultExpHeapEx) are
-    # taken from heaps of their own there (runtime/core/game_heap.c), freed back to
-    # them whatever heap the game names, and remade with their game heap; the
-    # decoders check that a handle's header lies where headers are.
+    # The headers' heaps: a file handle names a packed archive's header by 24 bits from 0x01ff8000,
+    # so headers must lie below 0x02ff8000. The ones Msg_OpenContainerAndReadHeader reads come from
+    # heaps of their own there, and the handle decoders check it (runtime/core/game_heap.c;
+    # docs/RUNTIME_MAP.md).
     "main@02024ee8": [  # Msg_OpenContainerAndReadHeader
         ("    buf = (u32 *)NNS_FndAllocFromDefaultExpHeapEx((u16)(size + 0x10), 4);\n",
          "    { extern void *khdays_header_alloc(unsigned int size);  /* runtime/core/game_heap.c */\n"
@@ -439,6 +393,8 @@ HOOKS = {
          "    { extern void khdays_handle_check(unsigned int handle, unsigned int base);  /* runtime/core/game_heap.c */\n"
          "      khdays_handle_check(param_1, base); }\n"),
     ],
+    # The game's main heap (0xc8000 bytes) and sub heap (the rest of the arena), made by the port
+    # over its region of the game's memory (runtime/core/game_heap.c).
     "ov001@0204ce40": [  # Ov001_CreateMainAndSubHeaps
         ("#define HEAP_ALIGN 0x10\n",
          "#define HEAP_ALIGN 0x10\n"
@@ -499,14 +455,9 @@ HOOKS = {
          "    khdays_io_store(0x04000440u, 4, 2);\n"
          "    khdays_io_store(0x0400044cu, 4, state->pSbc[1]);\n"),
     ],
-    # The field's HUD panel draws its 3D pieces (the hearts counter, the
-    # countdown) with a camera of its own, then the markers that follow the
-    # game's camera (Ov002_DrawMarkerQueue). The port marks the polygons the
-    # panel sends as the HUD's, so widescreen can keep them to the sides of
-    # the wider picture (runtime/display/display.c khdays_hud_3d, gpu3d.h): which
-    # code sends them was traced (KHDAYS_TRACE_3D_CALLERS: the hearts counter
-    # from Ov002_SceneDrawPanelWidgets and Ov002_SceneDrawPanelTotal, both
-    # called here). Nothing the game computes changes.
+    # The field's HUD panel draws its 3D pieces (the hearts counter, the countdown) with a camera of
+    # its own: the port marks those polygons as the HUD's, so widescreen keeps them to the sides
+    # (runtime/display/display.c khdays_hud_3d). Nothing the game computes changes.
     "ov002@020616a0": [  # Ov002_SceneStepPanel
         ("    Camera_CommitMatricesEx(s->aCamera, 0x3b33, -0x3b33, -0x4d9a, 0x4d9a);\n",
          "    Camera_CommitMatricesEx(s->aCamera, 0x3b33, -0x3b33, -0x4d9a, 0x4d9a);\n"
@@ -519,13 +470,9 @@ HOOKS = {
          "    { extern void khdays_hud_3d(int on); khdays_hud_3d(0); }\n"
          "    Ov002_SweepParkedValues(pCam);\n"),
     ],
-    # The game over's floating orb (ov027's character object, an ov002
-    # display object: two polygons Ov002_DrawSpriteQuad sends from here,
-    # KHDAYS_TRACE_3D_CALLERS) drifts by the menu's chosen line.
-    # The DS shows it over all the 2D (BG0 at priority 0), the lines under it
-    # (BG1 at 2). The port marks it as the HUD's shown over the 2D, so that
-    # the one picture's 3D shape for the game over places it with the lines
-    # and in front of them, and widescreen leaves it in place.
+    # The game over's floating orb, which the DS shows over all the 2D: marked as the HUD's shown
+    # over the 2D, so the one-screen layout places it in front of the lines and widescreen leaves
+    # it in place.
     "ov027@0208344c": [  # Ov027_UpdateFlushForward
         ("    Ov002_ResourceEntryCallback(*(int *)(data_ov027_02084360 + 4) + 0x588);\n",
          "    { extern void khdays_hud_3d(int on); khdays_hud_3d(2); }\n"
@@ -540,12 +487,9 @@ HOOKS = {
         "FSOverlayInitFunc *p = (khdays_data_init((int)p_ovi->header.id), "
         "p_ovi->header.sinit_init);",
     )],
-    # An object's update returns its next update. The ROM calls it with the
-    # update's own address in r0 (0x02023b60 `ldr r0,[r1,#0x14]`, `blx r0`),
-    # so one that leaves r0 alone -- an empty one, see EMPTY_FUNCTION -- keeps
-    # itself; natively it gets that address as its argument. Whatever else it
-    # returns must be native code (or -1/-2): anything not is caught here,
-    # naming the update that returned it (runtime/core/diag.c).
+    # An object's update returns its next update; the ROM calls it with its own address in r0, so
+    # one that leaves r0 alone keeps itself (EMPTY_FUNCTION). Anything returned that is not native
+    # code (or -1/-2) is caught here, naming the update (runtime/core/diag.c).
     "main@02023adc": [(  # Obj_UpdateAll
         "                int cb = ((int (*)(void))((int *)gObjSystem[1])[5])();\n",
         "                int cb = ((int (*)(int))((int *)gObjSystem[1])[5])(((int *)gObjSystem[1])[5]);\n"
@@ -593,36 +537,19 @@ HOOKS = {
         "    { extern void khdays_input_pad_sample(void); khdays_input_pad_sample(); }\n"
         "    gPadHeld.prev = gPadHeld.cont;\n",
     )],
-    # The game's ROM reads answered by the port (runtime/core/files.h).
-    # Every read of the game's ROM reaches CARDi_ReadRom, whose
-    # only caller is the FS ROM archive's FSi_ReadRomCallback. With the
-    # port's reads (KHDAYS_FILES unset) the card DMA is not tried, so every
-    # read takes CARDi_ReadRomSyncCore -- on the card's task thread when
-    # asynchronous, at once when not, as the CPU path already does -- and
-    # there the copy (the page cache, then card commands and data words read
-    # 4 bytes at a time, each a trapped access) is one copy from the ROM image
-    # into the destination: the card's common state's src (+0x1c), dst
-    # (+0x20) and len (+0x24), left as the SDK's read leaves them. The
-    # chip-ID check (answered by the port too, below), the result, the
-    # flags, the wake-ups and the callback run as the SDK runs them.
+    # The game's ROM reads answered by the port (runtime/core/files.h): every read reaches
+    # CARDi_ReadRom, which then takes CARDi_ReadRomSyncCore without the card DMA, and there the
+    # copy is one copy from the ROM image. The SDK's checks, flags and callbacks run as they are.
     # KHDAYS_FILES=card keeps the card.
     "main@0200eea4": [(  # CARDi_ReadRom
         "    if (CARDi_TryReadCardDma(state)) {\n",
         "    extern int khdays_files_mode(void);\n"
         "    if (khdays_files_mode() != 0 && CARDi_TryReadCardDma(state)) {\n",
     )],
-    # The card's chip ID, read after every ROM read to see the card is still
-    # in (CARDi_CheckPulledOutCore compares it with the copy kept at boot):
-    # with the port's reads the value the card answers, without its command.
-    # The movies (runtime/movies/video.h). The frame's
-    # decoder is the decomp's portable reconstruction of the payload ov024
-    # copied to the ITCM (libs/mobiclip/video/portable, MobiClip_DecodeFrameCore:
-    # the same state, planes and returned size -- every frame of the 46
-    # movies checked against the payload before the ARM interpreter went),
-    # called where the C calls the payload through the owner's +0x38 (through
-    # runtime/movies/video.c, which hands it the state with host pointers); the
-    # payload is still copied, as the game does, and nothing runs it. The
-    # blit is port/hal/sdk_mobiclip.c. Both timed for KHDAYS_PROFILE.
+    # The movies (runtime/movies/video.h): the frame is decoded by the decomp's portable
+    # reconstruction of the payload ov024 copies to the ITCM (libs/mobiclip/video/portable), called
+    # where the C calls the payload; the payload is still copied, and nothing runs it. The blit is
+    # port/hal/sdk_mobiclip.c.
     "ov024@020859d4": [(  # Ov024_MobiClip_DecodeFrame
         "    **(int **)(ctx + 0x34) += (*(int (**)(int))(ctx + 0x38))(*(int *)(ctx + 0x34));\n",
         "    {\n"
@@ -759,12 +686,9 @@ HOOKS = {
         "                      khdays_movie_hd_flags(*(u16 *)(context + 2) | 8u); }\n"
         "                    if ((*(u16 *)(context + 2) & 4) != 0) {\n",
     )],
-    # The credits scene, ov011 (runtime/movies/movie_hd.h):
-    # its movie ("843.z" from UI/sf/m.p2, the ov024 player opened through
-    # Ov024_MobiClip_InstallStreamSourceVtbl) is followed by the staff roll,
-    # which the HD video carries too -- so the scene's begin, the roll's end
-    # (Ov011_StartTitleExit, from Ov011_TickTitleMenu's mode 3) and the
-    # scene's end are told.
+    # The credits scene, ov011 (runtime/movies/movie_hd.h): its movie is followed by the staff roll,
+    # which the HD video carries too, so the scene's begin, the roll's end and the scene's end are
+    # told.
     "ov011@0205ac40": [(  # Ov011_CreateScene
         "    Ov024_MobiClip_InstallStreamSourceVtbl(pStream);\n",
         "    { extern void khdays_movie_hd_credits(int phase); khdays_movie_hd_credits(1); }\n"
@@ -819,6 +743,8 @@ HOOKS = {
         "    { extern void khdays_g3d_frame_camera(const int *projection, const int *camera);\n"
         "      khdays_g3d_frame_camera((const int *)&NNS_G3dGlb.projMtx, (const int *)&NNS_G3dGlb.cameraMtx); }\n",
     )],
+    # The card's chip ID, read after every ROM read to see the card is still in: with the port's
+    # reads, the value the card answers, without its command.
     "main@0200edb0": [(  # CARDi_ReadRomIDCore
         "    CARDi_SetRomOp(MROMOP_G_READ_ID, 0);\n",
         "    {\n"
@@ -846,24 +772,17 @@ HOOKS = {
         "        }\n"
         "    }\n",
     )],
-    # A music stream prepared: its player has its channels, their rings, the
-    # file's header and its first sample (docs/RUNTIME_MAP.md section 6,
-    # "The music streams' ring"). The port reads the stream's file itself
-    # from there (runtime/sound/sound_bridge.c, sound/stream_reader.c), so the
-    # channels play what the ring holds whether or not the stream thread
-    # has had its turn; the player goes on as before. NNS_SndArcStrmStart
-    # (0x0201cb3c) is the game's only way here. The first sample is the one
-    # computed at the top (`tmpU64`): by the end the stream thread has
-    # already filled the ring and moved `curSample` on (NNS_SndStrmSetup's
-    # first load wakes it, and it runs first).
     # The game asking for a music stream, for the delay until it is heard
     # (runtime/sound/sound_bridge.c, KHDAYS_TRACE_SOUND_COMMANDS).
-    # Nothing the stream player does changes.
     "main@0201cac0": [(  # NNS_SndArcStrmPrepare
         "    strmInfo = NNS_SndArcGetStrmInfo(strmNo);\n",
         "    { extern void khdays_sound_stream_requested(int stream_number); khdays_sound_stream_requested(strmNo); }\n"
         "    strmInfo = NNS_SndArcGetStrmInfo(strmNo);\n",
     )],
+    # A music stream prepared: the port reads the stream's file itself into the player's rings
+    # (runtime/sound/sound_bridge.c, sound/stream_reader.c), so the channels play whether or not the
+    # stream thread has had its turn; the first sample is the one computed at the top (`tmpU64`).
+    # docs/RUNTIME_MAP.md section 6, "The music streams' ring".
     "main@0201ce18": [(  # PrepareStrm
         "        NNS_SndStrmSetChannelPan(&player->stream, 1, 127);\n    }\n\n    return TRUE;\n",
         "        NNS_SndStrmSetChannelPan(&player->stream, 1, 127);\n    }\n\n"
@@ -878,18 +797,8 @@ HOOKS = {
         "          player->file.prop.file.bottom, (u32)tmpU64, player->monoFlag); }\n"
         "    return TRUE;\n",
     )],
-    # A sequence starts on an ARM7 sequence player (seqPlayer->playerNo, the
-    # one SND_PrepareSeq names) for one of the sound archive's players
-    # (seqPlayer->player, &data_0204a760[n], which NNSi_SndPlayerAllocSeqPlayer
-    # set): the runtime learns which archive player each ARM7 player serves, so
-    # the volumes can tell music, effects and voices apart (sound/categories.c;
-    # docs/RUNTIME_MAP.md section 6). StartSeq and StartSeqArc both come here.
-    # Which sequence, or which entry of which sequence archive, an ARM7
-    # player plays, from the two functions that start them (sndarc_player.c)
-    # once NNSi_SndPlayerStartSeq has prepared it: a mod's file may replace
-    # it (runtime/sound/sound_mods.c; kinds as port/sound/archive.h numbers them).
-    # With it the tag of the command list that prepares it
-    # (seqPlayer->commandTag, as NNSi_SndPlayerMain waits on it).
+    # Which sequence, or which entry of a sequence archive, an ARM7 player plays, with the tag of
+    # the command list that prepares it: a mod's file may replace it (runtime/sound/sound_mods.c).
     "main@0201c734": [(  # StartSeq
         # its entry, for the time its loading takes
         "    player = NNSi_SndPlayerAllocSeqPlayer(handle, playerNo, playerPrio);\n",
@@ -920,6 +829,8 @@ HOOKS = {
         "      khdays_sound_wave_archive_loaded(waveArcNo, waveArc); }\n"
         "    if (pData != NULL) *pData = waveArc;\n",
     )],
+    # Which sound archive player each ARM7 sequence player serves, so the volumes can tell music,
+    # effects and voices apart (sound/categories.c; docs/RUNTIME_MAP.md section 6).
     "main@0201a568": [(  # NNSi_SndPlayerStartSeq
         "    player = seqPlayer->player;\n",
         "    player = seqPlayer->player;\n"
@@ -928,43 +839,22 @@ HOOKS = {
         "      khdays_sound_player_assigned(seqPlayer->playerNo, (int)(player - data_0204a760)); }\n",
     )],
 
-    # The controls' enhancements meet the game in the following functions
-    # (runtime/input/controls_hooks.c). Every call hands back what the game had
-    # unless an enhancement the player switched on changes it; with
-    # KHDAYS_TRACE_CONTROLS they also report what the game does with its
-    # controls, the evidence each enhancement is built on (docs/RUNTIME_MAP.md).
-    #
-    # The field camera. The game turns it from `uVar20`: bits 4 and 8 turn
-    # the yaw target by its rate, 1 and 2 tilt it within its limits; the
-    # look view (Select, then the D-pad), a drag on the touch screen, and L/R
-    # under Config option 0 = 1 set them (docs/RUNTIME_MAP.md). Where the game
-    # applies them, the analog camera adds its own turn and tilt, the same
-    # way, and marks the frame as a camera frame (0x10, a bit the turn and
-    # tilt tests do not read) so the game does not pull the camera back
-    # behind the player while it is being turned -- as with its own inputs.
-    # The request the camera reads (the touch screen) is traced.
-    # The field's pace with three or more players:
-    # the game keeps frame mode 1 -- a step every three
-    # frames, its battle and its 3D at 20 a second -- for a session of three
-    # or four, the DS's processor and radio; the port keeps the pace of one
-    # or two (mode 0, every two frames). KHDAYS_MP_DS_PACE=1 keeps the game's.
+    # The controls' enhancements meet the game in the functions below (runtime/input/
+    # controls_hooks.c): each call hands back what the game had unless an enhancement the player
+    # switched on changes it; KHDAYS_TRACE_CONTROLS reports what the game does with its controls.
+
+    # The field's pace with three or four players: the game drops to frame mode 1 (a step every
+    # three frames, 20 a second); the port keeps mode 0's. KHDAYS_MP_DS_PACE=1 keeps the game's.
     "ov002@020679d4": [(  # Ov002_ConstructGameplayScene
         "    if (Session_IsActive() != 0 && *(int *)(Session_GetSetup() + 4) >= 3) {\n        i = 1;\n",
         "    if (Session_IsActive() != 0 && *(int *)(Session_GetSetup() + 4) >= 3) {\n"
         "        { extern int khdays_mp_field_mode(int players); i = khdays_mp_field_mode("
         "*(int *)(Session_GetSetup() + 4)); }\n",
     )],
-    # A guest's prediction of its own character (runtime/net/mp_predict.c). The battle is
-    # host-simulated: a host runs every character by Ov022_ActorUpdate's host
-    # branch from the inputs Ov022_RefreshSlotRows copies in; a guest replays
-    # the host's states. A guest's own character runs the host's branch, its
-    # own last control copied in by the game's own Ov022_LoadNodeFromResource,
-    # the host's state taken only to correct it, and what that branch sends
-    # left to the host, which makes and sends it as today.
-    # Inside the window (the own character's update) every "am I the host"
-    # check answers as a host's (ROLE_QUERY below: khdays_mp_role), the
-    # checks of "is this my character" as the guest's; the command menu runs
-    # with the window paused, the guest's as before.
+    # A guest's prediction of its own character (runtime/net/mp_predict.c): the battle is
+    # host-simulated, and a guest's own character runs the host's branch from its own last control,
+    # the host's state only correcting it. Inside that update "am I the host" answers as a host's
+    # (ROLE_QUERY); "is this my character" stays the guest's (docs/BUILD.md).
     "ov022@020a0008": [(  # Ov022_ActorUpdate
         "        Ov022_UpdateCommandInput(pActor);\n",
         "        { extern void khdays_mp_predict_pause(int paused); khdays_mp_predict_pause(1);\n"
@@ -1039,6 +929,9 @@ HOOKS = {
         "      } }\n"
         "    switch (Session_GetLinkMode()) {\n",
     )],
+    # The field camera: where the game applies its turn and tilt (the D-pad's look view, a drag on
+    # the touch screen, L/R), the analog camera adds its own and marks the frame as a camera frame
+    # (0x10), so the game does not pull the camera back behind the player meanwhile.
     "ov002@0204d170": [  # Ov002_Camera_UpdateFollow
         ("  if ((piVar7[0xe] & 0x200U) == 0) {\n    if ((piVar7[0xe] & 2U) != 0) {\n",
          "  if ((piVar7[0xe] & 0x200U) == 0) {\n    if ((piVar7[0xe] & 2U) != 0) {\n"
@@ -1065,14 +958,9 @@ HOOKS = {
          "    { extern void khdays_trace_camera_request(int found, int x, int y, int kind, int state);\n"
          "      khdays_trace_camera_request(puVar13 != 0, request.x, request.y, request.kind, request.state); }\n"),
     ],
-    # Lock-on: whether a target is locked, and the game's Config option 0
-    # (the lock-on scheme), for separate lock-on; that the lock-on logic goes
-    # on this frame with the buttons as they are (past its early returns --
-    # flags0 bit 3, as with a tutorial's pages open -- and not suppressed:
-    # flags0 bit 5 clear, or a paused session), so the lock-on buttons make
-    # R presses only when the game will take them as lock-on; and, traced,
-    # the lock-on logic's state before and after each frame and each call it
-    # makes.
+    # Lock-on: whether a target is locked, the lock-on scheme (Config option 0), and whether the
+    # lock-on logic runs this frame, so separate lock-on makes R presses only when the game will
+    # take them; traced, the logic's state around each frame.
     "ov022@02085380": [  # Ov022_ReadSelectionInput
         ('#include "nitro/types.h"\n',
          '#include "nitro/types.h"\n'
@@ -1216,14 +1104,9 @@ HOOKS = {
         "      const unsigned int words[2] = {command, argument};\n"
         "      khdays_g3d_words(words, 2); }\n",
     )],
-    # A mod's models drawn instead of the game's (runtime/mods/models.h): each
-    # model NitroSystem draws (NNSi_G3dDrawInternal, from start to end), each
-    # node's matrix as NODEDESC leaves it -- after the node's callback, before
-    # it is stored -- and its shapes' display lists left unsent while the
-    # model is replaced (the SHP command), but for their matrix commands (a
-    # model with a position scale scales the matrix the next nodes are placed
-    # on in them). The game animates and draws as always; when no mod
-    # replaces the model nothing changes.
+    # A mod's models drawn instead of the game's (runtime/mods/models.h): each node's matrix as
+    # NODEDESC leaves it, and the shapes' display lists unsent while a model is replaced, but for
+    # their matrix commands. Without a mod nothing changes.
     "itcm@01ffb8fc": [(  # NNSi_G3dDrawInternal
         "    do {\n        u32 command;\n",
         "    { extern void khdays_models_draw_begin(const void *model);\n"
@@ -1316,17 +1199,9 @@ HOOKS["ov006@020508e0"] = _ov006_members  # Ov006_UpdateMissionMenuSelectionScre
 HOOKS["ov008@0207c7c8"] = _ov008_members  # Ov008_UpdateMissionMenuSelectionScreen
 
 
-# Hooks by the decomp file, for functions HOOKS cannot name: DS Protect's
-# (ov028) are data in the symbols, their bodies being encrypted in the ROM,
-# and several share a file. Applied like HOOKS.
-# The routines whose drawing the port takes over,
-# by the file that defines them: (function, part, the port's function, kind).
-# The game's body stays, under `<function>__khdays_game`, and the routine
-# asks its part's mode. "replace" -- off: the game's body; on: the port's,
-# handed the same parameters; check: both (the port's first, then the
-# game's, whose drawing the check compares). "follow" -- the game's body
-# always, then (check, on) the port's, told what it was handed and what it
-# returned. Parts: port/ui/parts.h.
+# The routines whose drawing the port takes over: (function, part, the port's function, kind).
+# "replace" runs the game's body (off), the port's (on) or both (check); "follow" runs the game's,
+# then the port's with what it returned. Parts: port/ui/parts.h; docs/BUILD.md.
 UI_PARTS = {"text": 0, "hud": 1, "pause": 2, "camp": 3, "save": 4, "mission": 5, "shop": 6}
 UI_HOOKS: dict[str, list[tuple[str, str, str, str]]] = {
     # The text: the two text surfaces that make
@@ -1398,12 +1273,9 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
     return game + "\n\n" + head + signature + body + text[d.body[1] + 1:]
 
 
-# The game's "am I the host" checks (constitution
-# 2.3.0): the local player's index queried against 0 -- `== 0`, `!= 0`,
-# `if (...)`, `!...` -- answers through the port (runtime/net/mp_predict.c
-# khdays_mp_role): as a host's while a guest's own character is predicted,
-# as the game's at every other moment. A query compared with an owner or a
-# slot (is this my character) stays the game's call.
+# The game's "am I the host" checks (the local player's index against 0) answer through the port
+# (runtime/net/mp_predict.c khdays_mp_role): as a host's while a guest's own character is
+# predicted, as the game's otherwise. "Is this my character" stays the game's call.
 ROLE_QUERY = re.compile(
     r"Session_GetLocalPlayerIndex\(\)(?=\s*[!=]=\s*0\b)"
     r"|(?<=!)Session_GetLocalPlayerIndex\(\)"
@@ -1412,13 +1284,9 @@ ROLE_QUERY = re.compile(
 # ... and the same check through a variable, as Zexion's parts make it
 # (Ov045_StepParts and its three twins: `player = ...; if (player == 0 ...`).
 ROLE_QUERY_VAR = re.compile(r"(\b\w+ = )Session_GetLocalPlayerIndex\(\)(;\s*if \(\w+ == 0\b)")
-# Only a character's own run asks through the port: the battle's actors
-# (ov022) and the characters' overlays. What the character does to the
-# others and to the world -- hits delivered or taken, HP, items, abilities,
-# the mission's tallies, the shared tables, the members' events, the network
-# -- stays the game's answer, so a guest never makes locally what the host
-# decides and sends; and so does everything outside these
-# (the field, the enemies, the field's objects, the engine).
+# Only a character's own run asks through the port: ov022's actors and the characters' overlays.
+# What it does to the others and the world (hits, HP, items, tallies, the network) stays the
+# game's answer, so a guest never makes what the host decides.
 ROLE_DIRS = ("src/overlays/field/ov022_battle/", "src/overlays/players/")
 ROLE_KEPT = {
     # hits delivered to others
@@ -1444,13 +1312,11 @@ def role_scoped(rel: str) -> bool:
     path = rel.replace("\\", "/")
     return any(path.startswith(d) for d in ROLE_DIRS) and Path(rel).stem not in ROLE_KEPT
 
+# Hooks by the decomp file, for functions HOOKS cannot name: DS Protect's (ov028) are data in the
+# symbols, their bodies encrypted in the ROM, and several share a file. Applied like HOOKS.
 FILE_HOOKS = {
-    # DS Protect's own read of the card (ROMUtil_Read, which its flashcart
-    # check uses on six pages): with the port's reads
-    # each page comes from the port as a cartridge answers it (below 0x8000
-    # from 0x8000 + (address & 0x1ff)), and its words go where the loop
-    # places the card's; the card's registers are left alone, the card's
-    # lock kept.
+    # DS Protect's own read of the card (ROMUtil_Read, for its flashcart check): each page comes
+    # from the port as a cartridge answers it, the card's registers left alone.
     "src/overlays/system/ov028_dsprotect/dsprot/dsprot_rom_util.c": [(
         "    DSPROT_RANGE_BEGIN(KEY_ROM_UTIL_READ)\n"
         "\n"
@@ -1544,54 +1410,32 @@ ABI_FIXES = {
         ("    int nDx;\n", "    int nDx = 0;  /* unread without a list node (port/abi) */\n"),
         ("    int nDy;\n", "    int nDy = 0;\n"),
     ],
-    # Ov006_MissionBuildOptionRows passes `input` to Ov006_SetTitleMode
-    # unset in single-player mode: the ROM's r4 there (`mov r0,r4`,
-    # 0x02050f4c) is its caller's, Obj_UpdateAll's previous heap
-    # (`mov r4,r0` after func_0202362c, 0x02023b5c) -- an address, which
-    # Ov006_SetTitleMode ignores as it does 0 (only 1-4 are stored,
-    # 0x02055b44-0x02055b58). Natively the garbage could fall in 1-4.
+    # Ov006_MissionBuildOptionRows hands Ov006_SetTitleMode an unset `input` in single-player mode:
+    # the ROM's r4 there is an address, which it ignores like 0. Natively the garbage could fall in
+    # 1-4 (docs/DECOMP_FINDINGS.md section 2).
     "ov006@02050e1c": [  # Ov006_MissionBuildOptionRows
         ("    int input;\n", "    int input = 0;  /* the ROM's r4 here: a heap address, ignored (port/abi) */\n"),
     ],
-    # The same in Ov008_MissionMenuWaitReady: with the parameters ready (+0x28
-    # set, 0x0207cdc4) nValue is never written, and `mov r0,r4` (0x0207ce0c)
-    # hands Ov008_MissionScene_SetMode its entry r4 -- Obj_UpdateAll's (the
-    # state is the mission menu object's update, first returned by its class's
-    # constructor Ov008_MissionMenuCreate), the heap address above.
-    # Ov008_MissionScene_SetMode stores only 1-4 (0x020818b4-0x020818c0).
+    # The same in Ov008_MissionMenuWaitReady: the ROM hands Ov008_MissionScene_SetMode a heap
+    # address, which it ignores (it stores only 1-4).
     "ov008@0207cd04": [  # Ov008_MissionMenuWaitReady
         ("    int nValue;\n", "    int nValue = 0;  /* the ROM's r4 here: a heap address, ignored (port/abi) */\n"),
     ],
-    # Ov002_MapTouchToCell sets no cell for a touch at x <= 0x30 on the
-    # tab's second row (`bls`, 0x02066168) and clamps r4 as it came into
-    # 0x16..0x1d (0x0206619c-0x020661ac). Its one caller,
-    # Ov002_HandlePageTouch, runs it as a cue box's callback (`blx r1`,
-    # 0x02065c78) with r4 the cue context's address (`ldr r4,[r0,#0x0]`,
-    # 0x02065be4), which clamps to 0x1d; natively the garbage could be any
-    # cell.
+    # Ov002_MapTouchToCell clamps an unset r4 into 0x16..0x1d; its one caller has r4 the cue
+    # context's address, which clamps to 0x1d. Natively the garbage could be any cell.
     "ov002@020660b0": [  # Ov002_MapTouchToCell
         ("    int nCell;\n", "    int nCell = 0x1d;  /* the ROM's r4 here: an address, clamped to 0x1d (port/abi) */\n"),
     ],
-    # Ov005's direction and confirmation handlers keep r4 when no key bit is
-    # set: Ov005_UpdateMainScene's, its state table's end (two `ldm r4!`
-    # from 0x0205b368, 0x02053d84/0x02053d90), 0x0205b388. Ov005_MoveSelection
-    # takes that as no direction (its default path, 0x02053578, loads r0
-    # afresh) and Ov005_UpdateConfirmation as no action (`cmp r4,#0x20;
-    # popne`, 0x02054864). 0 does the same; natively the garbage could be a
-    # key.
+    # Ov005's direction and confirmation handlers keep r4 when no key is set: an address, taken as
+    # no direction and no action. 0 does the same; natively the garbage could be a key.
     "ov005@020536ac": [  # Ov005_HandleDirectionalInput
         ("    int direction;\n", "    int direction = 0;  /* the ROM's r4 here: an address, no direction (port/abi) */\n"),
     ],
     "ov005@020547e4": [  # Ov005_UpdateConfirmation
         ("    int action;\n", "    int action = 0;  /* the ROM's r4 here: an address, no action (port/abi) */\n"),
     ],
-    # Ov001_SeedMathRandContexts mixes the entropy into accumulators it never
-    # sets: r4 (`r`) and r6:r5 (`x`, low:high; 0x0204ccf0-0x0204cd18). Neither
-    # Ov001_BootInit nor what it calls before keeps them, so they are main's:
-    # r4 = 1 (`ldr r4,=1`, 0x02000be0, the overlay FS_LoadOverlay loads), and
-    # r5/r6 as crt0's autoload left them (func_020009fc: r5 = the last block's
-    # destination, r6 = its end with BSS; the table at 0x0204c1e0 ends with the
-    # DTCM block, 0x027e0000 + 0x60 + 0xe00).
+    # Ov001_SeedMathRandContexts mixes the entropy into accumulators it never sets: main's r4 (1)
+    # and r6:r5 as crt0's autoload left them (docs/DECOMP_FINDINGS.md section 2).
     "ov001@0204cccc": [  # Ov001_SeedMathRandContexts
         ("    unsigned r;\n    unsigned long long x;\n",
          "    unsigned r = 1;  /* the ROM's r4 here: main's (port/abi) */\n"
@@ -1606,14 +1450,8 @@ ABI_FIXES = {
          "int ModelAnimSet_Bind(ModelAnimSet *set, ModelInst *inst, void *file, int texSrc)"),
         ("    set->texSrc = texSrc;\n}", "    set->texSrc = texSrc;\n    return texSrc;\n}"),
     ],
-    # Ov002_IsPanelModeSet(fallback) returns its r0 untouched when no panel is
-    # installed (`ldr r1,=0x0207f628; ldr r1,[r1]; cmp r1,#0; bxeq lr`,
-    # 0x02061b80); here that r0 is whatever Ov002_RepublishHud left, several
-    # calls deep (9, or what 0x0205d98c's paths leave). Without a panel both
-    # ways do the same: the branch sums the tally rows (func_ov022_020882f8,
-    # the count, only reads, 0x020882f8-0x0208830c) and calls
-    # Ov002_AddToPanelTotal, which returns at once with no panel. Reached in
-    # mission 61; 0 skips the branch.
+    # Ov002_IsPanelModeSet returns its r0 untouched when no panel is installed; without a panel
+    # both ways do the same, so 0 skips the branch (reached in mission 61).
     "ov002@02069d40": [  # Ov002_CreateAndRestoreHud
         ("extern int Ov002_IsPanelModeSet(void);",
          "extern int Ov002_IsPanelModeSet(int fallback);"),
@@ -1622,29 +1460,18 @@ ABI_FIXES = {
     ],
 }
 
-# Ov022_StartPauseMenu, an object's update, leaves r0 as it came while the
-# lock byte (data_0204be04) is set (`bne` to `pop {r3-r5,pc}`, 0x02082c98).
-# Obj_UpdateAll calls each update with its own address in r0 (`ldr r0,[r1,
-# #0x14]; blx r0`, 0x02023b60), so the update returns itself: the object
-# stays and tries again the next frame. The C's bare `return;` gave the
-# native caller whatever was in the register (1 in mission 61,
-# the maintainer: the port stopped, no function's reference).
+# Ov022_StartPauseMenu, an object's update, leaves r0 as it came while the lock byte is set: its
+# own address, so the object tries again next frame. The C's bare `return;` gave the native
+# caller garbage (the port stopped in mission 61).
 ABI_FIXES["ov022@02082c90"] = [  # Ov022_StartPauseMenu
     ("         * object keeps this update and tries again next frame. */\n        return;\n",
      "         * object keeps this update and tries again next frame. */\n"
      "        return (void *)&Ov022_StartPauseMenu;  /* r0 as it came: the update itself (port/abi) */\n"),
 ]
 
-# Bare `return;`s in functions with a value, whose callers read it: the ROM's
-# r0 on those paths, read from each one's code (after
-# Ov022_StartPauseMenu above; the 15 such functions of the decomp, the rest
-# have no caller that reads the value or need a malformed subtitle).
-# (Ov022_ResolveGuardBreakState and the mega shadows' Ov181-Ov184_OnHit had
-# such returns; the decomp's C now returns their r0.)
-# Ov022_TestShotHit's early exit (`ldmialt`, 0x02091188) leaves r0 as the last
-# call left it: Ov022_ComputeStrengthDamage's damage without the descriptor's
-# row values, Ov022_ScaleRowValues' 0 with them (it ends `mov r0,#0`,
-# 0x020a2410). Ov022_ResolveShotHit reads it as the hit.
+# Bare `return;`s in functions with a value whose callers read it: the ROM's r0 on those paths,
+# read from each one's code (docs/DECOMP_FINDINGS.md section 2). Ov022_TestShotHit's early exit
+# leaves the last call's r0, which Ov022_ResolveShotHit reads as the hit.
 ABI_FIXES["ov022@02090f5c"] = [  # Ov022_TestShotHit
     ("    if (pShot->nField134 != 0 && pShot->nAge < FIRST_HIT_AGE) {\n        return;\n    }\n",
      "    if (pShot->nField134 != 0 && pShot->nAge < FIRST_HIT_AGE) {\n"
@@ -1695,14 +1522,9 @@ ABI_FIXES["main@02023adc"] = [  # Obj_UpdateAll
      "                  khdays_check_update(((int *)gObjSystem[1])[5], cb); }\n"
      "                khdays_rom_r9_set(cb);  /* `mov sb, r0` */\n"),
 ]
-# The tag trackers' `swap` is r9 (sb), which the ROM never sets when the table
-# has no selection getter (+0x48): it reads what its caller left there (the
-# decomp's header calls it a ROM bug, kept). The eight copies are the same
-# 0x1a0 bytes; in Ov025's, reached from the camp menu's update through
-# Ov025_GetIdleHandler, Ov025_CommitPage and Ov025_TickSelectionWidget, none
-# of which touches r9, that is the previous update's result (0 in the
-# Holomisiones list). With a nonzero r9 and no setter (+0x44) the ROM calls
-# address 0 -- the ITCM mirror, OSi_VBlankInterruptHandler: the port stops.
+# The tag trackers' `swap` is r9, which the ROM never sets when the table has no selection getter:
+# it reads what its caller left (the previous update's result), which the port keeps
+# (khdays_rom_r9). With a nonzero r9 and no setter the ROM would call address 0: reported.
 for _key in ("ov000@020561b4", "ov002@020540f0", "ov005@0204cdd0", "ov006@0204cdd0",
              "ov008@020551a4", "ov009@02051f68", "ov025@02088e4c", "ov026@02082ecc"):
     ABI_FIXES[_key] = [
@@ -1759,12 +1581,8 @@ ABI_NOT_READ = {
 # the ROM's pointer calls never read r0 (the rest the need filter finds
 # mechanically: no C reads them). By the function whose value it is.
 VALUE_NOT_READ = {
-    # Returned by the enemies' tick hooks at +0xc (Ov131..133/161..165/202/
-    # 203_TickWithChildRefresh, Ov134..136_ReleaseAndDestroy). Every `blx`
-    # of an [actor,#0xc] hook sets r0 next (`ldr r0,[r5,#0x384]`, `mov r0,#0`,
-    # `add r0,r5,#0x44`...) or calls Session_GetLocalPlayerIndex, which loads
-    # r0 first (Ov107_Scene_Tick, 0x020c98fc); Ov212_BoneCallback returns it,
-    # and no C reads that.
+    # Returned by the enemies' tick hooks at +0xc: every `blx` of such a hook sets r0 next or
+    # returns it unread, so no C reads it.
     "ov107@020c6980": "Ov107_ProcessObjectTick",
     # Returned by Ov285/286_ForwardAnimEvent, the animation hook at +0x1dc.
     # Its callers: Ov107_AiState_OnMessage branches to `mov r0,sl`
@@ -1777,13 +1595,9 @@ VALUE_NOT_READ = {
 # them, abi_repair.pad_short_calls, so the writes stay in the call's frame.)
 
 
-# Globals some split files define that symbols.txt does not name: statics of
-# one original translation unit, repeated in each file the decomp split it
-# into. On the DS they are fields of a block the module's own symbol anchors
-# (tools/share_bss.py of the decomp). Their definitions become references;
-# these are the ones code uses, at the addresses the ROM's own code reaches
-# them by (base + offset read from its disassembly). A used one missing here
-# fails the link.
+# Globals some split files define that symbols.txt does not name: statics of one original
+# translation unit, fields of a block its module's symbol anchors. These are the ones code uses,
+# at the addresses the ROM reaches them by; a used one missing here fails the link.
 PHANTOMS = {
     # os_thread.c, block data_0204430c: OSi_RescheduleThread (+0x04), the
     # scheduler's current-thread pointer (func_02001f10: ldr [base,#8]),
@@ -1833,13 +1647,9 @@ PHANTOMS = {
     "sWh_pWmBuffer": 0x020c050c,
 }
 
-# The game's objects the port's side reads by name (in the rewrite, by
-# their DS address in the window: khdays_ds_symbols.h, from the decomp's
-# symbols): the sound archive's path the game opens (runtime/sound/sound_bridge.c);
-# what the one-screen picture tells the game's situation from (ui/situation.c:
-# the scene controller, the pause's mode and kind, the
-# SDK's VRAM banks and reserved timers, NitroSystem's texture VRAM manager,
-# and three overlays' own variables).
+# The game's objects the port's side reads by name, by their DS address in the window
+# (khdays_ds_symbols.h): the sound archive's path, and what the one-screen picture tells the
+# game's situation from (ui/situation.c).
 PORT_DS_SYMBOLS = ("gSndSoundDataPath", "gSceneCtl", "gPauseMode", "data_0204bda4", "data_02044660",
                    "data_020446d6", "data_020446d8", "data_020446e2", "data_020446e6", "gGfdFrmTexRegions",
                    "data_ov000_0205ac24", "data_ov002_0207f9fc", "data_ov025_020b574c", "data_0204c2d0",
@@ -1985,14 +1795,9 @@ NARROW_DEFINITION = re.compile(
 RETURN_VALUE = re.compile(r"\breturn\b(\s*)([^;]+?)\s*;")
 
 
-# The decomp's C++ (ov024's MobiClip stream layer) as C, for the rewrite:
-# its classes are only declared, to call through vtables
-# that are the game's data and whose entries are C functions taking `this`
-# first. After transform() -- which put mwcc's two destructor slots in place
-# (VIRTUAL_DTOR), made every member __cdecl and spelled `delete` out -- a
-# class is a struct with the vtable's reference first and its data members
-# after, and a virtual call is a call through the vtable's slot, the object
-# first: the call the ROM makes (ov024 0x02084ec4: `ldr r1,[r0]; ldr r1,[r1,#n]; blx r1`).
+# The decomp's C++ (ov024's MobiClip stream layer) as C: a class becomes a struct with its
+# vtable's reference first, and a virtual call a call through the vtable's slot with the object
+# first, as the ROM makes it (docs/BUILD.md).
 CLASS_DECL = re.compile(r"\bclass\s+(\w+)\s*\{(.*?)\n\};", re.S)
 VIRTUAL_DECL = re.compile(r"virtual\s+(?:(.*?)\s+)?__cdecl\s+(~?\w+)\s*\(([^()]*)\)\s*$", re.S)
 STRUCT_DEF = re.compile(r"^struct\s+(\w+)\s*\{", re.M)
@@ -2551,12 +2356,9 @@ def main() -> int:
     functions = {m.name: {a: n for n, k, a in m.symbols if k == "function"} for m in modules}
     repairer = abi_repair.Repairer(texts, module_of, functions, findings)
     repairer.fixed = set(abi_fixes)
-    # What each call needs is what its callee takes: the argument words of its
-    # definition, more where the callee's own registers pass on to a call that
-    # needs them (abi_repair's extensions), and for a tail call (which hands
-    # on four words) what its target needs. A finding past that -- a register
-    # the scan was asked about when the C said otherwise -- is dropped, as are
-    # the registers the ROM shows a callee never reads (ABI_NOT_READ).
+    # What each call needs is what its callee takes: its definition's argument words, more where
+    # its registers pass on to a call that needs them, and a tail call's target's. Registers the
+    # ROM shows a callee never reads are dropped (ABI_NOT_READ).
     def words(name: str) -> int:
         rel = repairer.def_file.get(name)
         d = abi_repair.find_definition(texts[rel], repairer.mask(rel), name) if rel else None
@@ -2625,12 +2427,8 @@ def main() -> int:
                 del sites[site]
         if not sites:
             del findings.calls[pair]
-    # A value no C reads needs nothing: every call of the function is a
-    # statement of its own, in a file that declares it void, the whole
-    # argument of a call whose callee's definition takes fewer words than
-    # that argument's position (Ov002_DismissIfState4 hands
-    # Ov002_FillMapRows's to Ov002_HudTeardownToState5(void)), or returned
-    # by a function no pointer reaches whose own value no C reads.
+    # A value no C reads needs nothing: each call a statement of its own, the argument of a callee
+    # that takes fewer words, or returned where nothing reads it.
     defined_in: dict[str, list[str]] = collections.defaultdict(list)
     for fname, rel in repairer.def_file.items():
         defined_in[rel].append(fname)
@@ -2754,22 +2552,14 @@ def main() -> int:
                    f"{initialized} files' `(x - x)` locals set to 0, {len(callbacks)} functions reached "
                    f"through pointers in {len(unoptimized_texts)} unoptimized files (abi_unoptimized.txt)")
 
-    # References to an address several overlays share (the decomp's relocs
-    # name them all: module:overlays(a,b)). On the DS the one loaded there at
-    # the time runs; the decomp's C names one of them, not always that one
-    # (ov012 opens its movie through "func_ov008_020846c0", ov008's shop list,
-    # where the ROM reaches ov024's MobiClip open at the same address). Natively
-    # every such function reference in the referring module goes through a
-    # thunk that jumps to the loaded overlay's function (runtime/core/overlays.c).
+    # References to an address several overlays share: the C names one of them, not always the
+    # one loaded, so natively such a reference goes through a thunk to the loaded overlay's
+    # function (runtime/core/overlays.c).
     thunks, dispatched = overlay_dispatch(modules, texts, module_of)
 
-    # Game data at its DS address. Every object a C file defines that the DS
-    # linker placed (symbols.txt) becomes an absolute symbol at that address,
-    # so all code meets it where the DS had it -- including code that reaches
-    # other memory relative to it. An initialised definition keeps its
-    # initializer under a second name and registers it (KHDAYS_DATA_INIT); the
-    # runtime copies it into place when its module is loaded, over the image
-    # the DS itself loaded there, so pointers to functions in it are native.
+    # Game data at its DS address: each object the DS linker placed becomes an absolute symbol
+    # there; an initialised one keeps its initializer under a second name (KHDAYS_DATA_INIT), copied
+    # into place when its module loads (docs/BUILD.md).
     ds_data: dict[str, int] = {}
     for m in modules:
         for n, k, a in m.symbols:
@@ -2822,14 +2612,9 @@ def main() -> int:
         lines.append(str(path).replace("\\", "/"))
         compiled_path[rel] = lines[-1]
 
-    # The functions of the main module and the overlays at their DS addresses,
-    # for a call through a DS address -- a pointer the ROM's own data holds,
-    # such as an overlay's static initializers -- to run the native function
-    # (runtime/core/window.c, runtime/core/overlays.c). The ITCM's
-    # functions are listed with their sizes: the MobiClip decoder is copied
-    # over the ITCM while a movie plays, so one runs natively only while its
-    # bytes are still the game's (NitroSystem's G3D calls two through tables
-    # in the ITCM that hold their DS addresses, at 0x01ffa1f8 and 0x01ffa598).
+    # The functions at their DS addresses, for a call through a DS address the ROM's data holds
+    # (runtime/core/window.c, overlays.c). The ITCM's are listed with their sizes: the MobiClip
+    # decoder is copied over the ITCM while a movie plays.
     # the names compat/decomp_defines.txt gives the game's functions natively
     # (main, the C runtime's, the system's): each listed under its native name
     renames = {m[1]: m[2] for m in re.finditer(r"^(\w+)=(\w+)\s*$",
@@ -2915,16 +2700,9 @@ def main() -> int:
             alternates[name] = target
         else:
             absolute[name] = addr
-    # What only an assembly file holds and port/hal does not implement is
-    # the ROM's bytes at its DS address -- the module image the game loads
-    # holds them: data is read there; code there has no native form, and a
-    # call into it stops the game, naming it (runtime/core/window.c). rom_code.txt
-    # lists what may be code: MobiClip's routines the game never reaches --
-    # Ov024_MobiClip_AudioTransformDecode and func_ov024_02087318_unk, the
-    # audio decoders of kinds 1 and 2 (every movie with sound is kind 3),
-    # and func_ov024_02092e60_unk, the deblocking filter (the one call
-    # reaching BlitFrame, from Ov024_MobiClip_FrameAlarm, passes mode 0) --
-    # and a label inside func_0200302c, which the HAL has.
+    # What only an assembly file holds and port/hal does not implement is the ROM's bytes at its DS
+    # address: data is read there; a call into code there stops the game, naming it. rom_code.txt
+    # lists what may be code (docs/BUILD.md).
     # A Thumb function's address carries bit 0, as an ARM pointer to it does.
     hal_names = hal_definitions()
     by_name = {m.name: m for m in modules}

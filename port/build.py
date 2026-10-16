@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
-"""Build the native Windows (x64) executable from the decompilation.
-
+"""Build the native Windows (x64) executable: prepare.py into build/port/gen-x64, then
+port/CMakeLists.txt with Ninja in Visual Studio's x64 environment, into build/port/obj-x64 (Debug),
+obj-release-x64 (Release) or obj-asan-x64 (--asan: AddressSanitizer on the port's own code).
   python port/build.py [--config Debug|Release] [--asan] [--jobs N]
-
-Runs prepare.py -- the game's C rewritten with every pointer a reference,
-its memory off the DS's addresses -- into build/port/gen-x64,
-then configures port/CMakeLists.txt with Ninja inside Visual Studio's x64
-environment, then builds. Output: build/port/obj-x64/khdays-native.exe
-(Release: build/port/obj-release-x64/, so the two configurations do not
-rebuild each other). --asan: the Release flags with AddressSanitizer on the
-port's own code, in build/port/obj-asan-x64/.
 """
 from __future__ import annotations
 
@@ -48,17 +41,9 @@ def msvc_env(arch: str = "x64") -> dict[str, str]:
 
 def oem_console() -> int:
     """Make the console's output code page the system's OEM one; return the old one (0: none).
-
-    Ninja learns which headers each file includes from cl's /showIncludes lines,
-    and only from lines that start, byte for byte, with the prefix CMake found
-    when it first configured the tree. cl writes that line in the language Visual
-    Studio is installed in and in the console's output code page. A tree
-    configured in one code page and built in another (cmd's 850 against a UTF-8
-    terminal's 65001, with a Spanish install's "Nota: inclusion del archivo:")
-    knew no file's headers, so a change to a header alone rebuilt nothing.
-    Configuring and building in the OEM code page, which a machine
-    keeps whatever terminal runs this, keeps the two the same. Without a console
-    (output piped) cl writes in the OEM code page anyway."""
+    Ninja learns each file's headers from cl's localized /showIncludes lines, matched byte for byte
+    against the prefix found at configure time and written in the console's code page: a tree
+    built in another code page than it was configured in rebuilt nothing on a header change."""
     if os.name != "nt":
         return 0
     import ctypes

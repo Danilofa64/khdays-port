@@ -1,31 +1,7 @@
-"""The emission: a typed translation unit (types.py) as C again, every
-pointer of the game's side a 4-byte reference.
-
-Each expression is emitted either as a *value* -- a pointer as its reference,
-an integer as itself -- or as a *host lvalue*, the C designator of the object
-where it lives on the host: `(*(T *)KHDAYS_W(r))` for an object reached
-through a reference, a local by its name. The window is added only where a
-reference is dereferenced.
-
-Some of the game's functions take their arguments as the DS laid them out
--- one block of 4-byte slots in the caller's frame, in the window, its
-reference the one parameter `khdays_va` -- and a call to one stores its
-arguments in such a block first. They are those declared or defined with a
-variable argument list anywhere (the decomp's own va_start reaches the
-arguments from the last named parameter's address, `(char *)(&last + 1)`,
-as mwcc's stack had them), and those a file declares otherwise than their
-definition takes them: Ov000_IsSelectionMoveCollisionFree is defined
-`(int, int, int, ...)` and called with a struct by value where it reads two
-ints; Ov006_MissionPlaceCell is defined with a struct by value and called
-through `(void *, int, ...)` with its four words. On the DS -- and x86 --
-the words land in the same places either way; in a block they do on any
-host (build.py block_abi, Index.variadic).
-
-The game's side and the port's: a declaration that comes from the port's own
-headers (runtime/, host/, gfx/, sound/, compat/decomp_compat.h) is the
-port's -- its types keep host pointers, and the game's side converts at its
-uses (a host pointer read becomes a reference, a reference handed to it a
-host address). Everything else is the game's.
+"""The emission: a typed translation unit (types.py) as C again, every pointer of the game's side a
+4-byte reference, each expression a value or a host lvalue (the window added only where a reference
+is dereferenced). Variadic and mis-declared functions take their arguments in a block as the DS laid
+them out; declarations from the port's own headers keep host pointers (docs/BUILD.md).
 """
 from __future__ import annotations
 

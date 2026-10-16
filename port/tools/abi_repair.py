@@ -1,26 +1,7 @@
-"""Make the decompilation's calls say what the ARM code does.
-
-The decomp's C matches the ROM byte for byte, yet some of it leans on the ARM
-calling convention: a call passes fewer arguments than its callee reads (the
-callee finds whatever r0-r3 held), or a caller uses the "result" of a
-function defined void (whatever it left in r0). Natively those are garbage.
-
-port/abi/ghidra_abi.txt records, from the ROM (port/tools/ghidra/
-KhdaysAbiScan.java), what those registers really hold at each such call and
-return. This module rewrites the C where that source is mechanical:
-
-  returns   r0 is the result of the function's last call, or of a call it
-            jumps to at the end, its first argument untouched, or a constant:
-            the function returns that.
-  arguments the missing register still holds the caller's own argument, the
-            previous call's result (r0), a constant, or a data address: the
-            call passes it.
-
-Everything else becomes a stop that names the call (KHDAYS_ABI_GAP), resolved
-from the ROM when the game reaches it. Struct arguments loaded into r1-r3
-(`ldmia`) need nothing here: where a declaration takes a struct's words and
-the definition the struct (or the other way), the rewrite passes the
-arguments as the DS laid them out (port/tools/references, its block).
+"""Make the decompilation's calls say what the ARM code does: where the C leans on the ARM calling
+convention (fewer arguments than the callee reads, the result of a void function), pass what the
+ROM shows those registers hold (port/abi/ghidra_abi.txt); everything else becomes a stop naming
+the call (KHDAYS_ABI_GAP). docs/BUILD.md, "The ABI repairs".
 """
 from __future__ import annotations
 
@@ -384,17 +365,10 @@ UNCALLED_NAME = re.compile(r"\b([A-Za-z_]\w*)\b(?!\s*\()")
 
 
 def unoptimize_callbacks(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Functions whose address the C takes: callbacks, handlers, tables.
-    Their calls go through pointers, whose C often passes fewer arguments
-    than the function takes (the ARM passes what the registers hold), and
-    pad_short_calls cannot see them. An optimizing compiler keeps other
-    values in a parameter's slot once the parameter is dead; for a call that
-    did not pass it, that slot is the caller's frame (casting Fire, the
-    Release build returned to address 0 with its saved registers zeroed; with
-    these unoptimized it casts it). Unoptimized, a function writes
-    a parameter only where its C does. The files defining them turn
-    optimization off (MSVC's `#pragma optimize`; a no-op where it is off
-    anyway)."""
+    """Functions whose address the C takes (callbacks, handlers, tables): their calls through
+    pointers often pass fewer arguments, which pad_short_calls cannot see, so the files defining
+    them turn optimization off (`#pragma optimize`): unoptimized, a function writes a parameter's
+    slot only where its C does (optimized, casting Fire returned to address 0)."""
     defined: dict[str, set[str]] = collections.defaultdict(set)
     for rel, text in texts.items():
         for m in DEFINITION.finditer(text):
@@ -413,12 +387,8 @@ SELF_SUBTRACTION = re.compile(r"\(\s*([A-Za-z_]\w*)\s*-\s*\1\s*\)")
 
 
 def init_self_subtracted(texts: dict[str, str]) -> tuple[dict[str, str], int]:
-    """Locals the C never sets and reads only to add `(x - x)` -- a term that
-    makes mwcc copy a register the way the ROM does (`RandNextScaled(n) +
-    (v - v)`). The sum is the same whatever x holds, but reading an unset
-    local is undefined behaviour, which an optimizing compiler may act on;
-    and a local with no initializer set to 0 changes nothing defined. Every
-    such declaration inside a function starts at 0."""
+    """Locals the C never sets and reads only to add `(x - x)` (mwcc's register copy, as in
+    `RandNextScaled(n) + (v - v)`): reading them is undefined behaviour, so each starts at 0."""
     out: dict[str, str] = {}
     changed = 0
     for rel, text in texts.items():
@@ -440,17 +410,9 @@ def init_self_subtracted(texts: dict[str, str]) -> tuple[dict[str, str], int]:
 
 
 def pad_short_calls(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Calls passing fewer arguments than the definition takes. On the ARM9
-    the missing ones are registers; natively those past the argument
-    registers are slots of the caller's own stack -- its saved registers or
-    its locals -- and the callee owns them:
-    one that assigns to such a parameter (used as a local, as the ARM code
-    uses the register) writes over its caller's frame, and so may an
-    optimizing compiler, which keeps other values in a parameter's slot once
-    the parameter is dead (MSVC /O2 does). Such calls pass zeros for every
-    word the definition takes: what the ROM shows a callee reads is what the
-    ABI repairs pass first (port/abi), and a value written before any read
-    is never seen."""
+    """Calls passing fewer arguments than the definition takes pass zeros for every missing word:
+    natively those words are the caller's own stack slots, which the callee (or an optimizing
+    compiler) may write over. What the ROM shows a callee reads is passed first (port/abi)."""
     # A file's own definition (a static one: several files may each have one
     # of the same name) before the one the others link to.
     def_file: dict[str, str] = {}
@@ -568,13 +530,9 @@ def argument_spans(text: str, mask: bytearray, open_paren: int, close: int) -> l
 
 
 def widen_narrow_params(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Prototypes declaring a parameter narrower (char, short) than the
-    definition takes it. The ARM caller converts the argument to the narrow
-    type and passes it extended in its register, which the definition reads
-    whole; a native caller defines only the narrow part of the register or
-    stack slot (an optimizing MSVC leaves the rest as it was). Such a prototype takes an int
-    there, and each call in its file converts the argument to the narrow type
-    itself: the same value, extended."""
+    """Prototypes declaring a parameter narrower than the definition takes it: the ARM caller passes
+    it extended, a native one only its narrow part. The prototype takes an int there, and each call
+    converts the argument to the narrow type itself: the same value, extended."""
     definitions: dict[str, list[str]] = {}
     for rel, text in texts.items():
         for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\(([^;{}]*)\)\s*\{", text, re.MULTILINE):
@@ -640,14 +598,10 @@ WORD_RETURN = re.compile(r"^(?P<lead>[ \t]*(?:extern[ \t]+)?)"
 
 
 def narrow_return_declarations(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Prototypes declaring a 32-bit integer result for a function whose
-    definition returns a narrow one (char, short). The ARM definition returns
-    the value extended in r0 (mwcc sign- or zero-extends at its return), which
-    such a caller reads whole; a native definition defines only the narrow
-    part of the register (MSVC's FX_Atan2, 0x020050b4, zero-extends its
-    fx16: a negative angle came back 0x10000 too large). Such a prototype says
-    the definition's type, so the call extends the value itself: the same
-    value the ARM caller read."""
+    """Prototypes declaring a 32-bit result for a function that returns a narrow one: the ARM
+    definition returns it extended in r0, a native one only the narrow part (FX_Atan2's negative
+    angles came back 0x10000 too large). The prototype says the definition's type, so the call
+    extends the value itself."""
     narrow: dict[str, str] = {}
     for rel, text in texts.items():
         for m in re.finditer(r"^([A-Za-z_][\w \t\*]*?)\b([A-Za-z_]\w*)\s*\(([^;{}]*)\)\s*\{", text, re.MULTILINE):
@@ -801,13 +755,9 @@ class Repairer:
         callee = ""
         why = "r0 as the ROM leaves it"
         if self.struct_result(name, len(params)) and params and "*" in params[0]:
-            # Its value is a struct its callers take by value, through the
-            # result pointer the definition spells out as its first parameter.
-            # The ARM caller reads the struct where it pointed; a native
-            # caller reads it through the pointer the callee returns: the one
-            # it passed, as the definition had it on entry. (The rewrite's
-            # pointers are references, not that host pointer: it stops on
-            # such a declaration, references/build.py.)
+            # Its value is a struct its callers take by value, through the result pointer the
+            # definition takes first: a native caller reads it through the pointer the callee
+            # returns, the one it passed (references/build.py stops on such a declaration).
             p0 = param_name(params[0])
             if not p0:
                 return "unnamed result pointer"
@@ -873,12 +823,9 @@ class Repairer:
                 defined = min(defined, len(param_list(self.texts[callee_rel], cd)))
         if defined <= declared:
             return "resolved"
-        # A 64-bit parameter takes two argument words (r1:r2), a VecFx32 by
-        # value three: a prototype counting them covers the definition
-        # (Ov226_HandleMessageArgs passes two VecFx32 where
-        # Ov226_Projectile_SetupFlight defines three unused words and one
-        # VecFx32) -- as the DS laid them out, which the rewrite passes them
-        # as (references/build.py block_abi: the shapes differ).
+        # A 64-bit parameter takes two argument words, a VecFx32 by value three: a prototype
+        # counting them covers the definition as the DS laid them out (Ov226_HandleMessageArgs;
+        # references/build.py block_abi).
         for _, open_paren, close in declarations(text, mask, callee):
             params = [p for p in split_top_level(text[open_paren + 1:close]) if p.strip() not in ("", "void")]
             if params and sum(param_words(p) for p in params) >= defined:
@@ -889,13 +836,9 @@ class Repairer:
                            for s, c in present if text[text.find("(", s) + 1:c].strip()):
             if all(text[text.find("(", s) + 1:c].strip() for s, c in present):
                 return "resolved"
-        # The caller expects a struct by value where the definition takes the
-        # ARM ABI's result pointer: the "missing" first argument is that
-        # pointer, which MSVC passes the same way for a struct over 8 bytes --
-        # a host pointer, not the rewrite's reference: references/build.py
-        # stops on such a declaration, and prepare.py's FILE_HOOKS and
-        # ABI_FIXES fix them by hand (check_prototypes.py lists them as a void
-        # definition some file declares returning a struct).
+        # The caller expects a struct by value where the definition takes the ARM ABI's result
+        # pointer, which MSVC passes the same way but as a host pointer: references/build.py stops
+        # on such a declaration, and prepare.py's FILE_HOOKS and ABI_FIXES fix them by hand.
         for line_start, open_paren, _ in declarations(text, mask, callee):
             head = re.sub(r"\b(?:extern|static|inline|const|volatile)\b", "", text[line_start:open_paren])
             words = re.findall(r"[A-Za-z_]\w*|\*", head)[:-1]
