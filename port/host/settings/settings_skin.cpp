@@ -1,15 +1,5 @@
-// The settings menu in the HD collection's own menu's pieces (settings_skin.h).
-//
-// settings.txt (tools/hd/theater_settings.py writes it):
-//   picture W H                 the picture the places are in (1920 x 1080)
-//   atlas FILE                  the pieces' pixels, beside this file
-//   font FILE CELL              the font's picture (its glyphs' grey), its cells' height
-//   screen X Y W H U V          the screen behind the menu: its place, its texels
-//   part PIECE STATE ROLE X Y W H U V
-//                               a piece's part in a state: its role (left, middle, right,
-//                               top, bottom, whole, title; the slider's track, fill, knob),
-//                               its place in the picture, its texels in the atlas
-//   glyph CODE X Y W            a character's cell in the font's picture and its width
+// The settings menu in the HD collection's own menu's pieces (settings_skin.h): settings.txt, which
+// tools/hd/theater_settings.py writes (its lines: docs/HD_SCREENS.md, "The settings menu").
 #include "settings_skin.h"
 
 #include "imgui_internal.h" // ImFontLoader: the font is the pieces' own pictures

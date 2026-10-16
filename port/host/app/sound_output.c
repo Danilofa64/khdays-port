@@ -1,23 +1,7 @@
-/* The sound output (see sound_output.h).
- *
- * The sound thread wakes every millisecond and runs the sound bridge up to
- * the DS clock's current time, so the ARM7's driver and the channels keep
- * their own time whatever the game's thread is doing (runtime/sound/sound_bridge.c).
- * The sound they make comes here as soon as it is made and goes into the SDL
- * stream, in one of two formats:
- *   - the PC's mixer (the default): floats at the device's own rate
- *     (khdays_host_audio_float);
- *   - with `ds_exact`, the DS's mixer: 16-bit samples at 32,728 Hz
- *     (khdays_host_audio), which the stream converts to the device's rate.
- * The stream switches format at the first buffer in the new one.
- *
- * The sound is made as the DS clock passes but played on the device's own
- * clock, so the stream keeps LEAD_MS of sound ahead. That lead is put in as
- * silence when the stream opens, resumes, or runs dry. (Running dry is
- * counted: with KHDAYS_PROFILE it is printed once a second, with the time the
- * game's thread spent catching the driver up.) Anything queued beyond a tenth
- * of a second (when the whole port stalled, then caught up) is dropped, so
- * the delay stays short. */
+/* The sound output (sound_output.h): the sound thread runs the sound bridge up to the DS clock every
+ * millisecond and puts what is made into the SDL stream (the PC's mixer's floats, or the DS's 16-bit
+ * samples with `ds_exact`), keeping a lead ahead as silence where it opens, resumes or runs dry, and
+ * dropping what queues past a tenth of a second (docs/PLATFORM.md, "The PC's side"). */
 #include "sound_output.h"
 #include "host.h"
 #include "../movies/movie_hd.h"

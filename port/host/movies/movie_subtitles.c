@@ -1,14 +1,6 @@
-/* The HD videos' subtitles (movie_subtitles.h).
- *
- * A video's file (theater_movies.py writes it):
- *   picture W H                  the picture the places are in (1920 x 1080)
- *   rate R                       the frames counted a second (the theater's videos: 30)
- *   atlas FILE                   the lines' pixels, beside this file
- *   line FIRST END X Y U V W H   a line: shown from frame FIRST to before END, at X, Y
- *                                of the picture, from the atlas's U, V, W x H
- * A frame of the schedule is a picture of the theater's video: a file at
- * that rate, or at 30000/1001 (the same pictures, slower), counts its own
- * pictures; another counts the time at the schedule's rate. */
+/* The HD videos' subtitles (movie_subtitles.h): a video's file of lines (picture, rate, atlas, each
+ * line's frames, place and texels), written by tools/hd/theater_movies.py; the format and how frames
+ * are counted: docs/HD_SCREENS.md, "The HD videos' subtitles". */
 #include "movie_subtitles.h"
 
 #include <SDL3/SDL.h>

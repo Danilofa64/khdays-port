@@ -1,23 +1,8 @@
 /* The port's list of rooms on the screen (room_screen.h), in the HD theater's pieces
- * (layouts/rooms/<lang>/rooms.txt, tools/hd/theater_mission.py; layout_screen.h reads the shared
- * lines). Its own lines:
- *   fixed TOP PITCH             the list's first rows, Create a Group and the search
- *   rows TOP PITCH SHOWN        the rooms under them, SHOWN at a time with a scroll bar
- *   form TOP PITCH              a new room's rows (name, password, Create) or a password asked for
- *   cards PITCH                 a room's places
- *   frame THERE NOBODY          a card's ring
- *   signal PITCH H1 H2 H3 H4    a room's signal, four bars; signal_ms A B C the pings under which
- *                               four, three or two are lit (one above C, none unmeasured)
- *   art FILE                    the background
- *
- * Each row is a theater chapter's: a room's signal, name, host, "Password", players and ping; a
- * field's text (a password as asterisks) and label; an action's words. The members' screen shows a card
- * for each of the four places, ringed in the place's colour (places.h) when a player is there, and the
- * host's Proceed lit when the game would go on. The game's words are its own list's (UI/mlt/mlt_&.s.z),
- * the rest the port's (ui_text.h).
- *
- * Typing: the keyboard through the system's text input; a gamepad as the settings menu's text entry
- * (up and down change the last character, right adds one, left erases one). */
+ * (layouts/rooms/<lang>/rooms.txt, tools/hd/theater_mission.py; its lines: docs/HD_SCREENS.md, "The
+ * rooms"): each room's signal, name, host, lock, players and ping, the forms to create or join, and the
+ * members' cards in the places' colours. Typing: the system's text input, or a gamepad as the settings
+ * menu's text entry. */
 #include "room_screen.h"
 
 #include "../app/devices.h"

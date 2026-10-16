@@ -1,9 +1,6 @@
-/* The keyboard, the mouse and the gamepads (see devices.h).
- *
- * It keeps what each device holds (KhdaysDeviceState), turns it into the DS
- * buttons and actions through the player's profile (bindings.c), and
- * publishes the result for the game. Only one gamepad plays: the first one
- * connected, or the last one used when it goes away. */
+/* The keyboard, the mouse and the gamepads (devices.h): what each device holds, turned into the DS's
+ * buttons and the port's actions through the player's profile (bindings.c) and published for the game.
+ * Only one gamepad plays: the first connected, or the last used when it goes away. */
 #include "devices.h"
 #include "instance.h"
 #include "../screens/ui_text.h"

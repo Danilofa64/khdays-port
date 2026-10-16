@@ -201,3 +201,71 @@ The gamepad's enhancements play the DS's own presses (`runtime/input`):
   next target, and with Type B (option 0 = 1) L once to the previous one. R also
   works the camera; the presses played are a player's, so the camera does what
   it does for them.
+
+## The PC's side
+
+**The window** (`host/app/window.c`) runs on SDL3 on a thread of its own. The
+game's thread hands over finished frames and reads the input; both cross
+between the threads through SDL's locks and atomics. The picture is drawn by
+`gpu_present.c` (`RENDERING.md`). The keyboard, the mouse and the gamepads are
+read by `devices.c`, which turns what each holds into the DS's buttons and the
+port's actions through the player's control profile (`profile.c`, saved in
+`saves/settings.ini`); the mouse on the lower screen is the stylus. Only one
+gamepad plays: the first connected, or the last used when it goes away. Esc,
+the gamepad's settings button or a click on the title's settings key opens the
+settings menu, which pauses the game while open. Closing the window ends the
+process.
+
+**The settings menu** (`host/settings`) covers the whole window, the game's
+picture dimmed behind it: the sections in a column on the left, the chosen
+section's rows on the right, the chosen row's note and how to use the menu at
+the bottom. It works with only a keyboard, only a gamepad or only a mouse. Dear
+ImGui lays it out and draws it, but the menu reads the input itself: every SDL
+event comes through `khdays_settings_handle`, which moves the focus and changes
+the working profile; clicks are matched against the places the last drawing
+recorded. The rows come from `settings_model.c`, rebuilt from the working
+profile every time, so they always show what it holds. Its accept, clear and
+back buttons are whichever face buttons the player's gamepad gives the DS's A,
+Y and B, so the menu answers like the game does. While it is open the game is
+paused by stopping the DS clock (`runtime/core/clock.c`); a game loop that
+spins without waiting (the opening movie's) keeps one core busy meanwhile.
+
+Its sample sounds are the game's own (`settings_sample.cpp`): the title's stream
+`Title_BGM_PCM8` for music, Roxas's `rox_warai_S01` for voices, and the first
+wave of `SE_SYS_WAVE` that plays once and lasts long enough for effects. They
+are decoded straight from the archive's bytes, not played by the sound driver,
+which belongs to the paused game; a stream plays at its record's volume, then
+the master and its kind's volume, as the mixer combines them.
+
+**The sound output** (`host/app/sound_output.c`). The sound thread wakes every
+millisecond and runs the sound bridge up to the DS clock's current time, so the
+ARM7's driver and the channels keep their own time whatever the game's thread
+does. What they make goes into the SDL stream as soon as it is made: floats at
+the device's rate from the PC's mixer (the default), or with `ds_exact` the DS's
+mixer's 16-bit samples at 32,728 Hz, which the stream converts. The sound is
+made as the DS clock passes but played on the device's clock, so the stream
+keeps a lead of sound ahead, put in as silence when it opens, resumes or runs
+dry (counted with `KHDAYS_PROFILE`); anything queued beyond a tenth of a second
+(when the whole port stalled, then caught up) is dropped.
+
+**The HD videos** (`host/movies/movie_hd_win.c`, Media Foundation). One video
+plays at a time, on a thread of its own (COM multithreaded, `MFStartup`), with
+two Source Readers on the file so each reads ahead at its own pace: one for the
+picture, decoded to NV12 (the H.264 decoder's own format) and kept a little
+ahead of the clock with its times; one for the sound, decoded to 32-bit floats
+into an SDL audio stream of its own. The clock is the sound played so far (the
+frames put in minus those still queued); without sound, or once it has all
+played, the performance counter minus the time paused. At each screen refresh
+the host takes the newest picture due on that clock.
+
+**Execution contexts** (`host/app/context_win.c`): the switch is the port's own
+code (`context_x64.asm`). Each context runs on a stack the port allocates, in
+the game's memory when the runtime provides it (so the game's locals can be
+reached by reference); the stack bounds Windows keeps for the thread are
+switched with it, as for a fiber.
+
+**The player's name** (`khdays_host_player_name`), as the DS's firmware holds it
+(at most `room` UTF-16 characters): `KHDAYS_NAME` (the walks'), else the settings'
+`nickname`, else "Player" and four digits made from this machine; from player
+2 on the slot's number is added; only printable ASCII is kept. Never the
+system's user name: that can be a real name, and online anyone can see it.

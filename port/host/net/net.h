@@ -68,12 +68,10 @@ void khdays_host_random(void *data, size_t size);
  * server; the game's session uses SDL's clock.) */
 unsigned long long khdays_host_net_clock_ms(void);
 
-/* One TCP request and its whole answer, like an HTTP exchange that closes
- * the connection (the server uses it to ask its router for a port,
- * server/portmap.c). It connects to `to`, sends `size` bytes of `request`,
- * and reads until the other side closes or `room` is full, all within `ms`
- * milliseconds. Returns the bytes read, or -1 if it could not connect or
- * send; *local gets this machine's address on that connection. */
+/* One TCP request and its whole answer, like an HTTP exchange that closes the connection (the server
+ * asks its router for a port, server/portmap.c): connects to `to`, sends `request`, reads until the
+ * other side closes or `room` is full, all within `ms`. The bytes read, or -1; *local this machine's
+ * address on that connection. */
 long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply,
                               size_t room, int ms, unsigned int *local);
 

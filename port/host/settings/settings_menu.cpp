@@ -1,14 +1,6 @@
-// The port's settings menu (settings_ui.h). It covers the whole
-// window: the sections in a column on the left, the chosen section's rows on
-// the right, and at the bottom the chosen row's note and how to use the menu.
-//
-// ImGui lays it out and draws it, but the menu reads the input itself:
-// every SDL event comes through khdays_settings_handle, which
-// moves the focus (an entry of the column, or a row of the chosen section and
-// a cell of a binding) and changes the working profile. Mouse clicks are
-// matched against the places the last drawing recorded. The rows come from
-// settings_model.c and are rebuilt from the working profile every time, so
-// they always show what the profile holds.
+// The port's settings menu (settings_ui.h): ImGui lays it out and draws it, but the menu reads the
+// input itself (khdays_settings_handle moves the focus and changes the working profile; clicks matched
+// against the last drawing's places). The rows come from settings_model.c, rebuilt every time.
 #include "settings_ui.h"
 #include "settings_model.h"
 
@@ -277,12 +269,9 @@ int pad_input_of_button(SDL_GamepadButton button)
     return -1;
 }
 
-// The menu's accept, clear and back buttons: whichever face buttons the
-// player's gamepad gives to the DS's A, Y and B (as the menu opened), so the
-// menu answers like the game does -- with the KH II preset Cross accepts, with
-// the DS preset the right-hand button does. If one of them has no face
-// button, it takes the DS's position (A right, Y left, B bottom) unless
-// another one has it. Pad inputs (KHDAYS_PAD_*); -1 means none.
+// The menu's accept, clear and back buttons: the face buttons the player's gamepad gives the DS's A,
+// Y and B, so the menu answers like the game; one with no face button takes the DS's position unless
+// another has it. Pad inputs (KHDAYS_PAD_*); -1 none.
 void face_buttons(int out[FACE_COUNT])
 {
     static const int actions[FACE_COUNT] = {KHDAYS_ACT_A, KHDAYS_ACT_Y, KHDAYS_ACT_B};

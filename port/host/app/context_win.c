@@ -1,10 +1,6 @@
-/* The contexts on Windows (see context.h).
- *
- * The switch itself is the port's own code (context_x64.asm). Each context
- * runs on a stack the port allocates: in the game's memory when the runtime
- * provides it (khdays_context_stack_source, so the game's local variables can
- * be reached by reference). The stack bounds Windows keeps for the
- * thread are switched along with it, as they are for a fiber. */
+/* The contexts on Windows (context.h): the switch is the port's own code (context_x64.asm); each
+ * context runs on a stack the port allocates, in the game's memory when the runtime provides it, and
+ * the stack bounds Windows keeps for the thread are switched with it, as for a fiber. */
 #include "context.h"
 
 #include <stdlib.h>

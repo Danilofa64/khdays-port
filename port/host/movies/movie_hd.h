@@ -1,9 +1,6 @@
-/* The player's HD video, shown in place of one of the game's movies.
- *
- * One video plays at a time. The system decodes it on a thread of its own
- * (on Windows Media Foundation, movie_hd_win.c). Its sound plays on an audio
- * stream of its own, and how much of it has played is the video's clock. When a video plays
- * is decided on the game's side (runtime/movies/movie_hd.h). */
+/* The player's HD video, shown in place of one of the game's movies: one at a time, decoded by the
+ * system on a thread of its own (Media Foundation, movie_hd_win.c), its sound on an audio stream of its
+ * own whose progress is the video's clock. When one plays is the game's side's (runtime/movies). */
 #ifndef KHDAYS_HOST_MOVIE_HD_H
 #define KHDAYS_HOST_MOVIE_HD_H
 

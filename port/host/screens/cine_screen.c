@@ -1,12 +1,7 @@
 /* MODO CINE's list on the screen (cine_screen.h), in the theater's pieces: a file
- * tools/hd/theater_cine.py writes, whose shared lines layout_screen.h reads. Its own lines:
- *   rows Y PITCH SHOWN          the first row's top, the rows' pitch, how many show
- *   digits X Y H PITCH R G B    the day's digits: the last's middle, top, height, pitch, colour
- *   scene MOVIE DAY ART         each movie's chapter day and artwork (layouts/cine/art/ART)
- *
- * The rows are the game's page, each its scene's name and length (UI/thr/thr_&.s.z); a day's first
- * scene shows the theater's square and DAY. Behind them the selected scene's artwork, read on a thread
- * of its own, fades in over FADE_MS when the selection changes. */
+ * tools/hd/theater_cine.py writes (docs/HD_SCREENS.md, "MODO CINE's list"). The rows are the game's
+ * page, each scene's name and length; behind them the selected scene's artwork, read on a thread of
+ * its own, fades in over FADE_MS. */
 #include "cine_screen.h"
 
 #include "layout_screen.h"

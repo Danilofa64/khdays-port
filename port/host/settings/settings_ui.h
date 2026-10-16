@@ -1,14 +1,7 @@
-/* The port's settings menu (settings_menu.cpp).
- *
- * It covers the whole window, with the game's picture dimmed behind it: the
- * sections in a column on the left, the chosen section's settings on the
- * right. It works with only a keyboard, only a gamepad or only a mouse. It is
- * drawn with Dear ImGui but reads the input itself; what it
- * shows comes from settings_model.c.
- *
- * Known limit: while it is open the game is paused by stopping the DS clock
- * (runtime/core/clock.c). A game loop that spins without waiting (the opening
- * movie's) keeps one processor core busy meanwhile, without moving on. */
+/* The port's settings menu (settings_menu.cpp): the whole window, the game dimmed behind it, sections
+ * on the left and settings on the right, for a keyboard, a gamepad or a mouse alone. Drawn with Dear
+ * ImGui, reading the input itself. While it is open the DS clock stops; a game loop that spins without
+ * waiting (the opening movie's) keeps one core busy meanwhile. */
 #ifndef KHDAYS_SETTINGS_UI_H
 #define KHDAYS_SETTINGS_UI_H
 

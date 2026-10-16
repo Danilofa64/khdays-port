@@ -1,18 +1,7 @@
-/* The player's HD video, played through Media Foundation (see movie_hd.h).
- *
- * The video runs on a thread of its own (COM in the multithreaded apartment,
- * MFStartup). It opens two Source Readers on the file, so that each one reads
- * ahead at its own pace:
- *   - one for the picture, decoded to NV12 (the H.264 decoder's own format);
- *     the pictures are kept, with their times, a little ahead of the clock
- *     (PICTURES_AHEAD);
- *   - one for the sound, decoded to 32-bit floats and put a little ahead
- *     (SOUND_AHEAD) into an SDL audio stream of its own on the default device.
- *
- * The clock is the sound played so far: the frames put in minus the frames
- * still queued. Without sound, or once it has all played, the clock is the
- * performance counter minus the time spent paused. At each screen refresh the
- * host's thread takes the newest picture that is due on that clock. */
+/* The player's HD video through Media Foundation (movie_hd.h): a thread of its own, two Source Readers
+ * reading ahead at their own pace (the picture as NV12, the sound as floats into its SDL stream); the
+ * clock is the sound played so far, else the performance counter less the pauses; each refresh takes
+ * the newest picture due (docs/PLATFORM.md, "The PC's side"). */
 #define COBJMACROS
 #include "movie_hd.h"
 

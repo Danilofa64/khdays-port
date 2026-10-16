@@ -1,16 +1,6 @@
-// The settings menu's sample sounds (settings_sample.h).
-//
-// Each sample is a sound from the game's own archive (snd/sound_data.sdat),
-// chosen by name and by the player the archive assigns it:
-//   - music: the title's stream Title_BGM_PCM8 (stream player 0, PLAYER_STRM_BGM);
-//   - voices: Roxas's rox_warai_S01 (stream player 2, PLAYER_STRM_V01);
-//   - effects: the first wave of the system effects' archive SE_SYS_WAVE that
-//     plays once and lasts long enough to be heard.
-// They are decoded straight from the archive's bytes, not played by the sound
-// driver, because the driver belongs to the paused game (port/sound/render.h:
-// one driver, one render at a time). A stream plays at the volume its record
-// gives it, as in the game, then at the master volume and its kind's volume,
-// as the mixer combines them (khdays_sound_bridge_set_volumes).
+// The settings menu's sample sounds (settings_sample.h): the game's own (Title_BGM_PCM8, Roxas's
+// rox_warai_S01, a wave of SE_SYS_WAVE), decoded straight from the archive -- the sound driver belongs
+// to the paused game -- and played at the volumes the mixer would give them (docs/PLATFORM.md).
 #include "settings_sample.h"
 
 #include "khdays/assets/audio.h"

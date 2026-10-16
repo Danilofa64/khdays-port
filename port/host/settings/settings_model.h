@@ -1,9 +1,6 @@
-/* What the settings menu shows (settings_model.c):
- * its sections, and in each one the rows the player sees -- a setting, a
- * binding, a command, a heading or a line. The rows are built from the
- * working profile, so they always show what it holds. This is plain data and
- * the rules for changing it; the drawing and the input are in
- * settings_menu.cpp. */
+/* What the settings menu shows (settings_model.c): its sections and their rows -- settings, bindings,
+ * commands, headings and lines -- built from the working profile, so they always show what it holds.
+ * Plain data and the rules for changing it; the drawing and the input are settings_menu.cpp's. */
 #ifndef KHDAYS_SETTINGS_MODEL_H
 #define KHDAYS_SETTINGS_MODEL_H
 

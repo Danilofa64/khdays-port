@@ -25,13 +25,10 @@ const char *khdays_host_user_folder(void);
 /* Whether another copy of the port is running on this machine right now. */
 int khdays_host_other_copies(void);
 
-/* The player's name, as the DS's firmware holds it (the owner's nickname, at most `room` UTF-16
- * characters). Returns its length.
- *
- * It is KHDAYS_NAME (the walks'), else `nickname` (the settings'), else an automatic one: "Player" and
- * four digits made from this machine. From player 2 on, the slot's number is added. Only printable
- * ASCII is kept (what the game's font surely draws). Never the system's user name: that can be a real
- * name, and online anyone can see it. */
+/* The player's name as the DS's firmware holds it (at most `room` UTF-16 characters); its length.
+ * KHDAYS_NAME, else the settings' `nickname`, else "Player" and four digits from this machine; from
+ * player 2 on the slot's number added; printable ASCII only. Never the system's user name: it can be a
+ * real name, and online anyone sees it. */
 int khdays_host_player_name(const char *nickname, unsigned short *name, int room);
 
 /* The automatic nickname: "Player" and four digits made from this machine. */

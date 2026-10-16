@@ -1,29 +1,7 @@
 /* Mission Mode's camp menu on one screen (camp_screen.h), in DDD's camp pieces: a file
- * tools/hd/ddd_camp.py writes, whose shared lines layout_screen.h reads. Its own lines:
- *   backdrop FILE               the picture behind the game's 3D (beside the file)
- *   bars X Y W PITCH H          the options' bars: the first's left, top and size, their pitch
- *                               (places bar_selected, bar_body)
- *   option N WORDS              option N's name; story_option N WORDS the story's camp's
- *   story_sub N WORDS           the story's Holo-Missions' two options (0, 1), Files' (2, 3)
- *   story_model_source, story_model_view   the story's camp's model frame
- *   day_colour R G B            the story's day's tag (place day_tag)
- *   panel X Y W H               the status panel (its places and texts from its top left)
- *   trials X Y W H              the trials' bar: label, symbols and counts centred in it
- *   menu_place WORDS            where a member is on the menu
- *   mode_label WORDS, difficulty N WORDS, mission_mode WORDS   the game mode's row
- *   model X Y W H               the window for the game's model (the backdrop drawn around it)
- *   model_source X Y W H        the DS's frame of the model, in upper-screen dots
- *   model_view X Y W H          the part of it the window shows (all of it when not given)
- *   description_pitch PITCH, digit_overlap K, members PITCH, munny_colour R G B, hearts_colour R G B
- *   page_backdrop FILE          the Preferences page's picture
- *   page_tabs X Y W H PITCH     its tabs; page_rows X Y W H PITCH SHOWN its rows; detail_pitch N
- *
- * It shows the game's menu as runtime/menus/camp.c reads it -- the options and the one selected, its
- * description, the character's face, name and numbers, the trials, money and heart points, the group's
- * members and where each is, the game's line over the menu (the host choosing a mission, START to
- * join or begin) -- and the Preferences page in the model's and panel's place, the game's fade over
- * all. Title Screen's question is the port's "Return to the main menu?" with DDD's Yes and
- * No buttons and the game's words for them. */
+ * tools/hd/ddd_camp.py writes (its lines: docs/HD_SCREENS.md, "The camp menu"). It shows the game's
+ * menu as runtime/menus/camp.c reads it -- options, description, the character's face and numbers, the
+ * members, the game's line -- and the Preferences page in the model's and panel's place. */
 #include "camp_screen.h"
 
 #include "../app/devices.h"

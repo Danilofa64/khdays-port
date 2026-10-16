@@ -1,28 +1,7 @@
-/* A screen of the port's drawn from a mod's pieces (the save list's, save_screen.c, and the
- * theater's list's, cine_screen.c): a file of lines its tool writes (the lines both have:
- * pieces in an atlas, their places, text styles, a font and its glyphs, input icons), the game's
- * own strings, and the drawing of pieces and lines of text in a 1920 x 1080 picture fitted to
- * the window (its aspect kept, the rest black).
- *
- * The lines read here:
- *   piece NAME U V W H         a picture in the atlas
- *   icon NAME U V W H          an input's icon: xbox:<input>, playstation:<input>, pad:<input>,
- *                              key:<SDL scancode>
- *   place NAME X Y W H         where a piece goes
- *   text NAME X Y SIZE ALIGN GREY [R G B]   a line's place (Y its capitals' top; their middle
- *                              centred), its size (the font's scale), left|centre|right, its grey
- *                              or its colour
- *   atlas FILE                 the pieces' picture, beside the file
- *   font FILE CELL TOP BOTTOM [rgba]   the font's picture: its grey made the text's alpha, or
- *                              with rgba its own colours (an outlined font); its cells' height,
- *                              where its capitals ink them
- *   glyph CODE X Y W LEFT ADVANCE   a glyph: its cell's place and width, its bearing, its advance
- *
- * In the game's strings the DS's buttons are characters of the game's font: U+3349 its A, U+3314
- * its B, U+3322 its X, U+3336 U+3351 U+3357 its START; each is drawn as the icon of the input the
- * player has for that button on the device played -- the file's icons of an Xbox pad, a
- * PlayStation's and the keyboard's keys, the port's Switch icons for any other pad (the DS's
- * letters in the same places), the input's name where there is no icon. */
+/* A screen of the port's drawn from a mod's pieces: a file of lines its tool writes (pieces in an
+ * atlas, places, text styles, a font and its glyphs, input icons), the game's own strings with its DS
+ * buttons drawn as the player's inputs' icons, and the drawing of pieces and text in a 1920 x 1080
+ * picture fitted to the window. The lines: docs/HD_SCREENS.md, "The shared lines". */
 #ifndef KHDAYS_HOST_LAYOUT_SCREEN_H
 #define KHDAYS_HOST_LAYOUT_SCREEN_H
 

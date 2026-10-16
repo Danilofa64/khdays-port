@@ -1,10 +1,6 @@
-/* The languages and the port's own text (ui_text.c).
- *
- * The game has five languages, and the DS firmware tells it which one to use
- * with these codes: 1 English, 2 French, 3 German, 4 Italian, 5 Spanish. The
- * port uses the same codes, with 0 for "the system's". The settings menu's
- * text exists in all five; its words for the game's own Config options are
- * the game's own, as its Config page shows them in each language. */
+/* The languages and the port's own text (ui_text.c): the DS firmware's codes, 1 English, 2 French,
+ * 3 German, 4 Italian, 5 Spanish, and 0 for "the system's". The settings menu's text exists in all
+ * five; its words for the game's own Config options are the game's, as its Config page shows them. */
 #ifndef KHDAYS_UI_TEXT_H
 #define KHDAYS_UI_TEXT_H
 

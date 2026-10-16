@@ -1,17 +1,7 @@
 /* Mission Mode's character select on one screen (select_screen.h), in the theater's pieces: a file
- * tools/hd/theater_mission.py writes, whose shared lines layout_screen.h reads. Its own lines:
- *   grid COLUMNS GAP            the grid's columns and the tiles' gap (from place tile)
- *   stats PITCH                 the gauges' rows' pitch (from place stat)
- *   gauge_pitch PITCH           a gauge's bars' pitch (from place gauge)
- *   gauge_colour R G B          the bars' colours, left to right (the game's)
- *   plates PITCH                the places' plates' pitch (from place plate)
- *   frame PLACE OTHERS          a tile's frame: with a place on it, without
- *   art FILE                    the background
- *
- * It shows the game's screen as runtime/menus/charselect.c reads it: the characters the game lets be
- * chosen in its order, grey unless a place is on one (then in colour, framed in the place's colour);
- * this copy's character large with its name, weapon and gauges; each place's plate along the bottom,
- * ringed once its player has chosen; the game's message and help. */
+ * tools/hd/theater_mission.py writes (docs/HD_SCREENS.md). It shows the game's screen as
+ * runtime/menus/charselect.c reads it: the characters in the game's order, this copy's character with
+ * its gauges, and each place's plate, ringed once its player has chosen. */
 #include "select_screen.h"
 
 #include "layout_screen.h"

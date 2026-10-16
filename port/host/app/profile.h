@@ -267,12 +267,9 @@ void khdays_profile_clear(KhdaysProfile *profile, int device, int layer, int act
  * Returns how many things it changed. */
 int khdays_profile_repair(KhdaysProfile *profile);
 
-/* The gamepad presets (KhdaysPreset): a starting point for the gamepad's
- * bindings, stick roles and enhancement switches; the keyboard is never
- * touched. `available` holds the KHDAYS_ENH_* enhancements this build can
- * switch on (host.h); an action whose enhancement is missing keeps its DS
- * binding instead. Returns the enhancements the preset uses that were
- * missing (0 when none). */
+/* The gamepad presets (KhdaysPreset): a starting point for the gamepad's bindings, stick roles and
+ * enhancements, never the keyboard's. An action whose enhancement this build lacks (`available`,
+ * KHDAYS_ENH_*) keeps its DS binding. Returns the missing enhancements the preset uses (0: none). */
 unsigned khdays_profile_apply_preset(KhdaysProfile *profile, int preset, unsigned available);
 
 /* Whether the gamepad part of `profile` is exactly what its preset gives. */

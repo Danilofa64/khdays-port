@@ -1,16 +1,7 @@
 /* The port's save list on the screen (save_screen.h), in DDD's save screen pieces: a file
- * tools/hd/save_screen.py writes, whose shared lines layout_screen.h reads. Its own lines:
- *   rows X Y W H PITCH SHOWN   the first row, the rows' pitch, how many show
- *   scroll Y0 Y1               the thumb's top at the list's first row and last
- *   pitch NAME N               the lines' pitch of a text of several
- *   words empty WORDS...       DDD's words for an empty file
- *   words guest WORDS...       the guest's row's words
- *
- * Days's own words are read as the game reads them (UI/load/lrd_&.s.z for the list,
- * UI/newgame/ngm_&.s.z for the difficulties, UI/btl/&/info.s.z for the day), their DS buttons drawn as
- * the player's inputs' icons. The keys are the game's A and B prompt (UI/mlt/mlt_&.s.z record 63); the
- * glove points at the selected row or button. With the guest's row (Mission Mode's) Y plays as the
- * guest from anywhere in the list. */
+ * tools/hd/save_screen.py writes (docs/HD_SCREENS.md, "The save list"). Days's own words are read as
+ * the game reads them, their DS buttons drawn as the player's inputs' icons; the glove points at the
+ * selected row. With the guest's row (Mission Mode's) Y plays as the guest from anywhere. */
 #include "save_screen.h"
 
 #include "layout_screen.h"

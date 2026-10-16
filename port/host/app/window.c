@@ -1,20 +1,7 @@
-/* The window, run by SDL3 on a thread of its own.
- *
- * The game thread hands over finished frames (khdays_host_frame_publish, or
- * khdays_host_present) and reads the input (khdays_host_input); both cross
- * between the threads through SDL's locks and atomics.
- *   - the picture is drawn by gpu_present.c;
- *   - the keyboard, the mouse and the gamepads are read by devices.c, and
- *     what each key or button does comes from the player's control profile
- *     (profile.c, saved in saves/settings.ini). The mouse on the lower screen
- *     acts as the stylus;
- *   - Esc, the gamepad's settings button or a click on the title's settings
- *     key opens the settings menu (settings_menu.cpp), which pauses the game
- *     while open;
- *   - the window is a window, a borderless one over the screen or full screen
- *     as the Video settings say ([video] display);
- *   - the sound output is sound_output.c.
- * Closing the window ends the process. */
+/* The window, run by SDL3 on a thread of its own: the game's thread hands over frames and reads the
+ * input through SDL's locks and atomics; gpu_present.c draws, devices.c reads the devices through the
+ * player's profile, the settings menu opens on Esc or the pad's settings button, sound_output.c plays.
+ * Closing the window ends the process (docs/PLATFORM.md, "The PC's side"). */
 #include "host.h"
 #include "devices.h"
 #include "../render/gpu_present.h"
