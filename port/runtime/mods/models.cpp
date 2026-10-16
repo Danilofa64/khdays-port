@@ -1,18 +1,7 @@
-// A mod's models drawn instead of the game's (models.h).
-//
-// Matrices are column-major for column vectors (m[col * 4 + row]), as the neutral formats and glTF
-// have them -- and, read as they lie, the DS's row-major arrays for row vectors.
-//
-// For each node G of the game's model the port knows its rest matrix W_G and, during a draw, the
-// matrix M_G the game sends; D_G = M_G * inverse(W_G) takes a point at rest to where it is drawn now.
-// A joint j that follows G is drawn with K_j = T(where its head is now) * linear(D_G) * C_j *
-// T(-head_j): its rest turned by C_j (the rest pose correction), then as the game turns G; its head
-// is where its parent's K puts it, so the mod keeps its own proportions. A joint at G's place with no
-// correction is drawn with D_G itself; one that follows no node moves with its parent.
-//
-// A mesh is drawn both sides or front only as its file says (glTF doubleSided; FBX both), unless
-// <model>.bones.txt says `cull back` or `cull none`. A room of a mission world whose world the same
-// mod replaces is drawn with HD graphics off too: its new ground is played either way.
+// A mod's models drawn instead of the game's (models.h): matrices column-major for column vectors;
+// each joint drawn with K_j = T(head now) * linear(D_G) * C_j * T(-head_j), D_G = M_G * inverse(W_G)
+// for the node G it follows and C_j its rest pose correction; faces culled as the file says unless
+// <model>.bones.txt says otherwise (docs/RENDERING.md, "Mods' graphics").
 
 #include "models.h"
 

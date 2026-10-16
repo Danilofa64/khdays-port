@@ -1,11 +1,7 @@
-/* The new game's dialogs (newgame.h). ov000's new game is a sub-scene while the title waits in
- * Ov000_WaitSubMenuResult; its context (data_ov000_0205ac28's) holds +0x4bc4 its step (0 fade out, 1
- * fade in, 2 the difficulty, 3 the review), +0x20 the difficulty (0-2) and +0x24 the review's button
- * (0 yes, 1 no).
- *
- * The port's subtitles question comes between the difficulty and the review, where a mod's pictures
- * for it show: the game gets no buttons until it is answered; UP and DOWN move, A answers, B gives
- * the game a B (back to the difficulty). The sounds are the game's menus'. */
+/* The new game's dialogs (newgame.h): ov000's new game waits in Ov000_WaitSubMenuResult, its context's
+ * +0x4bc4 the step (0 fade out, 1 fade in, 2 difficulty, 3 review), +0x20 the difficulty, +0x24 the
+ * review's button. The port's subtitles question comes between difficulty and review: UP/DOWN move, A
+ * answers, B goes back; the game gets no buttons meanwhile. */
 #include "newgame.h"
 
 #include "../input/input.h"

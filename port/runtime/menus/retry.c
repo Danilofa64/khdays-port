@@ -1,9 +1,7 @@
-/* Mission Mode's Retry in the pause (retry.h), for a mission played alone.
- *
- * The port draws Continue, Retry and Give Up (ui/pause.cpp) and moves the game's own cursor so that
- * A on Retry opens the game's "Are you sure?". Its yes runs the game's Give Up, which two hooks in
- * prepare.py turn into the field again. How the game's pause works: docs/RUNTIME_MAP.md, "Mission
- * Mode's pause and the port's Retry". KHDAYS_TRACE_RETRY=1 logs each step. */
+/* Mission Mode's Retry in the pause (retry.h), for a mission played alone: the port draws Continue,
+ * Retry and Give Up (ui/pause.cpp) and moves the game's cursor so A on Retry opens the game's "Are you
+ * sure?", whose yes runs Give Up, which two prepare.py hooks turn into the field again.
+ * docs/RUNTIME_MAP.md, "Mission Mode's pause and the port's Retry"; KHDAYS_TRACE_RETRY=1 logs it. */
 #include "retry.h"
 
 #include "../input/input.h"

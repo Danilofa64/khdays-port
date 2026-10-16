@@ -1,15 +1,8 @@
-/* The save files beyond the DS's three (saveslots.c): the port's save list has KHDAYS_SLOT_COUNT of
- * them, and the game still sees its own three.
- *
- * The backup chip (arm7.c) holds the game's save as on the DS: a 0x20-byte header, then three slots
- * of two copies, 0x2018 bytes each. Files 1-3 are the chip's slots, in saves/khdays.sav; files 4 on
- * are the port's, each in saves/slots/slotNN.sav (the bytes a chip's slot would hold).
- *
- * The game reaches its slots through a view: game slot g is file view[g]. The chip's own view is 1,
- * 2, 3. In the port's (while its save list stands for the game's), game slot 0 is the file the list
- * chose and slots 1 and 2 are blank (read as never written, writes dropped); until the list chooses,
- * slot 0 is the file saved last. In the page view (the game's own lists paging through the files),
- * game slot g is file top + g. Files are counted from 0 here (file 1 is 0). */
+/* The save files beyond the DS's three (saveslots.c). The chip holds three slots of two copies (0x2018
+ * bytes each) after a 0x20-byte header: files 1-3, in saves/khdays.sav; files 4 on are the port's,
+ * saves/slots/slotNN.sav. The game reaches its slots through a view (game slot g is file view[g]):
+ * the chip's 1-3; the list's, slot 0 the file chosen and 1-2 blank; the page view's, top + g. Files are
+ * counted from 0 here. */
 #ifndef KHDAYS_SAVESLOTS_H
 #define KHDAYS_SAVESLOTS_H
 

@@ -231,3 +231,69 @@ at the resolution drawn); `KHDAYS_GFX=reference` (the 2D engines' pictures);
 `KHDAYS_GFX=check` (the port's way compared with the 2D engines at 1x, or the
 old way at N x, every 300 frames); `KHDAYS_PROFILE` (frames never drawn, and
 the time preparing the 3D took).
+
+## Mods' graphics
+
+What a mod may replace and how it is named is in `README.md` and
+`RUNTIME_MAP.md`; this is how the port finds and draws it.
+
+**Names.** A file's data is read from the ROM as the game's loads read it
+(`runtime/mods/names.cpp`): a packed entry of a "P2" archive (the header
+`Archive_OpenSubfileByHandle` reads: u16 count at +2, the data's start at +0xc,
+u16 offsets in 0x200-byte units at +0x10, then the u32 sizes, bit 31 when the
+entry is LZ-compressed), or a whole file, LZ-compressed when its path ends in
+`.z`. The NitroSystem resources inside it (BMD0, BTX0, wherever a KAPH or D2KP
+container put them) are found by their headers, and their TEX0 dictionaries
+give each texture's and palette's name and place. A 2D tile sheet is an NCGR's
+tiles, laid out `columns` to a row (the NCGR's own width when it holds them
+all, else 16, or fewer).
+
+**3D textures** (`runtime/mods/textures.c`). A polygon names its texture by
+where it sits in the texture slots (TEXIMAGE_PARAM) and its palette by where
+that sits in the palette slots (PLTT_BASE); the slots' pages say which bank
+holds them, `origin.c` which file and offset that bank's bytes came from, and
+`names.cpp` the names there. A texture is looked up once for each slot place,
+format and palette, and again only after its bank changed. A replacement the
+runtime changes as the game runs (a movie's frame) is written between
+`khdays_textures_change_begin` and `_end`, which moves its version; a reader
+on another thread copies it between `khdays_textures_read_begin` and `_end`.
+
+**2D tiles** (`runtime/mods/tiles2d.c`). A tile the layers or sprites draw is
+named by where its bytes came from: its file's tile sheet
+(`<file>[#<entry>]/chr/<n>`) and its number there. A mod's PNG of that name
+(any whole multiple of the original's size) is drawn instead at its own
+resolution -- indexed, with the game's palettes (its fades and palette effects
+kept), or in colour -- only while the tile's bytes are still the sheet's: tiles
+the game draws over itself (its text) stay its own. The map of replaced tiles
+holds, where a replaced sheet's tile starts, the replacement's id + 1 in bits
+20-31 and the tile's number in bits 0-19; a page is mapped again when its
+memory, its bank or its bytes' origin changed.
+
+**Models** (`runtime/mods/models.cpp`). The game draws its model as always; the
+port takes each node's matrix as it is sent, leaves out the model's own shapes,
+and at the draw's end draws the mod's meshes with those matrices, skinned on
+their own skeleton and lit as the game's material is. Matrices are column-major
+for column vectors (`m[col * 4 + row]`), as the neutral formats and glTF have
+them (and, read as they lie, the DS's row-major arrays for row vectors). For
+each node G of the game's model the port knows its rest matrix W_G and, during a
+draw, the matrix M_G the game sends; D_G = M_G x inverse(W_G) takes a point at
+rest to where it is drawn now. A joint j that follows G is drawn with
+K_j = T(where its head is now) x linear(D_G) x C_j x T(-head_j): its rest turned
+by C_j (the rest pose correction, for a T-pose unlike the game's), then as the
+game turns G; its head is where its parent's K puts it, so the mod keeps its
+own proportions. A joint at G's place with no correction is drawn with D_G
+itself; one that follows no node moves with its parent. A mesh is drawn both
+sides or front only as its file says (glTF `doubleSided`; FBX both), unless
+`<model>.bones.txt` says `cull back` or `cull none`. A room of a mission world
+whose world the same mod replaces is drawn with HD graphics off too: its new
+ground is played either way.
+
+**The colours of runtime-built sheets** (`runtime/mods/sheet_colours.h`). For
+the studio's sheets whose layout the game builds at run time (the field HUD's),
+while the graphics dump is on the palette row each tile of a named sheet is
+drawn with, and that row's colours, go to `<dump>/<name>.colours`:
+`row <r> <colours>` (BGR555 in hex, 16 or 256 for 8-bit tiles) and
+`<first>-<last> <r>` (these tiles most often drawn with row r's colours).
+Colours are kept per tile; other colours a row had get a row of their own from
+17 on. What the file holds already is kept where this session saw nothing, so
+plays add up.

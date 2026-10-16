@@ -1,9 +1,7 @@
-/* Mission Mode's character select (charselect.h), over the game's (Ov006_UpdateMissionMemberMenuScreen
- * in scene 7, Ov008_LobbyStep in the camp). The port reads the four places' rows, the players' names,
- * the characters bought and the gauges from the game's session context and menu, and moves a place by
- * writing the same request the game's own input makes, right after its update and under the same
- * conditions: one step whatever the port's grid, the game's sounds and gauges following. An A while a
- * move is unanswered waits for it. Addresses and offsets: docs/RUNTIME_MAP.md section 16.3. */
+/* Mission Mode's character select (charselect.h), over the game's (ov006 in scene 7, ov008 in the
+ * camp): the port reads the places, names, characters and gauges, and moves a place by writing the
+ * request the game's own input makes, one step at a time, the game's sounds following. Addresses and
+ * offsets: docs/RUNTIME_MAP.md section 16.3. */
 #include "charselect.h"
 
 #include "../input/input.h"

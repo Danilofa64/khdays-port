@@ -90,13 +90,9 @@ static void story_row_digits(KhdaysRef menu)
     Ov025_RefreshSaveRowDigits();
 }
 
-/* The camps whose save screens the port's list stands for: ov025's (the story's, the Grey
- * Area's camp menu) and ov008's (Mission Mode's camp, scene 19), the same code in each
- * (Ov025_SaveMenuConfirm is Ov008_SaveMenuConfirm's copy). Their addresses: the word naming the
- * running screen (data_ov025_020b574c, data_ov008_02090f0c), the screens' handler table A
- * (data_ov025_020b4ab0, data_ov008_0209009c), the save screen's hooks in it
- * (data_ov025_020b4e2c, data_ov008_02090460), the word holding the camp's context
- * (data_ov025_020b5744's second, data_ov008_02090f04's second). */
+/* The camps whose save screens the port's list stands for: ov025's (the story's) and ov008's (Mission
+ * Mode's), the same code in each. Their addresses: the word naming the running screen, the screens'
+ * handler table, the save screen's hooks in it, and the word holding the camp's context. */
 typedef struct Camp {
     int overlay;
     u32 running, table, save_screen, context;
@@ -610,17 +606,10 @@ static void camp_view(u32 menu, KhdaysSaveView *v)
 
 /* ---- The game's own lists in pages -------------------------------------------------------------- */
 
-/* Without the list's pieces and with [save] files = 99, the game's own lists run as they are and page
- * through the files: game slot g is file page_top + g (khdays_slots_show_page). The game draws its
- * rows from its records of its three slots every frame (Ov000_DrawSaveSlotText, the camps'
- * DrawSaveSlotTexts) and redraws their plates and digits when a record changes
- * (Ov000_RefreshSelectionGroupDraw and Ov000_UpdateNumberDisplays, as Ov000_PollSaveCheckState after
- * a delete; the camps' SaveMenu_RefreshRows and RefreshSaveRowDigits, as SaveMenuTick after a save):
- * the port writes the records of the files a page shows, as the game's own reads fill them
- * (Ov000_RecordLoadResult, BuildSaveSlotEntry), and calls those. The cursor's moves inside a page are
- * the game's; at its edges the port moves the page, with the game's sound and key repeat, and past the
- * last file it goes on from the first (and back), the title's guest's row between them as the game
- * has it. docs/RUNTIME_MAP.md section 15.4. */
+/* Without the list's pieces and with [save] files = 99, the game's own lists page through the files
+ * (game slot g is file page_top + g): the port writes the records of the files a page shows and calls
+ * the game's own redraws; the cursor moves inside a page are the game's, and at its edges the port
+ * moves the page, with the game's sound, wrapping past the last file. docs/RUNTIME_MAP.md 15.4. */
 
 static volatile LONG all_files = 1;     /* [save] files: the 99 (1) or the DS's three (0) */
 static volatile LONG autosave_mode = 1; /* [save] autosave (host/app/profile.h KHDAYS_AUTOSAVE_*: 1 file 99) */

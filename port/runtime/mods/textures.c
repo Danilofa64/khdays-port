@@ -1,12 +1,6 @@
-/* The 3D's textures by name, and the textures drawn instead (see textures.h).
- *
- * A polygon names its texture by where it sits in the texture slots
- * (TEXIMAGE_PARAM), and its palette by where that sits in the palette slots
- * (PLTT_BASE). The slots' pages say which bank holds them; origin.c says
- * which file and offset that bank's bytes came from; names.cpp gives the
- * texture's and the palette's names there. A texture is looked up once for
- * each slot place, format and palette, and again only after its bank
- * changed. */
+/* The 3D's textures by name, and the textures drawn instead (textures.h): a polygon's texture and
+ * palette slots, their bank, the bank's origin (origin.c) and the names there (names.cpp); looked up
+ * once per slot place, format and palette, and again only after its bank changed. */
 #include "textures.h"
 #include "names.h"
 #include "../core/origin.h"

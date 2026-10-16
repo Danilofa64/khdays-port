@@ -22,12 +22,9 @@ static __inline unsigned int khdays_clz(unsigned int x)
     return n;
 }
 
-/* Game data lives at its DS address (prepare.py): each initialised object's
- * initializer is kept as `<name>__khdays_init` and listed in section .khdi,
- * which the runtime walks to copy it into place when the object's module
- * (-1 static, -2 ITCM, -3 DTCM, else the overlay id) is loaded. `address` is
- * the object's reference -- its DS address; the rewrite's data
- * area records its objects the same way, module -4. */
+/* Game data lives at its DS address (prepare.py): each initialised object's initializer is kept as
+ * `<name>__khdays_init` and listed in section .khdi, which the runtime copies into place when the
+ * object's module (-1 static, -2 ITCM, -3 DTCM, an overlay's id; -4 the data area) is loaded. */
 /* Laid out the same in the game's files (/Zp4) and the runtime's. */
 #pragma pack(push, 8)
 struct khdays_data_init {

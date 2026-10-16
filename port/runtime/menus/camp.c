@@ -1,9 +1,7 @@
-/* The camp menus (camp.h): Mission Mode's (scene 19, ov008) and the story's (ov025, the Grey Area's
- * menu on START), the same code under other names and addresses. The port reads what each screen
- * shows -- the options and the entry selected, the status panel's numbers (prepare.py joins
- * Ov008/Ov025_DrawStatusField to khdays_camp_field), the group's members, the locked options, the
- * Preferences page's tabs and entries -- and steers the Preferences page with the game's own presses.
- * Every address and offset used here, and how each was found: docs/RUNTIME_MAP.md section 16.4. */
+/* The camp menus (camp.h): Mission Mode's (scene 19, ov008) and the story's (ov025), the same code
+ * under other names. The port reads what each screen shows (options, status numbers, members, locked
+ * options, Preferences' tabs) and steers Preferences with the game's own presses. Every address and
+ * offset, and how each was found: docs/RUNTIME_MAP.md section 16.4. */
 #include "camp.h"
 
 #include "../input/input.h"

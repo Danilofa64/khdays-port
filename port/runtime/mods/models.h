@@ -1,13 +1,7 @@
-/* A mod's models drawn instead of the game's: mods/<Mod>/graphics/<name>.gltf (or .glb, .fbx), named
- * as the graphics dump names the game's ("<file>[#<entry>]/mdl/<model>"), drawn in its place while HD
- * graphics are on.
- *
- * The game draws its model as always (NNS_G3dDraw, prepare.py HOOKS): the port takes each node's
- * matrix as it is sent, leaves out the model's own shapes, and at the draw's end draws the mod's
- * meshes with those matrices, skinned on their own skeleton and lit as the game's material is. A
- * joint named like a node follows it; <model>.bones.txt pairs others ("<joint> <node>", "scale <k>",
- * '#' comments); other joints move with their parent. A rest pose unlike the game's (a T-pose) is
- * turned to match (models.cpp). */
+/* A mod's models drawn instead of the game's: mods/<Mod>/graphics/<name>.gltf (or .glb, .fbx), named as
+ * the dump names the game's, while HD graphics are on. The game draws as always; the port takes each
+ * node's matrix, leaves out the model's shapes and draws the mod's meshes on their own skeleton,
+ * joints following nodes by name or <model>.bones.txt (docs/RENDERING.md, "Mods' graphics"). */
 #ifndef KHDAYS_MODELS_H
 #define KHDAYS_MODELS_H
 

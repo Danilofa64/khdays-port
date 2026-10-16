@@ -80,12 +80,9 @@ int khdays_textures_write_indexed_png(const char *path, const uint8_t *indices, 
 int khdays_textures_replacements(void);
 const KhdaysTextureReplacement *khdays_textures_replacement(int id);
 
-/* A replacement whose texels the runtime changes as the game runs (a movie's
- * frame: video.c): `width` x `height` texels, zero at first. Its texels are
- * written between khdays_textures_change_begin and _end, which moves its
- * version; a reader on another thread copies them between
- * khdays_textures_read_begin and _end. The version of one that never
- * changes is 0. */
+/* A replacement whose texels the runtime changes as the game runs (a movie's frame: video.c), zero at
+ * first: written between khdays_textures_change_begin and _end, which moves its version; read on
+ * another thread between khdays_textures_read_begin and _end. One that never changes has version 0. */
 int khdays_textures_add_changing(const char *name, int width, int height, uint32_t info);
 uint32_t *khdays_textures_change_begin(int id);
 void khdays_textures_change_end(int id);

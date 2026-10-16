@@ -1,13 +1,7 @@
-// The names of the game's graphics (names.h).
-//
-// A file's data is read from the ROM as the game's loads read it: a packed
-// entry of a "P2" archive (the header the engine reads in
-// Archive_OpenSubfileByHandle: u16 count at +2, the data's start at +0xc,
-// u16 offsets in 0x200-byte units at +0x10, then the u32 sizes, bit 31 when
-// the entry is LZ-compressed), or a whole file, LZ-compressed when its path
-// ends in ".z". The NitroSystem resources inside it (BMD0, BTX0, wherever a
-// KAPH or D2KP container put them) are found by their headers, and their
-// TEX0 dictionaries give each texture's and palette's name and place.
+// The names of the game's graphics (names.h): a file's data read from the ROM as the game's loads read
+// it (a P2 archive's packed entry, or a whole file, LZ when it ends in .z), the NitroSystem resources
+// in it found by their headers, and their TEX0 dictionaries naming each texture and palette
+// (docs/RENDERING.md, "Mods' graphics").
 #include "names.h"
 
 #include "../core/rom.h"

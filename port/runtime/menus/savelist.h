@@ -1,11 +1,7 @@
-/* The port's save list (savelist.c): the game's list of save files drawn in the port's pieces
- * (host/screens/save_screen.c, a mod's layouts/save/<lang>/save.txt), with as many files as
- * saveslots.h keeps.
- *
- * The game's own list runs underneath, its pictures hidden: on the title (CONTINUE's and Mission
- * Mode's) and in the camps' save screens. The port keeps its own cursor and brings the file chosen
- * under the game's slot 1 (khdays_slots_show), telling the game's record what it holds; then the game
- * gets the button. Prompts, reading, saving, deleting and fades are the game's, shown in its own words. */
+/* The port's save list (savelist.c): the game's list drawn in the port's pieces
+ * (host/screens/save_screen.c, layouts/save/<lang>/save.txt), with as many files as saveslots.h keeps.
+ * The game's list runs underneath, hidden: the port keeps its own cursor and brings the file chosen
+ * under the game's slot 1; prompts, reading, saving, deleting and fades are the game's. */
 #ifndef KHDAYS_SAVELIST_H
 #define KHDAYS_SAVELIST_H
 

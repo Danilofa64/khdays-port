@@ -19,12 +19,9 @@ extern "C" {
 int khdays_names_texture(const char *file, u32 offset, int format, const char *pltt_file, u32 pltt_offset,
                          char *out, int size);
 
-/* A 2D tile sheet: an NCGR's tiles -- `tiles` of `tile_bytes` (32: 4 bits a
- * pixel, 64: 8) from `tiles_at` into its file's data, `columns` to a row in
- * its image (the dump's, and a replacement's: the NCGR's own width when it
- * gives one that holds them all, else 16, or fewer when there are fewer);
- * `data` its tiles' bytes as the ROM holds them (kept as long as the port
- * runs). */
+/* A 2D tile sheet: an NCGR's `tiles` of `tile_bytes` (32 or 64) from `tiles_at` into its file's data,
+ * `columns` to a row of its image (the NCGR's width when it holds them all, else 16 or fewer); `data`
+ * its tiles' bytes as the ROM holds them, kept while the port runs. */
 typedef struct KhdaysTileSheet {
     u32 tiles_at, tile_bytes, tiles, columns;
     const u8 *data;
