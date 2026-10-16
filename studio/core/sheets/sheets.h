@@ -1,10 +1,6 @@
-// A 2D tile sheet seen assembled and edited as a picture:
-// the sheet as the port names and replaces it, the
-// screens, cell banks and palettes in the same data, a picture assembled from
-// one of them (the modder's choice: which goes with which is the game's code,
-// not its data), and an edited picture taken back into the sheet the port
-// reads (port/runtime/mods/tiles2d.c: an indexed PNG is the game's palette
-// indices, any other its own colours, a whole multiple of the sheet's size).
+// A 2D tile sheet seen assembled and edited as a picture: the sheet as the port names and replaces it,
+// the screens, cell banks and palettes in its data, a picture assembled from one of them (the modder's
+// choice), and an edited picture taken back into the sheet (docs/STUDIO.md, "2D sheets").
 #pragma once
 
 #include "khdays/assets/graphics2d.h"
@@ -79,17 +75,9 @@ constexpr int kUnseenRow = 16;
 // Whether tile `tile` of the sheet draws something (a pixel not 0).
 bool tile_draws(const SheetSource& s, int tile);
 
-// The colours the game was seen drawing the sheet `key` with, from the
-// graphics dump `dump`: the port writes "<key>.colours" there while the game
-// is played with the dump on (port/runtime/mods/sheet_colours.h) -- each
-// palette row's colours and the row each tile was drawn with. Made a palette
-// of `s` (the one it would be coloured with, the rows seen as the game had
-// them, kUnseenRow's greys after them) that fitting_arrangements chooses, the
-// sheet as it is in the rows seen, the tiles never seen in greys. False when
-// there is none. A row holds 16 colours, or 256 for a sheet of 8-bit tiles
-// (its row an extended palette's number, 0 with the engine's own); rows from
-// 17 on are the port's own, for the colours a row of the game had for other
-// tiles (the HUD's slots take each portrait's palette into one row).
+// The colours the game was seen drawing sheet `key` with, from the dump's "<key>.colours"
+// (port/runtime/mods/sheet_colours.h), made a palette of `s`: the rows seen as the game had them,
+// kUnseenRow's greys after them. False when there is none (docs/STUDIO.md, "2D sheets").
 bool take_seen_colours(const std::filesystem::path& dump, const std::string& key, SheetSource* s);
 
 // The same from data already read (sheets found as names.cpp finds them:
@@ -142,14 +130,8 @@ std::vector<int> read_tile_rows(const std::filesystem::path& mod_dir, const std:
 // Written (none given: the file removed); empty or the reason.
 std::string write_tile_rows(const std::filesystem::path& mod_dir, const std::string& key, const std::vector<int>& rows);
 
-// The screens of the sheet's depth whose tiles are all in it, and the cell
-// banks whose pieces' tiles are all in it: those the sheet can be assembled
-// with (fitting is not the game's pairing); then the sheet as it is. Their
-// palette: in data holding as many palettes as sheets, the one with the
-// sheet's own number (they come in threes there); else the
-// first of the sheet's depth; with none of its own, the first nearby one
-// that gives the sheet's indices at least half the colours the liveliest
-// nearby one does (an all-black or mask palette is passed over).
+// The screens and cell banks the sheet can be assembled with (all their tiles in it; fitting is not
+// the game's pairing), then the sheet as it is, each with its palette (docs/STUDIO.md, "2D sheets").
 std::vector<Arrangement> fitting_arrangements(const SheetSource& s);
 
 // How many palette rows `palette` holds for the sheet (16 colours each, or
@@ -210,12 +192,9 @@ std::vector<std::uint8_t> render_assembly(const SheetSource& s, const Assembly& 
 // show the arrangements that join up first -- never as the game's pairing.
 float border_jump(const std::vector<std::uint8_t>& rgba, int width, int height);
 
-// How an arrangement draws the sheet (from `current`, with its palette): its
-// border_jump; the sheet's drawn tiles (a pixel not index 0) it places, and
-// their share of all; for a screen, whether it only lays the tiles in order
-// (tile k at place k, its 10-bit entries counting from 0 again past 1023,
-// unflipped: nine places in ten), and so as the sheet itself does when it is
-// as wide as the sheet's columns; and the palette row most of its places use.
+// How an arrangement draws the sheet: its border jump, the drawn tiles it places and their share,
+// whether a screen only lays the tiles in order (as the sheet itself when as wide), and the palette row
+// most of its places use.
 struct ArrangementScore {
     Arrangement arrangement;
     float jump = -1.0f;
@@ -228,22 +207,8 @@ struct ArrangementScore {
 std::vector<ArrangementScore> score_arrangements(const SheetSource& s, const std::vector<Arrangement>& fits,
                                                  const SheetPixels& current);
 
-// `fits` (fitting_arrangements') in the order the window shows them, and how
-// many of the first are shown together (one under the other) to begin with.
-// Those that join up (border_jump 0-2, drawn from `current` with each one's
-// palette, drawing some of the sheet) by the share of the sheet they show
-// over their jump (at least 1); not a screen laying the tiles in order at
-// another width than the sheet's (it assembles nothing); one laying them as
-// the sheet does and showing at least half of it stands for the sheet as it
-// is, in the palette row it gives them. In data holding as many screens (or
-// cell banks) as sheets the sheet's own number goes first unless it scores
-// under 0.8 of the best. Shown together: the first, then each one whose
-// tiles are at least three in four not shown yet (a picture's screens share
-// out its sheet's tiles; one fitting only by its number of tiles draws tiles
-// already shown); the sheet as it is instead when together they show under
-// half the sheet and it joins up better than the first. After them the
-// others whose tiles join up best, those that draw nothing, the sheet as it
-// is (first when none draws anything).
+// `fits` in the order the window shows them, and how many of the first are shown together: ranked by
+// how they join up and how much of the sheet they show (docs/STUDIO.md, "2D sheets").
 struct Ranked {
     std::vector<Arrangement> order;
     std::size_t together = 1;
@@ -325,12 +290,9 @@ Arrangement coloured_as(Arrangement a, int palette, int row, const std::vector<i
 bool default_sheet_picture(const SheetSource& s, const std::filesystem::path& mod_dir, const std::string& key,
                            std::vector<std::uint8_t>* rgba, int* w, int* h, std::string* why);
 
-// Every 2D sheet of the game (`<data>/chr/<n>`, as names.cpp numbers them)
-// written into `folder` as "<key>.png", as the window first shows it, the
-// colours seen in play taken from the graphics dump `dump`. `each` hears how
-// many of the game's files were looked through, of how many, and each sheet
-// written (an empty key between files); false stops. Returns how many were
-// written; those that could not be, with why, go to `failed`.
+// Every 2D sheet of the game written into `folder` as "<key>.png", as the window first shows it, with
+// the colours seen in play; `each` hears the progress, false stops. How many were written; those that
+// could not be, with why, go to `failed`.
 int export_sheets(const std::filesystem::path& nitrofs, const std::filesystem::path& dump,
                   const std::filesystem::path& mod_dir, const std::filesystem::path& folder,
                   const std::function<bool(std::size_t, std::size_t, const std::string&)>& each,

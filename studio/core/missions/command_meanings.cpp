@@ -107,11 +107,9 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
         const bool start = !(op(0).mode == 1 && op(0).value == 0);
         return {start ? StepMeaning::on_event_start : StepMeaning::on_event, {int_text(op(1)), data_text(op(4), script, language)}};
     }
-    // Ov002_ScriptSubmitTaskNode (flag, event, handle, count, mode, count fields, op, value, threshold):
-    // a node comparing each field of the game's state (the slot's second word: key, width) with
-    // `value` (Ov002_CreatePairCompareNode: op 7 ==, 8 >, 9 <, 10 >=, 11 <=, 12 !=; mode 0 any field,
-    // else all: Ov002_NodeEvaluate), filed under the event's number in the bank its event list shares
-    // (Ov002_RegisterTaskNode; flag 0 the first, else the second: event | 0x1000). A positive
+    // Ov002_ScriptSubmitTaskNode: a node comparing each field of the game's state with `value`
+    // (op 7 ==, 8 >, 9 <, 10 >=, 11 <=, 12 !=; mode 0 any field, else all), filed under the event's
+    // number in the bank its event list shares (flag 0 the first, else event | 0x1000). A positive
     // threshold starts a lap before the event counts as met.
     if (is("Ov002_ScriptSubmitTaskNode") && slots >= 5 && op(3).mode == 1 && op(3).value >= 0 &&
         slots >= 8 + static_cast<std::size_t>(op(3).value)) {

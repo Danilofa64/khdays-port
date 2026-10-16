@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-"""Build khdays-studio, the mod authoring tool.
-
+"""Build khdays-studio, the mod authoring tool: studio/CMakeLists.txt with Ninja in Visual Studio's x64
+environment (found as port/build.py finds it), into build/studio/debug or release; --test runs its tests.
   python studio/build.py [--config Debug|Release] [--test] [--jobs N]
-
-Configures studio/CMakeLists.txt with Ninja inside Visual Studio's x64
-environment -- found the way port/build.py finds it, by importing that
-script -- and builds. Output: build/studio/debug/khdays-studio.exe (Release:
-build/studio/release/). --test runs the tool's tests afterwards. The port's
-own build is not touched.
 """
 from __future__ import annotations
 

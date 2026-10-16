@@ -1,10 +1,5 @@
-// The mission database's files beside the mission files, held as read until their fields are named from their readers:
-//
-// - `mdb.z` (LZ): a count, then that many records of 60 bytes, each starting
-//   with its number (111 in the game's);
-// - `eid.z` (LZ): a count, then that many records of 24 bytes (118);
-// - `evi` and `trbox` (the code spells `trBox`): a count, that many offsets,
-//   then the records they point at (76 and 89).
+// The mission database's files beside the mission files (mdb.z, eid.z, evi, trbox), held as read until
+// their fields are named from their readers (docs/FORMATS.md, "Missions").
 #pragma once
 
 #include <array>
@@ -34,18 +29,9 @@ struct OffsetRecords {
 bool parse_offset_records(const std::vector<std::uint8_t>& d, OffsetRecords* out, std::string* why);
 std::vector<std::uint8_t> write_offset_records(const OffsetRecords& r);
 
-// What the field reads of `trbox` and `evi`: a set of rows per mission --
-// u16 the mission's number (the key Ov002_FindHandlerByKey matches with
-// Ov002_GetStateWord), s8 its count, a byte, then rows of 0x14 bytes: s8, s8,
-// s16, s16, s16, then a point (3 x 20.12).
-// - trbox, the mission's chests (Ov002_ScriptSpawnTimedSet, step 2.76): b0 the
-//   chest's slot (its state field 0x20c0 + 2 x slot), b1 its bucket, h2 its
-//   contents' key, h4 its flag (GameState flag h4 + 9: opened, the chest left
-//   out), h6 its heading in degrees;
-// - evi, the mission's emblems (Ov002_SpawnStateSpots, step 2.83): b0 its bit
-//   in the save's field 0x92b + 4 x the mission's index (set: found, left
-//   out), b1 its kind (Ov002_SpawnSpot), h4 a value kept per emblem (+0x8d4c);
-//   h2 and h6 not read there.
+// What the field reads of `trbox` (the chests) and `evi` (the emblems): rows of 0x14 bytes per mission,
+// keyed by its number -- slot or bit, kind, keys, flags, a heading, a point (docs/FORMATS.md,
+// "Missions").
 struct PlacedRow {
     std::int8_t b0 = 0, b1 = 0;
     std::int16_t h2 = 0, h4 = 0, h6 = 0;

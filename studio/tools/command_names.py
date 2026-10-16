@@ -1,15 +1,7 @@
-"""The script commands' names, from the pinned decompilation's command tables:
-
-    python studio/tools/command_names.py
-
-The game's one interpreter (Game_RunActionScript) finds a step's handler at
-data_020425ec[group] + command * 8: each group's table is pairs {handler,
-continuation}. Who installs which table in each group is read from the
-decompilation's StoreGlobalArrayEntry calls (research.md R3); this script
-reads the tables themselves from the decompilation's data files and writes
-studio/core/missions/command_names.cpp (committed), so the studio names a step by the
-function the game runs for it. A table the decompilation does not have is
-left out (its steps are shown unnamed)."""
+"""The script commands' names, from the pinned decompilation's command tables (each group's
+{handler, continuation} pairs), into studio/core/missions/command_names.cpp (committed); a table the
+decompilation lacks is left out.
+    python studio/tools/command_names.py"""
 import re
 import subprocess
 from pathlib import Path

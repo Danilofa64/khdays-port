@@ -1,19 +1,6 @@
-// A mission world's archive (`mi/wd/wd_<code>`) as the game reads it, and
-// written back:
-//
-// - a "P2" container (containers.h): entry 0 the room table, entry 1 the gate
-//   models, then each room's collision and its KAPH models;
-// - a room (`Ov002_LoadWorldLinkResources`, `Ov002_LoadPeerIntoSlot`): its id
-//   (the one missions search), its link rows (8 bytes: key, target slot, pad,
-//   gate state, flags, radius), its objects (u32: flags, archive member -- the
-//   KAPH models it draws), the member of its collision;
-// - a room's collision (`Coll_ResolveModelBlobPointers`): a 0xb0 header, the
-//   header's `+0x76` placement markers (0x18 bytes), a quadtree, three face
-//   lists -- grounds (0x88, read by ray casts), walls and ceilings (0x84, read
-//   by sphere casts and the third cast) --, named records (0x14) the faces
-//   point at.
-//
-// What is not read is kept byte for byte and written back as it was.
+// A mission world's archive (`mi/wd/wd_<code>`) as the game reads it, and written back: the room table,
+// gate models, rooms, their collision, faces and quadtree (docs/FORMATS.md, "Mission worlds"). What is
+// not read is kept byte for byte.
 #pragma once
 
 #include "core/files/containers.h"
@@ -28,16 +15,9 @@
 
 namespace studio {
 
-// A face: 3 or 4 corners in 20.12, the corners' bounds on x and z, its flags
-// (0x4000 skipped, 0x8000 the last of its node's run), the face's plane and
-// four edge planes (stored computed; the game computes them again at load:
-// `RoomPoly_BuildPlanes`), four slots and, for a ground face, one more word
-// whose meaning is not read. Slots 0-2 name records (0xff: none) by a
-// convention the game's data keeps: 0 gates, 1 and 2 surface attributes and
-// walls that open (the camera's cast reads 1 and 2:
-// `Ov002_CollCastResolvePassThrough`); a ground face's slot 3 is a small
-// number (0-14 in the game's rooms, often past the room's records), not a
-// name: a ground kind whose meaning is not read.
+// A face: 3 or 4 corners in 20.12, their bounds on x and z, its flags, its plane and edge planes,
+// four slots (0 gates, 1 and 2 surfaces and opening walls; a ground's 3 a kind) and a ground's word
+// not read (docs/FORMATS.md, "Mission worlds").
 struct RoomFace {
     std::array<std::int32_t, 4> bounds{};  // min x, min z, max x, max z
     std::uint16_t flags = 0;
@@ -127,12 +107,8 @@ struct WorldRoom {
     std::int32_t budget = 0;
 };
 
-// One of a gate's five models (`Ov002_BuildModelSlot`: the descriptor's
-// fields as it uses them): its kind (1, 2, 4 start their own animation), the
-// archive entry it loads (0: none built; 255 in the game's model 0s), a turn
-// (65536ths, stored where the actor keeps its facing), its position (the
-// three words `Render_SubmitNode` places it at, 20.12) and its scale (copied
-// to the actor's +0xc0; 1.0, 3.0, 2.8... equal on the three axes in the game's).
+// One of a gate's five models (Ov002_BuildModelSlot): its kind, the archive entry it loads, a turn,
+// its position (20.12) and its scale.
 struct GateModelPart {
     std::int8_t kind = 0;
     std::uint8_t member = 0;

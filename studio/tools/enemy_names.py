@@ -1,17 +1,7 @@
-"""The enemies' names by the id a mission's enemy table gives them, from the
-pinned decompilation:
-
-    python studio/tools/enemy_names.py
-
-A row of a mission's enemy table names its enemy by an id (`em0` row byte 0:
-Ov002_CreateActorFromMarker -> Ov107_SpawnEntityClass(id)). Ov107 loads that
-enemy's own overlay: row `id` of data_ov107_020cb6a4 (six bytes per id, 0xff
-none; Ov107_EnemyTableHasEntry) holds, in the first column the enemy slots
-reach, `b`, and Ov107_LoadEnemyOverlay starts overlay 113 + b + 1. The
-decompilation names each enemy overlay after its enemy
-(src/overlays/enemies/ov<N>_enemy_<name>, a variant `_2`, `_3`); an id's name
-is its first column's overlay's, the variant number left out. This script
-writes studio/core/missions/enemy_names.cpp (committed)."""
+"""The enemies' names by the id a mission's enemy table gives them, from the pinned decompilation (the
+id's overlay through data_ov107_020cb6a4, named after its enemy), into
+studio/core/missions/enemy_names.cpp (committed; docs/FORMATS.md, "Missions").
+    python studio/tools/enemy_names.py"""
 import re
 import subprocess
 from pathlib import Path

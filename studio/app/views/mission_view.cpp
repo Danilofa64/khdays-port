@@ -1,11 +1,7 @@
-// A mission. "Summary": what the mission is, in plain
-// words -- where it happens, where the player starts, the time limit, the
-// enemies (by name) and where they come from, the chests and emblems, what
-// ends it -- each value the studio has read editable in place and saved into
-// the mod (core/missions/mission_edit.h). "Scripts": its file's entries and scripts, a
-// script's steps as the game runs them -- each by the function its group's
-// table gives it (command_names.h) and its words as read (missions.h). What a
-// function does with its words is shown only once it has been read from the game.
+// A mission. "Summary": what it is in plain words -- where, the start, the time limit, the enemies and
+// where they come from, chests, emblems, what ends it -- each read value editable and saved into the
+// mod. "Scripts": its entries and scripts, each step by the function its group's table gives it and its
+// words as read; what a function does is shown only once read from the game.
 #include "../app.h"
 
 #include "core/missions/command_meanings.h"

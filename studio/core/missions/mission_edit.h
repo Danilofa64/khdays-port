@@ -1,11 +1,6 @@
-// A mission changed: the values the studio has read changed in
-// place -- a step's operands (a point, a number, a time), its texts, the enemy
-// table's groups, the mission's chests and emblems -- and the files written
-// into the mod as the game reads them: files/mi/mi/<number> (the mission),
-// files/mi/mi/trbox and files/mi/mi/evi (every mission's chests and emblems,
-// this one's set changed). Nothing moves: a step keeps its length, a table its
-// size, so every offset the game follows stays where it was; a text that grows
-// is written past the script's data and its place there pointed at it.
+// A mission changed in place -- operands, texts, enemy groups, chests and emblems -- and written into
+// the mod as the game reads it. Nothing moves, so every offset stays; a text that grows goes past the
+// script's data (docs/STUDIO.md, "Missions").
 #pragma once
 
 #include "core/missions/mission_db.h"
@@ -63,12 +58,9 @@ std::string placed_mod_path(const std::string& name);  // files/mi/mi/trbox
 bool save_mission_edit(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, const MissionEdit& edit,
                        std::vector<std::string>* written, std::string* why);
 
-// A mission made from another: `from`'s content (its file as edited: world,
-// rooms, enemies, starts, texts) written into the mod as mission `target`,
-// whose place in the Mission Mode list, name there, unlock and saved progress
-// stay the target's (they are kept by its number). Its chests and emblems
-// are copied into the target's sets when they have as many rows (the sets
-// keep their sizes); `copied_sets` says whether they were.
+// A mission made from another: `from`'s content written as mission `target`, whose list place, name,
+// unlock and saved progress stay the target's; its chests and emblems copied when the target's sets
+// have as many rows (`copied_sets`).
 bool copy_mission_to(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, const MissionEdit& from, int target,
                      std::vector<std::string>* written, bool* copied_sets, std::string* why);
 

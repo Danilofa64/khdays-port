@@ -237,19 +237,9 @@ std::size_t same_tiles(const SheetSource& a, const SheetSource& b) {
 
 }  // namespace
 
-// A sheet with no screens or cells of its own in its data: those of its twin
-// -- of the sheets of the same depth, tiles and columns in data holding
-// screens or cells in its file and the file without its language, the one
-// with the most drawn tiles byte for byte its own, at least one in eight of
-// them (a localized sheet stands in for its twin and keeps its pictures:
-// `UI/shop/res_i18n.p2#9`, the shop's `UI/shop/res.p2#0` sheet 1 in Spanish,
-// shares 151 of its 352 tiles; a sheet of the same size by chance a few),
-// the first in the palettes' order on a tie (the file without its language
-// at the same entry, the file's other entries, that one's) -- its palettes
-// first among the nearby ones, the one the twin is drawn with first of them;
-// or, for a file of its own, the screen and cell files of its folder, the
-// name most like its own first (`UI/btl/bm_lo_bg003.NCGR.z`:
-// `UI/btl/bm_lo_TT08.NSCR.z`, which fits none of them).
+// A sheet with no screens or cells of its own in its data borrows its twin's (the same depth, tiles and
+// columns, the most drawn tiles byte for byte its own), or for a file of its own its folder's screen
+// and cell files, the name most like its own first (docs/STUDIO.md, "2D sheets").
 static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
     if (!s->screens.empty() || !s->cell_banks.empty()) return;
     const auto hash = s->label.rfind('#');
@@ -974,12 +964,8 @@ Ranked rank_arrangements(const SheetSource& s, const std::vector<Arrangement>& f
     const auto whole = std::find_if(scores.begin(), scores.end(), [](const auto& sc) { return sc.arrangement.whole; });
     auto joined = [](const ArrangementScore& sc) { return sc.jump >= 0 && sc.jump <= 3.0f && !sc.tiles.empty(); };
     auto score = [](const ArrangementScore& sc) { return sc.shown / std::max(sc.jump, 1.0f); };
-    // the candidates: the screens and cells that join up. A screen that only
-    // lays the sheet's tiles as the sheet does, showing at least half of it,
-    // stands for the sheet as it is (which shows them all, past the 1024 a
-    // screen reaches), each tile in the palette row that screen gives it, the
-    // others in the row most of them have; one laying them in order at
-    // another width assembles nothing
+    // the candidates: the screens and cells that join up; a screen laying the sheet's tiles as the
+    // sheet does and showing at least half of it stands for the sheet as it is
     std::vector<const ArrangementScore*> candidates;
     const ArrangementScore* standing = nullptr;
     for (const auto& sc : scores) {

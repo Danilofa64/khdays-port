@@ -1,27 +1,7 @@
-// The game's missions as its script machine reads them, and written back:
-//
-// - a mission file `mi/mi/<number>` is a "P2" container (containers.h) whose
-//   entries are script archives ("CAKP"), small tables, or empty;
-// - a script archive is laid out as KAPH (containers.h): section 0's member 0
-//   names the scripts (u16 count, u16 offsets, NUL-terminated names), section
-//   1 holds them (`Archive_FindNameIndex`, `Archive_GetMember`, `Script_Start`);
-// - a script is a word, the size of its code in bytes (the word included),
-//   then its steps, then its data: the rest of its block (`Script_Start`: the
-//   steps run from block + 4, the data is at block + size). A step: byte 0
-//   the command group, byte 1 the command, a u16 whose bits 0-10 are the
-//   step's length in words (these four bytes included) and bits 11-15 a slot
-//   field (`Game_RunActionScript`), then the step's words;
-// - most of a step's words are 8-byte operand slots: s16 mode, s16 sel, s32
-//   value (`ScriptVm_ResolveOperand`) -- mode 1 an integer, 0x10 a 20.12
-//   number, 4 a field of the game's state, 8 a variable of the running
-//   context, the 0x80 bit an entry of the context's table, 2 a place in the
-//   script's data (`ByteCode_ResolveOperand`: data + value), 0x40 a table
-//   there of a text per language, 0 nothing (its value kept as written);
-//   three commands of group 0 read their words as they are (raw_step).
-//
-// What a step means is the handler its group's table gives it
-// (command_names.h); what each handler does with its words is read one
-// command at a time and never guessed. Everything is written back as read.
+// The game's missions as its script machine reads them, and written back: mission files, script
+// archives, scripts, steps and their operand slots (docs/FORMATS.md, "Missions"). What a step means is
+// the handler its group's table gives it (command_names.h); what each handler does with its words is
+// read one command at a time and never guessed. Everything is written back as read.
 #pragma once
 
 #include "core/files/containers.h"
@@ -75,16 +55,9 @@ struct MissionFile {
     int entry(const std::string& name) const;  // the entry whose name starts with `name`, or -1
 };
 
-// A mission's enemy table (`em0`, `em0m`): as Ov002_LoadObjectRecordsAndDrops
-// reads it -- u8 row count, u8 group count, a pad, the rows' offset, each
-// group's offset; a row (16 bytes) an enemy kind with its id (`bId`, the row
-// of `eid.z`'s drop table), a 4-bit kind and 4-bit field, a parameter, and its
-// drop key and chance (-1: from `eid.z`). A group (`Ov002RecordEntry`, as
-// Ov002_CreateSlotObjectAndStart reads it): its count of parts, a state byte,
-// two bytes the code does not read (the parts' limits summed, or -1, in every
-// one of the game's 2,850), then parts {row, limit, count, last player}: a
-// spawner made for the group (Ov002_ScriptCreateSlotObject) adds `count`
-// enemies of the row's class, stopping at `limit` unless it is 0xff.
+// A mission's enemy table (`em0`, `em0m`) as Ov002_LoadObjectRecordsAndDrops reads it: rows (an enemy
+// kind, its drop) and groups of parts {row, limit, count, last player}, a spawner adding `count` of the
+// row's class up to `limit` (docs/FORMATS.md, "Missions").
 struct EnemyKind {
     std::array<std::uint8_t, 16> raw{};
     int id() const { return raw[0]; }

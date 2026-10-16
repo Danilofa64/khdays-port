@@ -1,16 +1,5 @@
-// The game's containers, rebuilt with one piece changed and everything else
-// as it was:
-//
-// - "P2" (docs/MESSAGE_DATA_P2.md; port/runtime/mods/names.cpp each_data): a
-//   16-byte header (the entry count in its second half-word), then u16 start
-//   sectors and u32 descriptors (bit 31: LZ-compressed; bits 0-30 the stored
-//   size), the entries from `base` (header +0xc) on 0x200-byte sectors. In the
-//   game's files the bytes between the tables and `base` are kept as they
-//   are, the gaps between entries are zeros and a file ends on a sector.
-// - "KAPH" (assets/src/cakp.cpp; checked over the 313 the game has): magic,
-//   a zero word, eight section offsets (0xffffffff: none), each section a
-//   count, that many block offsets, that many block sizes; the blocks start on
-//   0x20 bytes, zeros between them, the file ending on 0x20 bytes.
+// The game's containers, rebuilt with one piece changed and everything else as it was: P2 and KAPH,
+// their tables, gaps and alignments kept (docs/FORMATS.md, "Containers").
 #pragma once
 
 #include <cstdint>

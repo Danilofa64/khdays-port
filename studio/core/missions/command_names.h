@@ -1,10 +1,7 @@
-// The game's script commands by the functions it runs for them:
-// the interpreter (Game_RunActionScript) finds a step's handler
-// at data_020425ec[group] + command * 8, a {handler, continuation} pair of the
-// table that group holds while the field runs. The names come from the pinned
-// decompilation's tables (studio/tools/command_names.py writes
-// command_names.cpp); a name says which function runs, not yet what it does
-// with each operand.
+// The game's script commands by the functions it runs for them: the interpreter's handler at
+// data_020425ec[group] + command * 8, named from the pinned decompilation's tables
+// (studio/tools/command_names.py writes command_names.cpp). A name says which function runs, not yet
+// what it does with each operand.
 #pragma once
 
 #include <cstddef>

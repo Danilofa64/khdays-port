@@ -1,12 +1,6 @@
-// The studio's 3D previews (models, rooms) drawn by the graphics card
-// (studio/app/preview3d.cpp): positions through the view and projection,
-// the texture (sampled as the DS does: nearest, its repeat and mirror per
-// axis in the sampler) times the vertex colour, a light from the viewer's
-// side on vertices that have a normal, alpha cut and blended.
-//
-// Resource layout as SDL3's GPU API expects (port/tools/build_shaders.py):
-// vertex uniforms in space1; pixel textures and samplers in space2, combined
-// for SPIR-V; pixel uniforms in space3. Built by studio/tools/build_shaders.py.
+// The studio's 3D previews (models, rooms; studio/app/preview3d.cpp): positions through view and
+// projection, the texture sampled as the DS does times the vertex colour, a light from the viewer's
+// side, alpha cut and blended. SDL3's resource layout as the port's (port/tools/build_shaders.py).
 
 cbuffer VertexUniforms : register(b0, space1)
 {

@@ -1,9 +1,6 @@
-# khdays-studio (specs/018): a mod authoring tool beside the port, built on
-# its own (studio/build.py) so that nothing of the port's or the asset
-# library's builds changes. It compiles some of the port's portable files as
-# they are, by path -- where the port decides something (which mod wins, how a
-# sound or a PNG is read), the tool asks the same code -- and edits none of
-# them.
+# khdays-studio: a mod authoring tool beside the port, built on its own (studio/build.py). It compiles
+# some of the port's portable files as they are, by path, so it decides as the port does, and edits
+# none of them (docs/STUDIO.md).
 cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
 project(khdays_studio C CXX)

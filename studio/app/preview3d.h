@@ -1,9 +1,6 @@
-// The 3D previews (models, rooms): triangles gathered on the processor and
-// drawn by the graphics card (studio/shaders/preview.hlsl, built once into
-// studio/app/generated/) into a picture twice the shown size -- depth-tested,
-// textured as the DS samples (nearest, each axis repeated, mirrored or clamped
-// as the model's material says), times the vertex colour, translucent ones
-// blended after the rest -- which the interface then shows.
+// The 3D previews (models, rooms): triangles gathered on the processor and drawn by the graphics card
+// (studio/shaders/preview.hlsl) into a picture twice the shown size, textured as the DS samples, times
+// the vertex colour, translucent ones last (docs/STUDIO.md, "Previews").
 #pragma once
 
 #include "core/models/game_model.h"

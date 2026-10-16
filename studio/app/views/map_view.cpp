@@ -1,10 +1,6 @@
-// The map editor: a room of one of the game's mission worlds seen
-// as the game has it -- the models its object list draws, its collision
-// (grounds, walls, ceilings; the faces naming a gate, a wall that opens or a
-// surface tag), its placement markers and exits -- turned and zoomed, any face
-// or marker picked to read what it is -- and replaced by the modder's model:
-// placed over it, its collision made and shown as the game will read
-// it, saved into the mod or given back to the game.
+// The map editor: a room of a mission world as the game has it -- its models, collision, markers and
+// exits, any face or marker picked to read what it is -- and replaced by the modder's model, its
+// collision made and shown as the game will read it (docs/STUDIO.md, "Rooms").
 #include "../app.h"
 
 #include "core/models/bones.h"

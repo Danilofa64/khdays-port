@@ -1,14 +1,5 @@
-// A room's collision quadtree: what the
-// game's walk relies on, built from faces, and compared.
-//
-// The root square is the header's centre and size; child c of a node sits at
-// its centre -+ size / 4 (c = 0: -x -z, 1: +x -z, 2: -x +z, 3: +x +z, as
-// `Coll_WalkTreeForHit` steps), half its size; no node of the smallest size
-// has children. Each face is in one node's run, inside that node's square;
-// a run's faces are consecutive in their list, the last flagged 0x8000; a
-// node's flags hold, per list (bits 0-3 grounds, 4-7 walls, 8-11 ceilings),
-// bit c when child c's subtree holds faces of that list, bits 12-15 zero (set
-// at run time).
+// A room's collision quadtree: what the game's walk relies on, built from faces, and compared
+// (docs/FORMATS.md, "Mission worlds").
 #pragma once
 
 #include "core/rooms/worlds.h"
@@ -115,15 +106,9 @@ struct CollisionReport {
 // refused.
 constexpr std::size_t kLargestShippedCollision = 77624;
 
-// A room's collision made from `source` over the original room's: its
-// header (resource flags), placement markers and named records kept (so every
-// name the room had is still there), the faces new -- coplanar
-// neighbours joined into convex pieces of four corners, each classified by its
-// facing, its names from `rules` in the slots their kind takes (gates slot 0,
-// the others 1 and 2), a ground's slot 3 and last word from the nearest
-// ground of the original -- and the tree built
-// over them (a root square of a power of two holding every face, at most
-// kTreeLevels levels). False with the reason when nothing can be made.
+// A room's collision made from `source` over the original room's: its header, markers and named
+// records kept, the faces new (coplanar neighbours joined into convex quads, classified, named by
+// `rules`), the tree built over them. False with the reason (docs/STUDIO.md, "Rooms").
 bool build_collision(const CollisionSource& source, const RoomCollision& original, const CollisionRules& rules,
                      RoomCollision* out, CollisionReport* report, std::string* why);
 
@@ -131,12 +116,9 @@ bool build_collision(const CollisionSource& source, const RoomCollision& origina
 // (20.12); false when no ground is under it.
 bool ground_under(const RoomCollision& c, double x, double z, double top, double* y);
 
-// Empty when `built` is what the game can read in place of `original`:
-// written and read back
-// the same, every face 3-4 corners, convex, its bounds its corners', a plane
-// the game can build, every slot naming a record or none, the tree as
-// check_tree wants and no deeper than the walk goes, every name `original`
-// had still there; else the first problem.
+// Empty when `built` is what the game can read in place of `original` (read back the same, faces
+// convex with 3-4 corners and buildable planes, slots naming records, the tree as the walk wants, every
+// name kept); else the first problem.
 std::string check_collision(const RoomCollision& built, const RoomCollision& original);
 
 }  // namespace studio

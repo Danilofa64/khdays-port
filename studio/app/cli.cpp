@@ -439,13 +439,9 @@ int model_animations(const fs::path& root, const std::string& key) {
     return 0;
 }
 
-// --export-model <model> <out.gltf> [animations]: the model as "Export this
-// model..." writes it; with its animations, each read back as "Replace this
-// animation..." reads a clip (the animation of its name) and compared with
-// the game's: at the frames where each node's rotation is one of its curve's
-// samples, how far the matrices are apart; between samples, where the reader
-// blends two samples' matrices and the export writes the rotation nearest the
-// blend, how far its axes turned from the blend's.
+// --export-model <model> <out.gltf> [animations]: the model as "Export this model..." writes it; with
+// its animations, each read back as "Replace this animation..." reads a clip and compared with the
+// game's, at its curves' samples and between them (docs/STUDIO.md, "Models and animations").
 int export_model(const fs::path& root, const std::vector<std::string>& args) {
     const fs::path nitrofs = nitrofs_of(root);
     if (nitrofs.empty()) {

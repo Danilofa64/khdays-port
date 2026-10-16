@@ -1,12 +1,7 @@
-"""Compile the studio's shaders for every graphics backend SDL3 supports, as
-the port's own (port/tools/build_shaders.py, whose steps this reuses):
-
-    python studio/tools/build_shaders.py [name ...]
-
-Each studio/shaders/<name>.hlsl becomes studio/app/generated/<name>_<stage>.h
-(DXIL, SPIR-V and MSL as C arrays). The generated headers are committed, so
-building the studio needs no shader tools; run this after changing a shader,
-with the Vulkan SDK installed (VULKAN_SDK set)."""
+"""Compile the studio's shaders as the port's are (port/tools/build_shaders.py, whose steps this
+reuses): studio/shaders/<name>.hlsl into studio/app/generated/ (committed); run after changing a
+shader, with the Vulkan SDK installed.
+    python studio/tools/build_shaders.py [name ...]"""
 import importlib.util
 import sys
 from pathlib import Path

@@ -1,10 +1,7 @@
-// Models: a mod's FBX or glTF model on one of the game's models -- the
-// two side by side or over each other, the joints paired by name as the port
-// pairs them, by position as proposals, or by the modder's picks; the scale,
-// the back faces, the game's own animations of the model; saved with
-// its companions and its bones.txt where the port reads them. And one
-// of those animations replaced by a glTF clip: previewed as the game will
-// read it back, saved as the whole game file in the mod's files/.
+// Models: a mod's FBX or glTF model on one of the game's models -- side by side or overlaid, joints
+// paired by name as the port pairs them, by position as proposals or by hand, scale, back faces, the
+// game's animations -- saved where the port reads them; and an animation replaced by a glTF clip,
+// saved as the whole game file in the mod's files/ (docs/STUDIO.md).
 #include "../app.h"
 
 #include "core/models/anim_replace.h"

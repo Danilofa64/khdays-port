@@ -29,12 +29,8 @@ struct ModelExport {
     int animations = 0;  // the animations in it
 };
 
-// `g` to `out` (.gltf), the textures it draws with copied beside it: the
-// pictures the dump's own glTF of it names (`<dump>/<label>/mdl/<name>.gltf`,
-// which palette each texture is drawn with), else the dump's first picture of
-// each texture. With `animations`, those made for its skeleton, each under
-// export_animation_names, 30 frames a second as the studio plays them. False
-// with the reason.
+// `g` to `out` (.gltf), its textures beside it (the dump's own glTF's pictures, else its first picture
+// of each); with `animations` those made for its skeleton, 30 frames a second. False with the reason.
 bool export_game_model(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump,
                        const GameModel& g, bool animations, const std::filesystem::path& out, ModelExport* result,
                        std::string* why);

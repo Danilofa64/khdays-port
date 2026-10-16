@@ -1,10 +1,5 @@
-// The game's texts as the studio edits them, and written back: a string
-// table (`UI/**/*.s.z`: u32 header size (8), u32 count, then per string u32
-// its record's length, these 4 bytes included, and its UTF-16LE units with a
-// NUL; usually LZ-packed) or a message database (`db/db_<lang>.p2`: a P2
-// container whose entries are lists -- u32 count, u32 each string's end in
-// bytes, then the strings' UTF-16LE units, each with its NUL). Control codes
-// stay in the strings as the game has them.
+// The game's texts as the studio edits them, and written back: string tables and message databases
+// (docs/FORMATS.md, "Text"), control codes kept as the game has them.
 #pragma once
 
 #include "core/files/containers.h"

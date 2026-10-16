@@ -1,9 +1,6 @@
-// A mod's model on the game's skeleton, by the port's rules.
-// The port pairs and poses a mod's model in
-// port/runtime/mods/models.cpp; that code is bound to the running game, so these
-// rules are mirrored here, each citing the lines it follows. A change there
-// must be made here too: the tests and the in-game comparison check
-// the two agree.
+// A mod's model on the game's skeleton, by the port's rules (port/runtime/mods/models.cpp), mirrored here
+// with each rule citing the lines it follows: a change there must be made here too, and the tests and
+// the in-game comparison check the two agree.
 #pragma once
 
 #include "core/models/game_model.h"

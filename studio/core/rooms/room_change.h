@@ -1,17 +1,7 @@
-// A room of a mission world replaced by the modder's model:
-//
-//   mods/<Mod>/studio/rooms/<code>/<room>.txt   the change (the port ignores studio/)
-//   mods/<Mod>/studio/rooms/<code>/<room>/      the modder's model files beside it
-//
-// and what the port reads, made from them over the player's own copy of the
-// game:
-//
-//   mods/<Mod>/files/mi/wd/wd_<code>            the world's archive, every
-//       replaced room's collision new, everything else as the game's
-//   mods/<Mod>/graphics/mi/wd/wd_<code>#<member>/mdl/<model>.gltf
-//       each of the room's models drawn as the modder's (or as nothing)
-//
-// A room is its index in the world's table (ids repeat within a world).
+// A room of a mission world replaced by the modder's model: the change in mods/<Mod>/studio/rooms/
+// (which the port ignores), and what the port reads made from it over the player's copy -- the world's
+// archive with new collision, and the room's models as glTF (docs/STUDIO.md, "Rooms"). A room is its
+// index in the world's table.
 #pragma once
 
 #include "core/rooms/room_collision.h"
@@ -80,14 +70,9 @@ std::vector<std::string> changed_worlds(const std::filesystem::path& mod_dir);
 // places it and then placed; its bones, if any, left (a room's model stands still).
 void place_model(khdays::assets::ImportedModel* model, const RoomPlacement& place);
 
-// Where a model made from the game's room (its dump, or --room-model's
-// export, edited in a 3D program) lines up with it again: the turn in
-// quarter turns about x, y and z and the scale (1, or the 100, 10, 0.1, 0.01
-// a 3D program's units add) under which most of the model's points fall on
-// the room's own points. `share` is that part, 0 to 1 (0.25 or more: the model
-// is the room's, lined up); the move is left at 0, as such a model keeps the
-// room's places. A model that shares nothing with the room gets the placement
-// it has.
+// Where a model made from the game's room lines up with it again: the quarter turns and scale under
+// which most of its points fall on the room's own (`share`, 0.25 or more: lined up; the move left at
+// 0). A model that shares nothing with the room keeps its placement.
 struct RoomAlignment {
     RoomPlacement place;
     double share = 0;   // under `place`
@@ -102,12 +87,8 @@ RoomAlignment align_with_room(const std::vector<std::array<float, 3>>& room_poin
 bool placed_model(const std::filesystem::path& model, const RoomPlacement& place, khdays::assets::ImportedModel* out,
                   std::string* why);
 
-// The model's triangles, placed, as the collision builder takes them (a
-// mesh drawn both sides gives its steep faces -- facing less than 60 degrees
-// from level -- a second, turned the other way). With `visible` (the
-// collision made from the room's visible model, not a collision model of its
-// own) a translucent material's triangles (glTF BLEND: glows, glass, fog
-// layers, a sky's haze) are passable.
+// The model's triangles, placed, as the collision builder takes them: a two-sided mesh's steep faces
+// doubled the other way; with `visible`, a translucent material's triangles passable.
 CollisionSource collision_source(const khdays::assets::ImportedModel& placed, bool visible = false);
 
 // The world with the change's gate model points moved.

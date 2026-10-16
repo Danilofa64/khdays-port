@@ -1,25 +1,6 @@
-// A BCA0 (NSBCA) with one of its animations replaced.
-// The format as the port reads it (assets/src/animation.cpp,
-// after apicula): a JNT0 section whose Nitro dictionary names the animations
-// and gives each one's J0AC block; a J0AC holds the frame count, the node
-// count, a word kept as it is, the pivot and basis rotation tables, and per
-// node its flags, two bytes kept as they are, and its translation, rotation
-// and scale curves.
-//
-// A J0AC's tables and curve data are not inside it: the game's BCA0s share
-// them between their animations, after the J0ACs, at offsets from each J0AC.
-// The new J0AC holds all of its own and is appended at the end of JNT0, its
-// dictionary entry pointed at it: the dictionary (its names and tree) and
-// every other animation stay byte for byte, the old J0AC stays unreferenced.
-// In it the nodes the new animation moves are written whole, every frame
-// sampled (translation 20.12, scale with its inverse 20.12, rotation as the
-// compressed orthonormal basis of 13-bit 1.12 values); the nodes it leaves
-// alone keep the original's node blocks byte for byte but for their data
-// offsets, which point into a copy of the original's shared data (from the
-// first thing they use to the end of JNT0), with the new rotations after its
-// basis table. Frame and node counts are the original's: the game loops or
-// stops an animation at the count its clip gives (for example
-// Ov259_ModelAnimTick), and what else it times by those frames is not known.
+// A BCA0 (NSBCA) with one of its animations replaced: the new J0AC, holding all of its own data, is
+// appended to JNT0 and its dictionary entry pointed at it; everything else stays byte for byte. Frame
+// and node counts are the original's (docs/FORMATS.md, "Animations"; docs/STUDIO.md).
 #pragma once
 
 #include "core/models/game_model.h"
