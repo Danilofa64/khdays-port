@@ -441,6 +441,7 @@ add_executable(khdays-native
     ui/badges.c                    # the badges' icons on the mission panel
     ui/crowns.c                    # the crowns on the story's day list
     ui/mission_list.c              # the camp's mission list from the game's files
+    ui/autosave_notice.cpp         # the notice of an autosave, in the game's font
     ui/save_numbers.cpp            # the file numbers on the game's own save lists in pages
     ui/rooms2d.c                   # the port's list of rooms on the game's own screens (prepare.py's hooks)
     ui/room_icons.cpp              # each room's signal and lock on the game's own list

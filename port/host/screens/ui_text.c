@@ -851,6 +851,11 @@ static const char *const texts[TXT_COUNT][5] = {
                              "pagine da tre, o i tre file del DS.",
                              "Las listas de guardado del propio juego (sin las pantallas HD): los 99 archivos del port "
                              "en páginas de tres, o los tres archivos de la DS."},
+    [TXT_AUTOSAVE_DONE] = {"Autosaved: file %d", "Sauvegarde auto : fichier %d", "Automatisch gespeichert: Datei %d",
+                           "Salvataggio automatico: file %d", "Autoguardado: archivo %d"},
+    [TXT_AUTOSAVE_FAILED] = {"Autosave failed: file %d", "Échec de la sauvegarde auto : fichier %d",
+                             "Autospeichern fehlgeschlagen: Datei %d", "Salvataggio automatico non riuscito: file %d",
+                             "Error al autoguardar: archivo %d"},
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;

@@ -308,6 +308,9 @@ enum {
     TXT_SAVE_FILES_ALL,
     TXT_SAVE_FILES_DS,
     TXT_SAVE_FILES_NOTE,
+    /* The notice of an autosave, in the game's font (ui/autosave_notice.cpp): %d the file */
+    TXT_AUTOSAVE_DONE,
+    TXT_AUTOSAVE_FAILED,
     TXT_COUNT
 };
 
