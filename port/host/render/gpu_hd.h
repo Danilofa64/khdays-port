@@ -1,10 +1,7 @@
 /* The replacement graphics (runtime/mods/textures.h) on the graphics card: the mods' 3D textures, 2D
- * tile sheets and models' textures, all in one buffer that the 3D pass and the 2D composition both
- * read (SDL's GPU API binds at most 8 storage buffers to a pass).
- *
- * The buffer starts with a table of four words per replacement (its first texel's place, width,
- * height, what it is), then all the texels, one word each; a still picture's are followed by smaller
- * copies, each half the one before (info bit 0x8), for the 3D drawn smaller than its texture. */
+ * tile sheets and models' textures in one buffer both passes read -- a table of four words per
+ * replacement, then the texels, a still picture's followed by smaller copies (info bit 0x8)
+ * (docs/RENDERING.md, "On the graphics card"). */
 #ifndef KHDAYS_GPU_HD_H
 #define KHDAYS_GPU_HD_H
 

@@ -1,9 +1,6 @@
-/* The DS's two 2D display engines in software (see gpu2d.h): the reference
- * the port's own 2D is checked against, and the renderer when the host does
- * not draw the port's own 2D.
- *
- * It runs every frame, so it is optimized even in Debug builds (whose /RTC
- * checks cannot be combined with optimization). */
+/* The DS's two 2D display engines in software (gpu2d.h): the reference the port's 2D is checked
+ * against, and the renderer when the host does not draw the port's own 2D. It runs every frame, so it
+ * is optimized even in Debug builds (whose /RTC checks cannot be combined with it). */
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma runtime_checks("", off)
 #pragma optimize("gt", on)
@@ -564,12 +561,9 @@ static void blend_registers(const Engine *e, Blend *bl, unsigned bg_prio[4])
     }
 }
 
-/* Picks the layers that window mask `mask` lets show at x: the first two in
- * priority order (an OBJ before the BGs of the same priority, BG0 before BG1,
- * and so on), or the backdrop. `bg0` says how BG0 counts: -1 as the line
- * holds it, 0 as transparent, 1 as opaque (its colour then does not matter);
- * the last two are for the composition records. Returns how many layers it
- * found. */
+/* Picks the layers that window mask `mask` lets show at x: the first two in priority order (a sprite
+ * before the BGs of its priority, BG0 before BG1...), or the backdrop. `bg0`: -1 as the line holds it,
+ * 0 transparent, 1 opaque. Returns how many it found. */
 static int pick(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const ObjLine *obj, const unsigned bg_prio[4],
                 int x, unsigned mask, int bg0, uint16_t backdrop, int layer[2], uint16_t color[2])
 {
@@ -807,16 +801,9 @@ static void find_pieces(KhdaysGpu2dWide *wide, int8_t side[CELLS_Y][CELLS_X])
     }
 }
 
-/* Makes the composition records over the wide picture. At each of its
- * columns: the 2D layers' pixel that lands there (a moved piece's, or the DS
- * column's own); the OBJs and the window as at that DS column (beside the
- * DS's columns there are none, and the pixel is outside every window); and
- * the 3D as record() takes it.
- *
- * Two shortcuts give the same records for less work: a DS column whose own
- * pixel stays there has the DS's record (`ds`, the frame's records), and a
- * column with no 2D and no OBJ has the record of its window mask alone, made
- * once per mask. */
+/* Makes the composition records over the wide picture: at each column the 2D layers' pixel that lands
+ * there, the sprites and window as at that DS column, and the 3D as record() takes it. A DS column
+ * whose own pixel stays has the DS's record, and one with no 2D and no sprite its mask's record. */
 static void wide_records(const Engine *e, KhdaysGpu2dWide *wide, const KhdaysGpu2dComposition *ds)
 {
     static KhdaysGpu2dComposition bare[64]; /* the record with nothing but the 3D, for each 6-bit mask */

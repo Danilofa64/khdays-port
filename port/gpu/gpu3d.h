@@ -1,12 +1,7 @@
-/* The DS's 3D rendering engine in software (GBATEK, "DS 3D Video"): it draws
- * a polygon list of the port's geometry (gfx/g3d.h) into the BG0 layer of
- * engine A, as the DS's rendering engine draws its own. The reference the
- * port's GPU renderer (host/render/gpu_raster3d.c) is checked against; nothing of the game runs through it.
- *
- * What GBATEK documents is followed; where it leaves the arithmetic open
- * (the depth value, how the rasterizer interpolates and which pixels a
- * polygon covers) the choice made here is marked, and the result is close to
- * the hardware, not bit-exact. */
+/* The DS's 3D rendering engine in software (GBATEK, "DS 3D Video"): it draws a polygon list of the
+ * port's geometry (gfx/g3d.h) into engine A's BG0 as the DS does, the reference the GPU renderer is
+ * checked against; nothing of the game runs through it. Where GBATEK leaves the arithmetic open the
+ * choice is marked: close to the hardware, not bit-exact. */
 #ifndef KHDAYS_GPU3D_H
 #define KHDAYS_GPU3D_H
 

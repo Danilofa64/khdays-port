@@ -45,13 +45,9 @@ typedef struct KhdaysGfxMemory {
     const uint8_t *left_out_obj;
 } KhdaysGfxMemory;
 
-/* Widescreen, engine A's description: `columns` DS columns (256 <
- * columns, even), the HUD's pieces found as the 2D engine finds them
- * (gpu2d.h KhdaysGpu2dWide) -- the 8x8 cells layers 1-3 cover, grouped with
- * the cells they touch, a group wholly in the left half moved to the left
- * edge, one in the right half to the right edge, one across the middle
- * staying -- into KD_WIDE and KD_SIDES. Only for a screen showing the 3D
- * (the layers, layer 0 the 3D and shown); otherwise KD_WIDE stays 0. */
+/* Widescreen, engine A's description: `columns` DS columns (even, over 256), the HUD's pieces found as
+ * the 2D engine finds them (gpu2d.h KhdaysGpu2dWide), into KD_WIDE and KD_SIDES. Only for a screen
+ * showing the 3D; otherwise KD_WIDE stays 0. */
 void khdays_gfx_describe_wide(uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory, int columns);
 
 /* The screen `desc` describes, 256x192 as 0x00RRGGBB, composed on the CPU;

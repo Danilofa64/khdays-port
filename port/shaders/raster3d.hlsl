@@ -1,23 +1,7 @@
-// The DS's 3D rendering engine at N times its resolution: port/gpu/gpu3d.c's
-// rasterizer (rear_plane, draw_polygon, plot and the texture formats of
-// port/gpu/texdecode.h), run for each pixel of an N x 256 x 192 target.
-//
-// Each thread owns one pixel and goes through the polygons that may cover it,
-// in the engine's drawing order, keeping the pixel's state as gpu3d.c's Pixel
-// does. So the per-pixel rules that depend on what is already there
-// (translucent polygon IDs, the shadow mask, blending over alpha 0) are
-// exactly gpu3d.c's. The polygons come from the package's list
-// (runtime/display/frame_package.h) through a per-tile index the host builds
-// (host/render/gpu_raster3d.c). Edge marking and fog, which need the finished
-// neighbouring pixels, are done by compose.hlsl.
-//
-// In widescreen the target is wider than the DS's 256 columns: `origin_x` is
-// the DS column of its first column (negative), and the list was clipped wide
-// enough to fill it (gfx/g3d.h khdays_g3d_set_widen).
-//
-// Where gpu3d.c computes in double (the depth) this computes the same integer
-// in float and integer steps; the coverage and interpolation are the same
-// float operations, kept from being fused ("precise").
+// The DS's 3D rendering engine at N times its resolution: port/gpu/gpu3d.c's rasterizer run for each
+// pixel, one thread a pixel going through the polygons that may cover it in drawing order, so its
+// per-pixel rules are exactly gpu3d.c's (docs/RENDERING.md, "On the graphics card"). In widescreen
+// `origin_x` is the DS column of the target's first (negative).
 
 struct Polygon {
     uint attr, tex, pltt;
@@ -186,17 +170,10 @@ int4 polygon_texels(Polygon p)
     }
 }
 
-// Whether polygon p shows its texture at the texture's own size -- a texel to
-// a DS pixel or less -- in screen space (an orthographic projection: every
-// vertex's w is 1, 4096): the game's 2D drawn with the 3D engine, the HUD's
-// pieces, the day cards, the noise over Sora's memories
-// (Ov023_DrawNoiseOverlay's twelve tiles of a texel to a DS pixel). Texture
-// smoothing leaves those sharp, as the 2D layers are: smoothed, that noise
-// turned to blobs with a line at every tile's edge. A model under
-// an orthographic camera, its texture magnified (the title's logo), is still
-// smoothed. The areas: the polygon's, in DS pixels and in texels; with
-// screen space stretched to the wider target this frame (the host's
-// stretch_overlay: Sora's memories), in the DS's own pixels.
+// Whether polygon p shows its texture at its own size or smaller in screen space (an orthographic
+// projection): the game's 2D drawn with the 3D engine, the HUD, the day cards, the noise over Sora's
+// memories. Smoothing leaves those sharp, as the 2D layers are; a magnified texture (the title's
+// logo) is still smoothed. With screen space stretched this frame, in the DS's own pixels.
 bool pixel_art(Polygon p)
 {
     float screen = 0.0f, texels = 0.0f;
@@ -214,14 +191,9 @@ bool pixel_art(Polygon p)
     }
 }
 
-// Texture smoothing (the port's option, not the DS's). Whether a pixel shows
-// is the DS's: the nearest texel's alpha, as without smoothing, so a cut-out
-// keeps its shape (blending alpha too made the day cards' numbers bold and
-// hair cards grow edges). Its colour is the four texels around (s, t)
-// blended by distance, each weighted by its alpha so a transparent texel
-// does not darken its neighbours, and only texels the polygon maps (`bounds`,
-// polygon_texels): next to a texture's edge or another part of an atlas the
-// blend took colours the polygon never shows. The same format as texel.
+// Texture smoothing (the port's option): whether a pixel shows is the DS's (the nearest texel's alpha),
+// so cut-outs keep their shape; its colour the four texels around blended by distance and alpha, only
+// texels the polygon maps (`bounds`). The same format as texel.
 uint smoothed_texel(uint param, uint pltt, float s, float t, int4 bounds)
 {
     const uint nearest = texel(param, pltt, (int)floor(s), (int)floor(t));
@@ -328,13 +300,9 @@ float4 hd_blend(Polygon p, uint4 l, float u, float v, float ss, float ts)
     return float4(alpha > 0.0f ? color / alpha : float3(0.0f, 0.0f, 0.0f), alpha);
 }
 
-// Polygon `p`'s replacement at (s, t), the original's texels: the same place
-// of the original's mapping, at the replacement's own resolution -- nearest,
-// or with the port's texture smoothing the four around it (alpha-weighted, as
-// smoothed_texel). `footprint`: how many of the original's texels a pixel
-// spans (texel_footprint); where that is more than one of the replacement's,
-// a smaller copy is read (with smoothing, between the two nearest). Colours in
-// 8 bits when `fine`, else cut to the DS's 6.
+// Polygon `p`'s replacement at (s, t), the original's texels: the same place of the original's
+// mapping at the replacement's resolution, nearest or smoothed; a smaller copy where a pixel spans more
+// than one texel (`footprint`). Colours in 8 bits when `fine`, else cut to the DS's 6.
 int4 hd_texel(Polygon p, float s, float t, float footprint)
 {
     const uint r4 = (uint)p.replacement * 4u;

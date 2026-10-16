@@ -1,11 +1,7 @@
-/* The shapes of the one-screen pass.
- * Each shape is a rectangle of one of the screens as the port composed it,
- * placed in the single picture (C x 192 DS dots), with its effects. For each
- * texel of the picture the pass tries the shapes in order; the first whose
- * destination holds the texel and whose source texel is visible gives it. A
- * shape is KO_WORDS words; floats are stored as their bits.
- *
- * Plain C, only #defines: the shaders include it too. */
+/* The shapes of the one-screen pass: each a rectangle of one of the screens as the port composed it,
+ * placed in the single picture (C x 192 DS dots) with its effects; the first shape whose destination
+ * holds a texel and whose source texel is visible gives it. KO_WORDS words a shape, floats as their
+ * bits. Plain C, only #defines: the shaders include it too (docs/RENDERING.md, "One screen"). */
 #ifndef KHDAYS_GFX_ONESCREEN_H
 #define KHDAYS_GFX_ONESCREEN_H
 
@@ -56,22 +52,9 @@
 #endif /* KHDAYS_GFX_ONESCREEN_H */
 
 /* --- The pass's steps for one output texel ----------------------------------------
- *
- * The colours are 8-bit channels, red in bits 0-7, compared with a key or a
- * see-through colour in the DS's 5 bits a channel (the game's colours are
- * the DS's, so a piece's colour is matched exactly). With KO_STEPS defined the
- * includer defines, before including it (again, after the constants):
- *
- *   KO_FN              how a function is declared (C: static inline; HLSL: nothing)
- *   KO_SHAPE(i, w)     word w of shape i (KO_*)
- *   KO_KEY(i)          colour i of the keys' buffer (BGR555)
- *   KO_ASFLOAT(u)      the float whose bits u holds
- *   KO_FLOOR(f) KO_ABS(i)  a float's floor, an int's magnitude
- *   KO_SOURCE(lower, x, y)  the source screen's texel at (x, y) DS dots
- *                      (floats): the upper's as kd_split gives it, the
- *                      lower's colour with its alpha 0 on the backdrop
- *
- * and the types `uint` and `int` (32 bits) and `float`. */
+ * 8-bit channels, red in bits 0-7, keys matched in the DS's 5 bits a channel. With KO_STEPS the
+ * includer defines KO_FN, KO_SHAPE, KO_KEY, KO_ASFLOAT, KO_FLOOR, KO_ABS and KO_SOURCE, and the types
+ * `uint`, `int` and `float` (docs/RENDERING.md). */
 #if defined(KO_STEPS) && !defined(KHDAYS_GFX_ONESCREEN_STEPS)
 #define KHDAYS_GFX_ONESCREEN_STEPS
 
@@ -148,36 +131,11 @@ KO_FN uint ko_taps(float scale)
     return scale > 0.0f && scale < 1.0f ? (uint)(1.0f / scale + 0.999f) : 1u;
 }
 
-/* The output texel at (px, py), DS dots of the picture (its side `texel` DS
- * dots: 1 / the internal resolution): the first shape that gives it over the
- * 3D's colour x3d (8-bit channels; bit 24: the 3D shows there), else the 3D or
- * the backdrop; then the brightness of the rule.
- *
- * A shape that shrinks its source covers several of the source's texels with
- * one output texel; their colours are averaged (a box filter), so a line of
- * the game's text one texel thick keeps its share of the colour instead of
- * vanishing when it falls between two samples. Where only some
- * of them show, the others count as what is under the shape. A shape that
- * keeps or enlarges its source takes the one texel there, sharp, as before. A 3D
- * the DS shows over all its 2D (bit 25, its alpha 0-31 in bits 26-30: the
- * game over's orb, KHDAYS_G3D_OVER_2D) goes over the shape's texel with its
- * alpha, as the DS blends the 3D with the layer under it.
- * The 3D is engine A's: `a_upper` 1 when engine A is the upper screen
- * (POWCNT1), its shapes' texels then K + F x X. The DS draws one 3D, engine
- * A's, whichever screen engine A shows; the picture has it under everything
- * either way, so a 3D shown on the lower screen alone is the picture's too.
- *
- * The effects: a key colour's texels are not shown (what is under the shape
- * shows); a see-through colour's are mixed with what is under the shape at
- * their opacity; `dim` takes the colours toward black by a factor; the
- * weight (`opacity`, `fade`) mixes the shape with what is under it -- `fade`
- * from nothing at an edge to the whole shape over its length, the lesser of
- * the two edges of an axis, the two axes multiplied; `mirror` turns the
- * source over, `repeat` repeats it along its rows or columns, `force` shows
- * texels the 2D would leave invisible over the 3D, `round` leaves out the
- * texels of its corners outside a quarter circle of the radius. `masters`: the upper screen's MASTER_BRIGHT, the lower's in
- * bits 16-31; `backdrop`: the frame's own where nothing is (8-bit); `half`:
- * the picture's middle column. */
+/* The output texel at (px, py), DS dots of the picture (`texel` DS dots a side): the first shape that
+ * gives it over the 3D's colour x3d, else the 3D or the backdrop, then the rule's brightness. A
+ * shrinking shape averages its source's texels (a box filter); a 3D shown over all the 2D (bit 25,
+ * alpha in 26-30) blends over the shape. `masters`: both screens' MASTER_BRIGHT; `backdrop`: the
+ * frame's own; `half`: the middle column. The effects: docs/RENDERING.md, "One screen". */
 KO_FN uint ko_pixel(float px, float py, float texel, uint x3d, uint shape_count, uint rule, uint masters,
                     uint backdrop, float half, uint a_upper)
 {

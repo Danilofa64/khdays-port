@@ -1,11 +1,6 @@
-// The port's own 2D: one screen at N times the DS's resolution.
-//
-// Each pixel is composed from the screen's frame description
-// (port/gfx/frame.h) by port/gfx/compose.h, the same code the CPU runs in
-// port/gfx/compose_cpu.c. At N x an output pixel takes the 2D of the DS
-// pixel it lies in (so the DS's pixel art stays sharp) and the 3D of its own
-// place in the 3D drawn at N x. In widescreen engine A's screen is KD_WIDE
-// DS columns wider on each side (kd_pixel_wide).
+// The port's own 2D: one screen at N times the DS's resolution, each pixel composed from its frame
+// description by port/gfx/compose.h (the code the CPU runs too): the 2D of the DS pixel it lies in,
+// the 3D of its own place. In widescreen engine A's screen is KD_WIDE columns wider each side.
 
 #include "../gfx/frame.h"
 

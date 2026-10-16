@@ -1,14 +1,7 @@
-/* A frame of a screen's 2D, as the port describes it: the layers, sprites, windows and
- * effects the game asked for, already decoded (no registers, OAM entries or
- * bank windows left), and the memory its layers and sprites read their
- * tiles, maps and palettes from. It is built at VBlank (describe.c) and
- * composed pixel by pixel by compose.h, both on the CPU (compose_cpu.c: the
- * check and the tests) and on the GPU (port/shaders/compose2d.hlsl), which
- * share that code.
- *
- * The description is words, so the GPU reads it as it is: KD_* are their
- * offsets. This header is plain C and is also included by the shaders (only
- * its #defines). */
+/* A frame of a screen's 2D as the port describes it: the layers, sprites, windows and effects the game
+ * asked for, already decoded, and the memory they read. Built at VBlank (describe.c) and composed by
+ * compose.h on the CPU and the GPU. The description is words (KD_* their offsets), so the GPU reads it
+ * as it is; plain C, its #defines included by the shaders too (docs/RENDERING.md). */
 #ifndef KHDAYS_GFX_FRAME_H
 #define KHDAYS_GFX_FRAME_H
 

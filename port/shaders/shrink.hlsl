@@ -1,9 +1,6 @@
-// A picture made larger than it is shown, shrunk to the size it is shown at
-// (host/render/gfx_render.c): each texel the average of the big picture's area under
-// it, each big texel weighted by how much of it the texel covers. The 3D's
-// edges, drawn at the larger size, come out smooth (the video setting
-// antialiasing), and the window shows the picture at its own pixels instead
-// of stretching a smaller one.
+// A picture made larger than it is shown, shrunk to that size (host/render/gfx_render.c): each texel
+// the area-weighted average of the big picture under it, so the 3D's edges come out smooth (the
+// antialiasing setting) and the window shows the picture at its own pixels.
 
 [[vk::image_format("rgba8")]] RWTexture2D<unorm float4> big : register(u0, space1);   // read only here
 [[vk::image_format("rgba8")]] RWTexture2D<unorm float4> small : register(u1, space1);

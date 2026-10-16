@@ -1,22 +1,7 @@
-/* The port's 3D geometry ("after the gates"): the port answers
- * what NitroSystem and the game ask of the DS's geometry engine.
- *
- * Its state (the four matrix stacks, the current vertex's attributes, the
- * lights, the material, the viewport) is the DS's, in the DS's fixed point,
- * so positions, colours and whatever the game reads back are the same as on
- * the DS. What it builds is a polygon list in the port's own form, which the
- * GPU renderer draws (host/render/gpu_raster3d.c) and the software rasterizer draws
- * as the reference (gpu/gpu3d.c).
- *
- * The commands are the DS's (GBATEK, "DS 3D Geometry Commands"), since the
- * game's code, NitroSystem's and the models' display lists all use them. The
- * port takes them as they come (one command with its parameters, packed
- * words as GXFIFO takes them, or one store to a command port) and runs each
- * at once. There is no FIFO and nothing waits: the geometry is never busy,
- * and a SwapBuffers closes the list being built, which the next VBlank
- * shows.
- *
- * Plain C, no operating system calls. */
+/* The port's 3D geometry: it answers what NitroSystem and the game ask of the DS's geometry engine,
+ * its state the DS's in the DS's fixed point, and builds a polygon list the GPU renderer
+ * (host/render/gpu_raster3d.c) and the reference rasterizer (gpu/gpu3d.c) draw. Commands run at once:
+ * no FIFO, never busy; SwapBuffers closes the list. Plain C (docs/RENDERING.md, "The 3D"). */
 #ifndef KHDAYS_GFX_G3D_H
 #define KHDAYS_GFX_G3D_H
 
@@ -48,13 +33,9 @@ typedef struct KhdaysG3dPolygon {
     int32_t replacement;      /* the texture drawn instead (runtime/mods/textures.h), or -1 */
 } KhdaysG3dPolygon;
 
-/* A polygon as the game sent it, before clipping, in a
- * list's `pre` arrays: its vertices in clip space -- the game's in the DS's
- * fixed point, a mod's in floats (KHDAYS_G3D_MOD), nine words each -- and
- * what it was drawn with besides, with the key that finds the same polygon
- * in the list after: the model draw it came from (its resource and how many
- * draws of that resource came before it in the list; 0 for geometry outside
- * a model draw) and its place among that draw's polygons. */
+/* A polygon as the game sent it, before clipping, in a list's `pre` arrays: its vertices in clip space
+ * (the game's in fixed point, a mod's in floats, nine words each), what it was drawn with, and the key
+ * that finds the same polygon in the next list (its model draw and its place in it). */
 typedef struct KhdaysG3dPreVertex {
     int32_t word[9];
 } KhdaysG3dPreVertex;
@@ -117,12 +98,9 @@ int khdays_g3d_list_reserve(KhdaysG3dList *list, int32_t polys, int32_t verts);
 
 void khdays_g3d_list_free(KhdaysG3dList *list);
 
-/* `out` becomes the list built from `from`'s polygons before clipping --
- * culled, clipped and put through the viewport as the game's own lists are,
- * then in drawing order: from the same polygons, the same list -- with
- * `vertices` in place of `from`'s pre_verts when not NULL (a picture between
- * two lists, gfx/g3d_interp.h). `out` keeps no polygons before clipping.
- * Touches nothing shared: safe on any thread. 0 when there is no memory. */
+/* `out` becomes the list built from `from`'s polygons before clipping -- culled, clipped and put
+ * through the viewport as the game's lists are -- with `vertices` in place of `from`'s pre_verts when
+ * not NULL (gfx/g3d_interp.h). Touches nothing shared: safe on any thread. 0 when out of memory. */
 int khdays_g3d_finish(const KhdaysG3dList *from, const KhdaysG3dPreVertex *vertices, KhdaysG3dList *out);
 
 /* The model draws (runtime/mods/models.cpp): the polygons sent from now on come

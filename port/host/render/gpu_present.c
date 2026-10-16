@@ -1,20 +1,7 @@
-/* The window's picture (gpu_present.h).
- *
- * The GPU device is made with every shader format this build carries (render/generated: DXIL, SPIR-V,
- * MSL) and SDL picks the backend; the window's SDL_Renderer is made on it, so the settings menu draws
- * into the same frame. A graphics card is required: without Direct3D 12 or Vulkan the port says why
- * and does not start.
- *
- * A frame: both screens' 2D are the port's own, composed by gfx_render.c from the package's
- * descriptions, and engine A's 3D is drawn on the card by gpu_raster3d.c at the internal resolution.
- * In widescreen engine A's screen is wider (its 3D covers the extra columns, the field's HUD moves to
- * the sides); on one screen the composition decides what shows (onescreen.c). Between two game frames
- * the 3D can be drawn interpolated.
- *
- * Testing knobs: KHDAYS_SHOTS_HD=DIR (the KHDAYS_SHOTS frames as presented, at the resolution drawn);
- * KHDAYS_GFX=reference (the old way: the 2D engines' pictures); KHDAYS_GFX=check (the port's way
- * compared with the 2D engines at 1x or the old way at N x, every 300 frames); KHDAYS_PROFILE (frames
- * never drawn, and the time preparing the 3D took). */
+/* The window's picture (gpu_present.h): the GPU device with every shader format the build carries,
+ * the window's renderer on it; both screens' 2D composed by gfx_render.c, engine A's 3D drawn by
+ * gpu_raster3d.c, one screen decided by onescreen.c. A graphics card is required. Testing knobs
+ * (KHDAYS_SHOTS_HD, KHDAYS_GFX=reference|check, KHDAYS_PROFILE): docs/RENDERING.md. */
 #include "gpu_present.h"
 #include "../app/devices.h"
 #include "gfx_render.h"

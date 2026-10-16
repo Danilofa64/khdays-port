@@ -1,13 +1,7 @@
-/* Engine A's screen at N x, drawn by the graphics card (gpu_raster3d.h). Each frame uploads the
- * package's polygons, an index of which may cover each 8x8 tile (in drawing order), the composition
- * records and the texture pages that changed. raster3d.hlsl draws the 3D into two targets (colour;
- * depth with the polygon ID, edge and fog flags), compose.hlsl makes the screen from them and the
- * records, and the window's renderer draws it as a texture.
- *
- * A list wider than the DS's view (widescreen) gets a target that many columns wide, the DS's 256 in
- * the middle. The HUD's polygons move to the sides as the 2D engine moves its pieces (gpu2d.h
- * KhdaysGpu2dWide): touching polygons are grouped, a group wholly in the left half goes to the left
- * edge, one in the right half to the right edge, one across the middle stays. */
+/* Engine A's screen at N x, drawn by the graphics card (gpu_raster3d.h): each frame uploads the
+ * polygons, a per-tile index of them, the composition records and the changed texture pages;
+ * raster3d.hlsl draws the 3D, compose.hlsl makes the screen. In widescreen the HUD's polygons move to
+ * the sides as the 2D's pieces do (docs/RENDERING.md, "On the graphics card"). */
 #include "gpu_raster3d.h"
 #include "gpu_hd.h"
 #include "../../runtime/display/frame_package.h"
@@ -410,12 +404,10 @@ static int overlay_polygon(const KhdaysG3dPolygon *p, const KhdaysG3dVertex *v)
     return 1;
 }
 
-/* Stretches a picture drawn over the whole DS view to the target's width. The wider 3D shows more of
- * the scene beside the DS's view (khdays_g3d_set_widen), but a picture the game draws in screen space
- * has nothing beside it: screen-space polygons (not the HUD's) that together cover the view -- Sora's
- * memories in a dialog, twelve tiles of noise; a fade drawn as a quad -- are stretched from the DS's
- * 256 columns to `columns`, so the picture fills the screen. Smaller ones keep their shape (the
- * title's logo, the day's card). Returns `moved`, or `in` when nothing moves. */
+/* Stretches a picture drawn over the whole DS view to the target's width: screen-space polygons (not
+ * the HUD's) that together cover the view (Sora's memories, a fade drawn as a quad) have nothing
+ * beside it, so they are stretched from 256 columns to `columns`; smaller ones keep their shape.
+ * Returns `moved`, or `in` when nothing moves. */
 static int stretched; /* stretch_overlay stretched this list's screen-space polygons */
 
 static const KhdaysG3dVertex *stretch_overlay(const KhdaysG3dList *list, const KhdaysG3dVertex *in, int columns)

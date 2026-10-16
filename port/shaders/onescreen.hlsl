@@ -1,13 +1,7 @@
-// The one-screen picture, C x 192 DS
-// dots at N times the DS's resolution.
-//
-// Each texel comes from the first of the situation's shapes that gives it: a
-// rectangle of the upper screen's 2D without its 3D (compose2d.hlsl with
-// KDF_SPLIT) over the 3D at the texel's own place, or a rectangle of the
-// lower screen. Where no shape gives it, it is the 3D, or behind it the
-// composition's backdrop picture (a mod's) or colour. Then the brightness of
-// the situation's rule is applied. The steps are port/gfx/onescreen.h's,
-// which the host test runs on the CPU.
+// The one-screen picture, C x 192 DS dots at N times the DS's resolution: each texel from the first
+// shape that gives it (the upper screen's 2D without its 3D over the 3D at its place, or the lower
+// screen), else the 3D or the backdrop; then the rule's brightness. The steps are
+// port/gfx/onescreen.h's, which the host test runs on the CPU.
 
 #include "../gfx/onescreen.h"
 

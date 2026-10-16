@@ -1,9 +1,6 @@
-// Finishes the 3D raster3d.hlsl drew, as port/gpu/gpu3d.c does: edge
-// marking, then fog. It is shared by the compose shaders. The includer
-// declares color3d and attr3d (raster3d's targets) and, in its constant
-// buffer, width, height, disp3dcnt, swap_params, clear_color, clear_depth,
-// fog_color, fog_offset, edge_colors, fog_table and fine (1 when the 3D's
-// channels have 8 bits: raster3d.hlsl's fine).
+// Finishes the 3D raster3d.hlsl drew, as port/gpu/gpu3d.c does: edge marking, then fog. The includer
+// declares color3d and attr3d (raster3d's targets) and, in its constant buffer, width, height,
+// disp3dcnt, swap_params, clear_color, clear_depth, fog_color, fog_offset, edge_colors, fog_table, fine.
 
 int expand5(int c)
 {

@@ -1,12 +1,7 @@
-/* A screen's elements: things the port
- * draws itself. Each one takes one slot of the DS's composition (a BG layer,
- * or the sprites at a priority), with an image the port drew at the internal
- * resolution and a place in DS pixels. The description's KD_ELEMENTS word
- * says how many follow it (on the graphics card, after the description and
- * its palettes; on the CPU, in their own array), KE_WORDS words each, the
- * topmost of a slot first.
- *
- * Plain C, only #defines: the shaders include it too. */
+/* A screen's elements: things the port draws itself, each in one slot of the DS's composition (a BG
+ * layer, or the sprites at a priority), with an image drawn at the internal resolution and a place in
+ * DS pixels; KD_ELEMENTS says how many follow, KE_WORDS words each, the topmost of a slot first. Plain
+ * C, only #defines: the shaders include it too (docs/RENDERING.md). */
 #ifndef KHDAYS_GFX_ELEMENTS_H
 #define KHDAYS_GFX_ELEMENTS_H
 
@@ -28,12 +23,9 @@
 #define KE_IW    6 /* the image's width and height in texels */
 #define KE_IH    7
 
-/* An image's texels: 0 transparent; indexed, KET_OPAQUE | the palette index
- * (0-255, the slot's palette: the layers' or the sprites'), with
- * KET_EXTENDED an 8-bit character's index in the extended palette bits
- * 12-15 name, when the slot's layer takes extended palettes (as its 8-bit
- * characters are coloured); direct colour, RGBA with red in bits 0-7, alpha
- * in 24-31. */
+/* An image's texels: 0 transparent; indexed, KET_OPAQUE | the palette index (with KET_EXTENDED an
+ * 8-bit character's index in the extended palette bits 12-15 name); direct colour, RGBA with red in
+ * bits 0-7. */
 #define KET_OPAQUE 0x100u
 #define KET_EXTENDED 0x200u
 #define KET_EXT_PAL_SHIFT 12

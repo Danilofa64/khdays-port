@@ -72,14 +72,9 @@ uint16_t khdays_gpu2d_recompose(const KhdaysGpu2dComposition *rec, uint16_t colo
  * brightness applied on the 6-bit intensities. */
 uint32_t khdays_gpu2d_finish(uint16_t color, const KhdaysGpu2dInfo *info);
 
-/* Widescreen, engine A: the composition records over `columns` DS pixels,
- * the DS's 256 in the middle, with the HUD kept to the sides of the wider
- * picture. The HUD's pieces are the groups of 8x8 cells the 2D layers (not
- * the 3D, not the OBJs) cover that touch one another; a piece wholly in the
- * left half moves to the left edge, keeping its distance to it, one wholly
- * in the right half to the right edge; a piece across the middle (a dialog,
- * a bar from side to side) stays, and so do the OBJs (what is drawn over the
- * 3D view's objects). Filled by khdays_gpu2d_frame_ex. */
+/* Widescreen, engine A: the composition records over `columns` DS pixels, the DS's 256 in the middle,
+ * the HUD's pieces (touching 8x8 cells of layers 1-3) moved to the edge of the half they lie in, a
+ * piece across the middle staying (docs/RENDERING.md). Filled by khdays_gpu2d_frame_ex. */
 #define KHDAYS_GPU2D_MAX_COLUMNS 768
 #define KHDAYS_GPU2D_MAX_PIECES 64
 typedef struct KhdaysGpu2dPiece {

@@ -17,12 +17,9 @@ void khdays_png_free(uint8_t *pixels);
  * it failed. */
 const char *khdays_png_write(const char *path, const uint8_t *rgba, int width, int height);
 
-/* Reads an indexed PNG (colour type 3, any bit depth, not interlaced) as one
- * palette index per pixel (width * height bytes, rows top to bottom). Its
- * palette goes into `palette` as RGBA (256 entries; the ones the file lacks
- * are black; pass NULL if not needed). Returns the indices, to be freed with
- * khdays_png_free, or NULL with the reason in *error ("not indexed" for a PNG
- * of another kind). */
+/* Reads an indexed PNG (colour type 3, any bit depth, not interlaced) as one palette index per pixel,
+ * its palette into `palette` as RGBA (256 entries, black past the file's; NULL if not needed).
+ * Returns the indices (khdays_png_free), or NULL with the reason in *error ("not indexed"). */
 uint8_t *khdays_png_read_indexed(const char *path, int *width, int *height, uint8_t palette[256 * 4],
                                  const char **error);
 

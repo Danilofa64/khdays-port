@@ -1,0 +1,233 @@
+# How the port draws the game
+
+The game asks for the DS's 2D and 3D as ever; the port describes each frame and
+draws it on the graphics card at any resolution and aspect ratio. Software
+engines of the DS's own (`port/gpu`) are the reference the card's picture is
+checked against.
+
+## The 2D: a frame's description
+
+At VBlank (`port/gfx/describe.c`) the port describes a frame of each screen's
+2D (`port/gfx/frame.h`): the layers, sprites, windows and effects the game asked
+for, already decoded -- no registers, OAM entries or bank windows left -- and the
+memory its layers and sprites read their tiles, maps and palettes from. The
+description is words, so the GPU reads it as it is (`KD_*` are their offsets).
+
+`port/gfx/compose.h` composes one pixel from it the way the DS composes what the
+game asked for: each layer's colour there, the topmost sprite, the windows'
+masks, the two topmost targets blended, the 3D layer's own alpha, brightening
+and darkening, and the master brightness. At 1x it gives the same pixels as the
+reference renderer (`port/gpu/gpu2d.c`). It is written in the part of C that
+HLSL shares, so the CPU (`compose_cpu.c`: the check and the tests) and the GPU
+(`port/shaders/compose2d.hlsl`) run the same code. The includer defines, before
+including it, the types `uint` and `int` (32 bits) and `float`, and:
+
+| Macro | What it gives |
+|---|---|
+| `KD_FN` | how a function is declared (C: `static inline`; HLSL: nothing) |
+| `KD_VOID` | an empty parameter list (C: `void`; HLSL: nothing) |
+| `KD_DESC(i)` | word i of the screen's description |
+| `KD_BG8(a)`, `KD_BG16(a)` | the layers' memory (`a` masked to its size here) |
+| `KD_OBJ8(a)`, `KD_OBJ16(a)` | the sprites' memory |
+| `KD_BGEXT16(a)`, `KD_OBJEXT16(a)` | the extended palettes |
+| `KD_PAL16(i)` | palette entry i (0-255 the layers', 256-511 the sprites') |
+| `KD_VRAM16(a)` | the bank a VRAM display shows |
+| `KD_3D(x, row)` | the 3D layer's pixel (6-bit channels in bits 0-5, 8-13, 16-21; alpha 0-31 in 24-28; 0 transparent) |
+| `KD_3D_KNOWN` | 1 when `KD_3D` holds the 3D drawn (0: not given, every pixel 0) |
+| `KD_HD_BG(u)`, `KD_HD_OBJ(u)` | the tiles drawn instead (`runtime/mods/tiles2d.h`): the word of the layers' or the sprites' 32 bytes number u, 0 none |
+| `KD_HD_FIRST(id)`, `KD_HD_WIDTH(id)`, `KD_HD_HEIGHT(id)`, `KD_HD_INFO(id)` | replacement id's first texel, size and info (`textures.h`) |
+| `KD_HD_TEXEL(i)` | texel i of the replacements |
+| `KD_SUB_X`, `KD_SUB_Y` | where the output pixel lies inside its DS pixel (0-1, float) |
+| `KD_ELEMENT(i)` | word i of the screen's elements (`gfx/elements.h`) |
+| `KD_EL_TEXEL(image, i)` | texel i of element image `image` (`KE_IMAGE`) |
+| `KD_ASFLOAT(u)` | the float whose bits `u` holds |
+| `KD_LEFT_OUT_CELL(c)`, `KD_LEFT_OUT_OBJ(i)` | 1 when cell c of the text layers' maps (`KE_CELLS`), or sprite i, is left out (what a part stands for) |
+
+A replaced bitmap (`KHDAYS_REPLACEMENT_BITMAP`, info bit 4: a movie's frame,
+`runtime/movies/video.h`) is read at the picture's own size; its info holds the
+bitmap's 32-byte units per row in bits 8-15 and its rows in bits 16-31.
+
+### Elements
+
+Elements are things the port draws itself (`port/gfx/elements.h`): each takes
+one slot of the DS's composition (a BG layer, or the sprites at a priority),
+with an image the port drew at the internal resolution and a place in DS
+pixels. The description's `KD_ELEMENTS` word says how many follow it (on the
+card after the description and its palettes; on the CPU in their own array),
+`KE_WORDS` words each, the topmost of a slot first. A texel is 0 transparent;
+indexed, `KET_OPAQUE` | the palette index (the slot's palette), with
+`KET_EXTENDED` an 8-bit character's index in the extended palette its bits
+12-15 name; or direct colour, RGBA with red in bits 0-7. Where a layer does not
+show, the elements' colour says how much they let through (`KD_SEE_THROUGH`)
+and the pixel is composed with and without it.
+
+## Widescreen
+
+The upper picture is `KD_WIDE` DS columns wider on each side, the DS's 256 in
+the middle. The 3D uses its own column there. The HUD's pieces are the groups of
+8x8 cells the 2D layers 1-3 cover that touch one another: a piece wholly in the
+left half moves to the left edge, keeping its distance to it, one wholly in the
+right half to the right edge, and one across the middle (a dialog, a bar from
+side to side) stays. The sprites and the windows use the DS column at the pixel:
+beside the DS's columns there are none, and the pixel is outside every window.
+Only for a screen showing the 3D (`khdays_gfx_describe_wide`; the software
+engine's `KhdaysGpu2dWide` does the same, with a DS column whose own pixel stays
+taking the DS's record, and a column with no 2D and no sprite its window mask's
+record alone).
+
+## One screen
+
+The one-screen pass (`port/gfx/onescreen.h`) places shapes -- rectangles of
+either screen as the port composed it, with their effects -- in a single picture
+of C x 192 DS dots. For each texel the shapes are tried in order; the first whose
+destination holds the texel and whose source texel is visible gives it, else the
+3D or the backdrop; then the brightness of the rule. A shape that shrinks its
+source averages the texels it covers (a box filter), so one-texel lines of the
+game's text keep their share of the colour; one that keeps or enlarges its
+source takes the texel there, sharp. The layouts are in `docs/COMPOSITIONS.md`.
+
+The 3D's colour is not known when the upper screen's 2D is composed, so
+`kd_split` composes the pixel with the 3D's colour X left unknown. The screen
+shows K + F x X: the result holds K in 8-bit channels (bits 0-23) and, in bits
+24-31, either 0 where the 2D does not show over the 3D, or 1 + F x 254. Every
+blend the DS makes with the 3D is linear in X, so K and F come from composing
+once with the 3D black and once with it white. The 2D does not show over the 3D
+when the top layer is the 3D or the backdrop, or when a layer is blended over
+the 3D with its own weight (EVA) 0 and the 3D's (EVB) 16: the game holds a layer
+so while it is not to be seen (the day's card's sprites, the mission's
+information between its fades) and passes weights 1-3 only for a frame or two
+of a fade. When the 3D drawn is given (`KD_3D_KNOWN`), it counts as it is at the
+pixel: where it is transparent the layers under it show, as on the DS (the game
+over's menu lies under its 3D), and its own alpha blends. A polygon the
+one-screen picture moved (the game over's orb) is not at its new place on the
+DS, so there it counts as none. A 3D the DS shows over all its 2D (the orb,
+`KHDAYS_G3D_OVER_2D`) goes over the shape's texel with its alpha. The DS draws
+one 3D, engine A's, whichever screen engine A shows; the picture has it under
+everything either way.
+
+The shapes' effects: a key colour's texels are not shown, a see-through colour's
+are mixed with what is under the shape at their opacity (both matched in the
+DS's 5 bits a channel, so a piece's colour is matched exactly); `dim` takes the
+colours toward black; `opacity` and `fade` mix the shape with what is under it,
+`fade` from nothing at an edge to the whole shape over its length; `mirror`
+turns the source over, `repeat` repeats it, `force` shows texels the 2D would
+leave invisible over the 3D, `round` leaves out its corners outside a quarter
+circle.
+
+The pass is shared C/HLSL like `compose.h`. With `KO_STEPS` the includer defines
+`KO_FN`, `KO_SHAPE(i, w)` (word w of shape i), `KO_KEY(i)` (colour i of the
+keys' buffer, BGR555), `KO_ASFLOAT(u)`, `KO_FLOOR(f)`, `KO_ABS(i)`, and
+`KO_SOURCE(lower, x, y)` (the source screen's texel at DS dots: the upper's as
+`kd_split` gives it, the lower's colour with alpha 0 on the backdrop).
+
+## The 3D
+
+`port/gfx/g3d.h` is the port's 3D geometry: it answers what NitroSystem and the
+game ask of the DS's geometry engine. Its state -- the four matrix stacks, the
+current vertex's attributes, the lights, the material, the viewport -- is the
+DS's, in the DS's fixed point, so positions, colours and whatever the game reads
+back are the same as on the DS. The commands are the DS's (GBATEK, "DS 3D
+Geometry Commands"), taken as they come (one command with its parameters,
+packed words as GXFIFO takes them, or a store to a command port) and run at
+once: there is no FIFO, the geometry is never busy, and a SwapBuffers closes the
+list being built, which the next VBlank shows. The arithmetic is GBATEK's;
+where it leaves the rounding open the choice is marked in `g3d_geometry.c`. The
+DS's polygon and vertex RAM no longer limits a list.
+
+A list keeps each polygon as the game sent it, before clipping (`pre`), with the
+key that finds the same polygon in the next list: the model draw it came from
+(its resource and how many draws of it came before) and its place in that draw.
+For frame rates above the game's (`port/gfx/g3d_interp.h`) the polygons the
+newer list shares with the older one -- the same key, as many vertices, drawn
+with the same texture, palette and attributes but alpha -- get their vertices
+placed between the two lists' at `alpha`, linearly in clip space, nothing
+extrapolated; then the list is clipped and put through the viewport like the
+game's (`khdays_g3d_finish`), so at `alpha` = 1 it is exactly the newer list.
+
+The graphics card draws the lists (`host/render/gpu_raster3d.c`); the software
+rasterizer (`port/gpu/gpu3d.c`, GBATEK's "DS 3D Video") draws them as the
+reference, close to the hardware where GBATEK leaves the arithmetic open (the
+depth value, the interpolation, which pixels a polygon covers), not bit-exact.
+
+### Shadow volumes
+
+The game draws a shadow in two passes (`ShadowVolume_Draw`): the volume's rear
+faces as the mask (polygon ID 0, front faces culled), then the whole volume as
+the shadow (ID 0x3f, nothing culled). A surface is in shadow where it lies
+between the volume's front and rear faces. The mask marks the stencil where its
+rear face fails the depth test (the surface is in front of it); the shadow draws
+where a mark is and its own depth test passes (the surface is behind its front
+face), so its rear faces, which pass only where no mark is, draw nothing.
+GBATEK's wording -- marks where the mask passes, the shadow where none is,
+clearing them -- would let the second pass's rear faces shade everything behind
+the volume: the whole volume showed. As GBATEK says, a shadow is not drawn over
+a pixel of its own ID. A mask reaching a pixel after any other polygon starts
+from no mark there, so one volume's marks where its shadow did not draw shade
+nothing of the next.
+
+## On the graphics card
+
+The GPU device is made with every shader format the build carries
+(`port/host/render/generated`: DXIL, SPIR-V, MSL; `port/tools/build_shaders.py`
+makes them from `port/shaders`) and SDL picks the backend; the window's
+SDL_Renderer is made on it, so the settings menu draws into the same frame. A
+graphics card is required: without Direct3D 12 or Vulkan the port says why and
+does not start (`host/render/gpu_present.c`).
+
+A frame: both screens' 2D are composed by `gfx_render.c` from the package's
+descriptions (`shaders/compose2d.hlsl`: an output pixel takes the 2D of the DS
+pixel it lies in, so the pixel art stays sharp, and the 3D of its own place),
+and engine A's 3D is drawn at the internal resolution by `gpu_raster3d.c`. Each
+frame uploads the package's polygons, an index of which may cover each 8x8 tile
+(in drawing order), the composition records and the texture pages that changed.
+`raster3d.hlsl` runs `gpu3d.c`'s rasterizer for each pixel -- each thread owns
+one pixel and goes through the polygons that may cover it in drawing order,
+keeping its state as `gpu3d.c`'s `Pixel` does, so translucent IDs, the shadow
+mask and blending over alpha 0 are exactly the reference's; where `gpu3d.c`
+computes in double (the depth) it computes the same integer in float and
+integer steps, its coverage and interpolation kept from being fused
+(`precise`). `finish3d.hlsli` then does the edge marking and the fog, which
+need the finished neighbours, and `compose.hlsl` composes it with the 2D as
+`gpu2d.c` does from the composition records, the master brightness last. A
+picture made larger than it is shown is shrunk by `shrink.hlsl` (each texel the
+area-weighted average under it): the 3D's edges come out smooth (the
+antialiasing setting) and the window shows the picture at its own pixels.
+
+In widescreen the 3D target is that many columns wide (`origin_x` the DS
+column of its first, negative), the list clipped wide enough to fill it
+(`khdays_g3d_set_widen`), and the HUD's polygons move to the sides as the 2D
+pieces do: touching polygons are grouped and moved by the half they lie in.
+A picture the game draws in screen space over the whole DS view has nothing
+beside it, so screen-space polygons that together cover the view (Sora's
+memories in a dialog, a fade drawn as a quad) are stretched to the target's
+width; smaller ones keep their shape (the title's logo, the day's card).
+
+Texture smoothing is the port's option, not the DS's. Whether a pixel shows is
+the DS's (the nearest texel's alpha), so a cut-out keeps its shape; its colour
+is the four texels around blended by distance, each weighted by its alpha, and
+only texels the polygon maps (an atlas's neighbours stay out). A polygon that
+shows its texture at its own size or smaller in screen space (an orthographic
+projection: the 2D drawn with the 3D engine, the HUD's pieces, the day cards,
+the noise over Sora's memories) is left sharp, as the 2D layers are; a model
+under an orthographic camera with its texture magnified (the title's logo) is
+still smoothed. A replacement texture is read at the place of the original's
+mapping at its own resolution, a smaller copy where a pixel spans more than one
+of its texels.
+
+The replacement graphics (`runtime/mods/textures.h`: mods' 3D textures, 2D tile
+sheets, models' textures) share one buffer the 3D pass and the 2D composition
+both read (SDL's GPU API binds at most 8 storage buffers to a pass): a table of
+four words per replacement (its first texel's place, width, height, what it is),
+then all the texels, one word each; a still picture's are followed by smaller
+copies, each half the one before (info bit 0x8).
+
+With the 3D on both screens the game moves engine A to the other screen at
+every VBlank (POWCNT1 bit 15), drawing each screen's view in turn while the
+display capture keeps the other's; the one-screen picture is the upper
+screen's, so it is made on the VBlanks engine A shows the upper screen.
+
+Testing knobs: `KHDAYS_SHOTS_HD=DIR` (the `KHDAYS_SHOTS` frames as presented,
+at the resolution drawn); `KHDAYS_GFX=reference` (the 2D engines' pictures);
+`KHDAYS_GFX=check` (the port's way compared with the 2D engines at 1x, or the
+old way at N x, every 300 frames); `KHDAYS_PROFILE` (frames never drawn, and
+the time preparing the 3D took).

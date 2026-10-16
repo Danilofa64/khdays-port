@@ -164,22 +164,11 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
         pass = depth < px->depth;
     }
     if (mode == 3) {
-        /* Shadow polygons, from the game's two passes (ShadowVolume_Draw: the
-         * volume's rear faces as the mask, ID 0, front faces culled; then the
-         * whole volume as the shadow, ID 0x3f, nothing culled) and the method
-         * they make: a surface is in shadow where it lies between the volume's
-         * front and rear faces. The mask marks the stencil where its rear face
-         * fails the depth test (the surface is in front of the rear face); the
-         * shadow draws where a mark is and its own depth test passes (the
-         * surface is behind its front face), so its rear faces, which pass only
-         * where no mark is, draw nothing. GBATEK's wording -- marks where the
-         * mask passes, the shadow where none is, clearing them -- would let the
-         * second pass's rear faces shade everything behind the volume: the
-         * whole volume showed. As GBATEK says, a shadow is not drawn over a
-         * pixel of its own ID (the opaque one's, or the translucent one's over
-         * it). A mask reaching a pixel after any other polygon starts from no
-         * mark there, so one volume's marks where its shadow did not draw (a
-         * surface in front of it) shade nothing of the next. */
+        /* Shadow polygons, from the game's two passes (the volume's rear faces as the mask, ID 0;
+         * the whole volume as the shadow, ID 0x3f): a surface is in shadow between the volume's
+         * front and rear faces, so the mask marks where its rear face fails the depth test and the
+         * shadow draws where a mark is and its depth test passes. GBATEK's wording would shade
+         * everything behind the volume (docs/RENDERING.md, "Shadow volumes"). */
         if (id == 0) {
             if (!pass) px->stencil = 1;
             return;

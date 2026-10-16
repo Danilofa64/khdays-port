@@ -1,40 +1,7 @@
-/* One pixel of a screen's 2D, composed from its frame description (frame.h)
- * the way the DS composes what the game asked for: each layer's colour there,
- * the topmost sprite, the windows' masks, the two topmost targets blended,
- * the 3D layer's own alpha, brightening and darkening, and the master
- * brightness. At 1x it gives the same pixels as the reference renderer
- * (port/gpu/gpu2d.c).
- *
- * Written in the part of C that HLSL shares, so the CPU (compose_cpu.c) and
- * the GPU (port/shaders/compose2d.hlsl) run the same code. The includer
- * defines, before including it:
- *
- *   KD_FN              how a function is declared (C: static inline; HLSL: nothing)
- *   KD_VOID            an empty parameter list (C: void; HLSL: nothing)
- *   KD_DESC(i)         word i of the screen's description
- *   KD_BG8(a) KD_BG16(a)          the layers' memory (a masked to its size here)
- *   KD_OBJ8(a) KD_OBJ16(a)        the sprites' memory
- *   KD_BGEXT16(a) KD_OBJEXT16(a)  the extended palettes
- *   KD_PAL16(i)        palette entry i (0-255 the layers', 256-511 the sprites')
- *   KD_VRAM16(a)       the bank a VRAM display shows
- *   KD_3D(x, row)      the 3D layer's pixel (6-bit channels in bits 0-5, 8-13,
- *                      16-21; alpha 0-31 in 24-28; 0 transparent)
- *   KD_3D_KNOWN        1 when KD_3D holds the 3D drawn (0: not given, every
- *                      pixel 0)
- *   KD_HD_BG(u) KD_HD_OBJ(u)      the tiles drawn instead (runtime/mods/tiles2d.h): the
- *                      word of the layers' or the sprites' 32 bytes number u, 0: none
- *   KD_HD_FIRST(id) KD_HD_WIDTH(id) KD_HD_HEIGHT(id) KD_HD_INFO(id)
- *                      replacement id's first texel, size and info (textures.h)
- *   KD_HD_TEXEL(i)     texel i of the replacements
- *   KD_SUB_X KD_SUB_Y  where the output pixel lies inside its DS pixel (0-1: float)
- *   KD_ELEMENT(i)      word i of the screen's elements (gfx/elements.h)
- *   KD_EL_TEXEL(image, i)          texel i of element image `image` (KE_IMAGE)
- *   KD_ASFLOAT(u)      the float whose bits u holds
- *   KD_LEFT_OUT_CELL(c) KD_LEFT_OUT_OBJ(i)  1 when cell c of the text layers'
- *                      maps (gfx/elements.h KE_CELLS), or sprite i, is left out
- *                      (what a part stands for)
- *
- * and the types `uint` and `int` (32 bits) and `float`. */
+/* One pixel of a screen's 2D, composed from its frame description (frame.h) the way the DS composes
+ * what the game asked for. Shared C/HLSL: the CPU (compose_cpu.c) and the GPU (shaders/compose2d.hlsl)
+ * run the same code; the includer defines KD_FN, KD_VOID, KD_DESC, the memories, palettes, 3D and
+ * replacements' accessors (KD_*), and the types `uint`, `int` and `float` (docs/RENDERING.md). */
 
 #define KD_OPAQUE 0x8000u
 
@@ -98,12 +65,9 @@ KD_FN uint kd_hd(uint entry, float u, float v)
     return (texel >> 24) >= 128u ? KD_HD | (texel & 0xffffffu) : 0u;
 }
 
-/* The texel of a replaced bitmap (KHDAYS_REPLACEMENT_BITMAP, info bit 4: a
- * movie's frame, runtime/movies/video.h) for unit `entry`, at the bitmap's byte
- * `at`, with the output pixel at (fu, fv) inside its DS pixel. It is read at
- * the picture's own size and returned as KD_HD | its colour, or 0. The
- * replacement's info holds the bitmap's 32-byte units per row in bits 8-15
- * and its rows in bits 16-31. */
+/* The texel of a replaced bitmap (KHDAYS_REPLACEMENT_BITMAP: a movie's frame) for unit `entry`, at the
+ * bitmap's byte `at`, with the output pixel at (fu, fv) inside its DS pixel: KD_HD | its colour, or 0.
+ * Its info holds the 32-byte units per row in bits 8-15 and the rows in bits 16-31. */
 KD_FN uint kd_hd_bitmap(uint entry, uint at, float fu, float fv)
 {
     const uint id = (entry >> 20) - 1u;
@@ -614,12 +578,9 @@ KD_FN uint kd_mask(int x, int row, uint sprite_window)
     return mask;
 }
 
-/* Composes the pixel from the layers' colours there, the topmost sprite, the
- * window mask and the 3D's alpha: the first two things that show, in priority
- * order (a sprite before the layers of its priority, layer 0 before layer 1,
- * and so on), with the effects applied. The result is BGR555, before the
- * master brightness; with KDF_FINE it is RGB888, using the 3D layer's own
- * 8-bit colour `fine3d` and the others' colours widened. */
+/* Composes the pixel from the layers' colours, the topmost sprite, the window mask and the 3D's alpha:
+ * the first two things that show in priority order, with the effects applied. BGR555 before the
+ * master brightness; with KDF_FINE RGB888, the 3D layer's own 8-bit colour `fine3d`. */
 KD_FN uint kd_compose(uint color[4], KdSprite spr, uint mask, uint alpha3d, uint fine3d)
 {
     const uint flags = KD_DESC(KD_FLAGS);
@@ -750,29 +711,10 @@ KD_FN KdTop kd_top(uint color[4], KdSprite spr, uint mask)
     return t;
 }
 
-/* The pixel with the 3D's colour X left unknown, for the one-screen pass.
- *
- * The screen shows K + F x X. The result holds K in 8-bit channels (bits
- * 0-23) and, in bits 24-31, either 0 where the 2D does not show over the 3D,
- * or 1 + F x 254. The 2D does not show over the 3D when the top layer is the
- * 3D or the backdrop, or when a layer (or a semi-transparent sprite) is
- * blended over the 3D with its own weight (EVA) 0 and the 3D's (EVB) 16: it
- * gives nothing to the pixel. The game holds a layer so while it is not to
- * be seen -- the day's card's sprites, the mission's information between its
- * fades (the walks, BLDALPHA 0x1000 with BLDCNT 0x2f40 and 0x2148) -- and
- * passes the weights 1-3 only for a frame or two of a fade, where the DS shows
- * the layer faintly.
- *
- * Every blend the DS makes with the 3D is linear in X, so K and F come from
- * composing once with the 3D black and once with it white.
- *
- * When the 3D drawn is given (KD_3D_KNOWN), the 3D counts as it is at the
- * pixel: where it is transparent the layers under it show, as on the DS (the
- * game over's menu lies under its 3D: ov027's BG0 has priority 0 and BG1 2),
- * and its own alpha blends. A polygon the one-screen picture moved (like the
- * game over's orb) is not at its new place on the DS, so there it counts as
- * none. Without the 3D drawn, the 3D counts as a layer that shows wherever it
- * is on. No master brightness: the one-screen pass applies it. */
+/* The pixel with the 3D's colour X left unknown, for the one-screen pass: the screen shows K + F x X,
+ * K in bits 0-23 and in bits 24-31 0 where the 2D does not show over the 3D, else 1 + F x 254. Every
+ * blend with the 3D is linear in X, so K and F come from composing with the 3D black and white. With
+ * KD_3D_KNOWN the 3D counts as drawn at the pixel. No master brightness (docs/RENDERING.md). */
 KD_FN uint kd_split(uint color[4], KdSprite spr, uint mask, int x, int row)
 {
     const uint flags = KD_DESC(KD_FLAGS);
@@ -870,12 +812,9 @@ KD_FN uint kd_mix5(uint a, uint b, float t)
  * covers it, as every other colour). */
 #define KD_SEE_THROUGH(c) ((((c) & KD_HD) != 0u) ? (((c) >> 24) & 0x7fu) : 0u)
 
-/* Layer b's colour at (x, row) with the elements that take its slot: the
- * topmost elements' texels there, each over the ones under it by its alpha
- * (a direct element's; an indexed texel covers what is under it), over the
- * layer's own colour where they let it show. Where the layer does not show
- * either, the colour says how much the elements let through (KD_SEE_THROUGH):
- * the pixel is then composed with and without it (kd_through). */
+/* Layer b's colour at (x, row) with the elements that take its slot, the topmost over the ones under
+ * by its alpha, over the layer's own colour. Where the layer does not show either, the colour says how
+ * much the elements let through (KD_SEE_THROUGH), composed with and without it (kd_through). */
 KD_FN uint kd_element_layer(int b, int x, int row, uint color)
 {
     const uint count = KD_DESC(KD_ELEMENTS);
@@ -1104,13 +1043,9 @@ KD_FN int kd_side(int x, int row)
     return bits == 1u ? -1 : bits == 2u ? 1 : 0;
 }
 
-/* Column X of a picture KD_WIDE DS columns wider on each side, with the DS's
- * 256 in the middle. The 3D uses its own column there. The layers above it
- * (1-3) use the DS column their HUD piece came from: a piece wholly in the
- * left half moved to the left edge, one wholly in the right half to the right
- * edge, and one across the middle stayed. The sprites and the windows use the
- * DS column there (beside the DS's columns there are none, and the pixel is
- * outside every window). */
+/* Column X of a picture KD_WIDE DS columns wider on each side: the 3D at its own column, the layers
+ * 1-3 at the DS column their HUD piece came from, the sprites and windows at the DS column there
+ * (docs/RENDERING.md, "Widescreen"). */
 KD_FN uint kd_pixel_wide(int column, int row)
 {
     const uint flags = KD_DESC(KD_FLAGS);

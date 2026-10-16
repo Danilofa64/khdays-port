@@ -1,17 +1,7 @@
-/* A picture between two of the game's 3D lists, for frame
- * rates above the game's.
- *
- * The polygons the newer list shares with the older one (the same key,
- * gfx/g3d.h: the same model draw and the same place in it, or for one outside
- * model draws the same material and place among that material's; as many
- * vertices, and drawn with the same texture, palette and attributes but
- * alpha) get their vertices, before clipping, placed between the two
- * lists' at `alpha` (0 is the older list, 1 the newer); the other polygons
- * are the newer list's. Then the list is clipped and put through the viewport
- * like the game's (khdays_g3d_finish), so at `alpha` = 1 it is exactly the
- * newer list. Positions, colours and texture coordinates are placed linearly
- * in clip space; nothing is extrapolated. Plain C with no shared state: the
- * host's thread calls it for each picture. */
+/* A picture between two of the game's 3D lists, for frame rates above the game's: the polygons the
+ * newer list shares with the older one get their vertices placed between the two at `alpha` (0 the
+ * older, 1 the newer), linearly in clip space; then the list is finished like the game's, so at 1 it
+ * is exactly the newer list. Plain C, no shared state (docs/RENDERING.md, "The 3D"). */
 #ifndef KHDAYS_GFX_G3D_INTERP_H
 #define KHDAYS_GFX_G3D_INTERP_H
 

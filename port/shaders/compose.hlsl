@@ -1,19 +1,7 @@
-// Engine A's screen at N times the resolution.
-//
-// It takes the 3D raster3d.hlsl drew, finishes it as port/gpu/gpu3d.c does
-// (edge marking, then fog), and composes it with the 2D as port/gpu/gpu2d.c
-// does: for each pixel of the 2D engine, its composition record (gpu2d.h
-// KhdaysGpu2dComposition) says what the 3D there is blended with and how
-// (khdays_gpu2d_recompose); the master brightness comes last
-// (khdays_gpu2d_finish). The 2D itself is the 2D engine's own result, at its
-// own resolution.
-//
-// In widescreen the DS's 256 columns are in the middle (starting at
-// `origin_x`, negative, in DS pixels), and the records cover the whole width,
-// with the HUD's pieces moved to the sides (gpu2d.h KhdaysGpu2dWide). For a
-// frame whose records still cover only the DS's 256 columns (while the width
-// changes), the 3D beside them is composed over the backdrop colour, as the
-// 2D engine would compose BG0 over nothing else.
+// Engine A's screen at N times the resolution: the 3D raster3d.hlsl drew, finished as gpu3d.c does
+// (finish3d.hlsli: edge marking, then fog), composed with the 2D engine's own result as gpu2d.c does
+// from its composition records, the master brightness last. In widescreen the DS's 256 columns start
+// at `origin_x` (docs/RENDERING.md).
 
 [[vk::image_format("r32ui")]] RWTexture2D<uint> color3d : register(u0, space1); // raster3d's, read only here
 [[vk::image_format("r32ui")]] RWTexture2D<uint> attr3d : register(u1, space1);

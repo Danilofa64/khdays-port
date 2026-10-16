@@ -20,12 +20,9 @@ void khdays_onescreen_prepare(const KhdaysFramePackage *package, int columns, Kh
  * stands still and the situation's history is still settling (ui/situation.h). */
 int khdays_onescreen_settling(const KhdaysFramePackage *package);
 
-/* Whether `package` (already prepared) makes a new picture. With the 3D on both screens the game
- * moves engine A, the one that draws the 3D, to the other screen at every VBlank (POWCNT1 bit 15:
- * runtime/display/display.c's engine_swaps), drawing each screen's view in turn while the display
- * capture keeps the other's: one VBlank's 3D is the upper screen's, the next the lower's. The picture
- * is the upper screen's, so it is made on the VBlanks engine A shows the upper screen and the others
- * keep it (each one made had shown the lower's view every other picture). */
+/* Whether `package` (already prepared) makes a new picture. With the 3D on both screens the game moves
+ * engine A to the other screen at every VBlank, each screen's 3D in turn; the picture is the upper
+ * screen's, so it is made on the VBlanks engine A shows the upper screen and the others keep it. */
 int khdays_onescreen_makes_picture(const KhdaysFramePackage *package);
 
 #endif

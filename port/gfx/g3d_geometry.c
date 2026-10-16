@@ -1,14 +1,6 @@
-/* The port's 3D geometry (see g3d.h).
- *
- * The arithmetic is GBATEK's ("DS 3D Matrix Types", "DS 3D Polygon Light
- * Parameters", "DS 3D Polygon Definitions by Vertices", "DS 3D Tests"); where
- * GBATEK leaves the rounding open, the choice made is marked. It was moved
- * here unchanged from the software engine (gpu/gpu3d.c, which now only keeps
- * its rasterizer, the reference), except that the DS's polygon and vertex RAM
- * no longer limits a list.
- *
- * It runs for every command the game sends, so it is optimized even in Debug
- * builds (whose /RTC checks cannot be combined with optimization). */
+/* The port's 3D geometry (g3d.h): GBATEK's arithmetic, the choice marked where it leaves the rounding
+ * open; the DS's polygon and vertex RAM no longer limits a list. It runs for every command the game
+ * sends, so it is optimized even in Debug builds (whose /RTC checks cannot be combined with it). */
 #if defined(_MSC_VER) && !defined(__clang__)
 #pragma runtime_checks("", off)
 #pragma optimize("gt", on)
