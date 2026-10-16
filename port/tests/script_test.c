@@ -807,6 +807,39 @@ static void test_room_fingerprint(void)
     end_case();
 }
 
+static void test_reload(void)
+{
+    char path[600];
+    begin_case("reload");
+    mod_folder("Live", "test.live", "gameplay",
+               "local o = mod.option{ key = 'n', kind = 'number', label = 'N', min = 0, max = 10 }\n"
+               "o:set(5)\n"
+               "game.set_munny(game.munny + 1)\n");
+    start();
+    CHECK(fake_munny == 1);
+    /* the studio asks: loaded again, its main run again, its option's value kept */
+    snprintf(path, sizeof(path), "%s/saves/mods/reload.txt", root);
+    CHECK(khdays_folders_write(path, "test.live\n", 10));
+    frames(30);
+    CHECK(fake_munny == 2 && !khdays_folders_is_file(path));
+    CHECK(log_has("test.live reloaded - its files changed or it was asked to"));
+    /* its script changed: loaded again by itself */
+    SDL_Delay(20); /* a newer write time */
+    put("mods/Live/scripts/main.lua", "game.set_munny(game.munny + 10)\n");
+    frames(30);
+    CHECK(fake_munny == 12);
+    /* a stopped mod comes back once fixed */
+    put("mods/Live/scripts/main.lua", "mod.on('frame', function() error('x') end)\n");
+    frames(30);
+    frames(1);
+    CHECK(mod_by_folder("Live")->state == KHDAYS_MOD_STOPPED);
+    SDL_Delay(20);
+    put("mods/Live/scripts/main.lua", "game.set_munny(100)\n");
+    frames(30);
+    CHECK(mod_by_folder("Live")->state == KHDAYS_MOD_LOADED && fake_munny == 100);
+    end_case();
+}
+
 static void test_guest(void)
 {
     begin_case("guest");
@@ -837,6 +870,7 @@ int main(void)
     RUN(test_actions);
     RUN(test_files_and_notices);
     RUN(test_room_fingerprint);
+    RUN(test_reload);
     RUN(test_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);

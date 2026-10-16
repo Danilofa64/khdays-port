@@ -460,6 +460,15 @@ enum class S {
     mission_sum_objective,
     mission_sum_objective_note,
     mission_sum_no_objective,
+    console,
+    console_title,
+    console_all_mods,
+    console_errors_only,
+    console_reload,
+    console_reload_all,
+    console_reload_asked,
+    console_no_log,
+    console_quiet,
     count
 };
 

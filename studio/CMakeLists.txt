@@ -139,6 +139,7 @@ add_library(khdays-studio-core STATIC
     core/models/model_export.cpp
     core/models/model_files.cpp
     core/mods/mods.cpp
+    core/mods/mods_log.cpp
     core/files/paths.cpp
     core/mods/process.cpp
     core/rooms/room_change.cpp
@@ -165,6 +166,7 @@ add_executable(khdays-studio
     app/views/movie_view.cpp
     app/views/text_view.cpp
     app/views/mod_panel.cpp
+    app/views/mods_console.cpp
     app/views/model_view.cpp
     app/preview3d.cpp
     app/views/sheet_view.cpp
@@ -190,6 +192,7 @@ add_executable(khdays-studio-tests
     tests/test_sheets.cpp
     tests/test_missions.cpp
     tests/test_worlds.cpp
+    tests/test_mods_log.cpp
     app/strings.cpp
     tests/test_strings.cpp)
 target_include_directories(khdays-studio-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/app")

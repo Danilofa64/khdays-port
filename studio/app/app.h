@@ -146,6 +146,8 @@ void movie_view_leave();
 void room_export_to(App& app, const std::filesystem::path& file);
 // A mission: its scripts, step by step.
 void draw_mission_view(App& app, const Item& item);
+// The mods' console: the running game's mods' log as it grows, and their reloads.
+void draw_mods_console(App& app, bool* open);
 
 // Points a mission puts in a room (its spawners), drawn by the map view
 // over that room when it is shown.

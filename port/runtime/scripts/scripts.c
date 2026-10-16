@@ -27,9 +27,11 @@ static int count;
 static int changed; /* the mods' view is to be published again (view.h) */
 static void publish(void);
 static void tell_rooms(void);
+static void reload(KhdaysMod *m);
 static int started;
 static int tracing = -1;
 static int field_begun; /* the field was made: its first run is the mission's start */
+static unsigned looked; /* frame points since the mods' files were last looked at */
 static char *user_folder;
 static KhdaysOrder order;
 
@@ -511,6 +513,14 @@ static void take_messages(void)
                 move(m, msg.value < 0 ? -1 : 1);
             }
             break;
+        case KHDAYS_ASK_RELOAD:
+            for (int i = 0; i < count; ++i) {
+                if (msg.mod != NULL && (strcmp(msg.mod, "*") == 0 ||
+                                        (mods[i]->manifest.id != NULL && strcmp(mods[i]->manifest.id, msg.mod) == 0))) {
+                    reload(mods[i]);
+                }
+            }
+            break;
         case KHDAYS_ASK_RESUME:
             if ((m = by_id(msg.mod)) != NULL && m->state == KHDAYS_MOD_PAUSED) {
                 m->over = 0;
@@ -531,6 +541,59 @@ static void take_messages(void)
         free(msg.mod);
         free(msg.key);
     }
+}
+
+/* A mod loaded again from its files: its state closed, its manifest read again, its main script run
+ * again (its options' values and its own files are kept on disk). */
+static void reload(KhdaysMod *m)
+{
+    unload(m);
+    khdays_manifest_free(&m->manifest);
+    free(m->data);
+    m->data = NULL;
+    khdays_mod_set_state(m, KHDAYS_MOD_OFF, NULL);
+    if (!examine(m)) {
+        return;
+    }
+    if (m->enabled) {
+        load(m);
+        if (m->state == KHDAYS_MOD_LOADED) {
+            khdays_mods_log(m->manifest.id, "reloaded", NULL, 0, "its files changed or it was asked to");
+        }
+    }
+    changed = 1;
+}
+
+/* Once a second: a mod whose files changed, or one saves/mods/reload.txt names (an id a line, or "*"),
+ * is loaded again; the file is taken away once read (khdays-studio's console writes it). */
+static void look_at_files(void)
+{
+    char *path = joined(user_folder, "mods/reload.txt"), *asked = NULL;
+    if (path != NULL) {
+        asked = khdays_folders_read(path, NULL);
+        if (asked != NULL) {
+            khdays_folders_remove(path);
+        }
+        free(path);
+    }
+    for (int i = 0; i < count; ++i) {
+        KhdaysMod *m = mods[i];
+        int named = 0;
+        for (const char *line = asked; line != NULL && *line;) {
+            const char *eol = strchr(line, '\n');
+            size_t n = eol != NULL ? (size_t)(eol - line) : strlen(line);
+            while (n > 0 && (line[n - 1] == '\r' || line[n - 1] == ' ')) {
+                --n;
+            }
+            named = named || (n == 1 && line[0] == '*') ||
+                    (m->manifest.id != NULL && n == strlen(m->manifest.id) && strncmp(line, m->manifest.id, n) == 0);
+            line = eol != NULL ? eol + 1 : NULL;
+        }
+        if (m->enabled && (named || newest_file(m) != m->stamp)) {
+            reload(m);
+        }
+    }
+    free(asked);
 }
 
 /* KHDAYS_TRACE_MODS: each mod's time in its scripts per frame, every 600 frames. */
@@ -573,6 +636,10 @@ void khdays_scripts_frame(void)
         mods[i]->allowance = khdays_sandbox_frame_allowance;
     }
     take_messages();
+    if (++looked >= 30) {
+        looked = 0;
+        look_at_files();
+    }
     khdays_script_events_frame();
     if (tracing > 0) {
         trace_time();

@@ -173,6 +173,13 @@ samples (nearest, each axis repeated, mirrored or clamped as the material says),
 times the vertex colour, a light from the viewer's side on vertices with a
 normal, translucent ones blended after the rest.
 
+## The mods' console
+
+Console (beside Themes) shows the running game's mods' log (`saves/logs/mods.log` of the port's
+folder, `docs/SCRIPTING.md`): each line with its mod, kind, file and line, the mods' last states,
+filtered by mod or to errors. Reload writes the mod's id (or `*`) in `saves/mods/reload.txt`; the
+game reads it within a second and loads that mod again. The tool never writes the log.
+
 ## The generated tables
 
 `studio/tools/command_names.py` writes `core/missions/command_names.cpp` from the

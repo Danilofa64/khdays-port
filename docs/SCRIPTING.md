@@ -83,6 +83,14 @@ that takes long (a string pattern over a very long text) is only stopped once it
 
 The same lines go to the session log after `mods:`.
 
+## Trying a change while the game runs
+
+The game looks at each mod's files once a second: when `mod.ini` or a script changed, that mod is
+loaded again (its state closed, its main script run again; its options' values and its own files
+are kept). A stopped mod comes back the same way once its script is fixed. khdays-studio's Console
+(the button beside Themes) follows `mods.log` as it grows, by mod and with errors only, and its
+Reload asks the game to load a mod again (a line in `saves/mods/reload.txt`, read within a second).
+
 ## The interface, version 1
 
 Calls that change the game return `true`, or `nil` and a reason (`"visual mod"`, `"guest"` in a
