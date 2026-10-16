@@ -12,9 +12,10 @@ from MARE by default). Nothing of the collection is in the port: run this on you
 --videos: the theater's videos as the port plays them in the game's movies' place
 (data/cutscenes/cinematics/hd<id>.mp4, [video] movies = hd): hd8NN.mp4, DOP.mp4 as the opening's
 (802: the same length, 299.7 s, and hd802's subtitles) and DED.mp4 as the ending's (843: the ending
-and its staff roll, 382.4 s, which the port plays in place of the movie and the roll both; CED.mp4
-is Re:coded's). Their first 0x100 bytes are XORed with a 16-byte pattern (it shows where the movie
-header's bytes are zero); the rest is a plain MP4. A video already there is kept unless --force.
+and its staff roll, 382.4 s, which the port plays in place of the movie and the roll both; its
+subtitles are event hd844's, whose sound is DED's; CED.mp4 is Re:coded's). Their first 0x100 bytes
+are XORed with a 16-byte pattern (it shows where the movie header's bytes are zero); the rest is a
+plain MP4. A video already there is kept unless --force.
 
 --subtitles: each language's subtitles as the theater draws them over its videos, for the port to
 draw over the videos ([video] subtitles = on): data/cutscenes/cinematics/subtitles/<lang>/
@@ -54,6 +55,7 @@ SCRAMBLED = 0x100
 WORDS = ('cthd000.ctd', 'cthd050.ctd', 'cthd100.ctd', 'cthd300.ctd', 'cthd800.ctd')
 OPENING = ('DOP.mp4', '802')
 ENDING = ('DED.mp4', '843')
+ENDING_EVENT = '844'   # the ending's subtitles: no DS movie 844, its sound DED_MONO
 OUT = tt.ROOT / 'data' / 'cutscenes' / 'cinematics'
 # Measured on the theater (the maintainer's window captures, 2026-10-15: hd818's two lines "Son
 # los días que han pasado..." and a one-line subtitle, the 1998 x 1125 pictures scaled to the
@@ -157,6 +159,8 @@ def subtitles(mare: Path, lang: str) -> int:
     made = 0
     for event in sorted((root / 'event' / name / 'hd').glob('hd8*/hd8*.exia2')):
         movie = event.stem[2:]
+        if movie == ENDING_EVENT:
+            movie = ENDING[1]
         lines = schedule(event, language)
         if not lines:
             continue
