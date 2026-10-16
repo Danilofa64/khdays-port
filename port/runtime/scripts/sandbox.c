@@ -257,9 +257,12 @@ static void wrap(lua_State *L, int t, const char *name, lua_CFunction f)
 
 int khdays_sandbox_open(KhdaysMod *m)
 {
-    static const luaL_Reg libs[] = {{LUA_GNAME, luaopen_base},          {LUA_STRLIBNAME, luaopen_string},
-                                    {LUA_TABLIBNAME, luaopen_table},    {LUA_MATHLIBNAME, luaopen_math},
-                                    {LUA_UTF8LIBNAME, luaopen_utf8},    {LUA_COLIBNAME, luaopen_coroutine},
+    static const luaL_Reg libs[] = {{LUA_GNAME, luaopen_base},
+                                    {LUA_STRLIBNAME, luaopen_string},
+                                    {LUA_TABLIBNAME, luaopen_table},
+                                    {LUA_MATHLIBNAME, luaopen_math},
+                                    {LUA_UTF8LIBNAME, luaopen_utf8},
+                                    {LUA_COLIBNAME, luaopen_coroutine},
                                     {NULL, NULL}};
     static const char *const os_kept[] = {"time", "clock", "date", "difftime"};
     lua_State *L;

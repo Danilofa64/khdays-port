@@ -535,8 +535,7 @@ static void take_messages(void)
                 changed = 1;
             }
             break;
-        default:
-            break;
+        default: break;
         }
         free(msg.mod);
         free(msg.key);

@@ -131,7 +131,10 @@ static void add_to(lua_State *L, const char *table, const luaL_Reg *functions)
 
 void khdays_api_actions_open(KhdaysMod *m)
 {
-    static const luaL_Reg game[] = {{"give_item", give_item},   {"take_item", take_item}, {"play_sound", play_sound},
-                                    {"show_text", show_text},   {NULL, NULL}};
+    static const luaL_Reg game[] = {{"give_item", give_item},
+                                    {"take_item", take_item},
+                                    {"play_sound", play_sound},
+                                    {"show_text", show_text},
+                                    {NULL, NULL}};
     add_to(m->L, "game", game);
 }

@@ -83,8 +83,8 @@ void khdays_model_refresh(const KhdaysProfile *work)
 const char *khdays_model_section_title(int section)
 {
     static const int ids[KHDAYS_SECTION_COUNT] = {
-        TXT_CONTROLS, TXT_ENHANCEMENTS, TXT_STICKS_AND_CAMERA, TXT_VIDEO,
-        TXT_SOUND,    TXT_MULTIPLAYER,  TXT_LANGUAGE,          TXT_GENERAL, TXT_MODS,
+        TXT_CONTROLS,    TXT_ENHANCEMENTS, TXT_STICKS_AND_CAMERA, TXT_VIDEO, TXT_SOUND,
+        TXT_MULTIPLAYER, TXT_LANGUAGE,     TXT_GENERAL,           TXT_MODS,
     };
     return section >= 0 && section < KHDAYS_SECTION_COUNT ? khdays_text(ids[section]) : "?";
 }

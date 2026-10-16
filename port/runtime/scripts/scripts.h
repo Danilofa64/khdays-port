@@ -19,10 +19,10 @@ void khdays_scripts_start_in(const char *mods, const char *user);
 void khdays_scripts_stop(void);
 
 /* The game's routines the build joins (prepare.py's HOOKS). */
-void khdays_scripts_field_begins(void);                         /* Ov002_ConstructGameplayScene */
-void khdays_scripts_mission_start(void);                        /* Ov002_BeginMissionRun: a run starts */
+void khdays_scripts_field_begins(void);                               /* Ov002_ConstructGameplayScene */
+void khdays_scripts_mission_start(void);                              /* Ov002_BeginMissionRun: a run starts */
 void khdays_scripts_mission_end(int mission, int rank, int complete); /* Ov005_CommitMissionResults */
-void khdays_scripts_hp(void *entity, int before);              /* Ov022_ActorSetHp, at its end */
-void khdays_scripts_saved(void);                                /* the save written (runtime/core/arm7.c) */
+void khdays_scripts_hp(void *entity, int before);                     /* Ov022_ActorSetHp, at its end */
+void khdays_scripts_saved(void);                                      /* the save written (runtime/core/arm7.c) */
 
 #endif

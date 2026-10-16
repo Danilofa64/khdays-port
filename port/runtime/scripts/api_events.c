@@ -15,8 +15,9 @@
 
 #define SCENE_TITLE 1
 
-static const char *const NAMES[KHDAYS_EVENT_COUNT] = {
-    "frame", "scene", "title", "mission_start", "mission_end", "hp", "item", "munny", "menu_open", "menu_close", "save"};
+static const char *const NAMES[KHDAYS_EVENT_COUNT] = {"frame",       "scene",      "title", "mission_start",
+                                                      "mission_end", "hp",         "item",  "munny",
+                                                      "menu_open",   "menu_close", "save"};
 
 static int depth; /* scripts running now */
 static KhdaysEvent *waiting;
@@ -110,9 +111,7 @@ static void push_event(lua_State *L, const KhdaysEvent *e)
         set_int(L, "to", e->b);
         set_int(L, "argument", e->c);
         break;
-    case KHDAYS_EVENT_MISSION_START:
-        set_int(L, "mission", e->a);
-        break;
+    case KHDAYS_EVENT_MISSION_START: set_int(L, "mission", e->a); break;
     case KHDAYS_EVENT_MISSION_END:
         set_int(L, "mission", e->a);
         set_int(L, "rank", e->b);
@@ -139,11 +138,8 @@ static void push_event(lua_State *L, const KhdaysEvent *e)
         set_int(L, "change", e->b);
         break;
     case KHDAYS_EVENT_MENU_OPEN:
-    case KHDAYS_EVENT_MENU_CLOSE:
-        set_text(L, "menu", e->text);
-        break;
-    default:
-        break;
+    case KHDAYS_EVENT_MENU_CLOSE: set_text(L, "menu", e->text); break;
+    default: break;
     }
 }
 

@@ -1083,8 +1083,7 @@ static void test_settings_mods(void)
     shot("2-mods");
     to_row(KHDAYS_SET_MOD_ENABLED, -1); /* the first mod's */
     key(SDL_SCANCODE_RETURN);
-    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_ENABLE && strcmp(msg.mod, "First") == 0 &&
-          msg.value == 0);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_ENABLE && strcmp(msg.mod, "First") == 0 && msg.value == 0);
     free(msg.mod);
     key(SDL_SCANCODE_RETURN); /* on again */
     CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_ENABLE && msg.value == 1);
@@ -1113,8 +1112,7 @@ static void test_settings_mods(void)
     to_section(KHDAYS_SECTION_MODS); /* back to the top: the first mod's place */
     to_row(KHDAYS_SET_MOD_LATER, -1);
     key(SDL_SCANCODE_RETURN);
-    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_MOVE && strcmp(msg.mod, "First") == 0 &&
-          msg.value == 1);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_MOVE && strcmp(msg.mod, "First") == 0 && msg.value == 1);
     free(msg.mod);
     CHECK(!khdays_scripts_take(&msg));
     khdays_settings_draw(screen, NULL);

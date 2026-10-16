@@ -91,7 +91,8 @@ void draw_mods_console(App& app, bool* open) {
     if (console.log->last_growth() == 0) {
         ImGui::TextDisabled("%s", tr(app.language, S::console_no_log));
     } else if (now - console.log->last_growth() > 10000) {
-        ImGui::TextDisabled(tr(app.language, S::console_quiet), static_cast<int>((now - console.log->last_growth()) / 1000));
+        ImGui::TextDisabled(tr(app.language, S::console_quiet),
+                            static_cast<int>((now - console.log->last_growth()) / 1000));
     }
     ImGui::Separator();
 

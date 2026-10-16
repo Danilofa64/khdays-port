@@ -100,9 +100,7 @@ static int fit(const KhdaysOption *o, double v, double *out)
         return 0;
     }
     switch (o->kind) {
-    case KHDAYS_OPTION_TOGGLE:
-        *out = v != 0 ? 1 : 0;
-        return 1;
+    case KHDAYS_OPTION_TOGGLE: *out = v != 0 ? 1 : 0; return 1;
     case KHDAYS_OPTION_CHOICE:
         if (v != floor(v) || v < 1 || v > o->value_count) {
             return 0;
@@ -118,8 +116,7 @@ static int fit(const KhdaysOption *o, double v, double *out)
             *out = o->high;
         }
         return 1;
-    default:
-        return 0;
+    default: return 0;
     }
 }
 

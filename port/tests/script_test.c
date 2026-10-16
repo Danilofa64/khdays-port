@@ -149,9 +149,7 @@ int khdays_link_is_player(const void *entity)
     return ((const int *)entity)[2];
 }
 
-void khdays_link_trace_frame(void)
-{
-}
+void khdays_link_trace_frame(void) {}
 
 void khdays_link_trace_hp(const void *entity, int before)
 {
@@ -466,11 +464,13 @@ static void test_faults(void)
     m = mod_by_folder("D caught loop");
     CHECK(m != NULL && m->state == KHDAYS_MOD_PAUSED);
     m = mod_by_folder("E newer");
-    CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED && strcmp(m->reason, "needs mod interface 2, this port has 1") == 0);
+    CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED &&
+          strcmp(m->reason, "needs mod interface 2, this port has 1") == 0);
     m = mod_by_folder("F same id");
     CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED && strcmp(m->reason, "same id as B counter") == 0);
     m = mod_by_folder("G no main");
-    CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED && strcmp(m->reason, "main script scripts/main.lua not found") == 0);
+    CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED &&
+          strcmp(m->reason, "main script scripts/main.lua not found") == 0);
     m = mod_by_folder("H syntax");
     CHECK(m != NULL && m->state == KHDAYS_MOD_STOPPED);
     CHECK(log_has("test.broken error scripts/main.lua:2 attempt to index"));
@@ -644,7 +644,7 @@ static void test_options(void)
     reset_game();
     start();
     CHECK(khdays_link_flag(5) && !khdays_link_flag(4)); /* the kept values */
-    CHECK(khdays_link_flag(6));                          /* boost's 99 out of range: its default */
+    CHECK(khdays_link_flag(6));                         /* boost's 99 out of range: its default */
     khdays_scripts_view_free(&view);
     end_case();
 }
@@ -703,7 +703,8 @@ static void test_actions(void)
                "end)\n"
                "mod.on('scene', function(e)\n"
                "  if e.to == 2 then\n"
-               "    ok(game.show_text('Hola, \xc3\xb1" "and\xc3\xba') and says('busy', game.show_text('again')))\n"
+               "    ok(game.show_text('Hola, \xc3\xb1"
+               "and\xc3\xba') and says('busy', game.show_text('again')))\n"
                "    ok(says('not a text the game can show', game.show_text('bad\\1')))\n"
                "    print('field', n)\n"
                "  end\n"

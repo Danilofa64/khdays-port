@@ -20,7 +20,7 @@ extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
 extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
 extern void Ov002_ShowNoticeText(KhdaysRef text);
 extern void Ov022_ActorSetHp(KhdaysRef pEnt, int nValue); /* the game's pointers are references (window.h) */
-int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
+int khdays_overlay_loaded(int id);                        /* runtime/core/overlays.c */
 
 #define FIELD_SCENE 2u
 #define OV_BATTLE 22
@@ -30,12 +30,12 @@ int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 #define OBJ_FRAME 0x8u       /* gObjSystem: [2] the game's frame count */
 #define SCENE_CURRENT 0x8u   /* gSceneCtl: current id, pending +0xc, argument +0x10 */
 #define SCENE_ARGUMENT 0x10u
-#define STATE_MUNNY 0xcu     /* GameState: nMunny (Ov008_CanConfirmShopRow) */
-#define STATE_ITEMS 0x810u   /* GameState: aItemCount */
+#define STATE_MUNNY 0xcu      /* GameState: nMunny (Ov008_CanConfirmShopRow) */
+#define STATE_ITEMS 0x810u    /* GameState: aItemCount */
 #define FLAG_ITEM_OWNED 0x4db /* Ov008_AddItemCount */
-#define PLAYERS 0x020b2e7cu  /* *: the field's players, 0xc bytes each; +4 a record whose +0x20 is the actor */
+#define PLAYERS 0x020b2e7cu   /* *: the field's players, 0xc bytes each; +4 a record whose +0x20 is the actor */
 #define ACTOR_POSITION 0x48cu
-#define ENT_OWNER 0x8u       /* Ov022_ActorSetHp's entity: nOwner, nId +9, nHp +0x12, nHpMax +0x16 */
+#define ENT_OWNER 0x8u /* Ov022_ActorSetHp's entity: nOwner, nId +9, nHp +0x12, nHpMax +0x16 */
 #define ENT_ID 0x9u
 #define ENT_HP 0x12u
 #define ENT_HP_MAX 0x16u

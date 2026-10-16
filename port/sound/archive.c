@@ -163,8 +163,8 @@ static const char *name_of(const Names *names, int n)
     return n >= 0 && n < names->count ? names->name[n] : "";
 }
 
-int khdays_sound_archive_find_entry(const KhdaysSoundArchive *archive, const char *sequence_archive,
-                                    const char *entry, int *number, int *index)
+int khdays_sound_archive_find_entry(const KhdaysSoundArchive *archive, const char *sequence_archive, const char *entry,
+                                    int *number, int *index)
 {
     for (int n = 0; n < archive->sequence_archive.count; ++n) {
         if (strcmp(archive->sequence_archive.name[n], sequence_archive) != 0 || archive->entry == NULL) {

@@ -15,8 +15,8 @@
 int khdays_api_may_change(lua_State *L, int needs_state)
 {
     const KhdaysMod *m = khdays_sandbox_mod(L);
-    const char *why = m->manifest.kind == KHDAYS_MOD_VISUAL ? "visual mod"
-                      : khdays_link_guest()                 ? "guest"
+    const char *why = m->manifest.kind == KHDAYS_MOD_VISUAL     ? "visual mod"
+                      : khdays_link_guest()                     ? "guest"
                       : needs_state && khdays_link_state() == 0 ? "no game"
                                                                 : NULL;
     if (why == NULL) {

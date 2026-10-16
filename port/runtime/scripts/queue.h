@@ -16,8 +16,8 @@ enum KhdaysScriptsAsk {
 };
 
 typedef struct KhdaysScriptsMessage {
-    int ask;     /* KhdaysScriptsAsk */
-    char *mod;   /* to free() with the message */
+    int ask;   /* KhdaysScriptsAsk */
+    char *mod; /* to free() with the message */
     char *key;
     double value;
 } KhdaysScriptsMessage;

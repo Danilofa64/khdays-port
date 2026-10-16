@@ -42,6 +42,9 @@ what the installer made and asks whether the saves and settings go too (to the R
 The multiplayer server (`khdays-server.exe`) is always installed beside the game, for a player
 who wants to host their own; the game's default server is the maintainer's.
 
+The example gameplay mods (`port/mods_examples`) and their interface (`docs/SCRIPTING.md`) go to
+`mods-examples/`, outside `mods/`: none runs until the player copies its folder into `mods/`.
+
 ## The HD pieces
 
 Optional, from the player's own copies, on the HD page: **HD menus and HUD** (both KINGDOM HEARTS

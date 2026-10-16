@@ -218,6 +218,11 @@ def main() -> int:
     # the port's license and the third parties' notices, at the install's root
     for name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
         copy(ROOT / name, STAGE / name, packed)
+    # the example gameplay mods and their interface, outside mods/ so none is on until copied there
+    for source in sorted((ROOT / "port" / "mods_examples").rglob("*")):
+        if source.is_file():
+            copy(source, STAGE / "mods-examples" / source.relative_to(ROOT / "port" / "mods_examples"), packed)
+    copy(ROOT / "docs" / "SCRIPTING.md", STAGE / "mods-examples" / "SCRIPTING.md", packed)
     for source in sorted(HERE.iterdir()):
         if source.is_file() and source.suffix in (".py", ".json", ".txt", ".ini") and source.name not in INSTALLER_KEEP:
             copy(source, STAGE / "installer" / source.name, packed)

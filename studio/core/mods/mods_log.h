@@ -12,7 +12,7 @@
 namespace studio {
 
 struct ModLogLine {
-    double seconds = 0;  // since the game started its log
+    double seconds = 0;                  // since the game started its log
     std::string mod, kind, where, text;  // kind: loaded, refused, print, error, stopped, paused, resumed, reloaded
 };
 

@@ -2215,9 +2215,9 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         khdays_skin_screen(ImGui::GetBackgroundDrawList(), screen);
         // the faded picture of the section shown (the HD menu's own five, the port's choice of one
         // for each of its sections: KHDAYS_SECTION_*)
-        static const char *const emblems[KHDAYS_SECTION_COUNT] = {
-            "emblem_keyboard", "emblem_pad", "emblem_pad",  "emblem_screen", "emblem_sound",
-            "emblem_pad",      "emblem_film", "emblem_screen", "emblem_screen"};
+        static const char *const emblems[KHDAYS_SECTION_COUNT] = {"emblem_keyboard", "emblem_pad",    "emblem_pad",
+                                                                  "emblem_screen",   "emblem_sound",  "emblem_pad",
+                                                                  "emblem_film",     "emblem_screen", "emblem_screen"};
         if (m.section >= 0 && m.section < KHDAYS_SECTION_COUNT) {
             khdays_skin_place(ImGui::GetBackgroundDrawList(), emblems[m.section], screen);
         }
@@ -2402,8 +2402,8 @@ int khdays_settings_row_info(int row, int *id, int *action)
     }
     *id = m.rows[row].id;
     // a binding's action, a mod option's place among its mod's
-    *action = m.rows[row].kind == KHDAYS_ROW_BINDING || m.rows[row].id == KHDAYS_SET_MOD_OPTION ? m.rows[row].action
-                                                                                                : -1;
+    *action =
+        m.rows[row].kind == KHDAYS_ROW_BINDING || m.rows[row].id == KHDAYS_SET_MOD_OPTION ? m.rows[row].action : -1;
     return 1;
 }
 

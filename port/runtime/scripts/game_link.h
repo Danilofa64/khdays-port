@@ -3,8 +3,8 @@
 #ifndef KHDAYS_SCRIPTS_GAME_LINK_H
 #define KHDAYS_SCRIPTS_GAME_LINK_H
 
-#define KHDAYS_LINK_ITEMS 0x8d0   /* gGameState->aItemCount's entries */
-#define KHDAYS_LINK_FLAGS 0x4000  /* flags from *gGameState + 0x10 up to aItemCount at +0x810 */
+#define KHDAYS_LINK_ITEMS 0x8d0  /* gGameState->aItemCount's entries */
+#define KHDAYS_LINK_FLAGS 0x4000 /* flags from *gGameState + 0x10 up to aItemCount at +0x810 */
 #define KHDAYS_LINK_MUNNY_MAX 999999
 #define KHDAYS_LINK_GIVEN_UP 0x2087 /* set by Ov002_RetireSubFlow on giving up (runtime/menus/retry.c) */
 

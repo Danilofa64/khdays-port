@@ -622,6 +622,17 @@ and the log says why. Made from a copy you own, for example:
 ffmpeg -i source.mp4 -c:v mpeg1video -q:v 2 -c:a mp2 -b:a 256k -f mpeg mods/MyMod/movies/802.mpg
 ```
 
+## Mods that change the game
+
+Besides content, a mod can carry Lua scripts that change how the game plays: they hear what
+happens (each frame, scenes, missions, HP, items, munny, the menus, saving), read and change the
+game's state by name (munny, items, flags, the player's HP and position), add their own options
+to the settings menu's Mods page, and ask the game to act (items, sounds, the field's notice). Each
+runs in its own sandbox: an error or an endless loop stops that mod only, and scripts reach no file
+outside their own folder. `docs/SCRIPTING.md` describes it all; `port/mods_examples/` (installed
+as `mods-examples/`) has examples to copy into `mods/`; khdays-studio's Console shows what the
+mods print and reloads them while the game runs.
+
 ## Multiplayer
 
 Mission Mode's multiplayer works over the PC's network: the game's own
@@ -713,7 +724,7 @@ the connection error -- the port boots it again in the same window.
 | Path | What it is |
 |---|---|
 | `port/` | The port. `build.py` builds it; `tools/prepare.py` turns the decompilation's C into the game's PC sources |
-| `port/runtime/` | The game's side: what stands in for the DS while the game runs. `core/` memory, I/O registers, events, clock, ARM7, threads, overlays, ROM and files, logs; `input/` the controls as the game reads them; `display/` each frame handed to the window; `sound/` the game's sound driver; `net/` the multiplayer session; `menus/` the port's menus over the game's; `movies/` the game's movies and their HD or mod replacements; `mods/` textures, models and 2D sheets mods replace |
+| `port/runtime/` | The game's side: what stands in for the DS while the game runs. `core/` memory, I/O registers, events, clock, ARM7, threads, overlays, ROM and files, logs; `input/` the controls as the game reads them; `display/` each frame handed to the window; `sound/` the game's sound driver; `net/` the multiplayer session; `menus/` the port's menus over the game's; `movies/` the game's movies and their HD or mod replacements; `mods/` textures, models and 2D sheets mods replace; `scripts/` gameplay mods' Lua scripts, each in its own sandbox |
 | `port/host/` | The PC's side. `app/` window, devices, profile, audio out; `render/` the graphics card and the one-screen picture; `screens/` the port's own screens; `settings/` the settings menu; `net/` sockets; `movies/` video decoding |
 | `port/hal/` | The NitroSDK's hardware layer, in C |
 | `port/gfx/`, `port/gpu/` | The 2D's description and composition and the 3D's geometry; the DS's graphics engines in software, the reference the picture is checked against |

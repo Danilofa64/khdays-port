@@ -138,7 +138,7 @@ int khdays_manifest_parse(const char *text, size_t size, KhdaysManifest *out, ch
         }
     }
     {
-        const char *bad = !id_valid(out->id)                         ? "id"
+        const char *bad = !id_valid(out->id)                           ? "id"
                           : out->name == NULL || *out->name == 0       ? "name"
                           : out->version == NULL || *out->version == 0 ? "version"
                           : kind == NULL                               ? "kind"

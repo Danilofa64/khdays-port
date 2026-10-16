@@ -647,7 +647,7 @@ set_tests_properties(khdays-render PROPERTIES SKIP_RETURN_CODE 77)
 
 # The fuzzers: libFuzzer through MSVC, with AddressSanitizer, over a reader of
 # what arrives from outside (the server's datagrams, a router's answers, the
-# game's session); not in Debug (MSVC's AddressSanitizer does not combine with
+# game's session, a mod's mod.ini and the load order); not in Debug (MSVC's AddressSanitizer does not combine with
 # its run-time checks). Each replays its kept inputs (port/fuzz/<name>/)
 # and fuzzes 15 s in the test suite; port/tools/fuzz.py runs them longer.
 set(KHDAYS_FUZZ_SECONDS 15)
@@ -707,6 +707,7 @@ khdays_fuzz_target(session fuzz/fuzz_session.c host/net/net_stub.c runtime/core/
 if(TARGET khdays-fuzz-session)
     target_link_libraries(khdays-fuzz-session PRIVATE SDL3::SDL3)
 endif()
+khdays_fuzz_target(mods fuzz/fuzz_mods.c runtime/scripts/manifest.c runtime/scripts/order.c runtime/core/sha256.c)
 
 # The static analysis (port/tools/analyze.py, in the Release tree's tests): the port's own sources of
 # each target compiled again with /analyze and their own flags, not linked, built only when asked;
