@@ -1,12 +1,6 @@
-/* Renders a DeSmuME savestate's display state (extracted by
- * port/tools/savestate_gpu.py) with the native 2D engines and compares
- * each engine with the framebuffer DeSmuME showed.
- *
- *   khdays-gpu-test STATE.bin OUT.ppm
- *
- * OUT.ppm: the rendered upper and lower screens, the upper one being engine A
- * or B according to which matches DeSmuME's upper framebuffer better (the
- * savestate does not keep POWCNT1's swap bit). */
+/* khdays-gpu-test STATE.bin OUT.ppm: a DeSmuME savestate's display state (port/tools/savestate_gpu.py)
+ * rendered with the native 2D engines and compared with the framebuffer DeSmuME showed; the upper screen
+ * is engine A or B by which matches better (the savestate does not keep POWCNT1's swap bit). */
 #define _CRT_SECURE_NO_WARNINGS
 #include "../gpu/gpu2d.h"
 

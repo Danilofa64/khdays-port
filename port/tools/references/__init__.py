@@ -1,10 +1,6 @@
-"""The rewrite of the game's C: every pointer a 4-byte reference, the DS
-address it had (contracts in its).
-
-- preprocess: a source preprocessed as the build compiles it
-- parse: the parser, with what mwcc accepts
-- types: the type pass -- every expression's C type
-- emit: the C again, every pointer a reference
+"""The rewrite of the game's C: every pointer a 4-byte reference, the DS address it had. preprocess (a
+source as the build compiles it), parse (with what mwcc accepts), types (every expression's C type),
+emit (the C again); build.py runs them over the game (docs/BUILD.md, "The references").
 """
 from __future__ import annotations
 

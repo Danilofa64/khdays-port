@@ -1,8 +1,5 @@
-/* The one-screen picture on the CPU: the compositions' places by the port's rule (its units, the
- * HUD's factor, `fixed`, the corners, `cover`, the common rule), the port's own file
- * (compositions/port_days.txt), the pass's steps on fixed texels (gfx/onescreen.h), and the upper
- * screen's 2D apart from its 3D (gfx/compose.h kd_split) giving today's pixel when nothing moves.
- *
+/* The one-screen picture on the CPU: the compositions' places by the port's rule, the port's own file,
+ * the pass's steps on fixed texels, and kd_split giving today's pixel when nothing moves.
  *   ctest --test-dir build/port/obj-x64 -R khdays-onescreen --output-on-failure */
 #include "../gfx/describe.h"
 #include "../ui/composition.h"
@@ -125,12 +122,8 @@ static void check_place(const KhdaysShape *s, float x1, float y1, float w, float
     CHECK(near);
 }
 
-/* The test's compositions (khdays_compositions_port above) at 4:3, 16:10 and 16:9 and at HUD
- * sizes 1, 4 and 8: a length N is N x the HUD's factor picture dots, fixed(N) N; a scale makes a
- * DS dot that many picture dots; a corner's shape touches its edges, moved by the margins; `cover`
- * as large as covers the picture; the 3D shapes the same. `menu` and a situation no section names:
- * the screens that show something, whole, at the DS's size. The conditions `wide` and `narrow`
- * by the picture's columns. */
+/* The test's compositions at 4:3, 16:10 and 16:9 and HUD sizes 1, 4 and 8: lengths, `fixed`, scales,
+ * corners and margins, `cover`, the 3D shapes, `menu` and the common rule, `wide` and `narrow`. */
 static void test_places(void)
 {
     static const int columns[] = {256, 308, 342};

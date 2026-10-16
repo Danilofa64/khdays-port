@@ -1,24 +1,7 @@
-/* The multiplayer session's delivery: two processes on
- * this machine -- the test starts itself again as the host -- find each
- * other's room on the local group, join, and the guest's records reach the
- * host once each, in order, with 30% of the datagrams each way dropped
- * (KHDAYS_NET_LOSS). The host joins the records that wait together
- * (khdays_net_join_records), never past its limit. A datagram that is not
- * the port's is ignored.
- *
- * Then the controls: the guest sends the
- * game's control packets faster than the host's battle ticks, the host
- * ticking (sending on the game's port) every other frame: no hand-over
- * holds two, every command and every change of the buttons arrives, in
- * order; repeats of a held state may be dropped.
- *
- * Then the controls at the battle's own pace (a multiplayer battle with
- * enemies): the guest sends one a tick of the host's, and the host's game
- * sends more than once a tick -- its state each tick (gate 0) and, every
- * frame, a message of its reliable channel (gate 11) -- as it does with
- * enemies about. No control may wait for the game longer than half a second:
- * a store that took each send for a tick ran dry on every extra one and grew
- * without end, the guest's controls a minute late. */
+/* The multiplayer session's delivery between two processes on this machine (the test starts itself
+ * again as the host): rooms found, a join, records delivered once and in order with 30% of datagrams
+ * dropped; then the controls, faster than the host's ticks and at the battle's own pace, none waiting
+ * longer than half a second (docs/BUILD.md, "The port's tests"). */
 #include "../runtime/net/net_session.h"
 #include "../host/net/net.h"
 

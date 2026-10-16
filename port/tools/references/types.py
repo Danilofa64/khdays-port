@@ -1,14 +1,6 @@
-"""The type pass: every expression of a preprocessed translation unit given
-its C type, for the emission (emit.py).
-
-What it models is what the game's C uses: file, function and block scopes;
-typedefs; struct, union and enum tags (anonymous members included);
-prototypes, unprototyped and implicit declarations; arrays, functions and
-their decay; pointer arithmetic; the conditional operator's pointer rules;
-string and compound literals; initializers. Arithmetic types are kept only
-as far as the rewrite needs them (an arithmetic value is never a pointer).
-An expression it cannot type stops it (TypeFailure) naming the file, the line
-and the construct: nothing is rewritten by a guess.
+"""The type pass: every expression of a preprocessed translation unit given its C type, for the emission.
+It models what the game's C uses; an expression it cannot type stops it (TypeFailure) naming the file,
+the line and the construct: nothing is rewritten by a guess.
 """
 from __future__ import annotations
 

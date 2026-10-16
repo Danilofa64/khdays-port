@@ -1,9 +1,6 @@
-/* The HD video decoder (movie_hd_win.c) on one of the player's
- * files. The file is opened and played to its end at its own pace, with its
- * sound, taking every picture as a 60 Hz display would; the status must say
- * it ended within a second of the file's length. When the file is not there
- * the test is skipped (and passes): the videos belong to the player, never to
- * the repository. */
+/* The HD video decoder (movie_hd_win.c) on one of the player's files, played to its end at its own pace
+ * with its sound, every picture taken as a 60 Hz display would: it must end within a second of the
+ * file's length. Without the file the test is skipped (the videos are the player's, never the repo's). */
 #include "../host/movies/movie_hd.h"
 
 #include <SDL3/SDL.h>

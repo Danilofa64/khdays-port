@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
-"""The static analysis of the port's own sources.
-
+"""The static analysis of the port's own sources: builds the khdays-analyze target (/analyze, their real
+flags, not linked) and lists every finding; exit 0 only with none. A finding that is no defect is
+suppressed at its line: `#pragma warning(suppress: 6387) /* why */` (docs/BUILD.md, "The tools").
     python port/tools/analyze.py [--tree build/port/obj-release-x64]
-
-Builds the khdays-analyze target of a configured tree -- the port's own
-sources (runtime, host, hal, server, ui, gfx, gpu, sound; not the
-decompilation's rewritten files) compiled with MSVC's /analyze and their real
-flags, objects not linked -- and lists every analysis finding (C6xxx,
-C26xxx, C28xxx, C33xxx). Exit 0 only with none. A finding that is no defect
-is suppressed at its line, with the reason beside it:
-
-    #pragma warning(suppress: 6387) /* why it is not a defect */
 """
 from __future__ import annotations
 

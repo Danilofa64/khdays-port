@@ -1,11 +1,6 @@
-/* khdays-save-test: the save written so that a crash
- * cannot corrupt it (files.h, khdays_host_write_file_atomic). A child process
- * writes two different 64 KB images in turn, as fast as it can; it is
- * stopped (TerminateProcess) at a random moment, 100 times. After every stop
- * the file must be one of the two images, whole.
- *
- *   khdays-save-test [FOLDER]     (the system's temporary folder by default)
- *   khdays-save-test --child PATH (the writer) */
+/* khdays-save-test [FOLDER]: the save written so a crash cannot corrupt it (khdays_host_write_file_atomic):
+ * a child (--child PATH) writes two 64 KB images in turn and is stopped at a random moment, 100 times;
+ * the file must be one of the two, whole. */
 #include "../host/app/files.h"
 
 #include <stdio.h>

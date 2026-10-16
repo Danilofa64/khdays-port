@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
-"""Extract a DeSmuME savestate's display state for the native renderer's test.
-
+"""Extract a DeSmuME savestate's display state for the native renderer's test (savestate_test.c): the
+ARM9 I/O registers, palettes, OAM, VRAM and both framebuffers (the .dst format: docs/BUILD.md).
   python port/tools/savestate_gpu.py STATE.dst OUT.bin
-
-A .dst file is "DeSmuME SState\\0\\0", the uncompressed size at 0x18 and a zlib
-stream at 0x20. Inside, chunks are (u32 id, u32 size, data); the fields of a
-chunk are (tag[4], u32 size, u32 count, data). Chunk 4 (memory) holds 9REG
-(the ARM9 I/O registers, 8 KB), VMEM (palettes), OAMS (OAM) and LCDM (all VRAM
-banks in LCDC order); chunk 7 (the 2D display) starts with a version word and
-the two 256x192 BGR555 framebuffers, upper screen first.
-
-OUT.bin: io (0x2000) | palette (0x800) | oam (0x800) | vram (0xa4000) |
-framebuffers (2 x 256 x 192 x u16).
 """
 from __future__ import annotations
 

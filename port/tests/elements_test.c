@@ -1,8 +1,5 @@
-/* The port's screen elements in the composition,
- * checked on the CPU. Fixed screens are built here (a
- * BG layer with a tile, and the elements that stand in for it) and composed
- * by port/gfx/compose.h the same way the game's frames are.
- *
+/* The port's screen elements in the composition, on the CPU: fixed screens (a BG layer with a tile, and
+ * the elements standing in for it) composed by port/gfx/compose.h as the game's frames are.
  *   ctest --test-dir build/port/obj-x64 -R khdays-elements --output-on-failure */
 #include "../gfx/describe.h"
 

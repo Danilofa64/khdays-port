@@ -1,24 +1,7 @@
-"""The rewrite over the whole game's side, for prepare.py.
-
-Two passes over every source, across processes:
-
-1. what each defines with external linkage (functions, objects): the game's
-   side is what these files define, the port's everything else;
-2. the emission, with that index and the decomp's symbols (the objects at DS
-   addresses, the functions' DS addresses): each file's rewritten C, and what
-   it places in the data area and the functions it references with no DS
-   address.
-
-Then the numbers: the data area laid out from DATA_AREA (each object at its
-DS layout's size and alignment, checked by the C's _Static_assert), the
-function references with no DS address from FUNCTION_REFERENCES, all in
-build/port/gen-x64/khdays_data_area.h.
-
-What a source gave is kept (gen/references/): its preprocessed text, the
-files that text came from (its line markers), its definitions and its
-emission's results. A source whose files are unchanged is not preprocessed
-again, and not emitted again unless the program's index or the rewrite's own
-code changed.
+"""The rewrite over the whole game's side, for prepare.py: what each file defines, then each file's
+emission with that index and the decomp's symbols, across processes; then the data area and the
+function references' numbers in khdays_data_area.h. A source's results are kept in gen/references/ and
+redone only when its files, the index or the rewrite's code changed (docs/BUILD.md, "The tools").
 """
 from __future__ import annotations
 

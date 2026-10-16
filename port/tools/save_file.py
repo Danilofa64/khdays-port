@@ -1,22 +1,8 @@
 #!/usr/bin/env python3
-"""The game's save file (saves/khdays.sav: the backup chip's 64 KB), read the
-way the game signs it.
-
+"""The game's save file (saves/khdays.sav: the backup chip's 64 KB), read the way the game signs it:
+with one file, each slot copy signed and whether its digest still matches; with two, whether they are the
+same save (exit 0) but for the digests and the play-time word (docs/BUILD.md, "The tools").
     python port/tools/save_file.py A.sav [B.sav]
-
-With one file: each slot copy the game signed and whether its digest still
-matches its data. With two: whether they are the same save -- every byte
-equal except, in copies both sign, the digest and the one word two saves of
-the same play differ in (below) -- exit 0 if so, 1 if not.
-
-What the C says (the camp's Ov008/Ov009/Ov025_CommitSaveToSlot): a slot `s`
-is written as two copies of 0x2018 bytes at (2 * s) * 0x2018 + 0x20 and the
-0x2018 after it; each begins with the magic 0xc8f592a6, then its SHA-1
-(MATH_CalcSHA1 of the 0x1cac bytes from +0x18) at +4. Before signing, the
-game adds the time since the save was loaded (OS_GetTick, the PC's clock
-natively) to a counter of its state. Two saves of one script differ, as
-measured (the save walk twice), in each copy's digest and in the
-word at +0x1b0 -- taken to be that counter; not traced further.
 """
 import hashlib
 import struct

@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
-"""Find calls the decompilation declares differently from the definition.
-
-On the ARM9 a call passes its first four arguments in r0-r3 and returns in r0,
-so a declaration with fewer parameters than the function really takes still
-"works": the callee finds whatever the registers held -- often the result of
-the previous call, which the ROM's code relies on. Natively (cdecl) the callee
-reads stack garbage instead. This lists every function whose declarations in
-other files take fewer parameters than its definition, or declare a value its
-definition does not return (the ARM caller reads a leftover r0).
-
+"""Find calls the decompilation declares differently from the definition: declarations with fewer
+parameters than the definition takes, or a value it does not return -- harmless on the ARM9's
+registers, stack garbage natively (docs/BUILD.md, "The ABI repairs").
 Usage: python port/tools/check_prototypes.py [--out build/port/gen-x64]
 """
 from __future__ import annotations

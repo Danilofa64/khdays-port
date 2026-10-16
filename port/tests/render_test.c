@@ -1,46 +1,8 @@
-/* khdays-render-test: recorded frame packages, checked against the pictures
- * the game showed, and drawn again on the graphics card.
- *
- *   KHDAYS_RECORD_FRAMES=saves/frames  (with KHDAYS_SHOTS, or a windowed run)
- *   khdays-render-test [DIR]           (default: saves/frames)
- *
- * A recording is what port/runtime/display/display.c hands the host for a frame
- * (frame_package.h), written as it is in memory after a 16-byte header. It
- * holds the player's game data -- the textures in VRAM -- so recordings live
- * in saves/frames (ignored by git), never in the repository. Without any the
- * test says so and is skipped (exit 77, ctest SKIP_RETURN_CODE).
- *
- * 1. Each package must be whole, and where it holds the 3D and the
- *    composition records, engine A composed again from them must be the
- *    picture the 2D engine drew, pixel for pixel (a failure otherwise).
- * 2. With a graphics card, engine A is drawn by gpu_raster3d.c at 1x, 2x and
- *    4x and compared with the software's picture. Where the 3D cannot show
- *    (the composition record says so) every one of the N x N target pixels a
- *    DS pixel becomes must be the 2D engine's pixel exactly, at every scale.
- *    Where the 3D takes part the two rasterizers cannot agree everywhere at
- *    N x -- polygon edges and texel boundaries fall between the DS's pixels --
- *    so each DS pixel is compared with the average of its N x N, and the test
- *    prints how far apart they are: the share of pixels that differ, and the
- *    mean and largest difference of a colour channel. It fails beyond what
- *    was observed when the GPU path was written: at
- *    1x at most 0.01% of the pixels may differ; at N x a channel may differ
- *    by at most MAX_MEAN_AT_NX on average. Without a graphics card this part
- *    is skipped.
- *
- * 3. Packages of frames close together (4 VBlanks at most) whose 3D lists
- *    differ are put through the pictures between lists (gfx/g3d_interp.h) at
- *    half way: how many polygons are matched, and how many of those moved
- *    more than a quarter of the view between the lists, by the draw they
- *    came from: a polygon matched with another is drawn as a shard between
- *    them -- a whole draw's worth jumping is that; a part of one is a fast
- *    move near the eye. Said, not failed.
- *
- *   KHDAYS_RENDER_OUT=DIR  also writes each frame the GPU drew, as
- *                          DIR/frame_NNNNN_<N>x.bmp, to look at.
- *
- * A package recorded wider than the DS's view (KHDAYS_WIDE) is drawn as wide,
- * and the test says how many of its polygons lie wholly beside the DS's 256
- * columns: geometry the game sends beyond what its 4:3 view shows. */
+/* khdays-render-test [DIR]: recorded frame packages (KHDAYS_RECORD_FRAMES=saves/frames), checked
+ * against the pictures the game showed and drawn again on the graphics card at 1x, 2x and 4x, then put
+ * through the 3D interpolation; KHDAYS_RENDER_OUT=DIR writes what the GPU drew. Recordings hold the
+ * player's data, so they live in saves/frames; without any the test is skipped (exit 77). What each
+ * part checks and its limits: docs/BUILD.md, "The port's tests". */
 #include "../host/render/gpu_raster3d.h"
 #include "../gfx/g3d_interp.h"
 #include "../runtime/display/frame_package.h"

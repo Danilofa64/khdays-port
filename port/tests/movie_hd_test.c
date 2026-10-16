@@ -1,9 +1,6 @@
-/* How an HD movie runs (runtime/movies/movie_hd.c),
- * checked against a scripted game and a scripted video: the ids taken from
- * the game's paths, the lookup in data/cutscenes/cinematics, every
- * transition, the buttons the game is given, and the clock's pause reasons
- * (with the real runtime/core/clock.c). It runs in a folder of its own, which it
- * creates and leaves behind. */
+/* How an HD movie runs (runtime/movies/movie_hd.c), against a scripted game and video: the ids, the
+ * lookup, every transition, the buttons the game is given and the clock's pause reasons (with the real
+ * runtime/core/clock.c). It runs in a folder of its own, which it creates and leaves behind. */
 #include "../host/movies/movie_hd.h"
 #include "../host/app/host.h"
 #include "../host/app/sound_output.h"

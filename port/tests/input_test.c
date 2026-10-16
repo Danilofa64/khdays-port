@@ -1,12 +1,6 @@
-/* Tests for the input layer: the control profile and its presets, the
- * bindings, the devices (with SDL's virtual gamepads, no window needed), the
- * settings menu, and the pure parts of the enhancements (analog movement's
- * arithmetic, the command-menu sequencer).
- *
- *   ctest --test-dir build/port/obj-x64 --output-on-failure
- *
- * Each CHECK that fails prints where and what; the program returns non-zero
- * if any did. */
+/* Tests for the input layer: the control profile and its presets, the bindings, the devices (SDL's
+ * virtual gamepads, no window), the settings menu, and the enhancements' pure parts. Each failing CHECK
+ * prints where and what; the program returns non-zero if any did. */
 #include "../host/app/bindings.h"
 #include "../host/app/devices.h"
 #include "../host/app/profile.h"

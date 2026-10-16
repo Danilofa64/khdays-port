@@ -266,3 +266,176 @@ MENU_RIGHT`); `FRAME@X,Y` and `FRAME@-` touch and lift; `FRAME~X,Y` and
 `FRAME^X,Y` hold the movement and camera sticks (-32767..32767, y up; `0,0` lets
 go). After `sN` the frames count from scene N's first frame, after `uName` from
 the update `Name`'s first run, and wait for it.
+
+## The port's tests
+
+`ctest --test-dir build/port/obj-release-x64` runs them (`port/tests`, the
+installer's tests, the fuzzers for 15 seconds each, the server under a flood,
+and in the Release tree the static analysis). A test that needs the player's
+data (recorded frames, the ARM7 binary, a video) is skipped without it: those
+never belong in the repository.
+
+- `elements_test.c`: the port's screen elements in the composition, on the
+  CPU: fixed screens (a BG layer with a tile, and elements standing in for it)
+  composed by `gfx/compose.h` as the game's frames are.
+- `input_test.c`: the control profile and its presets, the bindings, the
+  devices (SDL's virtual gamepads, no window), the settings menu, and the pure
+  parts of the enhancements (analog movement's arithmetic, the command-menu
+  sequencer). Each failing CHECK prints where and what.
+- `movie_hd_test.c`: the HD movies' course (`runtime/movies/movie_hd.c`)
+  against a scripted game and video: the ids from the game's paths, the lookup,
+  every transition, the buttons the game is given, the clock's pause reasons.
+- `movie_hd_decode_test.c`: the HD video decoder on one of the player's files,
+  played to its end at its own pace with its sound, every picture taken as a
+  60 Hz display would; the status must say it ended within a second of the
+  file's length.
+- `net_test.c`: the session's delivery between two processes on this machine
+  (the test starts itself again as the host): they find each other's room,
+  join, and the guest's records reach the host once each, in order, with 30% of
+  the datagrams each way dropped (`KHDAYS_NET_LOSS`); waiting records are
+  joined, never past the limit; a datagram that is not the port's is ignored.
+  Then the controls: sent faster than the host's battle ticks, no hand-over
+  holds two, every command and change of the buttons arrives in order; and at
+  the battle's own pace, with the host's game sending more than once a tick
+  (its state each tick and a reliable message every frame, as with enemies
+  about), no control waits for the game longer than half a second (a store
+  that took each send for a tick once ran dry on every extra one and left the
+  guest's controls a minute late).
+- `onescreen_test.c`: the one-screen picture on the CPU: the compositions'
+  places by the port's rule at 4:3, 16:10 and 16:9 and HUD sizes 1, 4 and 8
+  (lengths, `fixed`, scales, corners and margins, `cover`, the 3D shapes, the
+  common rule, `wide`/`narrow`), the port's own file, the pass's steps on fixed
+  texels, and `kd_split` giving today's pixel when nothing moves.
+- `render_test.c`: recorded frame packages (`KHDAYS_RECORD_FRAMES=saves/frames`
+  with `KHDAYS_SHOTS` or a windowed run; `khdays-render-test [DIR]`), each a
+  package as `display.c` hands it over after a 16-byte header. 1: each must be
+  whole, and engine A composed again from its 3D and composition records must
+  be the 2D engine's picture, pixel for pixel. 2: with a graphics card, engine A
+  is drawn by `gpu_raster3d.c` at 1x, 2x and 4x and compared with the
+  software's: where the 3D cannot show, every target pixel must be the 2D
+  engine's exactly; where it takes part each DS pixel is compared with the
+  average of its N x N (at 1x at most 0.01% of the pixels may differ; at N x a
+  channel by at most `MAX_MEAN_AT_NX` on average). 3: packages close together
+  whose lists differ are put through the interpolation at half way, and the
+  matched polygons that moved more than a quarter of the view are reported by
+  draw (said, not failed). `KHDAYS_RENDER_OUT=DIR` writes each frame the GPU
+  drew. A package recorded wide is drawn as wide, with its polygons wholly
+  beside the DS's columns counted.
+- `save_test.c`: the save written so a crash cannot corrupt it: a child process
+  writes two 64 KB images in turn as fast as it can and is stopped at a random
+  moment, 100 times; the file must be one of the two, whole.
+- `saveslots_test.c`: the save files beyond the DS's three: SHA-1 on its known
+  answers, what each file holds as the game's read tells it, the chip's view and
+  the port's, a save into a port's file committed and read back, the file saved
+  last.
+- `savestate_test.c` (`khdays-gpu-test STATE.bin OUT.ppm`): a DeSmuME
+  savestate's display state (from `savestate_gpu.py`) rendered with the native
+  2D engines and compared with the framebuffer DeSmuME showed; the upper screen
+  is engine A or B by which matches better (the savestate does not keep
+  POWCNT1's swap bit).
+- `sound_test.c`: the sound without the game. The channels and the DS's mixer
+  must give, sample for sample, a fixed program's output as the code gave it
+  before it moved (a hash); the PC's mixer is within one 10-bit step of it but
+  where the DS clips; the volumes scale as they should; the sound bridge never
+  runs the driver past the clock and every reply reaches the FIFO in order; the
+  stream reader gives what a ring filled in time would hold (PCM16 stereo
+  looped, PCM8 mono, IMA-ADPCM started and looped inside a block); the native
+  driver answers a movie-like command list with the right registers, shared
+  work and alarm at the right cycle (needs the ARM7 binary); a replacement's
+  loop is read from each source, a broken file refused, and a dumped original
+  put back plays sample for sample like the original; the offline render ends a
+  one-note sequence when its note dies and finds a loop as long as its jump.
+
+## The tools
+
+In `port/tools` (Python 3.11+ unless said):
+
+- `prepare.py`, `abi_repair.py`, `registers.py`, `references/`: the build's
+  preparation (above). `references/` runs in two passes across processes: what
+  each file defines with external linkage (the game's side is what these define,
+  the port's everything else), then the emission with that index and the
+  decomp's symbols; then the data area is laid out (each object at its DS
+  layout's size and alignment: pointers 4 bytes, members aligned to at most 4,
+  bit-fields as MSVC packs them, every size checked by a `_Static_assert`) and
+  written with the function references to `khdays_data_area.h`. A source's
+  results are kept in `gen/references/` and redone only when its files, the
+  index or the rewrite's code changed. Sources are preprocessed with MSVC's
+  preprocessor as the build compiles them, MSVC's dialect mapped to ISO C for
+  the parser; the type pass models what the game's C uses and stops, naming
+  the file and line, on anything it cannot type (`TypeFailure`): nothing is
+  rewritten by a guess. `references_test.py` checks each form it handles.
+- `build_shaders.py [name ...]`: compiles `port/shaders/<name>.hlsl`'s stages
+  (`vs_main`, `ps_main`, `cs_main`) to DXIL (`dxc -T <stage>_6_0`), SPIR-V
+  (`dxc -spirv`) and MSL (`spirv-cross --msl`), written as C arrays to
+  `port/host/render/generated/<name>_<stage>.h`. The build never runs it (the
+  headers are committed); run it after changing a shader, with the Vulkan SDK
+  installed. SDL3's GPU resource layout: vertex shaders' textures and samplers
+  in space0, uniforms in space1; pixel shaders' in space2 and space3 (for
+  SPIR-V a texture and its sampler one combined image sampler:
+  `[[vk::combinedImageSampler]]` and the same `[[vk::binding(n, set)]]`);
+  compute shaders' read-only textures then buffers in t registers of space0,
+  read-write ones in u registers of space1, uniforms in b registers of space2
+  (a storage image needs `[[vk::image_format(...)]]`).
+- `analyze.py [--tree ...]`: builds the `khdays-analyze` target -- the port's
+  own sources (not the decompilation's, not the third parties') compiled again
+  with MSVC's `/analyze` and their real flags, not linked -- and lists every
+  finding (C6xxx, C26xxx, C28xxx, C33xxx); exit 0 only with none. A finding
+  that is no defect is suppressed at its line with the reason:
+  `#pragma warning(suppress: 6387) /* why */`.
+- `fuzz.py [--tree ...] [--target NAME] [--minutes N] [--jobs N]`: runs a fuzzer
+  from its kept inputs in `port/fuzz/<name>/` for N minutes on N processes, from
+  a scratch folder (libFuzzer restarts its processes with an unquoted command
+  line, and the repository's path has spaces). A crash's or hang's input is
+  copied back to `port/fuzz/<name>/`; a run that ends well before its time
+  fails.
+- `regress.py`: the walks (above); `save_file.py A.sav [B.sav]` reads a save the
+  way the game signs it: a slot s is two copies of 0x2018 bytes at
+  (2 x s) x 0x2018 + 0x20, each the magic 0xc8f592a6 then its SHA-1 (of the
+  0x1cac bytes from +0x18) at +4. With one file it says which copies are signed
+  and still match; with two, whether they are the same save -- every byte equal
+  but each copy's digest and the word at +0x1b0 (two saves of one script
+  differ there, as measured; taken to be the counter the game adds the play
+  time to before signing, not traced further).
+- `catch_crash.py [EXE] [--out FILE] [-- ARGS...]` (Windows): runs the port under
+  a small debugger of its own and says where it died. A function's stack guard
+  (`/GS`: exception 0xc0000409, "fast fail") stops the process with nothing in
+  its log and no handler; a debugger is told. This one starts the game (the
+  Release build by default, from the repository's folder), passes back every
+  exception the port takes on purpose (its I/O traps), and on a fast fail or
+  an unhandled exception reads the failing thread's registers and stack's
+  return addresses and names them with the build's symbols (`llvm-symbolizer`).
+  The report goes to the console and to `crash.txt`.
+- `check_prototypes.py`, `ghidra_abi_targets.py`, `ghidra/KhdaysAbiScan.java`:
+  the ABI scan that makes `port/abi/ghidra_abi.txt`. `check_prototypes.py`
+  lists every function whose declarations elsewhere take fewer parameters than
+  its definition, or declare a value it does not return.
+  `ghidra_abi_targets.py` turns those into ROM addresses (`A <function> <space>
+  <address>`: a void function whose value callers use; `B <caller> <space>
+  <address> <callee> <callee space> <callee address> <declared> <defined>`: a
+  short call; the space `arm9_ovNNN` or `-`), with `--missed` (only the calls
+  the scan found nothing for), `--next` (the calls of functions the last build
+  widened) and `--merge` (a rescan's findings into the file). The Ghidra
+  script, read-only, writes for each one line: `A <function> <return address>
+  r0 <- <source>` or `B <caller> <callee> <call address> r<k> <- <source>`, the
+  source the instruction that last wrote the register on that path (`call
+  <name>`, `entry:rK` for the function's own argument, `tail <instruction>`).
+- `decomp_findings.py`: refreshes `DECOMP_FINDINGS.md`'s generated sections
+  (between `<!-- BEGIN generated:NAME -->` and `<!-- END ... -->`: `revision`,
+  `ambiguous`, `repairs`, `gaps`, `narrowparams`) from `prepare.py`'s output.
+- `savestate_gpu.py STATE.dst OUT.bin`: a DeSmuME savestate's display state for
+  `savestate_test.c`. A `.dst` is "DeSmuME SState\0\0", the uncompressed size at
+  0x18 and a zlib stream at 0x20; inside, chunks of (u32 id, u32 size, data),
+  their fields (tag[4], u32 size, u32 count, data). Chunk 4 holds 9REG (the
+  ARM9 I/O registers), VMEM (palettes), OAMS (OAM) and LCDM (all VRAM banks in
+  LCDC order); chunk 7 a version word and the two 256x192 BGR555 framebuffers,
+  upper first. OUT.bin: io (0x2000), palette (0x800), oam (0x800), vram
+  (0xa4000), framebuffers.
+
+## Compiler settings worth knowing
+
+The game's rewritten sources (`khdays-game`) include only
+`compat/khdays_references.h` and the build's numbers. Struct members align to
+at most 4 bytes, as mwcc lays them out for the ARM9 (`/Zp4`: a u64 inside a
+struct sits at a 4-byte offset; `OSContext`'s divider context puts the thread
+state at +0x64, not +0x68). mwcc ran with `-lang c99 -char signed -enum int`;
+MSVC's char is signed and its enums are int already.

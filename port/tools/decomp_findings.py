@@ -1,20 +1,8 @@
 #!/usr/bin/env python3
-"""Refresh the generated sections of docs/DECOMP_FINDINGS.md.
-
+"""Refresh the generated sections of docs/DECOMP_FINDINGS.md (between `<!-- BEGIN generated:NAME -->`
+and `<!-- END generated:NAME -->`: revision, ambiguous, repairs, gaps, narrowparams) from
+port/tools/prepare.py's output, which must be run first.
   python port/tools/decomp_findings.py
-
-Each generated section sits between `<!-- BEGIN generated:NAME -->` and
-`<!-- END generated:NAME -->`; the prose around them is written by hand. Run
-port/tools/prepare.py first (the ABI lists come from its output).
-
-  ambiguous  references to an address several overlays' functions share, and
-             which of them the decomp's C names
-  repairs    calls the native build rewrites from the ROM (abi_repairs.txt)
-  gaps       calls it cannot rewrite mechanically (abi_gaps.txt)
-  narrowparams  parameters declared narrower than defined (abi_narrow_params.txt)
-
-Only `revision` is required; the others are filled where the document has
-them.
 """
 from __future__ import annotations
 

@@ -1,35 +1,7 @@
-/* khdays-sound-test: the port's sound, checked without the game.
- *
- * - The channels and the DS's mixer: a fixed program of register writes over
- *   fixed sample data must give, sample for sample, the output the code gave
- *   before it moved to port/sound (a hash computed from that code).
- * - The PC's mixer, on the same program at the DS's instants: within one of
- *   the DS's 10-bit output steps, except where the DS clips.
- * - The volumes: both mixers scale a channel by its category's volume and the
- *   whole by the overall volume; all at 100 leave the output unchanged.
- * - The sound bridge: the driver never runs past the clock, the game's thread
- *   catches it up only when an alarm is due, and all the replies reach the
- *   FIFO, in order.
- * - The stream reader: synthetic streams (PCM16 stereo looped, PCM8 mono not
- *   looped, IMA-ADPCM started inside a block and looped inside one) must give,
- *   sample for sample, what a ring filled in time would hold (worked out here
- *   sample by sample, independently of the reader).
- * - The native driver: a command list like the ones the movies and streams
- *   send (lock a channel, set it up as PCM and start it, set an alarm) must
- *   give the right channel registers, shared work and alarm reply at the
- *   right cycle. It reads its tables from the ROM's ARM7 binary, whose path is
- *   the argument (CMake passes the one in data/extracted); without it this
- *   part is skipped.
- * - The replacements: a loop read from each of its sources (a WAV's smpl
- *   chunk, a FLAC file's Vorbis comments, the original's loop scaled); a
- *   broken file refused with its reason; an original written out as the dump
- *   writes it and put back plays sample for sample like the original on a
- *   channel, loops included, in PCM8, PCM16 and IMA-ADPCM.
- * - The offline render (needs the ARM7 binary): a one-note sequence ends once
- *   the note has died away; one that jumps back is found to loop, and its loop
- *   is as long as the jump.
- *
- * Prints "all sound checks passed" and exits 0, or names each failure. */
+/* khdays-sound-test: the port's sound without the game -- the channels and both mixers, the volumes,
+ * the sound bridge, the stream reader, the native driver (with the ARM7 binary given), the replacements
+ * and the offline render (docs/BUILD.md, "The port's tests"). Prints "all sound checks passed" and
+ * exits 0, or names each failure. */
 #include "../sound/channels.h"
 #include "../sound/mix_ds.h"
 #include "../sound/bus.h"

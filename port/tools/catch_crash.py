@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""Run the port under a small debugger of its own and say where it died.
-
+"""Run the port under a small debugger of its own and say where it died: a stack guard's fast fail
+(0xc0000409) or an unhandled exception, the thread's registers and return addresses named with the
+build's symbols, into the console and crash.txt. Windows only (docs/BUILD.md, "The tools").
     python port/tools/catch_crash.py [EXE] [--out FILE] [-- ARGS...]
-
-The port stops itself when a function's stack guard finds its stack written
-past (the compiler's /GS: exception 0xc0000409, "fast fail"), which no handler
-of the program can catch and which leaves nothing in its log. A debugger is told
-of it. This one starts the game (the Release build by default, from the
-repository's folder, as it is started by hand), lets every exception the port
-takes on purpose go back to it (its I/O traps), and when the game fails -- a fast
-fail, or an exception nothing handled -- reads the failing thread's registers and
-the return addresses on its stack, and names them with the build's symbols
-(llvm-symbolizer from Visual Studio). The report goes to the console and to
-FILE (crash.txt by default). Windows only.
 """
 from __future__ import annotations
 

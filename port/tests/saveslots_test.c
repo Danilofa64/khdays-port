@@ -1,10 +1,6 @@
-/* khdays-saveslots-test: the save files beyond the DS's three
- * (runtime/menus/saveslots.h). A chip and the port's files in a temporary folder:
- * SHA-1 on its known answers, what each file holds as the game's read tells
- * it, the chip's own view and the port's, a save into a port's file written
- * by the commit and read back, the file saved last.
- *
- *   khdays-saveslots-test [FOLDER]   (the system's temporary folder by default) */
+/* khdays-saveslots-test [FOLDER]: the save files beyond the DS's three (runtime/menus/saveslots.h): SHA-1
+ * on its known answers, what each file holds, the chip's view and the port's, a save into a port's file
+ * committed and read back, the file saved last. */
 #include "../runtime/menus/saveslots.h"
 #include "../runtime/core/sha1.h"
 

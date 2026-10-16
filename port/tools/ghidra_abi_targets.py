@@ -1,27 +1,7 @@
 #!/usr/bin/env python3
-"""Turn check_prototypes.py's findings into ROM addresses for the Ghidra
-analysis (port/tools/ghidra/KhdaysAbiScan.java).
-
-  A <function> <space> <address>                  void function whose value
-                                                  callers use: what is in r0
-                                                  at each of its returns?
-  B <caller> <space> <address> <callee> <callee space> <callee address>
-    <declared count> <defined count>              a call passing fewer
-                                                  arguments than the callee
-                                                  reads: what is in the
-                                                  missing registers there?
-
-Space is the Ghidra address space (arm9_ovNNN for an overlay, `-` for the
-static module, ITCM and DTCM).
-
-  --missed        only the calls port/abi/ghidra_abi.txt has no findings
-                  for (marked `no-call-found`, or new), into
-                  ghidra_rescan_targets.txt (run the scan with the arguments
-                  `ghidra_rescan_targets.txt ghidra_rescan.txt`)
-  --next          the next round instead: the calls of functions the last
-                  build widened (abi_next_targets.txt)
-  --merge         add ghidra_rescan.txt's findings, in place of what the file
-                  had for those calls
+"""Turn check_prototypes.py's findings into ROM addresses for the Ghidra analysis (ghidra/KhdaysAbiScan.java):
+A lines for void functions whose value callers use, B lines for calls passing fewer arguments; --missed,
+--next and --merge for the rescans (docs/BUILD.md, "The tools").
 """
 from __future__ import annotations
 

@@ -1,14 +1,6 @@
-"""A source of the game's side preprocessed as the build compiles it, for the
-type pass: MSVC's preprocessor with the khdays-decomp target's include
-directories, definitions (compat/decomp_defines.txt) and forced include, the
-line markers kept so the rewrite's output points back at the original lines.
-
-The forced compat header speaks MSVC's dialect (__declspec, __inline,
-#pragma section, __int64); the parser reads ISO C, so those are mapped: a
-__declspec goes (the rewrite's output keeps what it needs itself), __inline
-is inline, __int64 is long long. Of the pragmas, those that change the code
-stay (pack: a struct's layout; optimize: prepare.py's unoptimized files) and
-the rest go.
+"""A source of the game's side preprocessed as the build compiles it (MSVC's preprocessor, the target's
+includes, definitions and forced include, line markers kept), MSVC's dialect mapped to ISO C for the
+parser; of the pragmas, pack and optimize stay.
 """
 from __future__ import annotations
 

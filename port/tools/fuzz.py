@@ -1,16 +1,7 @@
 #!/usr/bin/env python3
-"""Run the port's fuzzers for as long as asked.
-
+"""Run the port's fuzzers for as long as asked, from their kept inputs in port/fuzz/<name>/, a crash's or
+hang's input copied back there; a run that ends well before its time fails (docs/BUILD.md).
     python port/tools/fuzz.py [--tree build/port/obj-release-x64] [--target NAME] [--minutes N] [--jobs N]
-
-Each fuzzer (khdays-fuzz-server, -portmap, -session; built in the Release
-tree) starts from its kept inputs in port/fuzz/<name>/ and fuzzes for N
-minutes (default 60) on N processes (default: the machine's cores). It runs
-from a scratch folder of its own: libFuzzer starts its processes again with
-a command line it does not quote, and the repository's path has spaces. A
-crash's (or a hang's) input is copied back to port/fuzz/<name>/, to be
-fixed and replayed by the test suite. A run that ends well before its time
-fails too: it did not fuzz.
 """
 from __future__ import annotations
 

@@ -1,10 +1,6 @@
-"""The DS layout of the game's types, for the data area: each object's size and alignment, as the rewritten C compiles them --
-pointers 4 bytes, struct members aligned to at most 4 (`/Zp4`, as mwcc lays
-them out for the ARM9), bit-fields as MSVC packs them (a run of bit-fields of
-one size shares a unit of that size; a field that does not fit, or of another
-size, starts a new one; a zero-width one closes it). The emitted C checks
-every size it relies on with `_Static_assert`, so a rule wrong here stops the
-build instead of misplacing an object.
+"""The DS layout of the game's types for the data area, as the rewritten C compiles them: pointers 4
+bytes, members aligned to at most 4 (/Zp4), bit-fields as MSVC packs them. The emitted C checks every
+size it relies on with _Static_assert, so a wrong rule stops the build instead of misplacing an object.
 """
 from __future__ import annotations
 

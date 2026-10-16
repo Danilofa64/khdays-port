@@ -96,12 +96,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pl_mpeg)
 
-# The settings menu's drawing (specs/019 research R3): Dear ImGui, MIT, the
-# release and archive the studio pins (THIRD_PARTY_NOTICES.md), with its
-# SDL_Renderer backend -- the window's renderer, on the graphics card or
-# SDL's own. The menu takes its input itself (host/settings/settings_menu.cpp), so no
-# platform backend; its font is its own, so none of ImGui's embedded ones.
-# Only its sources are wanted.
+# The settings menu's drawing: Dear ImGui (MIT, the release the studio pins) with its SDL_Renderer
+# backend; the menu takes its input itself and has its own font, so no platform backend and none of
+# ImGui's fonts. Only its sources are wanted.
 FetchContent_Declare(
     imgui
     URL https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz
@@ -287,16 +284,10 @@ target_compile_options(khdays-host-input PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
 
-# The game: every source the DS build links (its C++ turned into C) and the
-# HAL -- what the decomp's assembly did, in C (hal/) -- rewritten with every
-# pointer a reference, the DS address it had (specs/010; prepare.py,
-# port/tools/references). Preprocessed already (compat/decomp_defines.txt,
-# compat/decomp_compat.h), each includes only compat/khdays_references.h and
-# the build's numbers (KHDAYS_GEN's khdays_data_area.h). Struct members align
-# to at most 4 bytes, as mwcc lays them out for the ARM9 (/Zp4: a u64 inside
-# a struct sits at a 4-byte offset, OSContext's divider context puts the
-# thread state at +0x64, not +0x68). mwcc ran with -lang c99 -char signed
-# -enum int; MSVC's char is signed and its enums are int already.
+# The game: every source the DS build links and the HAL, rewritten with every pointer a reference
+# (prepare.py, port/tools/references), each including only compat/khdays_references.h and the build's
+# numbers. Struct members align to at most 4 bytes as mwcc lays them out (/Zp4); mwcc's -char signed
+# -enum int are MSVC's own (docs/BUILD.md, "Compiler settings worth knowing").
 add_library(khdays-game OBJECT ${KHDAYS_REWRITTEN})
 target_include_directories(khdays-game PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${KHDAYS_GEN}")
 target_compile_options(khdays-game PRIVATE /W0 /Zp4 /std:c17)
@@ -669,12 +660,9 @@ if(TARGET khdays-fuzz-session)
     target_link_libraries(khdays-fuzz-session PRIVATE SDL3::SDL3)
 endif()
 
-# The static analysis (port/tools/analyze.py, in the test suite of the
-# Release tree): the port's own sources of each target compiled again with
-# /analyze -- their own flags, includes and definitions -- objects not
-# linked, built only when asked. Not the decompilation's rewritten files
-# (khdays-game), not the third parties' (FetchContent's, ufbx, the sound's
-# decoders).
+# The static analysis (port/tools/analyze.py, in the Release tree's tests): the port's own sources of
+# each target compiled again with /analyze and their own flags, not linked, built only when asked;
+# not the decompilation's rewritten files, not the third parties'.
 set(KHDAYS_ANALYZED khdays-native khdays-gpu khdays-sound khdays-gfx khdays-host-input khdays-server)
 set(KHDAYS_ANALYZE_TARGETS "")
 foreach(target IN LISTS KHDAYS_ANALYZED)

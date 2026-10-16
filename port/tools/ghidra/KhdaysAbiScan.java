@@ -1,16 +1,7 @@
-// What the ARM code really passes and returns where the decompilation's C
-// relies on registers (see port/tools/check_prototypes.py). Read-only: it
-// changes nothing in the program.
-//
-// Input  build/port/gen-x64/ghidra_targets.txt (port/tools/ghidra_abi_targets.py)
-// Output build/port/gen-x64/ghidra_abi.txt, one line per finding (the script's
-// two arguments, when given, name other files there instead):
-//   A <function> <return address> r0 <- <source> [| <source> ...]
-//   B <caller> <callee> <call address> r<k> <- <source> [| ...]
-// A source is the instruction that last wrote the register on that path
-// (`call <name>` when a call left it), `entry:rK` when the register still
-// holds the function's own argument, or `tail <instruction>` for a return
-// through a jump to another function.
+// What the ARM code really passes and returns where the decompilation's C relies on registers
+// (check_prototypes.py). Read-only. Input build/port/gen-x64/ghidra_targets.txt, output ghidra_abi.txt
+// (or the script's two arguments): one line per finding, `A <function> <return address> r0 <- ...` or
+// `B <caller> <callee> <call address> r<k> <- ...` (docs/BUILD.md, "The tools").
 //@category khdays
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.*;

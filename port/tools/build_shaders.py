@@ -1,31 +1,7 @@
-"""Compile the renderer's shaders for every graphics backend SDL3 supports.
-
+"""Compile the renderer's shaders for every graphics backend SDL3 supports: each stage of
+port/shaders/<name>.hlsl to DXIL, SPIR-V and MSL, as C arrays in port/host/render/generated/ (committed:
+the build never runs this). Needs the Vulkan SDK; the resource layout: docs/BUILD.md, "The tools".
     python port/tools/build_shaders.py [name ...]
-
-Each port/shaders/<name>.hlsl holds the entry points of its stages --
-vs_main (vertex), ps_main (pixel), cs_main (compute), whichever it has. For
-each stage the Vulkan SDK's tools make:
-
-    DXIL    (Direct3D 12)  dxc -T <stage>_6_0
-    SPIR-V  (Vulkan)       dxc -spirv
-    MSL     (Metal)        spirv-cross --msl, from the SPIR-V
-
-and the results are written as C arrays to
-port/host/render/generated/<name>_<stage>.h, which the port includes. The build
-never runs this script: the generated headers are committed, so building
-the port needs no shader tools. Run it after changing a shader, with the
-Vulkan SDK installed (VULKAN_SDK set, as its installer does).
-
-Resource layout (what SDL3's GPU API expects, SDL_gpu.h):
-- vertex shaders: textures and samplers in space0, uniforms in space1;
-- pixel shaders: textures and samplers in space2, uniforms in space3; for
-  SPIR-V a texture and its sampler must be one combined image sampler:
-  declare both with [[vk::combinedImageSampler]] and the same
-  [[vk::binding(n, set)]];
-- compute shaders: read-only textures, then read-only buffers, in t
-  registers of space0; read-write textures, then read-write buffers, in u
-  registers of space1; uniforms in b registers of space2. A storage image
-  needs its format for SPIR-V: [[vk::image_format("r32ui")]].
 """
 import os
 import re
