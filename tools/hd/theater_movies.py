@@ -10,11 +10,11 @@ from MARE by default). Nothing of the collection is in the port: run this on you
 --videos or --subtitles it does both.
 
 --videos: the theater's videos as the port plays them in the game's movies' place
-(data/cutscenes/cinematics/hd<id>.mp4, [video] movies = hd): hd8NN.mp4, and DOP.mp4 as the
-opening's (802: the same length, 299.7 s, and hd802's subtitles). Their first 0x100 bytes are
-XORed with a 16-byte pattern (it shows where the movie header's bytes are zero); the rest is a
-plain MP4. A video already there is kept unless --force. The ending's (843) is not made: the
-theater's DED.mp4 (382.4 s) and CED.mp4 (215.3 s) are not the DS's movie's length.
+(data/cutscenes/cinematics/hd<id>.mp4, [video] movies = hd): hd8NN.mp4, DOP.mp4 as the opening's
+(802: the same length, 299.7 s, and hd802's subtitles) and DED.mp4 as the ending's (843: the ending
+and its staff roll, 382.4 s, which the port plays in place of the movie and the roll both; CED.mp4
+is Re:coded's). Their first 0x100 bytes are XORed with a 16-byte pattern (it shows where the movie
+header's bytes are zero); the rest is a plain MP4. A video already there is kept unless --force.
 
 --subtitles: each language's subtitles as the theater draws them over its videos, for the port to
 draw over the videos ([video] subtitles = on): data/cutscenes/cinematics/subtitles/<lang>/
@@ -53,6 +53,7 @@ SCRAMBLED = 0x100
 # read: two pass 64 KB, which their entries' 16-bit offsets do not reach.
 WORDS = ('cthd000.ctd', 'cthd050.ctd', 'cthd100.ctd', 'cthd300.ctd', 'cthd800.ctd')
 OPENING = ('DOP.mp4', '802')
+ENDING = ('DED.mp4', '843')
 OUT = tt.ROOT / 'data' / 'cutscenes' / 'cinematics'
 # Measured on the theater (the maintainer's window captures, 2026-10-15: hd818's two lines "Son
 # los días que han pasado..." and a one-line subtitle, the 1998 x 1125 pictures scaled to the
@@ -69,7 +70,7 @@ RATE = 30
 
 def videos(movies: Path, force: bool) -> int:
     made = 0
-    names = [(p.name, p.stem[2:]) for p in sorted(movies.glob('hd8*.mp4'))] + [OPENING]
+    names = [(p.name, p.stem[2:]) for p in sorted(movies.glob('hd8*.mp4'))] + [OPENING, ENDING]
     OUT.mkdir(parents=True, exist_ok=True)
     for name, movie in names:
         source, target = movies / name, OUT / f'hd{movie}.mp4'
