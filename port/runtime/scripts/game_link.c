@@ -5,6 +5,7 @@
 #include "../core/events.h"
 #include "../../host/app/instance.h"
 #include "../menus/camp.h"
+#include "../sound/sound_bridge.h"
 #include "khdays_ds_symbols.h"
 
 #include <stdio.h>
@@ -14,11 +15,18 @@ extern int GameState_SetFlag(int flag);
 extern void GameState_ClearFlag(int flag);
 extern unsigned int Session_GetLocalPlayerIndex(void);
 extern int GetEntryField20ByIndex(int idx);
+extern int PlaySound(int sequence_archive, int entry);
+extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
+extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
+extern void Ov002_ShowNoticeText(KhdaysRef text);
 extern void Ov022_ActorSetHp(KhdaysRef pEnt, int nValue); /* the game's pointers are references (window.h) */
 int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 
 #define FIELD_SCENE 2u
 #define OV_BATTLE 22
+#define OV_FIELD 2
+#define CAPTIONS 0x0207f62cu /* data_ov002_0207f62c: [1] the field's captions (Ov002_ShowNoticeText) */
+#define CAPTION_LINE 0xb8u   /* the notice held, 0 while none */
 #define OBJ_FRAME 0x8u       /* gObjSystem: [2] the game's frame count */
 #define SCENE_CURRENT 0x8u   /* gSceneCtl: current id, pending +0xc, argument +0x10 */
 #define SCENE_ARGUMENT 0x10u
@@ -184,6 +192,49 @@ int khdays_link_is_player(const void *entity)
 {
     const unsigned actor = player_actor();
     return actor != 0 && KHDAYS_REF(entity) == actor;
+}
+
+static int in_field(void)
+{
+    return khdays_link_scene(NULL) == FIELD_SCENE && khdays_overlay_loaded(OV_FIELD);
+}
+
+const char *khdays_link_play_sound(const char *sequence_archive, const char *entry)
+{
+    const KhdaysSoundArchive *archive = khdays_sound_bridge_archive();
+    int number, index;
+    if (archive == NULL || !khdays_sound_archive_find_entry(archive, sequence_archive, entry, &number, &index)) {
+        return "unknown sound";
+    }
+    PlaySound(number, index);
+    return NULL;
+}
+
+const char *khdays_link_show_text(const unsigned short *text, int length)
+{
+    unsigned captions;
+    KhdaysRef block;
+    if (!in_field()) {
+        return "not in the field";
+    }
+    captions = rd32(CAPTIONS + 4u);
+    if (!khdays_game_ram(captions)) {
+        return "not in the field";
+    }
+    if (rd32(captions + CAPTION_LINE) != 0) {
+        return "busy";
+    }
+    block = NNSi_FndAllocFromDefaultExpHeap((unsigned)(length + 1) * 2u);
+    if (!khdays_game_ram(block)) {
+        return "no room in the game's heap";
+    }
+    for (int i = 0; i < length; ++i) {
+        ((volatile unsigned short *)KHDAYS_W(block))[i] = text[i];
+    }
+    ((volatile unsigned short *)KHDAYS_W(block))[length] = 0;
+    Ov002_ShowNoticeText(block); /* it keeps a copy of its own */
+    NNSi_FndFreeFromDefaultHeap(block);
+    return NULL;
 }
 
 int khdays_link_menu_open(int menu)

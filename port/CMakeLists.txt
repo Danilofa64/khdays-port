@@ -376,6 +376,7 @@ add_executable(khdays-native
     runtime/scripts/api_mod.c
     runtime/scripts/api_state.c
     runtime/scripts/api_menus.c        # ... their options in the settings menu's Mods page
+    runtime/scripts/api_actions.c      # ... the game's actions they ask for
     runtime/scripts/game_link.c        # ... the game's side of their interface
     runtime/core/sha256.c             # SHA-256: the mods' fingerprints
     runtime/core/io_regs.c
@@ -612,6 +613,7 @@ add_executable(khdays-script-test tests/script_test.c runtime/scripts/scripts.c 
                runtime/scripts/manifest.c runtime/scripts/order.c runtime/scripts/folders.cpp
                runtime/scripts/mods_log.c runtime/scripts/queue.c runtime/scripts/api_events.c
                runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/scripts/api_menus.c
+               runtime/scripts/api_actions.c
                runtime/scripts/view.c runtime/core/sha256.c)
 target_link_libraries(khdays-script-test PRIVATE khdays-lua SDL3::SDL3)
 target_compile_options(khdays-script-test PRIVATE

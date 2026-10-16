@@ -135,6 +135,7 @@ static void load(KhdaysMod *m)
     khdays_api_mod_open(m);
     khdays_api_state_open(m);
     khdays_api_menus_open(m);
+    khdays_api_actions_open(m);
     m->stamp = newest_file(m);
     m->spent = 0;
     m->allowance = khdays_sandbox_frame_allowance;

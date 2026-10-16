@@ -159,6 +159,31 @@ void khdays_link_trace_hp(const void *entity, int before)
     (void)before;
 }
 
+static char fake_sound[64], fake_notice[64];
+
+const char *khdays_link_play_sound(const char *sequence_archive, const char *entry)
+{
+    if (strcmp(sequence_archive, "COMMON_SYS") != 0) {
+        return "unknown sound";
+    }
+    snprintf(fake_sound, sizeof(fake_sound), "%s/%s", sequence_archive, entry);
+    return NULL;
+}
+
+const char *khdays_link_show_text(const unsigned short *text, int length)
+{
+    if (fake_scene != 2) {
+        return "not in the field";
+    }
+    if (fake_notice[0] != 0) {
+        return "busy";
+    }
+    for (int i = 0; i < length && i < (int)sizeof(fake_notice) - 1; ++i) {
+        fake_notice[i] = text[i] < 0x80 ? (char)text[i] : '?';
+    }
+    return NULL;
+}
+
 int khdays_link_menu_open(int menu)
 {
     (void)menu;
@@ -178,6 +203,7 @@ static void reset_game(void)
     fake_munny = 0;
     fake_guest = 0;
     fake_hp = 40;
+    fake_sound[0] = fake_notice[0] = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
 }
@@ -645,6 +671,52 @@ static void test_menu_asks(void)
     end_case();
 }
 
+static void test_actions(void)
+{
+    begin_case("actions");
+    mod_folder("Acts", "test.acts", "gameplay",
+               "local function says(want, a, b) if a == nil and b == want then return true end\n"
+               "  print('unexpected', a, b) return false end\n"
+               "local n = 0\n"
+               "local function ok(c) if c then n = n + 1 end end\n"
+               "mod.on('frame', function(e)\n"
+               "  if e.frame ~= 1 then return end\n"
+               "  ok(game.give_item(3) and game.item(3) == 1 and game.flag(0x4db + 3))\n"
+               "  ok(game.give_item(3, 500) and game.item(3) == 99)\n"
+               "  ok(game.take_item(3, 40) and game.item(3) == 59 and game.take_item(3, 500) and game.item(3) == 0)\n"
+               "  ok(says('unknown item', game.give_item(0x8d0)))\n"
+               "  ok(not pcall(game.give_item, 3, -1))\n"
+               "  ok(game.play_sound('COMMON_SYS', 'se_sys_open'))\n"
+               "  ok(says('unknown sound', game.play_sound('NOPE', 'x')))\n"
+               "  ok(says('not in the field', game.show_text('Hello')))\n"
+               "  print('frame 1', n)\n"
+               "end)\n"
+               "mod.on('scene', function(e)\n"
+               "  if e.to == 2 then\n"
+               "    ok(game.show_text('Hola, \xc3\xb1" "and\xc3\xba') and says('busy', game.show_text('again')))\n"
+               "    ok(says('not a text the game can show', game.show_text('bad\\1')))\n"
+               "    print('field', n)\n"
+               "  end\n"
+               "end)\n");
+    mod_folder("Looks", "test.looks", "visual",
+               "mod.on('frame', function(e)\n"
+               "  if e.frame == 1 then\n"
+               "    local a, b = game.give_item(3)\n"
+               "    print(a == nil and b == 'visual mod', game.play_sound('COMMON_SYS', 'se_sys_close'))\n"
+               "  end\n"
+               "end)\n");
+    start();
+    frames(1);
+    CHECK(log_has("test.acts print scripts/main.lua:15 frame 1\t8"));
+    CHECK(log_has("test.looks print scripts/main.lua:4 true\ttrue"));
+    CHECK(strcmp(fake_sound, "COMMON_SYS/se_sys_close") == 0);
+    fake_scene = 2;
+    frames(1);
+    CHECK(log_has("test.acts print scripts/main.lua:21 field\t10"));
+    CHECK(strcmp(fake_notice, "Hola, ?and?") == 0);
+    end_case();
+}
+
 static void test_guest(void)
 {
     begin_case("guest");
@@ -672,6 +744,7 @@ int main(void)
     RUN(test_player);
     RUN(test_options);
     RUN(test_menu_asks);
+    RUN(test_actions);
     RUN(test_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);

@@ -58,6 +58,15 @@ int khdays_link_is_player(const void *entity);
 void khdays_link_trace_frame(void);
 void khdays_link_trace_hp(const void *entity, int before);
 
+/* The game's actions, each through its own routine; NULL when done, else the reason it was not. */
+
+/* PlaySound(archive, entry), the sequence archive's entry found by its names in the sound archive. */
+const char *khdays_link_play_sound(const char *sequence_archive, const char *entry);
+
+/* Ov002_ShowNoticeText with `text` (`length` UTF-16 units) in a block of the game's heap: the field's
+ * notice, of which the game takes the first only ("busy" after it). */
+const char *khdays_link_show_text(const unsigned short *text, int length);
+
 /* Whether a menu is open: the pause, the camp. */
 int khdays_link_menu_open(int menu);
 

@@ -126,6 +126,17 @@ What a handler changes is seen by the game's next frame. An event the game raise
 | `mission.id` | the current mission | `nil` outside the field |
 | `scene.id` | the current scene | |
 
+### Actions
+
+| Name | Does | Refused |
+|---|---|---|
+| `game.give_item(id, n)`, `game.take_item(id, n)` | adds or takes `n` (default 1) of an item, its count kept within 0..99, as the game's rewards do | `"unknown item"`, `"no game"` |
+| `game.play_sound(archive, entry)` | plays a sequence archive's entry by its names in the sound archive (`"COMMON_SYS"`, `"se_sys_open"`; the session log names each sound the game plays as `seqarc/<archive>/<entry>`) | `"unknown sound"` |
+| `game.show_text(text)` | the field's notice (`Ov002_ShowNoticeText`); the game shows the first notice of a field only, so a mission that has shown its own refuses it | `"not in the field"`, `"busy"`, `"not a text the game can show"` (control characters, characters beyond the first Unicode plane) |
+
+A visual mod and a guest may play sounds; the other actions are refused to them. Whether the game's
+font has every character of a notice is not checked.
+
 ### Options in the Mods page
 
 The settings menu has a Mods page while a scripted mod is present: each mod with its state (running,
@@ -160,9 +171,12 @@ runs again.
 
 ### Not in version 1
 
-What the decompilation does not explain yet is left out rather than guessed: warping and the field's
-current area, the deck and abilities, enemies of a kind the mission did not load, who dealt a hit, a
-loaded save's event, the mission's chests, telling a cleared mission from a lost one.
+What the decompilation does not explain yet, or what was not yet seen working in the game, is left
+out rather than guessed: warping and the field's current area, the deck and abilities, starting a
+mission (`Ov025_MissionList_StartMission` needs the story camp's list on screen: not yet tried in
+play), making a mission's enemies (`Ov002_CreateActorFromMarker` needs one of its spawners: none was
+there whenever it was tried), who dealt a hit, a loaded save's event, the mission's chests, telling
+a cleared mission from a lost one.
 
 ## Examples
 
@@ -175,3 +189,4 @@ loaded save's event, the mission's chests, telling a cleared mission from a lost
 | `double-munny` | the `munny` event and `game.set_munny` |
 | `infinite-hp` | `frame`, the player's HP and a toggle |
 | `options` | a choice, a number and a button in the Mods page |
+| `actions` | Mods-page buttons giving a potion, playing a sound and showing the field's notice |

@@ -10,6 +10,9 @@ void khdays_api_state_open(KhdaysMod *mod);
 /* mod.option (api_menus.c): the options' table, freed with the mod's state; a change the player made
  * (an option's value, a button pressed) kept and handed to the option's code. */
 void khdays_api_menus_open(KhdaysMod *mod);
+
+/* The game's actions (api_actions.c): items given and taken, a sound, the field's notice. */
+void khdays_api_actions_open(KhdaysMod *mod);
 void khdays_api_menus_free(KhdaysMod *mod);
 void khdays_api_menus_use(KhdaysMod *mod, const char *key, double value);
 
