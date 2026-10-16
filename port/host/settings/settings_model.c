@@ -30,6 +30,10 @@ static const char *resolutions[RESOLUTION_CHOICES], *aspects[KHDAYS_ASPECT_COUNT
     *movies[KHDAYS_MOVIES_COUNT], *paces[2], *screens_choices[2], *backends[KHDAYS_BACKEND_COUNT],
     *displays[KHDAYS_DISPLAY_COUNT], *antialiasings[4];
 static const int antialiasing_values[4] = {1, 2, 3, 4};
+static const char *autosaves[3], *save_files[2];
+/* the choices' order on screen: file 99 (the default) first */
+static const int autosave_values[3] = {KHDAYS_AUTOSAVE_FILE99, KHDAYS_AUTOSAVE_PLAYED, KHDAYS_AUTOSAVE_OFF};
+static const int save_files_values[2] = {1, 0};
 static const int resolution_values[RESOLUTION_CHOICES] = {
     1, KHDAYS_RESOLUTION_WINDOW, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 /* texts put together from several parts */
@@ -78,6 +82,11 @@ void khdays_model_refresh(const KhdaysProfile *work)
     backends[KHDAYS_BACKEND_AUTO] = khdays_text(TXT_VIDEO_BACKEND_AUTO);
     backends[KHDAYS_BACKEND_D3D12] = "Direct3D 12";
     backends[KHDAYS_BACKEND_VULKAN] = "Vulkan";
+    autosaves[0] = khdays_text(TXT_AUTOSAVE_FILE99);
+    autosaves[1] = khdays_text(TXT_AUTOSAVE_PLAYED);
+    autosaves[2] = khdays_text(TXT_MOD_OFF);
+    save_files[0] = khdays_text(TXT_SAVE_FILES_ALL);
+    save_files[1] = khdays_text(TXT_SAVE_FILES_DS);
 }
 
 const char *khdays_model_section_title(int section)
@@ -427,6 +436,18 @@ static void build_language(Builder *b, KhdaysProfile *w)
 
 static void build_general(Builder *b, KhdaysProfile *w)
 {
+    KhdaysRow *r;
+    /* both read by the game's save lists when the game goes on (runtime/menus/savelist.h) */
+    r = add_choice(b, KHDAYS_SET_AUTOSAVE, TXT_AUTOSAVE, &w->save.autosave, autosaves, 3);
+    r->values = autosave_values;
+    r->note = khdays_text(TXT_AUTOSAVE_NOTE);
+    r->apply = KHDAYS_APPLY_RESUME;
+    r->takes = TXT_TAKES_RESUME;
+    r = add_choice(b, KHDAYS_SET_SAVE_FILES, TXT_SAVE_FILES, &w->save.all_files, save_files, 2);
+    r->values = save_files_values;
+    r->note = khdays_text(TXT_SAVE_FILES_NOTE);
+    r->apply = KHDAYS_APPLY_RESUME;
+    r->takes = TXT_TAKES_RESUME;
     add_switch(b, KHDAYS_SET_SESSION_LOG, TXT_SESSION_LOG, &w->session_log, 1, khdays_text(TXT_SESSION_LOG_NOTE));
     add_command(b, KHDAYS_SET_RESTORE_BOTH, TXT_RESTORE_BOTH, KHDAYS_CMD_RESTORE_BOTH);
 }

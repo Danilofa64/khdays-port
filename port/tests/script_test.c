@@ -92,6 +92,11 @@ int khdays_link_flag(int n)
     return (fake_flags[n / 8] >> (n % 8)) & 1;
 }
 
+/* The port's autosave hears the mission's end too (runtime/menus/autosave.h): not under test here. */
+void khdays_autosave_mission_end(void)
+{
+}
+
 void khdays_link_set_flag(int n, int on)
 {
     if (on) {

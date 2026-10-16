@@ -360,6 +360,7 @@ add_executable(khdays-native
     runtime/menus/newgame.c            # the new game's dialogs and the port's subtitles question
     runtime/menus/saveslots.c          # the save files beyond the DS's three
     runtime/core/sha1.c               # SHA-1: the saves' signatures, the rooms' passwords
+    runtime/menus/autosave.c           # the autosave after a cleared mission
     runtime/menus/savelist.c           # the port's save list over the game's
     runtime/menus/cinelist.c           # MODO CINE's list, read for the port to draw
     runtime/net/roomlist.c           # the port's list of Mission Mode's rooms over the game's

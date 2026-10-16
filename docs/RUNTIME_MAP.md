@@ -3089,6 +3089,67 @@ DS's three), drawn and run by the game: game slot g is file top + g
   file 99: UP from file 1, or Y from anywhere (as on the HD list); the walks reach
   it with UP, which the DS's own list also wraps to.
 
+**The autosave (2026-10-17).** Asked for by the maintainer (2026-10-15): after each
+cleared mission the game saves itself, by default into file 99
+(`runtime/menus/autosave.c`; `[save] autosave = file99 | played | off`).
+
+- **What owes one.** `Ov005_CommitMissionResults` records the results (a join as it
+  starts, the mods' `mission_end`). The autosave is owed when the routine records the
+  mission cleared, by its own branches on the results' configuration
+  (`data_ov005_0205b85c`): reward mode 255 (the story's) with flag 0x2086 and its +0x64
+  clear (else it only marks the mission seen), mode 8 ranked 0-3, the others ranked
+  0-2; never with flag 0x2087 (the give-up, `Ov002_RetireSubFlow`). A give-up from
+  Mission Mode's pause records rank -1.
+- **Where the game lets the player save next.** `Ov005_UpdateMenuExitTransition`:
+  with the transition's flag 4 the results go to Mission Mode's camp (scene 19,
+  ov008); with flag 1 or 2 it sets flag 0x18bd or 0x18c9 ("back from a mission") and
+  goes to the field (transition 10000, 10001 on day 357), whose phase 11 loads the
+  story's camp (ov025, `Ov002_LoadSubFlowOverlay`, kinds 8, 11 and 13) with the
+  prompt -4 or -6 for those flags (`Ov002_SetPhasePromptSelector`); when that camp
+  closes `Ov002_RetireSubFlow` clears both flags. The camps' save code is overlay
+  code: the card context each copy keeps (12 bytes: `data_ov008_02090fb4`,
+  `data_ov025_020b5760`) lies in the field's overlays' memory (ov025's in ov030's,
+  Roxas's), so it runs only while its camp is loaded. The autosave is written the
+  first time a camp's menu waits for the player: its running screen 0 (the words at
+  0x02090f0c, 0x020b574c), an option or an answer under its cursor (entry 1-9 or
+  101-107, the menu's state at the context's +0x959c, +0x88), the card idle
+  (`CARDi_TryWaitAsync`). Back on the title, nothing is owed any more.
+- **The write.** The camp's own save, as its save screen runs it
+  (`SaveMenuConfirm`, `SaveMenuTick`): a 0x1f00-byte block of the game's heap stands
+  for the screen's state (its faces at +0x28, card operation +0x238, save counter
+  +0x1ef8 given the highest of all the files, the two kept flags +0x1efc);
+  `Sleep_Block`; `BeginSaveToSlot(block, slot)` into the game slot the page view
+  puts the file in (on the row of field 0xc98, where the files allow); then
+  `CARDi_WaitAsync` and `PollSaveCardOp` until it is no longer -1 (0 written, 3
+  failed); `LatchTick` when written; `Sleep_Unblock`. It is all done at one
+  Pad_Sample, waiting for the card as the game's own synchronous reads do, so nothing
+  of the game runs between the state's signing and its two copies. The view is put
+  back as it was; with file 99, field 0xc98 too (the camps' save screens start their
+  cursor on it: the manual Save starts where it did). A failed write leaves the file
+  as it was (`khdays_slots_commit` writes whole files atomically); the player is told
+  either way, three seconds at the upper screen's top left in the game's 8-dot font
+  (`ui/autosave_notice.cpp`). A port file whose write fails is read again from the
+  disk (`khdays_slots_commit`): before, its new bytes stayed waiting and every later
+  save, the chip's too, failed with it. Mission Mode's guest game has no file and is never
+  saved; "the file being played" is the one the title loaded or a camp's Save wrote
+  last (`khdays_savelist_played_file`), a game never saved the first empty file.
+- **Seen** (`KHDAYS_AUTOSAVE_TEST` owes one when the game leaves the title and at
+  every result, for scripted runs that cannot clear a mission;
+  `KHDAYS_TRACE_AUTOSAVE` traces it): the save walk, at the story's camp opened in
+  the Grey Area (ov025, screen 0, entry 1), wrote `slot99.sav`, both copies signed,
+  counter 188 over the files' 187; the walk's own Save into file 2 in the same camp
+  26 seconds later differs from it in four bytes: the play time, the counter and
+  field 0xc98, and the walk's Save still went to file 2 as without the autosave.
+  With "the file being played" the same walk wrote file 1 (the one loaded), file 99
+  untouched; switched off, only the walk's own file 2 changed. Mission Mode with the
+  player's file loaded: at its camp after the results (ov008, screen 0, entry 101)
+  `slot99.sav` written (the chip untouched), and loaded again from CONTINUE's list
+  (the day's calendar, then the field). The mission walk and both copies of the
+  multiplayer walk (guest games) reached the camp and wrote nothing. File 99
+  read-only: "failed", the file byte for byte as it was. Not seen yet: a mission
+  cleared in play, the story's camp that opens by itself after one, the notice on
+  screen.
+
 **Not the port's yet:** the save after the story's ending (scene 9, ov009,
 which ov011's end asks for: `Ov011_DestroyScene`, `Scene_RequestPending(9)`)
 shows the game's own three slots, the chip's own view.

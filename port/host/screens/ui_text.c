@@ -818,6 +818,39 @@ static const char *const texts[TXT_COUNT][5] = {
                            "In einem Raum gelten die Optionen des Hosts.",
                            "In una stanza contano le opzioni dell'host.",
                            "En una sala cuentan las opciones del anfitrión."},
+    [TXT_AUTOSAVE] = {"Autosave", "Sauvegarde auto", "Automatisch speichern", "Salvataggio automatico",
+                      "Autoguardado"},
+    [TXT_AUTOSAVE_FILE99] = {"In file 99", "Dans le fichier 99", "In Datei 99", "Nel file 99", "En el archivo 99"},
+    [TXT_AUTOSAVE_PLAYED] = {"In the file being played", "Dans le fichier en cours", "In der gespielten Datei",
+                             "Nel file in gioco", "En el archivo en juego"},
+    [TXT_AUTOSAVE_NOTE] = {"After each completed mission, once the game is back where it lets you save: into file 99 "
+                           "(AUTO in the lists), or into the file you are playing (a game never saved: the first "
+                           "empty file).",
+                           "Après chaque mission réussie, quand le jeu est de retour là où il laisse sauvegarder : "
+                           "dans le fichier 99 (AUTO dans les listes), ou dans le fichier en cours (une partie jamais "
+                           "sauvegardée : le premier fichier vide).",
+                           "Nach jeder geschafften Mission, sobald das Spiel wieder dort ist, wo es speichern lässt: "
+                           "in Datei 99 (AUTO in den Listen) oder in die gespielte Datei (ein nie gespeichertes "
+                           "Spiel: die erste leere Datei).",
+                           "Dopo ogni missione completata, quando il gioco torna dove lascia salvare: nel file 99 "
+                           "(AUTO negli elenchi) o nel file in gioco (una partita mai salvata: il primo file vuoto).",
+                           "Tras cada misión completada, cuando el juego vuelve a donde deja guardar: en el archivo 99 "
+                           "(AUTO en las listas) o en el archivo en juego (una partida nunca guardada: el primer "
+                           "archivo vacío)."},
+    [TXT_SAVE_FILES] = {"Files in the game's lists", "Fichiers dans les listes du jeu", "Dateien in den Listen des Spiels",
+                        "File negli elenchi del gioco", "Archivos en las listas del juego"},
+    [TXT_SAVE_FILES_ALL] = {"All 99", "Les 99", "Alle 99", "Tutti i 99", "Los 99"},
+    [TXT_SAVE_FILES_DS] = {"3, as on the DS", "3, comme sur DS", "3, wie auf dem DS", "3, come su DS", "3, como en DS"},
+    [TXT_SAVE_FILES_NOTE] = {"The game's own save and load lists (without the HD save screens): the port's 99 files in "
+                             "pages of three, or the DS's three files.",
+                             "Les listes de sauvegarde du jeu (sans les écrans HD) : les 99 fichiers du port par pages "
+                             "de trois, ou les trois fichiers de la DS.",
+                             "Die Speicherlisten des Spiels (ohne die HD-Bildschirme): die 99 Dateien des Ports in "
+                             "Seiten zu drei, oder die drei Dateien des DS.",
+                             "Gli elenchi di salvataggio del gioco (senza le schermate HD): i 99 file del port in "
+                             "pagine da tre, o i tre file del DS.",
+                             "Las listas de guardado del propio juego (sin las pantallas HD): los 99 archivos del port "
+                             "en páginas de tres, o los tres archivos de la DS."},
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;

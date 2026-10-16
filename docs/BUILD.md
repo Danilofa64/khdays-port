@@ -327,7 +327,9 @@ never belong in the repository.
 - `saveslots_test.c`: the save files beyond the DS's three: SHA-1 on its known
   answers, what each file holds as the game's read tells it, the chip's view and
   the port's, a save into a port's file committed and read back, the file saved
-  last.
+  last, the page view kept and put back (the autosave's write), the highest save
+  counter, and a commit that fails (a read-only file): the game told so and the
+  file as it is on the disk, nothing of it left for the next commit.
 - `savestate_test.c` (`khdays-gpu-test STATE.bin OUT.ppm`): a DeSmuME
   savestate's display state (from `savestate_gpu.py`) rendered with the native
   2D engines and compared with the framebuffer DeSmuME showed; the upper screen

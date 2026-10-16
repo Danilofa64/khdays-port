@@ -3,6 +3,7 @@
  * enhancements taking their part. */
 #include "../core/language.h"
 #include "input.h"
+#include "../menus/autosave.h"
 #include "../menus/camp.h"
 #include "../menus/charselect.h"
 #include "../menus/cinelist.h"
@@ -334,6 +335,7 @@ static u16 xy_word(u16 buttons)
 
 void khdays_input_pad_sample(void)
 {
+    khdays_autosave_frame(); /* an owed autosave, before the save list maps the game's slots */
     khdays_language_frame(); /* a language the settings menu chose */
     if (trace_pad && pad_samples > 0) {
         /* what the game made of the previous frame's buttons */

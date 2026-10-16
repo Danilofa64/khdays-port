@@ -119,6 +119,8 @@ enum KhdaysSettingId {
     KHDAYS_SET_LANGUAGE,
     KHDAYS_SET_SESSION_LOG,
     KHDAYS_SET_RESTORE_BOTH,
+    KHDAYS_SET_AUTOSAVE,
+    KHDAYS_SET_SAVE_FILES,
     /* the Mods section's rows: `layer` the mod (its place in the list), `action` its option */
     KHDAYS_SET_MOD_NOTE,
     KHDAYS_SET_MOD_HEADING,

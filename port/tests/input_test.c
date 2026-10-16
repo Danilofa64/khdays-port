@@ -1653,6 +1653,9 @@ static void test_settings_changes(void)
     key(SDL_SCANCODE_RIGHT);
     CHECK(khdays_settings_take_changes() == KHDAYS_CHANGE_LANGUAGE);
     to_section(KHDAYS_SECTION_GENERAL);
+    key(SDL_SCANCODE_RETURN); /* the autosave: read by the save lists when the game goes on, no live change */
+    CHECK(khdays_settings_take_changes() == 0);
+    to_row(KHDAYS_SET_SESSION_LOG, -1);
     key(SDL_SCANCODE_RETURN);
     CHECK(khdays_settings_take_changes() == KHDAYS_CHANGE_LOG);
     to_section(KHDAYS_SECTION_ENHANCEMENTS);

@@ -411,6 +411,17 @@ of three: past the first or last row the list moves on, each row numbered, file
 99 tagged AUTO (the autosave's), the game's questions naming the file. In
 `saves/settings.ini`, `[save] files = 3` keeps the DS's three.
 
+**Autosave.** After each cleared mission -- in the story, in Mission Mode alone
+or with friends -- the game saves itself the first time it is back at a camp's
+menu (Mission Mode's after the results, the story's that opens after a
+mission), with the camp's own Save, into file 99 by default; a corner line in
+the game's font says it was saved, or that it could not be. In the settings
+menu's General page, "Autosave" chooses file 99, the file being played (a game
+never saved: the first empty file) or off (`[save] autosave = file99 | played
+| off`), and "Files in the game's lists" the 99 or the DS's three. A mission
+given up or lost writes nothing, and Mission Mode's guest game, which has no
+file, is never saved.
+
 **THEATER MODE as the HD collection's theater.** `tools/hd/theater_cine.py`
 makes, from the same copy of the collection and the port's extracted game
 data, the theater's chapter list -- its heading, its rows (the selected one

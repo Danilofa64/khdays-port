@@ -13,6 +13,7 @@
 #include "sandbox.h"
 #include "view.h"
 #include "../core/sha256.h"
+#include "../menus/autosave.h"
 #include "../net/net_session.h"
 
 #include <lauxlib.h>
@@ -679,6 +680,7 @@ void khdays_scripts_mission_end(int mission, int rank, int complete)
 {
     KhdaysEvent e;
     const int given_up = khdays_link_flag(KHDAYS_LINK_GIVEN_UP);
+    khdays_autosave_mission_end(); /* the port's autosave hears the same moment (runtime/menus/autosave.h) */
     if (tracing > 0) {
         fprintf(stderr, "mods-trace: mission end: mission %d, rank %d, complete %d, given up %d\n", mission, rank,
                 complete, given_up);
