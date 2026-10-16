@@ -7,7 +7,9 @@
 #include "../runtime/scripts/manifest.h"
 #include "../runtime/scripts/mod.h"
 #include "../runtime/scripts/order.h"
+#include "../runtime/scripts/queue.h"
 #include "../runtime/scripts/scripts.h"
+#include "../runtime/scripts/view.h"
 
 #include <SDL3/SDL.h>
 #include <stdarg.h>
@@ -553,6 +555,96 @@ static void test_player(void)
     end_case();
 }
 
+static void test_options(void)
+{
+    KhdaysModsView view;
+    char path[600], *kept;
+    memset(&view, 0, sizeof(view));
+    begin_case("options");
+    mod_folder("Options", "test.options", "gameplay",
+               "local t = mod.option{ key = 'hp', kind = 'toggle', label = { en = 'Infinite HP', es = 'PV' },\n"
+               "  on_change = function(v) game.set_flag(1, v) end }\n"
+               "local c = mod.option{ key = 'speed', kind = 'choice', label = 'Speed', values = { 'a', 'b', 'c' },\n"
+               "  default = 2, on_change = function(v) game.set_munny(v) end }\n"
+               "local n = mod.option{ key = 'boost', kind = 'number', label = 'Boost', min = 0, max = 10, step = 2,\n"
+               "  default = 4 }\n"
+               "mod.option{ key = 'potion', kind = 'button', label = 'Give',\n"
+               "  on_change = function() game.set_item(2, game.item(2) + 1) end }\n"
+               "local bad = 0\n"
+               "for _, o in ipairs({ { key = 'hp', kind = 'toggle', label = 'x' },\n"
+               "                     { key = 'k', kind = 'nope', label = 'x' },\n"
+               "                     { key = 'k', kind = 'choice', label = 'x', values = { 'one' } },\n"
+               "                     { key = 'k', kind = 'number', label = 'x', min = 0, max = 1, step = 0.5 },\n"
+               "                     { key = 'k', kind = 'toggle' } }) do\n"
+               "  if not pcall(mod.option, o) then bad = bad + 1 end\n"
+               "end\n"
+               "if bad == 5 then game.set_flag(2, true) end\n"
+               "if t.value == false and c.value == 2 then game.set_flag(4, true) end\n"
+               "if t.value == true and c.value == 3 then game.set_flag(5, true) end\n"
+               "if n.value == 4 then game.set_flag(6, true) end\n"
+               "n:set(7)\n"
+               "if n.value == 8 then game.set_flag(3, true) end\n");
+    start();
+    CHECK(khdays_link_flag(2) && khdays_link_flag(4) && khdays_link_flag(6) && !khdays_link_flag(5));
+    CHECK(khdays_link_flag(3)); /* 7 on steps of 2 from 0: 8 */
+    CHECK(khdays_scripts_view(&view) && view.count == 1 && view.mods[0].option_count == 4);
+    CHECK(view.count == 1 && strcmp(khdays_scripts_text(view.mods[0].options[0].label, 5), "PV") == 0 &&
+          strcmp(khdays_scripts_text(view.mods[0].options[0].label, 2), "Infinite HP") == 0);
+    khdays_scripts_ask(KHDAYS_ASK_OPTION, "test.options", "hp", 1);
+    khdays_scripts_ask(KHDAYS_ASK_OPTION, "test.options", "speed", 3);
+    khdays_scripts_ask(KHDAYS_ASK_OPTION, "test.options", "speed", 9); /* not one of its values: dropped */
+    khdays_scripts_ask(KHDAYS_ASK_BUTTON, "test.options", "potion", 0);
+    frames(1);
+    CHECK(khdays_link_flag(1) && fake_munny == 3 && fake_items[2] == 1);
+    CHECK(khdays_scripts_view(&view) && view.mods[0].options[1].value == 3);
+    snprintf(path, sizeof(path), "%s/saves/mods/test.options/options.ini", root);
+    kept = khdays_folders_read(path, NULL);
+    CHECK(kept != NULL && strstr(kept, "hp = 1\n") != NULL && strstr(kept, "speed = 3\n") != NULL &&
+          strstr(kept, "boost = 8\n") != NULL && strstr(kept, "potion") == NULL);
+    free(kept);
+    /* the next start: the values kept; one out of its range back to its default */
+    khdays_scripts_stop();
+    put("saves/mods/test.options/options.ini", "hp = 1\nspeed = 3\nboost = 99\n");
+    reset_game();
+    start();
+    CHECK(khdays_link_flag(5) && !khdays_link_flag(4)); /* the kept values */
+    CHECK(khdays_link_flag(6));                          /* boost's 99 out of range: its default */
+    khdays_scripts_view_free(&view);
+    end_case();
+}
+
+static void test_menu_asks(void)
+{
+    KhdaysModsView view;
+    char path[600], *order;
+    memset(&view, 0, sizeof(view));
+    begin_case("asks");
+    mod_folder("A", "test.a", "gameplay", "game.set_munny(game.munny + 1)\n");
+    mod_folder("B", "test.b", "gameplay", "mod.on('frame', function() while true do end end)\n");
+    start();
+    frames(1);
+    CHECK(mod_by_folder("B")->state == KHDAYS_MOD_PAUSED);
+    khdays_scripts_ask(KHDAYS_ASK_MOVE, "B", NULL, -1);
+    khdays_scripts_ask(KHDAYS_ASK_ENABLE, "A", NULL, 0);
+    frames(1);
+    CHECK(khdays_scripts_mod(0) == mod_by_folder("B") && mod_by_folder("A")->state == KHDAYS_MOD_OFF);
+    snprintf(path, sizeof(path), "%s/saves/mods/order.ini", root);
+    order = khdays_folders_read(path, NULL);
+    CHECK(order != NULL && strcmp(order, "B = on\nA = off\n") == 0);
+    free(order);
+    khdays_scripts_ask(KHDAYS_ASK_ENABLE, "A", NULL, 1);
+    frames(1);
+    CHECK(mod_by_folder("A")->state == KHDAYS_MOD_LOADED && fake_munny == 2); /* its main ran again */
+    CHECK(khdays_scripts_view(&view) && view.count == 2 && strcmp(view.mods[0].folder, "B") == 0 &&
+          view.mods[0].state == KHDAYS_MOD_PAUSED);
+    khdays_scripts_ask(KHDAYS_ASK_RESUME, "test.b", NULL, 0);
+    frames(1); /* resumed, and paused again by its loop */
+    CHECK(mod_by_folder("B")->state == KHDAYS_MOD_PAUSED);
+    CHECK(log_has("test.b resumed - by the player"));
+    khdays_scripts_view_free(&view);
+    end_case();
+}
+
 static void test_guest(void)
 {
     begin_case("guest");
@@ -578,6 +670,8 @@ int main(void)
     RUN(test_order_file);
     RUN(test_events_and_state);
     RUN(test_player);
+    RUN(test_options);
+    RUN(test_menu_asks);
     RUN(test_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);

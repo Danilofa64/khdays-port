@@ -290,6 +290,8 @@ add_library(khdays-host-input STATIC
     host/settings/settings_corner.c       # and what it leaves when closed
     host/screens/ui_font.cpp
     host/screens/ui_text.c
+    runtime/scripts/queue.c          # the Mods page: what it asks of the mods,
+    runtime/scripts/view.c           # and what it shows of them
     host/render/png_io.c
     host/app/instance_win.c          # the player's slot on the PC (specs/015)
     runtime/input/analog.c
@@ -370,10 +372,10 @@ add_executable(khdays-native
     runtime/scripts/order.c
     runtime/scripts/folders.cpp
     runtime/scripts/mods_log.c
-    runtime/scripts/queue.c
     runtime/scripts/api_events.c
     runtime/scripts/api_mod.c
     runtime/scripts/api_state.c
+    runtime/scripts/api_menus.c        # ... their options in the settings menu's Mods page
     runtime/scripts/game_link.c        # ... the game's side of their interface
     runtime/core/sha256.c             # SHA-256: the mods' fingerprints
     runtime/core/io_regs.c
@@ -609,7 +611,8 @@ add_test(NAME khdays-saveslots COMMAND khdays-saveslots-test)
 add_executable(khdays-script-test tests/script_test.c runtime/scripts/scripts.c runtime/scripts/sandbox.c
                runtime/scripts/manifest.c runtime/scripts/order.c runtime/scripts/folders.cpp
                runtime/scripts/mods_log.c runtime/scripts/queue.c runtime/scripts/api_events.c
-               runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/core/sha256.c)
+               runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/scripts/api_menus.c
+               runtime/scripts/view.c runtime/core/sha256.c)
 target_link_libraries(khdays-script-test PRIVATE khdays-lua SDL3::SDL3)
 target_compile_options(khdays-script-test PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>

@@ -793,6 +793,23 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_TEST_PRESS] = {"Press a key or a button: %s", "Appuyez sur une touche ou un bouton : %s",
                         "Taste oder Knopf drücken: %s", "Premi un tasto o un pulsante: %s",
                         "Pulsa una tecla o un botón: %s"},
+    [TXT_MODS] = {"Mods", "Mods", "Mods", "Mod", "Mods"},
+    [TXT_MOD_ENABLED] = {"Enabled", "Activé", "Aktiviert", "Attivo", "Activado"},
+    [TXT_MOD_EARLIER] = {"Load earlier", "Charger avant", "Früher laden", "Carica prima", "Cargar antes"},
+    [TXT_MOD_LATER] = {"Load later", "Charger après", "Später laden", "Carica dopo", "Cargar después"},
+    [TXT_MOD_RESUME] = {"Resume", "Reprendre", "Fortsetzen", "Riprendi", "Reanudar"},
+    [TXT_MOD_RUNNING] = {"Running", "En cours", "Läuft", "In esecuzione", "En marcha"},
+    [TXT_MOD_OFF] = {"Off", "Désactivé", "Aus", "Disattivato", "Desactivado"},
+    [TXT_MOD_STOPPED] = {"Stopped by an error: %s", "Arrêté par une erreur : %s", "Durch einen Fehler gestoppt: %s",
+                         "Fermato da un errore: %s", "Detenido por un error: %s"},
+    [TXT_MOD_PAUSED] = {"Paused: %s", "En pause : %s", "Pausiert: %s", "In pausa: %s", "En pausa: %s"},
+    [TXT_MOD_REFUSED] = {"Not loaded: %s", "Non chargé : %s", "Nicht geladen: %s", "Non caricato: %s",
+                         "No cargado: %s"},
+    [TXT_MOD_ORDER_NOTE] = {"Mods later in the list run after the earlier ones: their changes stand.",
+                            "Les mods plus bas dans la liste passent après les autres : leurs changements l'emportent.",
+                            "Spätere Mods der Liste laufen nach den früheren: ihre Änderungen gelten.",
+                            "I mod più in basso nell'elenco vengono dopo gli altri: valgono le loro modifiche.",
+                            "Los mods más abajo en la lista van después de los demás: sus cambios prevalecen."},
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;

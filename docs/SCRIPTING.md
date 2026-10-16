@@ -92,6 +92,7 @@ or the call's own); they never raise. A wrong argument type raises an error (the
 | `mod.off(handle)` | stops listening |
 | `mod.frame()` | the game's frame count |
 | `print(...)` | a line in the mods' log |
+| `mod.option{...}` | an option in the settings menu's Mods page (below) |
 
 ### Events
 
@@ -125,6 +126,38 @@ What a handler changes is seen by the game's next frame. An event the game raise
 | `mission.id` | the current mission | `nil` outside the field |
 | `scene.id` | the current scene | |
 
+### Options in the Mods page
+
+The settings menu has a Mods page while a scripted mod is present: each mod with its state (running,
+off, stopped by an error, paused, not loaded and why), a switch to turn it on or off, its place in the
+load order, Resume for a paused mod, and its options while it runs. The pause and the camp have no
+mod entries; the settings menu opens from anywhere with its own key.
+
+```lua
+local on = mod.option{ key = "on", kind = "toggle", default = true,
+                       label = { en = "Infinite HP", es = "PV infinitos" },
+                       description = "The player's HP back to its maximum every frame.",
+                       on_change = function(v) print("now", v) end }
+mod.option{ key = "speed", kind = "choice", label = "Speed", values = { "Slow", "Normal", "Fast" }, default = 2 }
+mod.option{ key = "boost", kind = "number", label = "Boost", min = 0, max = 10, step = 2, default = 4 }
+mod.option{ key = "hello", kind = "button", label = "Say hello", on_change = function() print("hello") end }
+-- on.value: true or false, as the player left it
+```
+
+| Field | |
+|---|---|
+| `key` | the name its value is kept under; one per mod |
+| `kind` | `toggle` (true / false), `choice` (the value's place in `values`, from 1), `number` (whole `min`, `max`, `step`), `button` |
+| `label`, `description` | a text, or a table by language (`en`, `fr`, `de`, `it`, `es`); English is the fallback |
+| `default` | the value until the player picks one |
+| `on_change` | called with the new value when the player changes it (a button: when pressed) |
+
+`mod.option` returns the option: `option.value` is its value now, `option:set(v)` changes it from the
+script (kept like the player's change; `on_change` is not called). The values are kept in
+`saves/mods/<id>/options.ini` and are back at the next start; a kept value the option no longer
+takes goes back to its default. What the player changes in the menu reaches the mod when the game
+runs again.
+
 ### Not in version 1
 
 What the decompilation does not explain yet is left out rather than guessed: warping and the field's
@@ -140,4 +173,5 @@ loaded save's event, the mission's chests, telling a cleared mission from a lost
 | `event-log` | every event, in the mods' log |
 | `where` | the mission and the player's position, once a second |
 | `double-munny` | the `munny` event and `game.set_munny` |
-| `infinite-hp` | `frame` and the player's HP |
+| `infinite-hp` | `frame`, the player's HP and a toggle |
+| `options` | a choice, a number and a button in the Mods page |

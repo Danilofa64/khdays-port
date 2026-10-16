@@ -10,9 +10,12 @@
 #include "../host/screens/ui_text.h"
 #include "../runtime/input/analog.h"
 #include "../runtime/input/sequencers.h"
+#include "../runtime/scripts/queue.h"
+#include "../runtime/scripts/view.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int failures;
@@ -780,7 +783,9 @@ static void to_section(int s)
         key(SDL_SCANCODE_UP);
     }
     for (int i = 0; i < s; ++i) {
-        key(SDL_SCANCODE_DOWN);
+        if (khdays_model_section_shown(i)) {
+            key(SDL_SCANCODE_DOWN);
+        }
     }
     key(SDL_SCANCODE_RETURN);
     khdays_settings_focus(&section, &in_rows, &row, &cell);
@@ -984,6 +989,10 @@ static void test_settings_layout(void)
         khdays_settings_draw(screen, NULL);
         CHECK(khdays_settings_place(KHDAYS_PLACE_ENTRY, 0, &first));
         for (int e = 0; e <= KHDAYS_SECTION_COUNT; ++e) {
+            if (e < KHDAYS_SECTION_COUNT && !khdays_model_section_shown(e)) {
+                CHECK(!khdays_settings_place(KHDAYS_PLACE_ENTRY, e, &entry)); /* a hidden section has none */
+                continue;
+            }
             if (!khdays_settings_place(KHDAYS_PLACE_ENTRY, e, &entry)) {
                 CHECK(small); /* scrolled out of sight only in a small window */
                 continue;
@@ -1010,6 +1019,112 @@ static void test_settings_layout(void)
     use_screen(1280, 720);
 }
 
+/* The Mods section with two mods the game showed (runtime/scripts/view.h): it appears, a mod turned off,
+ * a toggle, a choice, a number and a button asked of the game's thread, a mod moved later; gone again
+ * with no mod. */
+static void test_settings_mods(void)
+{
+    KhdaysProfile p;
+    KhdaysModsView v;
+    KhdaysModView mods[2];
+    KhdaysOptionView options[4];
+    char *values[3] = {"Slow", "Normal", "Fast"};
+    KhdaysScriptsMessage msg;
+    SDL_zero(v);
+    SDL_zero(mods);
+    SDL_zero(options);
+    options[0].key = "hp";
+    options[0].kind = KHDAYS_OPTION_TOGGLE;
+    options[0].label[0] = "Infinite HP";
+    options[1].key = "speed";
+    options[1].kind = KHDAYS_OPTION_CHOICE;
+    options[1].label[0] = "Speed";
+    options[1].values = values;
+    options[1].value_count = 3;
+    options[1].value = 2;
+    options[2].key = "boost";
+    options[2].kind = KHDAYS_OPTION_NUMBER;
+    options[2].label[0] = "Boost";
+    options[2].low = 0;
+    options[2].high = 10;
+    options[2].step = 2;
+    options[2].value = 4;
+    options[3].key = "potion";
+    options[3].kind = KHDAYS_OPTION_BUTTON;
+    options[3].label[0] = "Give a potion";
+    mods[0].folder = "First";
+    mods[0].id = "test.first";
+    mods[0].name = "First";
+    mods[0].version = "1.0";
+    mods[0].state = KHDAYS_MOD_LOADED;
+    mods[0].enabled = 1;
+    mods[0].options = options;
+    mods[0].option_count = 4;
+    mods[1].folder = "Second";
+    mods[1].id = "test.second";
+    mods[1].name = "Second";
+    mods[1].version = "2";
+    mods[1].state = KHDAYS_MOD_STOPPED;
+    mods[1].reason = "scripts/main.lua:3: attempt to call a nil value";
+    mods[1].enabled = 1;
+    v.mods = mods;
+    v.count = 2;
+    while (khdays_scripts_take(&msg)) {
+        free(msg.mod);
+        free(msg.key);
+    }
+    CHECK(!khdays_model_section_shown(KHDAYS_SECTION_MODS));
+    khdays_scripts_view_set(&v);
+    CHECK(khdays_model_section_shown(KHDAYS_SECTION_MODS));
+    khdays_profile_default(&p);
+    khdays_settings_open(&p);
+    khdays_settings_draw(screen, NULL);
+    to_section(KHDAYS_SECTION_MODS);
+    shot("2-mods");
+    to_row(KHDAYS_SET_MOD_ENABLED, -1); /* the first mod's */
+    key(SDL_SCANCODE_RETURN);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_ENABLE && strcmp(msg.mod, "First") == 0 &&
+          msg.value == 0);
+    free(msg.mod);
+    key(SDL_SCANCODE_RETURN); /* on again */
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_ENABLE && msg.value == 1);
+    free(msg.mod);
+    to_row(KHDAYS_SET_MOD_OPTION, 0);
+    key(SDL_SCANCODE_RETURN);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_OPTION && strcmp(msg.mod, "test.first") == 0 &&
+          strcmp(msg.key, "hp") == 0 && msg.value == 1);
+    free(msg.mod);
+    free(msg.key);
+    to_row(KHDAYS_SET_MOD_OPTION, 1);
+    key(SDL_SCANCODE_RIGHT);
+    CHECK(khdays_scripts_take(&msg) && strcmp(msg.key, "speed") == 0 && msg.value == 3); /* 1-based */
+    free(msg.mod);
+    free(msg.key);
+    to_row(KHDAYS_SET_MOD_OPTION, 2);
+    key(SDL_SCANCODE_RIGHT);
+    CHECK(khdays_scripts_take(&msg) && strcmp(msg.key, "boost") == 0 && msg.value == 6);
+    free(msg.mod);
+    free(msg.key);
+    to_row(KHDAYS_SET_MOD_OPTION, 3);
+    key(SDL_SCANCODE_RETURN);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_BUTTON && strcmp(msg.key, "potion") == 0);
+    free(msg.mod);
+    free(msg.key);
+    to_section(KHDAYS_SECTION_MODS); /* back to the top: the first mod's place */
+    to_row(KHDAYS_SET_MOD_LATER, -1);
+    key(SDL_SCANCODE_RETURN);
+    CHECK(khdays_scripts_take(&msg) && msg.ask == KHDAYS_ASK_MOVE && strcmp(msg.mod, "First") == 0 &&
+          msg.value == 1);
+    free(msg.mod);
+    CHECK(!khdays_scripts_take(&msg));
+    khdays_settings_draw(screen, NULL);
+    CHECK(key(SDL_SCANCODE_ESCAPE) == 0 && key(SDL_SCANCODE_ESCAPE) == 1);
+    /* no mod any more: no section */
+    v.count = 0;
+    khdays_scripts_view_set(&v);
+    CHECK(!khdays_model_section_shown(KHDAYS_SECTION_MODS));
+}
+
 static void test_settings_screen(void)
 {
     KhdaysProfile p;
@@ -1029,6 +1144,9 @@ static void test_settings_screen(void)
     CHECK(khdays_settings_is_open());
     for (int s = 0; s < KHDAYS_SECTION_COUNT; ++s) {
         char name[32];
+        if (!khdays_model_section_shown(s)) {
+            continue;
+        }
         to_section(s);
         SDL_snprintf(name, sizeof(name), "1-section-%d", s);
         shot(name);
@@ -1112,6 +1230,7 @@ static void test_settings_screen(void)
     test_settings_changes();
     test_settings_language();
     test_settings_pad();
+    test_settings_mods();
     khdays_settings_renderer_gone();
     SDL_DestroyRenderer(screen);
     SDL_DestroySurface(surface);

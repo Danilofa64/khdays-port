@@ -7,6 +7,12 @@
 void khdays_api_mod_open(KhdaysMod *mod);
 void khdays_api_state_open(KhdaysMod *mod);
 
+/* mod.option (api_menus.c): the options' table, freed with the mod's state; a change the player made
+ * (an option's value, a button pressed) kept and handed to the option's code. */
+void khdays_api_menus_open(KhdaysMod *mod);
+void khdays_api_menus_free(KhdaysMod *mod);
+void khdays_api_menus_use(KhdaysMod *mod, const char *key, double value);
+
 /* For a name that changes the game: 1 when this mod may now, else pushes nil and the reason and
  * returns 0 (a visual mod, a guest in a multiplayer session, no game yet). */
 int khdays_api_may_change(struct lua_State *L, int needs_state);

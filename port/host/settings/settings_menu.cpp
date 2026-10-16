@@ -72,7 +72,7 @@ struct Menu {
     // What the last key or button pressed does (the Controls section's test row).
     int test_action = -2; // -2 nothing pressed yet, -1 nothing
     // The rows of the section shown.
-    KhdaysRow rows[KHDAYS_MODEL_ROWS_MAX];
+    std::vector<KhdaysRow> rows = std::vector<KhdaysRow>(KHDAYS_MODEL_ROWS_MAX);
     int count = 0;
     // The situation (khdays_settings_set_situation) and the graphics card.
     int in_session = 0, hd_videos = 0, graphics_card = 1;
@@ -151,7 +151,12 @@ void settle()
     context.gamepad = khdays_devices_gamepad_name();
     context.pad_family = pad_family();
     khdays_model_refresh(&m.work);
-    m.count = khdays_model_rows(m.section, &m.work, &context, m.rows);
+    m.count = khdays_model_rows_into(m.section, &m.work, &context, m.rows.data(), (int)m.rows.size());
+    if (m.count > (int)m.rows.size()) {
+        // a section with more rows than ever before (the Mods section grows with the mods)
+        m.rows.resize((size_t)m.count);
+        m.count = khdays_model_rows_into(m.section, &m.work, &context, m.rows.data(), (int)m.rows.size());
+    }
     if (m.row >= m.count) {
         m.row = m.count - 1;
     }
@@ -404,7 +409,14 @@ void choose_section(int section)
 
 void column_move(int dir)
 {
-    m.column = std::clamp(m.column + dir, 0, kClose);
+    int next = m.column + dir;
+    while (next >= 0 && next < kClose && !khdays_model_section_shown(next)) {
+        next += dir;
+    }
+    if (next < 0) {
+        return;
+    }
+    m.column = std::clamp(next, 0, kClose);
     if (m.column < kClose) {
         choose_section(m.column);
     }
@@ -432,7 +444,10 @@ bool column_enter()
 // The shoulder buttons move between the sections.
 void switch_section(int dir)
 {
-    const int next = (m.section + dir + KHDAYS_SECTION_COUNT) % KHDAYS_SECTION_COUNT;
+    int next = m.section;
+    do {
+        next = (next + dir + KHDAYS_SECTION_COUNT) % KHDAYS_SECTION_COUNT;
+    } while (!khdays_model_section_shown(next));
     const bool rows = m.in_rows;
     m.column = next;
     choose_section(next);
@@ -556,7 +571,7 @@ bool activate()
             m.mode = MODE_PRESET;
             m.choice = 0;
         } else {
-            khdays_model_command(&m.work, r->command);
+            khdays_model_row_command(&m.work, r);
         }
         break;
     default: break;
@@ -1104,6 +1119,9 @@ void draw_column(float row_h, float pad)
 {
     const float w = ImGui::GetContentRegionAvail().x;
     for (int i = 0; i <= kClose; ++i) {
+        if (i < kClose && !khdays_model_section_shown(i)) {
+            continue;
+        }
         if (i == kClose) {
             ImGui::Dummy(ImVec2(w, row_h * 0.5f));
         }
@@ -2191,9 +2209,9 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         khdays_skin_screen(ImGui::GetBackgroundDrawList(), screen);
         // the faded picture of the section shown (the HD menu's own five, the port's choice of one
         // for each of its sections: KHDAYS_SECTION_*)
-        static const char *const emblems[KHDAYS_SECTION_COUNT] = {"emblem_keyboard", "emblem_pad",   "emblem_pad",
-                                                                  "emblem_screen",   "emblem_sound", "emblem_pad",
-                                                                  "emblem_film",     "emblem_screen"};
+        static const char *const emblems[KHDAYS_SECTION_COUNT] = {
+            "emblem_keyboard", "emblem_pad", "emblem_pad",  "emblem_screen", "emblem_sound",
+            "emblem_pad",      "emblem_film", "emblem_screen", "emblem_screen"};
         if (m.section >= 0 && m.section < KHDAYS_SECTION_COUNT) {
             khdays_skin_place(ImGui::GetBackgroundDrawList(), emblems[m.section], screen);
         }
@@ -2377,7 +2395,9 @@ int khdays_settings_row_info(int row, int *id, int *action)
         return 0;
     }
     *id = m.rows[row].id;
-    *action = m.rows[row].kind == KHDAYS_ROW_BINDING ? m.rows[row].action : -1;
+    // a binding's action, a mod option's place among its mod's
+    *action = m.rows[row].kind == KHDAYS_ROW_BINDING || m.rows[row].id == KHDAYS_SET_MOD_OPTION ? m.rows[row].action
+                                                                                                : -1;
     return 1;
 }
 

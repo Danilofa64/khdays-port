@@ -11,6 +11,7 @@
 #include "order.h"
 #include "queue.h"
 #include "sandbox.h"
+#include "view.h"
 
 #include <lauxlib.h>
 #include <lua.h>
@@ -19,8 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static KhdaysMod *mods;
+static KhdaysMod **mods; /* each its own block: its state keeps its address (lua_getextraspace) */
 static int count;
+static int changed; /* the mods' view is to be published again (view.h) */
+static void publish(void);
 static int started;
 static int tracing = -1;
 static int field_begun; /* the field was made: its first run is the mission's start */
@@ -34,7 +37,7 @@ int khdays_scripts_mod_count(void)
 
 KhdaysMod *khdays_scripts_mod(int index)
 {
-    return &mods[index];
+    return mods[index];
 }
 
 int khdays_scripts_any(void)
@@ -63,6 +66,7 @@ static char *joined(const char *a, const char *b)
 
 void khdays_mod_set_state(KhdaysMod *m, int state, const char *reason)
 {
+    changed = 1;
     m->state = state;
     free(m->reason);
     m->reason = reason != NULL ? copy(reason) : NULL;
@@ -114,6 +118,7 @@ static long long newest_file(const KhdaysMod *m)
 
 static void unload(KhdaysMod *m)
 {
+    khdays_api_menus_free(m);
     khdays_sandbox_close(m);
     free(m->handlers);
     m->handlers = NULL;
@@ -129,6 +134,7 @@ static void load(KhdaysMod *m)
     }
     khdays_api_mod_open(m);
     khdays_api_state_open(m);
+    khdays_api_menus_open(m);
     m->stamp = newest_file(m);
     m->spent = 0;
     m->allowance = khdays_sandbox_frame_allowance;
@@ -163,7 +169,8 @@ static int examine(KhdaysMod *m)
         refused(m, reason);
         return 0;
     }
-    for (KhdaysMod *other = mods; other < m; ++other) {
+    for (int i = 0; i < count && mods[i] != m; ++i) {
+        const KhdaysMod *other = mods[i];
         if (other->manifest.id != NULL && strcmp(other->manifest.id, m->manifest.id) == 0) {
             snprintf(reason, sizeof(reason), "same id as %s", other->folder);
             refused(m, reason);
@@ -246,11 +253,15 @@ void khdays_scripts_start_in(const char *mods_path, const char *user)
     }
     khdays_mods_log_open(user);
     for (int i = 0; i < order.count; ++i) {
-        KhdaysMod *m = &mods[count];
+        KhdaysMod *m;
         if (!order.entries[i].present) {
             continue;
         }
-        ++count;
+        m = calloc(1, sizeof(*m));
+        if (m == NULL) {
+            break;
+        }
+        mods[count++] = m;
         m->folder = copy(order.entries[i].folder);
         m->path = joined(mods_path, order.entries[i].folder);
         m->enabled = order.entries[i].on;
@@ -265,6 +276,8 @@ void khdays_scripts_start_in(const char *mods_path, const char *user)
             load(m);
         }
     }
+    publish();
+    changed = 0;
 }
 
 void khdays_scripts_stop(void)
@@ -272,13 +285,14 @@ void khdays_scripts_stop(void)
 #pragma warning(push)
 #pragma warning(disable : 6001) /* the mods come from calloc: each field is NULL or the mod's own */
     for (int i = 0; i < count; ++i) {
-        KhdaysMod *m = &mods[i];
+        KhdaysMod *m = mods[i];
         unload(m);
         khdays_manifest_free(&m->manifest);
         free(m->folder);
         free(m->path);
         free(m->data);
         free(m->reason);
+        free(m);
     }
 #pragma warning(pop)
     free(mods);
@@ -292,11 +306,132 @@ void khdays_scripts_stop(void)
     started = 0;
 }
 
+static void publish(void)
+{
+    KhdaysModsView now;
+    memset(&now, 0, sizeof(now));
+    now.mods = count > 0 ? calloc((size_t)count, sizeof(*now.mods)) : NULL;
+    now.count = now.mods != NULL ? count : 0;
+    for (int i = 0; i < now.count; ++i) {
+        const KhdaysMod *m = mods[i];
+        KhdaysModView *v = &now.mods[i];
+        v->folder = m->folder;
+        v->id = m->manifest.id;
+        v->name = m->manifest.name;
+        v->version = m->manifest.version;
+        v->author = m->manifest.author;
+        v->description = m->manifest.description;
+        v->reason = m->reason;
+        v->kind = m->manifest.id != NULL ? m->manifest.kind : -1;
+        v->state = m->state;
+        v->enabled = m->enabled;
+        v->options = m->option_count > 0 ? calloc((size_t)m->option_count, sizeof(*v->options)) : NULL;
+        v->option_count = v->options != NULL ? m->option_count : 0;
+        for (int o = 0; o < v->option_count; ++o) {
+            const KhdaysOption *a = &m->options[o];
+            KhdaysOptionView *b = &v->options[o];
+            b->key = a->key;
+            b->kind = a->kind;
+            memcpy(b->label, a->label, sizeof(b->label));
+            memcpy(b->description, a->description, sizeof(b->description));
+            b->values = a->values;
+            b->value_count = a->value_count;
+            b->low = a->low;
+            b->high = a->high;
+            b->step = a->step;
+            b->value = a->value;
+        }
+    }
+    khdays_scripts_view_set(&now); /* copies the strings: the mods' own may go */
+    for (int i = 0; i < now.count; ++i) {
+#pragma warning(suppress : 6001) /* now.mods comes from calloc: each options NULL or its own */
+        free(now.mods[i].options);
+    }
+    free(now.mods);
+}
+
+static KhdaysMod *by_folder(const char *folder)
+{
+    for (int i = 0; folder != NULL && i < count; ++i) {
+        if (strcmp(mods[i]->folder, folder) == 0) {
+            return mods[i];
+        }
+    }
+    return NULL;
+}
+
+static KhdaysMod *by_id(const char *id)
+{
+    for (int i = 0; id != NULL && i < count; ++i) {
+        if (mods[i]->manifest.id != NULL && strcmp(mods[i]->manifest.id, id) == 0) {
+            return mods[i];
+        }
+    }
+    return NULL;
+}
+
+static void save_order(void)
+{
+    char *path = joined(user_folder, "mods/order.ini"), *text = khdays_order_text(&order);
+    if (path != NULL && text != NULL) {
+        khdays_folders_write(path, text, strlen(text));
+    }
+    free(path);
+    free(text);
+}
+
+static int order_index(const char *folder)
+{
+    for (int i = 0; i < order.count; ++i) {
+        if (strcmp(order.entries[i].folder, folder) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* A mod turned on or off from the Mods page: loaded or closed (its options' values and data kept). */
+static void set_enabled(KhdaysMod *m, int on)
+{
+    const int at = order_index(m->folder);
+    if (at >= 0) {
+        order.entries[at].on = on;
+        save_order();
+    }
+    m->enabled = on;
+    changed = 1;
+    if (on && (m->state == KHDAYS_MOD_OFF)) {
+        load(m);
+    } else if (!on && m->state != KHDAYS_MOD_REFUSED) {
+        unload(m);
+        khdays_mod_set_state(m, KHDAYS_MOD_OFF, NULL);
+        khdays_mods_log(m->manifest.id, "stopped", NULL, 0, "turned off");
+    }
+}
+
+/* A mod one place earlier or later: the order file and the order events reach the mods in. */
+static void move(KhdaysMod *m, int by)
+{
+    int i = 0;
+    while (i < count && mods[i] != m) {
+        ++i;
+    }
+    if (i == count || i + by < 0 || i + by >= count) {
+        return;
+    }
+    khdays_order_move(&order, order_index(m->folder), by);
+    save_order();
+    mods[i] = mods[i + by];
+    mods[i + by] = m;
+    changed = 1;
+}
+
 static void take_messages(void)
 {
     KhdaysScriptsMessage msg;
     while (khdays_scripts_take(&msg)) {
         KhdaysEvent e;
+        KhdaysMod *m;
         memset(&e, 0, sizeof(e));
         e.text = "settings";
         switch (msg.ask) {
@@ -307,6 +442,30 @@ static void take_messages(void)
         case KHDAYS_ASK_SETTINGS_CLOSED:
             e.id = KHDAYS_EVENT_MENU_CLOSE;
             khdays_script_events_raise(&e);
+            break;
+        case KHDAYS_ASK_ENABLE:
+            if ((m = by_folder(msg.mod)) != NULL && m->enabled != (msg.value != 0)) {
+                set_enabled(m, msg.value != 0);
+            }
+            break;
+        case KHDAYS_ASK_MOVE:
+            if ((m = by_folder(msg.mod)) != NULL) {
+                move(m, msg.value < 0 ? -1 : 1);
+            }
+            break;
+        case KHDAYS_ASK_RESUME:
+            if ((m = by_id(msg.mod)) != NULL && m->state == KHDAYS_MOD_PAUSED) {
+                m->over = 0;
+                khdays_mod_set_state(m, KHDAYS_MOD_LOADED, NULL);
+                khdays_mods_log(m->manifest.id, "resumed", NULL, 0, "by the player");
+            }
+            break;
+        case KHDAYS_ASK_OPTION:
+        case KHDAYS_ASK_BUTTON:
+            if ((m = by_id(msg.mod)) != NULL && msg.key != NULL) {
+                khdays_api_menus_use(m, msg.key, msg.value);
+                changed = 1;
+            }
             break;
         default:
             break;
@@ -333,11 +492,15 @@ void khdays_scripts_frame(void)
         return;
     }
     for (int i = 0; i < count; ++i) {
-        mods[i].spent = 0;
-        mods[i].allowance = khdays_sandbox_frame_allowance;
+        mods[i]->spent = 0;
+        mods[i]->allowance = khdays_sandbox_frame_allowance;
     }
     take_messages();
     khdays_script_events_frame();
+    if (changed) {
+        changed = 0;
+        publish();
+    }
 }
 
 void khdays_scripts_field_begins(void)
