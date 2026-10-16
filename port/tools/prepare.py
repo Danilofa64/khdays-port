@@ -1018,7 +1018,15 @@ HOOKS = {
             "    if (Session_IsActive() != 0 && *(int *)(Session_GetSetup() + 4) >= 3) {\n"
             "        { extern int khdays_mp_field_mode(int players); i = khdays_mp_field_mode("
             "*(int *)(Session_GetSetup() + 4)); }\n",
-        )
+        ),
+        (  # the field begins (a mission, or the same one again after Retry): the mods' mission start
+           # waits for its first run (runtime/scripts/scripts.h)
+            "    if (Session_IsActive() != 0) {\n        return (void *)Ov002_UpdatePendingRequest;\n    }\n"
+            "    return (void *)Ov002_TickGameplayState;\n}\n",
+            "    { extern void khdays_scripts_field_begins(void); khdays_scripts_field_begins(); }\n"
+            "    if (Session_IsActive() != 0) {\n        return (void *)Ov002_UpdatePendingRequest;\n    }\n"
+            "    return (void *)Ov002_TickGameplayState;\n}\n",
+        ),
     ],
     # A guest's prediction of its own character (runtime/net/mp_predict.c): the battle is
     # host-simulated, and a guest's own character runs the host's branch from its own last control,
@@ -1364,6 +1372,47 @@ HOOKS = {
             "              NNS_G3dGeSendDL((u8 *)data + data->payloadOffset08, data->payloadSize0c);\n"
             "          } }\n",
         )
+    ],
+    # Gameplay mods' scripts (runtime/scripts/scripts.h): the frame point, once the game's logic of the
+    # frame is done and before its pacing; and the game's own moments the mods hear.
+    "main@02000bcc": [
+        (  # main's frame loop
+            "        SoundMgr_Update();\n\n        /* frame-rate pacing",
+            "        SoundMgr_Update();\n"
+            "        { extern void khdays_scripts_frame(void); khdays_scripts_frame(); }\n\n"
+            "        /* frame-rate pacing",
+        )
+    ],
+    "ov002@02068090": [
+        (  # Ov002_BeginMissionRun: the session request went through, a run starts (the first after the
+           # field begins is the mission's start)
+            "        pfnStep = Ov002_SessionTick;\n",
+            "        pfnStep = Ov002_SessionTick;\n"
+            "        { extern void khdays_scripts_mission_start(void); khdays_scripts_mission_start(); }\n",
+        )
+    ],
+    "ov005@020550e4": [
+        (  # Ov005_CommitMissionResults: complete is the routine's own rule for status 3, story missions only
+            "    int rank,reward;\n",
+            "    int rank,reward;\n"
+            "    { extern void khdays_scripts_mission_end(int mission, int rank, int complete);\n"
+            "      khdays_scripts_mission_end(config->missionIndex, config->resultRank,\n"
+            "                                 config->rewardMode == 255 && config->nOption64 == 0\n"
+            "                                     ? config->missionResultValue == config->missionTargetValue : -1); }\n",
+        )
+    ],
+    "ov022@020acc94": [
+        (  # Ov022_ActorSetHp: the HP before, then the change told once it is made
+            "    struct Ent *pSelf = (struct Ent *)pEnt;\n",
+            "    struct Ent *pSelf = (struct Ent *)pEnt;\n"
+            "    const int khdays_before = pSelf->nHp;\n",
+        ),
+        (
+            "    Ov002_GetPanelWord0220(pSelf->nId, pSelf->nHp);\n}\n",
+            "    Ov002_GetPanelWord0220(pSelf->nId, pSelf->nHp);\n"
+            "    { extern void khdays_scripts_hp(void *entity, int before); khdays_scripts_hp(pEnt, khdays_before); }\n"
+            "}\n",
+        ),
     ],
 }
 
@@ -2036,6 +2085,11 @@ PORT_DS_SYMBOLS = (
     # the game's language and its message databases' table (runtime/core/language.c)
     "gLangPath",
     "data_0204c238",
+    # the mods' interface (runtime/scripts/game_link.c): the game's state, the object list's frame
+    # count, the current mission
+    "gGameState",
+    "gObjSystem",
+    "data_0204c23c",
 )
 
 

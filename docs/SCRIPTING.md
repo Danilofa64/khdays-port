@@ -1,0 +1,143 @@
+# Scripting gameplay mods
+
+A mod can change how the game plays with scripts in Lua 5.4. The port runs each scripted mod in its
+own sandboxed interpreter, on the game's thread, once per game frame and when the game does something
+a script listens to. Scripts read and change the game's state by name, never by address: the names
+below stay the same across port updates of the same interface version.
+
+Content mods (textures, models, 2D, sounds, texts, movies, rooms) are unchanged by this; a scripted
+mod may carry content too.
+
+## A mod's folder
+
+```text
+mods/<folder>/
+├── mod.ini              # what makes it a scripted mod
+├── scripts/
+│   ├── main.lua         # run once when the mod is loaded
+│   └── <name>.lua       # require("name"); require("a.b") is scripts/a/b.lua
+├── data/                # text files the mod reads (optional)
+└── ...                  # content, as any mod (optional)
+```
+
+`mod.ini`, `key = value` lines (`#` starts a comment):
+
+```ini
+id = example.infinite-hp
+name = Infinite HP
+version = 1.0
+author = khdays-port
+kind = gameplay
+api = 1
+description = Keeps the player's HP full.
+```
+
+| Key | | |
+|---|---|---|
+| `id` | required | letters, digits, `.`, `_`, `-`; no two mods may share one |
+| `name`, `version` | required | shown to the player; versions are compared as text |
+| `kind` | required | `gameplay` (it changes the game) or `visual` (it only listens: its changes are refused) |
+| `api` | required | the interface version it needs: this port gives `1` |
+| `main` | optional | the first script, under `scripts/` (default `scripts/main.lua`) |
+| `author`, `description` | optional | shown to the player |
+
+A folder whose `mod.ini` is missing a required key, asks for a newer interface, repeats another mod's
+id or has no main script is not loaded, and the reason is logged.
+
+Mods load in the order kept in `saves/mods/order.ini` (`<folder> = on|off`, one line each); a mod
+not listed yet comes after the others, on. Events reach the mods in that order: when two mods change
+the same thing in a frame, the later one's change stands.
+
+## What a script may use
+
+`string`, `table`, `math`, `utf8`, `coroutine`, the base functions (`load` of text only, without
+`dofile` and `loadfile`), `require` of the mod's own scripts, and `os.time`, `os.clock`, `os.date`,
+`os.difftime`. Nothing else: no files beyond the mod's own, no programs, no native code, no network.
+Metatables cannot have `__gc`.
+
+Each mod may hold 64 MB; past that, an allocation fails (`not enough memory`). Each mod has a time
+allowance per game frame (1 ms; its main script has 250 ms when it loads). A mod past its allowance
+is paused; an error in a script stops that mod only. Either is written to the mods' log with the
+script's file and line, and the game and the other mods go on.
+
+A known limit: the time is looked at between the script's own instructions, so a single library call
+that takes long (a string pattern over a very long text) is only stopped once it returns.
+
+## The mods' log
+
+`saves/logs/mods.log` holds a line per thing each mod printed or met (the last run's is
+`mods.prev.log`):
+
+```text
+12.345 example.infinite-hp loaded - started, api 1
+13.002 example.where print scripts/main.lua:8 mission 10 at 12.50 0.00 -3.25
+20.410 example.broken error scripts/main.lua:3 attempt to index a nil value (global 'plyer')
+20.410 example.broken stopped - the error above
+```
+
+The same lines go to the session log after `mods:`.
+
+## The interface, version 1
+
+Calls that change the game return `true`, or `nil` and a reason (`"visual mod"`, `"guest"` in a
+multiplayer session that the player does not host, `"no game"` before a game is started or loaded,
+or the call's own); they never raise. A wrong argument type raises an error (the mod's own bug).
+
+### `mod`
+
+| Name | |
+|---|---|
+| `mod.id`, `mod.name`, `mod.version` | from `mod.ini` |
+| `mod.on(event, function(e) ... end)` | listens to an event (below); returns a handle |
+| `mod.off(handle)` | stops listening |
+| `mod.frame()` | the game's frame count |
+| `print(...)` | a line in the mods' log |
+
+### Events
+
+Each handler gets one table, `e`, with `e.event` its name and the fields below.
+
+| Event | Fields | When |
+|---|---|---|
+| `frame` | `frame`, `paused` | every game frame, once the game's logic of the frame is done (the pause included: `paused` is true while the game's objects stand still) |
+| `scene` | `from`, `to`, `argument` | the game changed scenes |
+| `title` | | the title scene was entered |
+| `mission_start` | `mission` | the field began: a mission (again after Retry), or in Story Mode the Grey Area, where `mission` is whatever the game holds then |
+| `mission_end` | `mission`, `rank`, `given_up`, `complete` | the mission's results were recorded (after a give-up too: `given_up` true; a give-up from Mission Mode's pause had `rank` -1); `complete` only in Story Mode |
+| `hp` | `who` (`"player"` or `"other"`), `before`, `after`, `max` | an HP changed in battle (`after < before`: damage) |
+| `item` | `item`, `count`, `change` | an item's count changed (picked up, bought, used, given) |
+| `munny` | `total`, `change` | the munny changed |
+| `menu_open`, `menu_close` | `menu` (`"pause"`, `"camp"`, `"settings"`) | the pause, the camp or the port's settings menu |
+| `save` | | the game saved |
+
+What a handler changes is seen by the game's next frame. An event the game raises while a script runs
+(a change a script made itself) reaches the mods once that script has returned.
+
+### The game's state
+
+| Name | | Limits |
+|---|---|---|
+| `game.munny`, `game.set_munny(n)` | munny | 0 to 999999 |
+| `game.item(id)`, `game.set_item(id, n)` | an item's count | ids 0 to 2255 (`0x8cf`), counts 0 to 99; a count above 0 marks the item owned |
+| `game.flag(n)`, `game.set_flag(n, on)` | a story or mission flag | 0 to 16383 (`0x3fff`) |
+| `player.hp`, `player.max_hp`, `player.set_hp(n)` | the player's HP in the field | `set_hp` clamps to 0..`max_hp`, as the game's own hits and cures do (0 is a defeat); `nil` / `nil, "no player"` elsewhere |
+| `player.position()` | `x, y, z` in the field | `nil, "no player"` elsewhere |
+| `mission.id` | the current mission | `nil` outside the field |
+| `scene.id` | the current scene | |
+
+### Not in version 1
+
+What the decompilation does not explain yet is left out rather than guessed: warping and the field's
+current area, the deck and abilities, enemies of a kind the mission did not load, who dealt a hit, a
+loaded save's event, the mission's chests, telling a cleared mission from a lost one.
+
+## Examples
+
+`port/mods_examples/`: copy a folder into `mods/` to try it.
+
+| Mod | Shows |
+|---|---|
+| `event-log` | every event, in the mods' log |
+| `where` | the mission and the player's position, once a second |
+| `double-munny` | the `munny` event and `game.set_munny` |
+| `infinite-hp` | `frame` and the player's HP |

@@ -169,6 +169,16 @@ int khdays_slots_commit(void)
     return ok;
 }
 
+int khdays_slots_changed(void)
+{
+    for (int f = 0; f < PORT_FILES; ++f) {
+        if (changed[f] && files[f] != NULL) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int khdays_slots_port_view(void)
 {
     return port_view;

@@ -120,6 +120,22 @@ target_compile_definitions(khdays-host-imgui PUBLIC IMGUI_DISABLE_DEFAULT_FONT I
 target_link_libraries(khdays-host-imgui PUBLIC SDL3::SDL3)
 target_compile_options(khdays-host-imgui PRIVATE /std:c++20 /EHsc)
 
+# Gameplay mods' scripts (runtime/scripts): Lua 5.4 (MIT), its core and the libraries the mods are
+# given; not its interpreter, compiler, files, debug or modules.
+FetchContent_Declare(
+    lua
+    URL https://www.lua.org/ftp/lua-5.4.9.tar.gz
+    URL_HASH SHA256=2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_SUBDIR none
+)
+FetchContent_MakeAvailable(lua)
+file(GLOB khdays_lua_sources "${lua_SOURCE_DIR}/src/*.c")
+list(FILTER khdays_lua_sources EXCLUDE REGEX "/(lua|luac|liolib|ldblib|loadlib|linit)\\.c$")
+add_library(khdays-lua STATIC ${khdays_lua_sources})
+target_include_directories(khdays-lua PUBLIC "${lua_SOURCE_DIR}/src")
+target_compile_options(khdays-lua PRIVATE /W3 /wd4244 /wd4324)
+
 # The menu's font, in the executable so that it alone still updates a
 # release: Roboto Medium (Apache License 2.0), from ImGui's own archive.
 set(KHDAYS_MENU_FONT_DIR "${CMAKE_CURRENT_BINARY_DIR}/menu_font")
@@ -348,6 +364,18 @@ add_executable(khdays-native
     runtime/menus/charselect.c         # Mission Mode's character select, read and steered for the port
     runtime/menus/camp.c               # Mission Mode's camp menu, read for the port
     runtime/menus/retry.c              # Mission Mode's Retry in the pause
+    runtime/scripts/scripts.c          # gameplay mods' scripts: found, loaded, run at the frame point
+    runtime/scripts/sandbox.c          # ... each in its own Lua state
+    runtime/scripts/manifest.c
+    runtime/scripts/order.c
+    runtime/scripts/folders.cpp
+    runtime/scripts/mods_log.c
+    runtime/scripts/queue.c
+    runtime/scripts/api_events.c
+    runtime/scripts/api_mod.c
+    runtime/scripts/api_state.c
+    runtime/scripts/game_link.c        # ... the game's side of their interface
+    runtime/core/sha256.c             # SHA-256: the mods' fingerprints
     runtime/core/io_regs.c
     runtime/core/threads.c
     runtime/core/window.c
@@ -449,6 +477,7 @@ target_compile_options(khdays-native PRIVATE
 # ufbx (specs/014), as it is: third-party, not held to the port's warnings.
 add_library(khdays-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 target_link_libraries(khdays-native PRIVATE khdays-ufbx)
+target_link_libraries(khdays-native PRIVATE khdays-lua)
 target_link_libraries(khdays-native PRIVATE khdays-gfx khdays-gpu khdays-sound khdays-host-input SDL3::SDL3 dbghelp winmm delayimp
                       mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi advapi32 winhttp)
 # The DS's own addresses are held, inaccessible, first thing in main
@@ -574,6 +603,18 @@ add_executable(khdays-saveslots-test tests/saveslots_test.c runtime/menus/savesl
 target_link_libraries(khdays-saveslots-test PRIVATE SDL3::SDL3)
 target_compile_options(khdays-saveslots-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-saveslots COMMAND khdays-saveslots-test)
+
+# Gameplay mods' scripts (runtime/scripts): manifests, the load order, the sandbox, the events and the
+# state names, against a game of the test's own.
+add_executable(khdays-script-test tests/script_test.c runtime/scripts/scripts.c runtime/scripts/sandbox.c
+               runtime/scripts/manifest.c runtime/scripts/order.c runtime/scripts/folders.cpp
+               runtime/scripts/mods_log.c runtime/scripts/queue.c runtime/scripts/api_events.c
+               runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/core/sha256.c)
+target_link_libraries(khdays-script-test PRIVATE khdays-lua SDL3::SDL3)
+target_compile_options(khdays-script-test PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
+    $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
+add_test(NAME khdays-script COMMAND khdays-script-test)
 
 # The sound's tests: the channels and mixers against fixed programs, the
 # bridge's queues, and (to come) the drivers, the stream reader and the

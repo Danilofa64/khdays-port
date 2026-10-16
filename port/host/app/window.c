@@ -27,6 +27,7 @@
 #include "../../runtime/core/language.h"
 #include "../../runtime/movies/movie_hd.h"
 #include "../../runtime/net/net_session.h"
+#include "../../runtime/scripts/queue.h"
 #include "../../runtime/core/runtime.h"
 #include "../../runtime/core/session_log.h"
 #include "../../ui/situation.h"
@@ -346,6 +347,7 @@ static void open_settings(void)
     khdays_settings_set_situation(!settings_stopped, khdays_settings_sample_has_movies());
     khdays_settings_open(khdays_devices_profile());
     heard = khdays_settings_profile()->sound;
+    khdays_scripts_ask(KHDAYS_ASK_SETTINGS_OPENED, NULL, NULL, 0); /* the mods hear it */
 }
 
 /* Closes the settings menu: saves and applies what changed, and lets the game
@@ -353,6 +355,7 @@ static void open_settings(void)
 static void close_settings(void)
 {
     apply_changes();
+    khdays_scripts_ask(KHDAYS_ASK_SETTINGS_CLOSED, NULL, NULL, 0);
     khdays_settings_sample_stop();
     if (khdays_settings_changed()) {
         khdays_devices_set_profile(khdays_settings_profile()); /* as closing may have fixed it */

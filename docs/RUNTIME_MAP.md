@@ -4192,3 +4192,31 @@ Read from the decompilation and measured in the port (specs/022 research.md).
 - **A room's collision has a format limit of its own**: a node of the collision tree names its
   first face in 16 bits, so a room holds at most 32,767 faces of each kind (khdays-studio refuses
   more); the largest such room made from nm room 9 is 8,081,760 bytes.
+
+## 20. What gameplay mods hear and change (spec 028)
+
+The mods' interface (`runtime/scripts`, `docs/SCRIPTING.md`) joins the game at these points, each a
+documented build-time edit (`port/tools/prepare.py` `HOOKS`); read in the running game 2026-10-16
+with `KHDAYS_TRACE_MODS=1`, the example mods (`port/mods_examples`) and the walks.
+
+- **The frame point**: `main`'s frame loop (0x02000cac), right after `SoundMgr_Update`: the game's
+  logic of the frame is done, before its pacing. Every scene the walks pass (1 title, 7 character
+  select, 19 Mission Mode's camp, 5 the story's camp, 2 the field, 6 the results) reaches it once
+  per logic frame: 974 frame points over 1,948 VBlanks in the title, 1,214 over 2,432 in the field.
+  The pause reaches it too (`gPauseMode` 1: the objects stand still).
+- **The field begins**: `Ov002_ConstructGameplayScene`, again after Retry. `Ov002_BeginMissionRun`
+  starts a run of it more than once a mission (its gameplay state 2 entered again: mission 94 started
+  two runs 32 frames apart), so the mission's start is the first run after the field is made. In
+  Story Mode the Grey Area is a field too: walking into it raised a start with `data_0204c23c` 0.
+- **The results**: `Ov005_CommitMissionResults` runs after a give-up as well (mission 94 given up
+  from the pause: rank -1, `rewardMode` not 255), with flag 0x2087 (`Ov002_RetireSubFlow`) set from
+  the game over on. A cleared or lost mission is not traced yet.
+- **The game's state** made anew or loaded from a save happens in the title (scene 1): loading the
+  walks' save changed 20 item counts and the munny (300) there, before the character select.
+- **The local player's battle actor** is `GetEntryField20ByIndex(Session_GetLocalPlayerIndex())`:
+  the field players' table at `*(data_ov022_020b2e78 + 4)`, read with the battle (ov022) loaded; HP
+  at +0x12, maximum +0x16, position +0x48c. In mission 94 (Mission Mode's tutorial) the D-pad moved
+  it from (0, 0.01, 0) to (5.11, 1.83, -34.99); a mod's `player.set_hp` through `Ov022_ActorSetHp`
+  took Roxas from 62 to 55 of 62 and raised the `hp` event for that actor. Every HP change of a
+  battle actor goes through `Ov022_ActorSetHp` (`Ov022_ReceiveHit`, `Ov022_ApplyDamageAndFlagHit`,
+  items, the party's network state).

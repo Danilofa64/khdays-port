@@ -1,0 +1,420 @@
+/* Gameplay mods' scripts (scripts.h): finding the mods, their load order, loading each into its own
+ * state, and the frame point. */
+#include "scripts.h"
+
+#include "api.h"
+#include "events.h"
+#include "folders.h"
+#include "game_link.h"
+#include "mod.h"
+#include "mods_log.h"
+#include "order.h"
+#include "queue.h"
+#include "sandbox.h"
+
+#include <lauxlib.h>
+#include <lua.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static KhdaysMod *mods;
+static int count;
+static int started;
+static int tracing = -1;
+static int field_begun; /* the field was made: its first run is the mission's start */
+static char *user_folder;
+static KhdaysOrder order;
+
+int khdays_scripts_mod_count(void)
+{
+    return count;
+}
+
+KhdaysMod *khdays_scripts_mod(int index)
+{
+    return &mods[index];
+}
+
+int khdays_scripts_any(void)
+{
+    return count > 0;
+}
+
+static char *copy(const char *s)
+{
+    char *out = malloc(strlen(s) + 1);
+    if (out != NULL) {
+        strcpy(out, s);
+    }
+    return out;
+}
+
+static char *joined(const char *a, const char *b)
+{
+    const size_t n = strlen(a) + strlen(b) + 2;
+    char *out = malloc(n);
+    if (out != NULL) {
+        snprintf(out, n, "%s/%s", a, b);
+    }
+    return out;
+}
+
+void khdays_mod_set_state(KhdaysMod *m, int state, const char *reason)
+{
+    m->state = state;
+    free(m->reason);
+    m->reason = reason != NULL ? copy(reason) : NULL;
+}
+
+static const char *name_of(const KhdaysMod *m)
+{
+    return m->manifest.id != NULL ? m->manifest.id : m->folder;
+}
+
+static void refused(KhdaysMod *m, const char *reason)
+{
+    khdays_mod_set_state(m, KHDAYS_MOD_REFUSED, reason);
+    khdays_mods_log(name_of(m), "refused", NULL, 0, reason);
+}
+
+/* The newest write among the mod's mod.ini and scripts (its reload is wanted when it moves). */
+typedef struct Newest {
+    const char *scripts;
+    long long time;
+} Newest;
+
+static void newer(const char *relative, void *context)
+{
+    Newest *n = context;
+    char *path = joined(n->scripts, relative);
+    if (path != NULL) {
+        const long long t = khdays_folders_time(path);
+        if (t > n->time) {
+            n->time = t;
+        }
+        free(path);
+    }
+}
+
+static long long newest_file(const KhdaysMod *m)
+{
+    char *ini = joined(m->path, "mod.ini");
+    Newest n;
+    n.scripts = joined(m->path, "scripts");
+    n.time = ini != NULL ? khdays_folders_time(ini) : -1;
+    if (n.scripts != NULL) {
+        khdays_folders_files(n.scripts, newer, &n);
+    }
+    free(ini);
+    free((char *)n.scripts);
+    return n.time;
+}
+
+static void unload(KhdaysMod *m)
+{
+    khdays_sandbox_close(m);
+    free(m->handlers);
+    m->handlers = NULL;
+    m->handler_count = m->handler_capacity = 0;
+}
+
+static void load(KhdaysMod *m)
+{
+    char note[64];
+    if (!khdays_sandbox_open(m)) {
+        khdays_mods_log(name_of(m), "refused", NULL, 0, m->reason);
+        return;
+    }
+    khdays_api_mod_open(m);
+    khdays_api_state_open(m);
+    m->stamp = newest_file(m);
+    m->spent = 0;
+    m->allowance = khdays_sandbox_frame_allowance;
+    khdays_script_events_hold();
+    if (khdays_sandbox_run_main(m)) {
+        snprintf(note, sizeof(note), "started, api %d", m->manifest.api);
+        khdays_mods_log(m->manifest.id, "loaded", NULL, 0, note);
+    }
+    khdays_script_events_release();
+}
+
+/* Reads a mod's folder: its manifest, its interface version, its id among the others, its
+ * fingerprint. Returns 1 when it may be loaded. */
+static int examine(KhdaysMod *m)
+{
+    char reason[300], *ini = joined(m->path, "mod.ini"), *text;
+    size_t size = 0;
+    text = ini != NULL ? khdays_folders_read(ini, &size) : NULL;
+    free(ini);
+    if (text == NULL) {
+        refused(m, "mod.ini cannot be read");
+        return 0;
+    }
+    if (!khdays_manifest_parse(text, size, &m->manifest, reason, sizeof(reason))) {
+        free(text);
+        refused(m, reason);
+        return 0;
+    }
+    free(text);
+    if (m->manifest.api > KHDAYS_MODS_API) {
+        snprintf(reason, sizeof(reason), "needs mod interface %d, this port has %d", m->manifest.api, KHDAYS_MODS_API);
+        refused(m, reason);
+        return 0;
+    }
+    for (KhdaysMod *other = mods; other < m; ++other) {
+        if (other->manifest.id != NULL && strcmp(other->manifest.id, m->manifest.id) == 0) {
+            snprintf(reason, sizeof(reason), "same id as %s", other->folder);
+            refused(m, reason);
+            return 0;
+        }
+    }
+    if (!khdays_manifest_fingerprint(m->path, m->fingerprint)) {
+        refused(m, "its files cannot all be read");
+        return 0;
+    }
+    {
+        char *data_root = joined(user_folder, "mods");
+        m->data = data_root != NULL ? joined(data_root, m->manifest.id) : NULL;
+        free(data_root);
+    }
+    return 1;
+}
+
+typedef struct Found {
+    const char *mods;
+    char **names;
+    int count, capacity;
+} Found;
+
+static void found_folder(const char *name, void *context)
+{
+    Found *f = context;
+    char *folder = joined(f->mods, name), *ini = folder != NULL ? joined(folder, "mod.ini") : NULL;
+    const int scripted = ini != NULL && khdays_folders_is_file(ini);
+    free(ini);
+    free(folder);
+    if (!scripted) {
+        return; /* a content mod: not this module's */
+    }
+    if (f->count == f->capacity) {
+        const int grown = f->capacity == 0 ? 8 : f->capacity * 2;
+        char **n = realloc(f->names, (size_t)grown * sizeof(*n));
+        if (n == NULL) {
+            return;
+        }
+        f->names = n;
+        f->capacity = grown;
+    }
+    f->names[f->count] = copy(name);
+    if (f->names[f->count] != NULL) {
+        ++f->count;
+    }
+}
+
+void khdays_scripts_start_in(const char *mods_path, const char *user)
+{
+    Found found = {mods_path, NULL, 0, 0};
+    char *order_path, *order_text;
+    int present = 0;
+    khdays_scripts_stop();
+    started = 1;
+    khdays_folders_list(mods_path, found_folder, &found);
+    if (found.count == 0) {
+        free(found.names);
+        return; /* no scripted mod: nothing made */
+    }
+    user_folder = copy(user);
+    order_path = joined(user, "mods/order.ini");
+    order_text = order_path != NULL ? khdays_folders_read(order_path, NULL) : NULL;
+    khdays_order_parse(&order, order_text);
+    khdays_order_merge(&order, (const char *const *)found.names, found.count);
+    free(order_text);
+    free(order_path);
+    for (int i = 0; i < found.count; ++i) {
+        free(found.names[i]);
+    }
+    free(found.names);
+
+    for (int i = 0; i < order.count; ++i) {
+        present += order.entries[i].present;
+    }
+    mods = calloc((size_t)present, sizeof(*mods));
+    if (mods == NULL) {
+        return;
+    }
+    khdays_mods_log_open(user);
+    for (int i = 0; i < order.count; ++i) {
+        KhdaysMod *m = &mods[count];
+        if (!order.entries[i].present) {
+            continue;
+        }
+        ++count;
+        m->folder = copy(order.entries[i].folder);
+        m->path = joined(mods_path, order.entries[i].folder);
+        m->enabled = order.entries[i].on;
+        m->state = KHDAYS_MOD_OFF;
+        if (m->folder == NULL || m->path == NULL || !examine(m)) {
+            if (m->state != KHDAYS_MOD_REFUSED) {
+                refused(m, "not enough memory");
+            }
+            continue;
+        }
+        if (m->enabled) {
+            load(m);
+        }
+    }
+}
+
+void khdays_scripts_stop(void)
+{
+#pragma warning(push)
+#pragma warning(disable : 6001) /* the mods come from calloc: each field is NULL or the mod's own */
+    for (int i = 0; i < count; ++i) {
+        KhdaysMod *m = &mods[i];
+        unload(m);
+        khdays_manifest_free(&m->manifest);
+        free(m->folder);
+        free(m->path);
+        free(m->data);
+        free(m->reason);
+    }
+#pragma warning(pop)
+    free(mods);
+    mods = NULL;
+    count = 0;
+    free(user_folder);
+    user_folder = NULL;
+    khdays_order_free(&order);
+    khdays_script_events_reset();
+    khdays_mods_log_close();
+    started = 0;
+}
+
+static void take_messages(void)
+{
+    KhdaysScriptsMessage msg;
+    while (khdays_scripts_take(&msg)) {
+        KhdaysEvent e;
+        memset(&e, 0, sizeof(e));
+        e.text = "settings";
+        switch (msg.ask) {
+        case KHDAYS_ASK_SETTINGS_OPENED:
+            e.id = KHDAYS_EVENT_MENU_OPEN;
+            khdays_script_events_raise(&e);
+            break;
+        case KHDAYS_ASK_SETTINGS_CLOSED:
+            e.id = KHDAYS_EVENT_MENU_CLOSE;
+            khdays_script_events_raise(&e);
+            break;
+        default:
+            break;
+        }
+        free(msg.mod);
+        free(msg.key);
+    }
+}
+
+void khdays_scripts_frame(void)
+{
+    if (tracing < 0) {
+        tracing = getenv("KHDAYS_TRACE_MODS") != NULL;
+    }
+    if (tracing) {
+        khdays_link_trace_frame();
+    }
+    if (!started) {
+        const char *mods_path, *user;
+        khdays_link_folders(&mods_path, &user);
+        khdays_scripts_start_in(mods_path, user);
+    }
+    if (count == 0) {
+        return;
+    }
+    for (int i = 0; i < count; ++i) {
+        mods[i].spent = 0;
+        mods[i].allowance = khdays_sandbox_frame_allowance;
+    }
+    take_messages();
+    khdays_script_events_frame();
+}
+
+void khdays_scripts_field_begins(void)
+{
+    field_begun = 1;
+}
+
+void khdays_scripts_mission_start(void)
+{
+    KhdaysEvent e;
+    /* a mission runs again after each of its events: the first run since the field was made */
+    if (!field_begun) {
+        return;
+    }
+    field_begun = 0;
+    if (tracing > 0) {
+        fprintf(stderr, "mods-trace: mission start: mission %d\n", khdays_link_mission());
+    }
+    if (count == 0) {
+        return;
+    }
+    memset(&e, 0, sizeof(e));
+    e.id = KHDAYS_EVENT_MISSION_START;
+    e.a = khdays_link_mission();
+    khdays_script_events_raise(&e);
+}
+
+void khdays_scripts_mission_end(int mission, int rank, int complete)
+{
+    KhdaysEvent e;
+    const int given_up = khdays_link_flag(KHDAYS_LINK_GIVEN_UP);
+    if (tracing > 0) {
+        fprintf(stderr, "mods-trace: mission end: mission %d, rank %d, complete %d, given up %d\n", mission, rank,
+                complete, given_up);
+    }
+    if (count == 0) {
+        return;
+    }
+    memset(&e, 0, sizeof(e));
+    e.id = KHDAYS_EVENT_MISSION_END;
+    e.a = mission;
+    e.b = rank;
+    e.c = complete;
+    e.d = given_up;
+    khdays_script_events_raise(&e);
+}
+
+void khdays_scripts_hp(void *entity, int before)
+{
+    KhdaysEvent e;
+    int hp, max;
+    if (tracing > 0) {
+        khdays_link_trace_hp(entity, before);
+    }
+    if (count == 0) {
+        return;
+    }
+    khdays_link_entity_hp(entity, &hp, &max);
+    if (hp == before) {
+        return;
+    }
+    memset(&e, 0, sizeof(e));
+    e.id = KHDAYS_EVENT_HP;
+    e.a = before;
+    e.b = hp;
+    e.c = max;
+    e.text = khdays_link_is_player(entity) ? "player" : "other";
+    khdays_script_events_raise(&e);
+}
+
+void khdays_scripts_saved(void)
+{
+    KhdaysEvent e;
+    if (count == 0) {
+        return;
+    }
+    memset(&e, 0, sizeof(e));
+    e.id = KHDAYS_EVENT_SAVE;
+    khdays_script_events_raise(&e);
+}
