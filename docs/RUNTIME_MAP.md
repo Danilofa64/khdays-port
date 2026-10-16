@@ -347,6 +347,9 @@ The native build prints these to stderr when the variable is set:
   frames' VBlank times, and the camera's translation and turn between them
   (section 7, "The picture at the monitor's rate").
 - `KHDAYS_TRACE_UPDATES` -- each object update's change to the next.
+- `KHDAYS_TRACE_CAPTURE` -- each screen blend's frame as the window draws it:
+  the bank shown from its copy, or at the DS's size and why, and the capture
+  taken again (section 7, "The screen blends at the port's resolution").
 - `KHDAYS_TRACE_INPUT` -- each step of a `KHDAYS_INPUT` script, with the
   VBlank, the game's frame count and the pad reads so far.
 - `KHDAYS_TRACE_PLAYER` -- the field players' positions every 30 frames.
@@ -1177,8 +1180,27 @@ Seen on the story walk: the prologue's first camera cut (frame 11082) arms
 engine A shows bank D (DISPCNT `002e0f3c`); its frames 11084-11108 and
 11312, black before (an empty bank shown), are now the cross-fade from the
 shot before to the new one -- what the testers' black screens in cutscenes
-were. A screen shown from a captured bank is at the DS's 256x192 while it
-lasts.
+were.
+
+**The screen blends at the port's resolution** (2026-10-16, `gfx_render.c`
+`take_capture`): shown from the DS's bank, each cut was a 256x192 picture,
+stretched, without the sides of a wider one (a player's report: the models
+not upscaled and the picture narrowed with blue bars). The window takes each
+capture again from what it shows (engine A's screen, or the one-screen
+picture), composed as engine A's layers and 3D, and blends it with its copy
+of the bank as the DS does (`capture.hlsl`). While engine A shows the bank
+(the VRAM display mode) the window composes its layers anyway and shows its
+copy over them. The package carries the capture armed at its VBlank and, per
+bank, the captures taken into it, the count after the last that read no bank
+(a blend's first: engine A's picture alone) and whether the bank still holds
+its last capture (a sum of what it wrote): a copy is shown only when it was
+taken at that first capture or after (packages the window never drew can
+skip some), or is made then from the frame shown when the bank holds that
+first capture alone. Seen on the story walk's prologue (`KHDAYS_TRACE_CAPTURE`,
+one screen and two at 16:9): the first cut's capture at f11090 (EVA 16,
+engine A still showing its layers), then from f11092 the bank shown from its
+copy, captures every second VBlank with EVA 1, 1, 2, ... and EVB 16 - EVA, at
+the window's resolution and width.
 
 **Texture matrices** (the ROM, and `KHDAYS_TRACE_ARM` on the play walk,
 2026-10-01): `NNSi_G3dSendTexMtxMode0` and `NNSi_G3dSendTexMtxMode2` take the

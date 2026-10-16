@@ -979,8 +979,10 @@ static void present(const KhdaysFramePackage *p, int first)
         }
         khdays_raster3d_set_one_screen(picture);
         khdays_raster3d_set_hud_shapes(picture ? composition.shapes3d : NULL, picture ? composition.shape3d_count : 0);
+        /* a screen blend's frame: engine A shows a VRAM bank, drawn from its 3D at this resolution too */
+        const int blend_frame = khdays_gfx_render_capture_frame(p);
         const int raster = raster_ready && !(port2d_mode == 2 && n == 1 && columns_now() == W) && n != refused_scale &&
-                           (p->wants & KHDAYS_WANT_3D) && p->info[0].is3d &&
+                           (p->wants & KHDAYS_WANT_3D) && (p->info[0].is3d || blend_frame) &&
                            khdays_raster3d_rasterize(p, n, video.texture_smoothing);
         /* shrunk to the size the window shows it at (smooth scaling: its own pixels), or by the
          * antialiasing (sharp: the DS's pixels kept square, then stretched by whole pixels) */
@@ -1004,7 +1006,7 @@ static void present(const KhdaysFramePackage *p, int first)
             port2d_upper = p->upper;
             latest_drawn_by_card = raster;
             khdays_raster3d_use_list(NULL);
-            if (port2d_mode == 2) {
+            if (port2d_mode == 2 && !blend_frame) { /* a screen blend's frame is not the DS's picture */
                 if (raster) {
                     port2d_compare_hd(p, n);
                 } else {

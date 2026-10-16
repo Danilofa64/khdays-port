@@ -75,6 +75,10 @@ SDL_Texture *khdays_gfx_render_texture(SDL_Renderer *renderer, int engine);
 int khdays_gfx_render_captured_shown(void);
 SDL_Texture *khdays_gfx_render_captured(SDL_Renderer *renderer, int *columns);
 
+/* Whether package `p` is a frame of a screen blend the port takes at its own resolution: engine A
+ * shows a VRAM bank and is drawn as its layers and 3D instead (the 3D rasterized as for its 3D). */
+int khdays_gfx_render_capture_frame(const KhdaysFramePackage *p);
+
 /* Reads back the last drawn screen of engine `engine` (2: the one-screen
  * picture, 3: the kept capture), waiting for the card: *width x *height
  * pixels as 0x00RRGGBB, to free with SDL_free. NULL on failure. */

@@ -1039,6 +1039,36 @@ static void skip_2d_frame(KhdaysGpuInput *in)
     }
 }
 
+/* The captures taken into each VRAM bank (display_capture), the count after the last that did not read
+ * the bank before (a blend's first), and a sum of what the last one wrote: the host shows its own copy of
+ * a bank only while the bank still holds that capture. */
+static u32 bank_captures[4], bank_plain[4], bank_sums[4], bank_sum_at[4], bank_sum_bytes[4];
+
+static u32 bank_sum(int bank)
+{
+    const u8 *bytes = khdays_vram_bank(bank);
+    u32 sum = 2166136261u; /* FNV-1a over the words */
+    for (u32 n = 0; n < bank_sum_bytes[bank]; n += 4) {
+        u32 word;
+        memcpy(&word, bytes + ((bank_sum_at[bank] + n) & 0x1ffffu), 4);
+        sum = (sum ^ word) * 16777619u;
+    }
+    return sum;
+}
+
+/* The capture as the host takes it again (frame_package.h): the one armed now, the count of each bank,
+ * and whether the bank of engine A's VRAM block (the one it shows, and source B) holds its last. */
+static void package_capture(KhdaysFramePackage *p)
+{
+    const u32 cnt = IO32(0x64), dispcnt = IO32(0x000);
+    const int bank = (int)((dispcnt >> 18) & 3);
+    const int used = ((dispcnt >> 16) & 3) == 2 || (cnt & 0x80000000u); /* a bank shown, or a capture */
+    p->dispcapcnt = (cnt & 0x80000000u) ? cnt : 0u;
+    memcpy(p->bank_captures, bank_captures, sizeof(bank_captures));
+    memcpy(p->bank_plain, bank_plain, sizeof(bank_plain));
+    p->bank_intact = used && bank_captures[bank] != 0 && bank_sum(bank) == bank_sums[bank] ? 1u << bank : 0u;
+}
+
 /* Starts filling package `p` for this frame: its number and time, which
  * engine is on the upper screen, whether the capture is on, and the
  * one-screen picture's inputs. */
@@ -1056,6 +1086,7 @@ static void begin_package(KhdaysFramePackage *p, u32 frame, int want, int captur
     /* the game uses the display capture: for the 3D on both screens the host shows engine A's
      * kept picture, at its own resolution (gfx_render.c) */
     p->capture = (uint8_t)capture;
+    package_capture(p);
     if (want & KHDAYS_WANT_SITUATION) {
         /* the one-screen picture's inputs: a few of the game's bytes */
         khdays_situation_take(&p->situation, frame);
@@ -1368,6 +1399,13 @@ static void display_capture(const KhdaysGpuInput *in, const KhdaysGpu2dState *wi
                                                                           : capture_blend(a, b, eva, evb);
         }
     }
+    ++bank_captures[dest];
+    if (mode == 0 || (mode != 1 && evb == 0)) {
+        bank_plain[dest] = bank_captures[dest]; /* engine A's picture alone */
+    }
+    bank_sum_at[dest] = write_at;
+    bank_sum_bytes[dest] = (u32)(w * h * 2);
+    bank_sums[dest] = bank_sum(dest);
     if (!bank_shown(dest) && last_drawn.valid) {
         /* nothing shows the bank: the next frame shows the same as this one */
         memcpy(last_drawn.vram + khdays_vram_bank_offset[dest], to, khdays_vram_bank_size[dest]);

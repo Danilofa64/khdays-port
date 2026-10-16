@@ -226,6 +226,13 @@ every VBlank (POWCNT1 bit 15), drawing each screen's view in turn while the
 display capture keeps the other's; the one-screen picture is the upper
 screen's, so it is made on the VBlanks engine A shows the upper screen.
 
+The screen blends (a cut between an event's camera shots) capture engine A's
+picture blended with a VRAM bank back into it while engine A shows the bank.
+The window takes each capture again from what it shows, at its resolution and
+width (`capture.hlsl`: the blend, `gfx_render.c` `take_capture`), and shows its
+copy of the bank instead of the DS's 256x192 one (RUNTIME_MAP, "The screen
+blends at the port's resolution").
+
 Testing knobs: `KHDAYS_SHOTS_HD=DIR` (the `KHDAYS_SHOTS` frames as presented,
 at the resolution drawn); `KHDAYS_GFX=reference` (the 2D engines' pictures);
 `KHDAYS_GFX=check` (the port's way compared with the 2D engines at 1x, or the

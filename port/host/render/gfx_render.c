@@ -6,6 +6,7 @@
 #include "gpu_hd.h"
 #include "gpu_raster3d.h"
 #include "../../runtime/display/frame_package.h"
+#include "generated/capture_cs.h"
 #include "generated/compose2d_cs.h"
 #include "generated/onescreen_cs.h"
 #include "generated/shrink_cs.h"
@@ -102,6 +103,18 @@ static SDL_Texture *held_wrapped;
 static SDL_Renderer *held_for;
 static uint32_t drawn_frame;
 static int drawn_any, drawn_capture, drawn_upper;
+/* The screen blends (a cut between an event's camera shots, Ov023_CmdStartScreenBlend): engine A shows a
+ * VRAM bank while its picture, blended with that bank, is captured back into it. The port's capture is at
+ * the DS's size, so each one is taken again here from what the window shows, and the bank shown from
+ * that copy while the game's bank still holds the same capture (display.c package_capture). */
+typedef struct HdBank {
+    SDL_GPUTexture *texture;
+    int w, h;
+    uint32_t captures; /* the game's count of captures into the bank when this copy was taken */
+    int ok;
+} HdBank;
+static SDL_GPUComputePipeline *capturer;
+static HdBank hd_bank[4], hd_scratch, hd_source;
 /* What the window shows: the screens and the picture made larger than shown (the antialiasing, or the
  * internal resolution rounded up) are shrunk on the card (shrink.hlsl) to `shown` window pixels a DS
  * pixel, into these. The 3D's edges come out smooth, and the window shows the picture at its own
@@ -192,6 +205,185 @@ static void drop_shrunk(Shrunk *s)
     SDL_zerop(s);
 }
 
+static void drop_hd_bank(HdBank *b)
+{
+    if (b->texture != NULL)
+        SDL_ReleaseGPUTexture(device, b->texture);
+    SDL_zerop(b);
+}
+
+/* Makes sure `b` has a texture of w x h (its contents are not kept when it is made again). */
+static int ensure_hd_bank(HdBank *b, int w, int h)
+{
+    if (b->texture != NULL && b->w == w && b->h == h) {
+        return 1;
+    }
+    drop_hd_bank(b);
+    b->texture = make_texture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                              SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE, w, h);
+    b->w = b->texture != NULL ? w : 0;
+    b->h = b->texture != NULL ? h : 0;
+    return b->texture != NULL;
+}
+
+static void copy_texture(SDL_GPUCommandBuffer *cmd, SDL_GPUTexture *from, SDL_GPUTexture *to, int w, int h)
+{
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUTextureLocation a, b;
+    SDL_zero(a);
+    SDL_zero(b);
+    a.texture = from;
+    b.texture = to;
+    SDL_CopyGPUTextureToTexture(copy, &a, &b, (Uint32)w, (Uint32)h, 1, false);
+    SDL_EndGPUCopyPass(copy);
+}
+
+/* What a package asks of the screen blends: the bank engine A shows from its copy (-1 none), that copy
+ * made now from this frame (`seed`), the capture taken again into bank `capture` (-1 none), reading bank
+ * `source_b` (-1 none), with EVA and EVB. */
+typedef struct CapturePlan {
+    int show, seed, capture, source_b;
+    uint32_t eva, evb;
+} CapturePlan;
+
+static void plan_capture(const KhdaysFramePackage *p, CapturePlan *plan)
+{
+    const uint32_t flags = p->desc2d[0][KD_FLAGS], cnt = p->dispcapcnt, display = flags & KDF_DISPLAY_MASK;
+    const int bank = (int)(p->desc2d[0][KD_VRAM] & 3u); /* engine A's VRAM block: shown, and source B */
+    const HdBank *copy = &hd_bank[bank];
+    const int intact = (p->bank_intact >> bank) & 1u, plain = p->bank_plain[bank] != 0u;
+    int current, seed;
+    plan->show = plan->capture = plan->source_b = -1;
+    plan->seed = 0;
+    plan->eva = plan->evb = 0;
+    /* engine A shows its layers or a bank (the VRAM display mode), its 3D in BG0 for the capture to
+     * take; a blend's first capture comes while it still shows its layers */
+    if (capturer == NULL || (display != 1u && display != 2u) || (flags & KDF_FORCED_BLANK) ||
+        !(flags & KDF_BG0_IS_3D) || !(flags & (1u << KDF_BG_ON_SHIFT))) {
+        return;
+    }
+    /* the copy is of this blend: taken at its first capture or after, though the window may have missed
+     * some since (a package it never drew); else, when the bank holds that first capture alone (engine A's
+     * picture a VBlank before), it is made again from this frame */
+    current = intact && plain && copy->ok && copy->captures >= p->bank_plain[bank] &&
+              copy->captures <= p->bank_captures[bank];
+    seed = !current && intact && plain && p->bank_plain[bank] == p->bank_captures[bank];
+    if (display == 2u && (current || seed)) {
+        plan->show = bank;
+        plan->seed = seed;
+    }
+    /* a whole screen (256 x 192) at offset 0, of engine A's layers: not its 3D alone, nor the main
+     * memory display's FIFO */
+    if ((cnt & 0x80000000u) && ((cnt >> 20) & 3u) == 3u && ((cnt >> 18) & 3u) == 0u && ((cnt >> 26) & 3u) == 0u &&
+        !(cnt & (3u << 24))) {
+        const uint32_t mode = (cnt >> 29) & 3u; /* 0 source A, 1 source B, 2-3 both */
+        const uint32_t eva = (cnt & 31u) > 16u ? 16u : cnt & 31u,
+                       evb = ((cnt >> 8) & 31u) > 16u ? 16u : (cnt >> 8) & 31u;
+        plan->eva = mode == 0 ? 16u : mode == 1 ? 0u : eva;
+        plan->evb = mode == 0 ? 0u : mode == 1 ? 16u : evb;
+        if (plan->evb == 0u || plan->show == bank || current) {
+            plan->capture = (int)((cnt >> 16) & 3u);
+            plan->source_b = plan->evb != 0u ? bank : -1;
+        }
+    }
+}
+
+/* Whether engine A is composed as its layers and 3D though it shows a bank: the capture takes them,
+ * or the bank's copy covers them. */
+static int plan_layers(const KhdaysFramePackage *p, const CapturePlan *plan)
+{
+    return (p->desc2d[0][KD_FLAGS] & KDF_DISPLAY_MASK) == 2u && (plan->show >= 0 || plan->capture >= 0);
+}
+
+int khdays_gfx_render_capture_frame(const KhdaysFramePackage *p)
+{
+    CapturePlan plan;
+    plan_capture(p, &plan);
+    return plan_layers(p, &plan);
+}
+
+/* KHDAYS_TRACE_CAPTURE: what each screen blend's frame shows and takes. */
+static int trace_capture(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        on = SDL_getenv("KHDAYS_TRACE_CAPTURE") != NULL;
+    }
+    return on;
+}
+
+/* After engine A was composed as its layers into `target` (w x h): the bank it shows over it from the
+ * copy, and the capture taken again from what was composed. */
+static void take_capture(SDL_GPUCommandBuffer *cmd, const KhdaysFramePackage *p, const CapturePlan *plan,
+                         SDL_GPUTexture *target, int w, int h)
+{
+    int show = plan->show;
+    SDL_GPUTexture *a = target;
+    HdBank *dest = plan->capture >= 0 ? &hd_bank[plan->capture] : NULL;
+    if (show >= 0 && (plan->seed || hd_bank[show].w != w || hd_bank[show].h != h)) {
+        /* the copy made from this frame (what was composed already shows it): the bank holds engine A's
+         * picture of a VBlank before, or its copy is of another size */
+        HdBank *made = &hd_bank[show];
+        made->ok = ensure_hd_bank(made, w, h);
+        if (made->ok) {
+            copy_texture(cmd, target, made->texture, w, h);
+            made->captures = p->bank_captures[show];
+        }
+        show = -1;
+    }
+    if (dest != NULL && plan->source_b >= 0 &&
+        (!hd_bank[plan->source_b].ok || hd_bank[plan->source_b].w != w || hd_bank[plan->source_b].h != h)) {
+        dest->ok = 0; /* source B has no copy of this size */
+        dest = NULL;
+    }
+    if (dest != NULL && show >= 0) {
+        /* source A, before the bank shown covers it */
+        if (ensure_hd_bank(&hd_source, w, h)) {
+            copy_texture(cmd, target, hd_source.texture, w, h);
+            a = hd_source.texture;
+        } else {
+            dest->ok = 0;
+            dest = NULL;
+        }
+    }
+    if (show >= 0) {
+        copy_texture(cmd, hd_bank[show].texture, target, w, h);
+    }
+    if (trace_capture()) {
+        fprintf(stderr, "capture: frame %u, %dx%d, bank %d %s, takes into %d (EVA %u, EVB %u, source B %d)\n", p->frame,
+                w, h, plan->show,
+                show >= 0         ? "shown from its copy"
+                : plan->show >= 0 ? "shown, its copy made from this frame"
+                                  : "not shown",
+                dest != NULL ? plan->capture : -1, plan->eva, plan->evb, plan->source_b);
+    }
+    if (dest != NULL && ensure_hd_bank(&hd_scratch, w, h)) {
+        struct {
+            Uint32 width, height, eva, evb;
+        } params = {(Uint32)w, (Uint32)h, plan->eva, plan->evb};
+        SDL_GPUStorageTextureReadWriteBinding io[3];
+        SDL_GPUComputePass *pass;
+        HdBank done;
+        SDL_zeroa(io);
+        io[0].texture = a;                                                                   /* read only */
+        io[1].texture = plan->source_b >= 0 ? hd_bank[plan->source_b].texture : no_backdrop; /* read only */
+        io[2].texture = hd_scratch.texture;
+        pass = SDL_BeginGPUComputePass(cmd, io, 3, NULL, 0);
+        SDL_BindGPUComputePipeline(pass, capturer);
+        SDL_PushGPUComputeUniformData(cmd, 0, &params, sizeof(params));
+        SDL_DispatchGPUCompute(pass, (Uint32)(w + 7) / 8, (Uint32)(h + 7) / 8, 1);
+        SDL_EndGPUComputePass(pass);
+        /* the blend becomes the bank's copy; its old texture the next scratch */
+        done = hd_scratch;
+        hd_scratch = *dest;
+        *dest = done;
+        dest->captures = p->bank_captures[plan->capture] + 1u;
+        dest->ok = 1;
+    } else if (dest != NULL) {
+        dest->ok = 0;
+    }
+}
+
 /* `big` (w x h, `columns` DS columns wide) shrunk to the size shown into `s`, made again when its
  * size changes; in `cmd`. 0 when it is not shown smaller than made, or the texture could not be
  * made. */
@@ -268,6 +460,9 @@ int khdays_gfx_render_open(SDL_GPUDevice *d)
                                 shrink_cs_msl, shrink_cs_msl_size, SHRINK_CS_ENTRY, 0, 2);
     onescreen = make_pipeline_of(onescreen_cs_dxil, onescreen_cs_dxil_size, onescreen_cs_spirv, onescreen_cs_spirv_size,
                                  onescreen_cs_msl, onescreen_cs_msl_size, ONESCREEN_CS_ENTRY, 3, 6);
+    /* without it the screen blends show the DS's bank, as before */
+    capturer = make_pipeline_of(capture_cs_dxil, capture_cs_dxil_size, capture_cs_spirv, capture_cs_spirv_size,
+                                capture_cs_msl, capture_cs_msl_size, CAPTURE_CS_ENTRY, 0, 3);
     shape_buffer_bytes = KO_WORDS * 4u * 64u;
     key_buffer_bytes = 256u;
     piece_buffer_bytes = PIECE_BYTES * 64u;
@@ -341,6 +536,14 @@ void khdays_gfx_render_close(void)
     held = NULL;
     held_w = held_h = held_columns = held_ok = 0;
     drawn_any = 0;
+    for (int b = 0; b < 4; ++b) {
+        drop_hd_bank(&hd_bank[b]);
+    }
+    drop_hd_bank(&hd_scratch);
+    drop_hd_bank(&hd_source);
+    if (capturer != NULL)
+        SDL_ReleaseGPUComputePipeline(device, capturer);
+    capturer = NULL;
     if (picture_wrapped != NULL)
         SDL_DestroyTexture(picture_wrapped);
     if (picture != NULL)
@@ -595,17 +798,35 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
     int raster_columns = 0;
     /* Engine A is wider than the DS's only when its 3D is drawn as wide. For the one-screen picture its 2D
      * stays at the DS's 256 columns, apart from the 3D drawn as wide as the picture. */
-    const uint32_t wide = raster && one == NULL ? p->desc2d[0][KD_WIDE] : 0;
-    const int columns_a = KHDAYS_FRAME_W + 2 * (int)wide;
+    uint32_t wide = raster && one == NULL ? p->desc2d[0][KD_WIDE] : 0;
+    int columns_a;
     const uint32_t shape_bytes = one != NULL ? (uint32_t)one->shape_count * KO_WORDS * 4u : 0u;
     const uint32_t key_bytes = one != NULL ? (uint32_t)one->key_count * 4u : 0u;
     const uint32_t piece_bytes = one != NULL ? (uint32_t)one->piece_count * PIECE_BYTES : 0u;
+    /* a screen blend (take_capture); while engine A shows a bank, it is composed as its layers and 3D,
+     * as the capture takes it */
+    CapturePlan plan;
+    int blend, layers;
+    plan_capture(p, &plan);
+    blend = raster && (plan.show >= 0 || plan.capture >= 0);
+    layers = raster && plan_layers(p, &plan);
+    if (trace_capture() && (p->desc2d[0][KD_FLAGS] & KDF_DISPLAY_MASK) == 2u && !blend) {
+        fprintf(stderr, "capture: frame %u, engine A shows bank %u at the DS's size (%s)\n", p->frame,
+                (unsigned)(p->desc2d[0][KD_VRAM] & 3u), raster ? "no current copy of it" : "no 3D drawn");
+    }
     if (device != NULL && (p->wants & KHDAYS_WANT_2D)) {
         hold_capture(p); /* before this package's pictures replace the previous ones */
     }
-    if (raster && (!khdays_raster3d_targets(&color3d, &attr3d, &raster_columns) ||
-                   raster_columns != (one != NULL ? one->columns : columns_a))) {
-        SDL_SetError("the 3D at that resolution is not drawn, or not as wide as the 2D's description");
+    if (raster && !khdays_raster3d_targets(&color3d, &attr3d, &raster_columns)) {
+        SDL_SetError("the 3D at that resolution is not drawn");
+        return 0;
+    }
+    if (layers && one == NULL && raster_columns > KHDAYS_FRAME_W) {
+        wide = (uint32_t)(raster_columns - KHDAYS_FRAME_W) / 2u; /* as wide as its 3D, no HUD piece moved */
+    }
+    columns_a = KHDAYS_FRAME_W + 2 * (int)wide;
+    if (raster && raster_columns != (one != NULL ? one->columns : columns_a)) {
+        SDL_SetError("the 3D is not as wide as the 2D's description");
         return 0;
     }
     if (device == NULL || !(p->wants & KHDAYS_WANT_2D) || !screens(scale, columns_a)) {
@@ -674,8 +895,12 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
     at = 0;
     for (int e = 0; e < 2; ++e) {
         memcpy(mapped + at, p->desc2d[e], KHDAYS_DESC_WORDS * 4);
-        if (e == 0 && wide == 0) {
-            ((uint32_t *)(mapped + at))[KD_WIDE] = 0; /* no wider 3D this frame: use the DS's columns */
+        if (e == 0) {
+            ((uint32_t *)(mapped + at))[KD_WIDE] = wide; /* 0: no wider 3D this frame, the DS's columns */
+        }
+        if (e == 0 && layers) {
+            uint32_t *flags = &((uint32_t *)(mapped + at))[KD_FLAGS];
+            *flags = (*flags & ~KDF_DISPLAY_MASK) | 1u;
         }
         if ((khdays_raster3d_fine() || (p->wants & KHDAYS_WANT_MOVIE)) &&
             (e == 1 || raster || !(((const uint32_t *)(mapped + at))[KD_FLAGS] & KDF_BG0_IS_3D))) {
@@ -939,6 +1164,13 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
         SDL_PushGPUComputeUniformData(cmd, 0, &op, sizeof(op));
         SDL_DispatchGPUCompute(pass, (op.width + 7) / 8, (op.height + 7) / 8, 1);
         SDL_EndGPUComputePass(pass);
+    }
+    if (blend) {
+        if (one != NULL) {
+            take_capture(cmd, p, &plan, picture, picture_w, picture_h);
+        } else {
+            take_capture(cmd, p, &plan, screen[0], screen_columns[0] * scale, KHDAYS_FRAME_H * scale);
+        }
     }
     /* what is shown, shrunk to the size shown (the picture on one screen, else the screens) */
     picture_shrunk = screens_shrunk = 0;

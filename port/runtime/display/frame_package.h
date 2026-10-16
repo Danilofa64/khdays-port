@@ -111,6 +111,15 @@ typedef struct KhdaysFramePackage {
     uint8_t left_out_obj[2][KE_LEFT_OBJ_WORDS * 4];
     /* KHDAYS_WANT_SITUATION: the one-screen situation's inputs (ui/situation.h); last, and not recorded */
     KhdaysSituationInputs situation;
+    /* The display capture as the host takes it again at its own resolution (gfx_render.c), not
+     * recorded either: DISPCAPCNT when a capture is armed at this VBlank (else 0), the captures taken
+     * into each VRAM bank before it, that count after the last one that did not read the bank before
+     * (a blend's first: engine A's picture alone; 0 none), and a bit for each bank that still holds
+     * its last capture. */
+    uint32_t dispcapcnt;
+    uint32_t bank_captures[4];
+    uint32_t bank_plain[4];
+    uint32_t bank_intact;
 } KhdaysFramePackage;
 
 /* What KHDAYS_RECORD_FRAMES writes of a package (version 13): all of it but
