@@ -37,12 +37,12 @@ bool near(float a, float b) {
 }
 
 // A 2x2 RGBA PNG (red, green, blue, white).
-const std::uint8_t kPng[] = {
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00,
-    0x02, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x72, 0xb6, 0x0d, 0x24, 0x00, 0x00, 0x00, 0x14, 0x49,
-    0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0xf0, 0x1f, 0x04, 0x59, 0x18, 0xc1, 0x34, 0x03, 0x03, 0x00,
-    0x3e, 0xff, 0x06, 0x00, 0xfa, 0x5c, 0x13, 0xb0, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
-    0x82};
+const std::uint8_t kPng[] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+                             0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06,
+                             0x00, 0x00, 0x00, 0x72, 0xb6, 0x0d, 0x24, 0x00, 0x00, 0x00, 0x14, 0x49, 0x44,
+                             0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0xf0, 0x1f, 0x04, 0x59, 0x18,
+                             0xc1, 0x34, 0x03, 0x03, 0x00, 0x3e, 0xff, 0x06, 0x00, 0xfa, 0x5c, 0x13, 0xb0,
+                             0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82};
 
 // The same picture as a 2x2 baseline JPEG.
 const std::uint8_t kJpeg[] = {
@@ -120,8 +120,7 @@ std::string base64(const std::vector<std::uint8_t>& bytes) {
     return out;
 }
 
-template <typename T>
-void put(std::vector<std::uint8_t>& out, const T& value) {
+template <typename T> void put(std::vector<std::uint8_t>& out, const T& value) {
     const auto* p = reinterpret_cast<const std::uint8_t*>(&value);
     out.insert(out.end(), p, p + sizeof(T));
 }
@@ -132,25 +131,42 @@ void put(std::vector<std::uint8_t>& out, const T& value) {
 constexpr std::array<std::array<float, 3>, 4> kPositions{{{0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}}};
 constexpr std::array<std::array<float, 2>, 4> kUvs{{{0, 1}, {1, 1}, {1, 0}, {0, 0}}};
 constexpr std::array<std::array<std::uint16_t, 4>, 4> kJoints{{{0, 0, 0, 0}, {0, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}}};
-constexpr std::array<std::array<float, 4>, 4> kWeights{{{1, 0, 0, 0}, {1, 0, 0, 0}, {0.75F, 0.25F, 0, 0}, {1, 0, 0, 0}}};
+constexpr std::array<std::array<float, 4>, 4> kWeights{
+    {{1, 0, 0, 0}, {1, 0, 0, 0}, {0.75F, 0.25F, 0, 0}, {1, 0, 0, 0}}};
 constexpr std::array<std::uint16_t, 6> kIndices{0, 1, 2, 0, 2, 3};
 
 // The glTF's binary buffer; with the PNG after it when `with_image`.
 std::vector<std::uint8_t> gltf_buffer(bool with_image) {
     std::vector<std::uint8_t> b;
-    for (const auto& p : kPositions) for (float v : p) put(b, v);              // 0, 48
-    for (int i = 0; i < 4; ++i) { put(b, 0.0F); put(b, 0.0F); put(b, 1.0F); }  // 48, 48
-    for (const auto& t : kUvs) for (float v : t) put(b, v);                    // 96, 32
-    for (const auto& j : kJoints) for (auto v : j) put(b, v);                  // 128, 32
-    for (const auto& w : kWeights) for (float v : w) put(b, v);                // 160, 64
-    for (auto v : kIndices) put(b, v);                                         // 224, 12
-    while (b.size() < 240U) b.push_back(0);
+    for (const auto& p : kPositions)
+        for (float v : p)
+            put(b, v);  // 0, 48
+    for (int i = 0; i < 4; ++i) {
+        put(b, 0.0F);
+        put(b, 0.0F);
+        put(b, 1.0F);
+    }  // 48, 48
+    for (const auto& t : kUvs)
+        for (float v : t)
+            put(b, v);  // 96, 32
+    for (const auto& j : kJoints)
+        for (auto v : j)
+            put(b, v);  // 128, 32
+    for (const auto& w : kWeights)
+        for (float v : w)
+            put(b, v);  // 160, 64
+    for (auto v : kIndices)
+        put(b, v);  // 224, 12
+    while (b.size() < 240U)
+        b.push_back(0);
     const float root[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     const float tip[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1};
-    for (float v : root) put(b, v);                                            // 240, 128
-    for (float v : tip) put(b, v);
+    for (float v : root)
+        put(b, v);  // 240, 128
+    for (float v : tip)
+        put(b, v);
     if (with_image) {
-        b.insert(b.end(), kPng, kPng + sizeof(kPng));                          // 368, 77
+        b.insert(b.end(), kPng, kPng + sizeof(kPng));  // 368, 77
     }
     return b;
 }
@@ -182,10 +198,13 @@ std::string gltf_json(const std::string& image, const std::string& buffer, std::
 }
 
 void write_glb(const fs::path& path) {
-    std::string json = gltf_json(R"({"name":"tex","bufferView":7,"mimeType":"image/png"})", "", 368 + sizeof(kPng), true);
-    while (json.size() % 4U != 0U) json += ' ';
+    std::string json =
+        gltf_json(R"({"name":"tex","bufferView":7,"mimeType":"image/png"})", "", 368 + sizeof(kPng), true);
+    while (json.size() % 4U != 0U)
+        json += ' ';
     std::vector<std::uint8_t> bin = gltf_buffer(true);
-    while (bin.size() % 4U != 0U) bin.push_back(0);
+    while (bin.size() % 4U != 0U)
+        bin.push_back(0);
     std::vector<std::uint8_t> out;
     put(out, std::uint32_t{0x46546C67});  // glTF
     put(out, std::uint32_t{2});
@@ -215,7 +234,8 @@ std::string fbx_text(const std::vector<std::array<float, 3>>& yup_metres, const 
     std::ostringstream f;
     const auto list = [&](const auto& values) {
         std::ostringstream s;
-        for (std::size_t i = 0; i < values.size(); ++i) s << (i ? "," : "") << values[i];
+        for (std::size_t i = 0; i < values.size(); ++i)
+            s << (i ? "," : "") << values[i];
         return s.str();
     };
     std::vector<float> vertices;  // Y up metres -> Z up centimetres: (x, -z, y) * 100
@@ -272,12 +292,15 @@ std::string fbx_text(const std::vector<std::array<float, 3>>& yup_metres, const 
     for (std::size_t c = 0; c < clusters.size(); ++c) {
         f << "\tDeformer: " << 410 + c << ", \"SubDeformer::" << clusters[c].name << "\", \"Cluster\" {\n"
           << "\t\tVersion: 100\n"
-          << "\t\tIndexes: *" << clusters[c].indexes.size() << " {\n\t\t\ta: " << list(clusters[c].indexes) << "\n\t\t}\n"
-          << "\t\tWeights: *" << clusters[c].weights.size() << " {\n\t\t\ta: " << list(clusters[c].weights) << "\n\t\t}\n"
+          << "\t\tIndexes: *" << clusters[c].indexes.size() << " {\n\t\t\ta: " << list(clusters[c].indexes)
+          << "\n\t\t}\n"
+          << "\t\tWeights: *" << clusters[c].weights.size() << " {\n\t\t\ta: " << list(clusters[c].weights)
+          << "\n\t\t}\n"
           // FBX's Transform: the geometry in the bone at bind (inverse(TransformLink)
           // times the mesh's global, the identity here)
           << "\t\tTransform: *16 {\n\t\t\ta: 1,0,0,0,0,1,0,0,0,0,1,0,0,0," << -clusters[c].link_z_cm << ",1\n\t\t}\n"
-          << "\t\tTransformLink: *16 {\n\t\t\ta: 1,0,0,0,0,1,0,0,0,0,1,0,0,0," << clusters[c].link_z_cm << ",1\n\t\t}\n\t}\n";
+          << "\t\tTransformLink: *16 {\n\t\t\ta: 1,0,0,0,0,1,0,0,0,0,1,0,0,0," << clusters[c].link_z_cm
+          << ",1\n\t\t}\n\t}\n";
     }
     f << "\tMaterial: 500, \"Material::mat\", \"\" {\n\t\tVersion: 102\n\t\tShadingModel: \"phong\"\n\t}\n"
       << "\tTexture: 600, \"Texture::tex\", \"\" {\n\t\tType: \"TextureVideoClip\"\n\t\tVersion: 202\n"
@@ -295,7 +318,8 @@ std::string fbx_text(const std::vector<std::array<float, 3>>& yup_metres, const 
 
 bool identity(const std::array<float, 16>& m) {
     for (int i = 0; i < 16; ++i) {
-        if (!near(m[static_cast<std::size_t>(i)], (i % 5) == 0 ? 1.0F : 0.0F)) return false;
+        if (!near(m[static_cast<std::size_t>(i)], (i % 5) == 0 ? 1.0F : 0.0F))
+            return false;
     }
     return true;
 }
@@ -309,19 +333,17 @@ int main() {
 
     // glTF, its PNG embedded as a data URI
     const auto buffer = gltf_buffer(false);
-    const std::string png_uri = "data:image/png;base64," +
-                                base64(std::vector<std::uint8_t>(kPng, kPng + sizeof(kPng)));
-    write_text(dir / "quad.gltf",
-               gltf_json(R"({"name":"tex","uri":")" + png_uri + R"("})",
-                         R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"", buffer.size(),
-                         false));
+    const std::string png_uri = "data:image/png;base64," + base64(std::vector<std::uint8_t>(kPng, kPng + sizeof(kPng)));
+    write_text(dir / "quad.gltf", gltf_json(R"({"name":"tex","uri":")" + png_uri + R"("})",
+                                            R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"",
+                                            buffer.size(), false));
     // FBX, its PNG beside it though stored elsewhere
     const std::vector<std::array<float, 3>> positions(kPositions.begin(), kPositions.end());
     const std::vector<std::array<float, 2>> uvs(kUvs.begin(), kUvs.end());
     const std::vector<int> triangles(kIndices.begin(), kIndices.end());
-    write_text(dir / "quad.fbx", fbx_text(positions, triangles, uvs,
-                                          {{"root", 0.0F, {0, 1, 2}, {1, 1, 0.25F}}, {"tip", 100.0F, {2, 3}, {0.75F, 1}}},
-                                          "tex.png"));
+    write_text(dir / "quad.fbx",
+               fbx_text(positions, triangles, uvs,
+                        {{"root", 0.0F, {0, 1, 2}, {1, 1, 0.25F}}, {"tip", 100.0F, {2, 3}, {0.75F, 1}}}, "tex.png"));
     write_file(dir / "tex.png", kPng, sizeof(kPng));
 
     try {
@@ -342,7 +364,8 @@ int main() {
                                            R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"",
                                            buffer.size(), false);
             const std::string plain = R"("materials":[{"pbrMetallicRoughness")";
-            masked.replace(masked.find(plain), plain.size(), R"("materials":[{"alphaMode":"MASK","alphaCutoff":0.3,"pbrMetallicRoughness")");
+            masked.replace(masked.find(plain), plain.size(),
+                           R"("materials":[{"alphaMode":"MASK","alphaCutoff":0.3,"pbrMetallicRoughness")");
             write_text(dir / "mask.gltf", masked);
             const ImportedModel mask = khdays::assets::import_gltf(dir / "mask.gltf");
             check(mask.model.meshes.size() == 1 && mask.model.meshes[0].alpha_mode == AlphaMode::mask &&
@@ -355,7 +378,8 @@ int main() {
             // where each joint is at rest; its frame's turn is the file's own (a
             // bone authored in Z-up axes keeps that orientation: data, not units)
             for (int k = 12; k < 15; ++k) {
-                check(near(fbx.joints[j].world[static_cast<std::size_t>(k)], gltf.joints[j].world[static_cast<std::size_t>(k)]),
+                check(near(fbx.joints[j].world[static_cast<std::size_t>(k)],
+                           gltf.joints[j].world[static_cast<std::size_t>(k)]),
                       "joint " + std::to_string(j) + " rest place [" + std::to_string(k) + "]");
             }
         }
@@ -365,7 +389,8 @@ int main() {
                 std::cerr << (m == &gltf ? "glTF" : "FBX") << ":\n";
                 for (const auto& j : m->joints) {
                     std::cerr << "  joint " << j.name << " parent " << j.parent << " world";
-                    for (float v : j.world) std::cerr << " " << v;
+                    for (float v : j.world)
+                        std::cerr << " " << v;
                     std::cerr << "\n";
                 }
                 if (!m->model.meshes.empty()) {
@@ -378,7 +403,8 @@ int main() {
             }
         }
         check(fbx.model.palette.size() == gltf.model.palette.size(), "palette sizes");
-        for (const auto& m : fbx.model.palette) check(identity(m), "FBX palette entry the identity at rest");
+        for (const auto& m : fbx.model.palette)
+            check(identity(m), "FBX palette entry the identity at rest");
         if (gltf.model.meshes.size() == 1 && fbx.model.meshes.size() == 1) {
             const auto& g = gltf.model.meshes[0];
             const auto& f = fbx.model.meshes[0];
@@ -397,7 +423,8 @@ int main() {
                 for (int k = 0; k < 4; ++k) {
                     const auto s = static_cast<std::size_t>(k);
                     check(near(fv.weights[s], gv.weights[s]), at + " weight " + std::to_string(k));
-                    if (gv.weights[s] > 0.0F) check(fv.joints[s] == gv.joints[s], at + " joint " + std::to_string(k));
+                    if (gv.weights[s] > 0.0F)
+                        check(fv.joints[s] == gv.joints[s], at + " joint " + std::to_string(k));
                 }
             }
         }
@@ -408,10 +435,9 @@ int main() {
     // .glb, the image in a buffer view; .gltf with a JPEG beside it
     write_glb(dir / "quad.glb");
     write_file(dir / "tex.jpg", kJpeg, sizeof(kJpeg));
-    write_text(dir / "jpeg.gltf",
-               gltf_json(R"({"name":"tex","uri":"tex.jpg"})",
-                         R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"", buffer.size(),
-                         false));
+    write_text(dir / "jpeg.gltf", gltf_json(R"({"name":"tex","uri":"tex.jpg"})",
+                                            R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"",
+                                            buffer.size(), false));
     try {
         const ImportedModel glb = khdays::assets::import_gltf(dir / "quad.glb");
         check(glb.missing_textures.empty() && glb.textures.size() == 1 && glb.textures[0].second.height == 2,

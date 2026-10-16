@@ -19,31 +19,31 @@
 extern int GameState_GetField(int field, int bits);
 extern int GetLanguage(void);
 
-#define RANK_OPEN 0          /* the icons, characters 0x80-0x83: the ordeal badge's and the blazon's, */
+#define RANK_OPEN 0 /* the icons, characters 0x80-0x83: the ordeal badge's and the blazon's, */
 #define RANK_FOUND 1
-#define UNITY_OPEN 2         /* then the unity badge's */
+#define UNITY_OPEN 2 /* then the unity badge's */
 #define UNITY_FOUND 3
 #define FIRST_ICON 0x80
 
 #define COUNTER_CHARACTER 0xd3
-#define COUNTER_PAGE 0x0207f634u    /* the counter's state (Ov002_DrawPageCounter) */
+#define COUNTER_PAGE 0x0207f634u /* the counter's state (Ov002_DrawPageCounter) */
 
-#define MODE_FLAGS 0x0204c240u   /* +2: the mission's room key */
+#define MODE_FLAGS 0x0204c240u /* +2: the mission's room key */
 #define MISSION 0x0204c23cu
 #define FIELD_CONTEXT 0x0207fa00u
 #define FOUND_FIELD 0x92b
-#define FOUND_HERE 0x8d4e        /* in the field's context: a byte every 4 */
+#define FOUND_HERE 0x8d4e /* in the field's context: a byte every 4 */
 
 static int in_game_ram(uint32_t p)
 {
-    return khdays_game_ram(p);  /* main RAM or the game's heaps */
+    return khdays_game_ram(p); /* main RAM or the game's heaps */
 }
 
 /* --- The icons ------------------------------------------------------------------------ */
 
-static uint8_t icons[4][64];      /* each icon's 8 x 8 palette indices */
-static const uint32_t *colours;   /* the list's palette, as the picture's colours (RGBA) */
-static int graphics;              /* 0: not read yet, 1: read, -1: not there */
+static uint8_t icons[4][64];    /* each icon's 8 x 8 palette indices */
+static const uint32_t *colours; /* the list's palette, as the picture's colours (RGBA) */
+static int graphics;            /* 0: not read yet, 1: read, -1: not there */
 
 /* The colour the composition makes of a DS colour (elements.c rgb_of). */
 static uint32_t rgba_of(uint32_t bgr555)
@@ -60,7 +60,8 @@ static uint32_t rgba_of(uint32_t bgr555)
 static int read_graphics(void)
 {
     for (int i = 0; i < 4; ++i) {
-        if (!khdays_mission_list_character(FIRST_ICON + (unsigned)i, icons[i])) return 0;
+        if (!khdays_mission_list_character(FIRST_ICON + (unsigned)i, icons[i]))
+            return 0;
     }
     colours = khdays_mission_list_colours();
     return colours != NULL;
@@ -97,14 +98,18 @@ static int glyph(int k, uint8_t out[8][4])
 {
     const uint32_t page = *(const volatile uint32_t *)KHDAYS_W(COUNTER_PAGE);
     uint32_t sheet, tiles;
-    if (!in_game_ram(page)) return 0;
+    if (!in_game_ram(page))
+        return 0;
     sheet = *(const volatile uint32_t *)KHDAYS_W(page + 0x2c);
-    if (!in_game_ram(sheet)) return 0;
+    if (!in_game_ram(sheet))
+        return 0;
     tiles = *(const volatile uint32_t *)KHDAYS_W(sheet + 0x14);
-    if (!in_game_ram(tiles)) return 0;
+    if (!in_game_ram(tiles))
+        return 0;
     for (int r = 0; r < 8; ++r) {
         for (int b = 0; b < 2; ++b) {
-            const uint8_t v = *(const volatile uint8_t *)KHDAYS_W(tiles + (uint32_t)k * 32u + (uint32_t)r * 4u + (uint32_t)b);
+            const uint8_t v =
+                *(const volatile uint8_t *)KHDAYS_W(tiles + (uint32_t)k * 32u + (uint32_t)r * 4u + (uint32_t)b);
             out[r][2 * b] = v & 15u;
             out[r][2 * b + 1] = v >> 4;
         }
@@ -140,10 +145,12 @@ static void paint(const Picture *p, uint32_t *texels, int scale)
         }
         for (int d = 0; d < 3; ++d) {
             uint8_t g[8][4];
-            if (!glyph(digits[d], g)) break;
+            if (!glyph(digits[d], g))
+                break;
             for (int r = 0; r < 8; ++r) {
                 for (int c = 0; c < 4; ++c) {
-                    if (g[r][c] != 0) row[r * 24 + 12 + d * 4 + c] = p->colours[g[r][c]];
+                    if (g[r][c] != 0)
+                        row[r * 24 + 12 + d * 4 + c] = p->colours[g[r][c]];
                 }
             }
         }
@@ -172,18 +179,23 @@ void khdays_ui_badges_emit(void)
     unsigned kinds, found, ranks;
     int language, x, y, changed = 0;
     /* the check compares the game's own drawing, which has none of this */
-    if (khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON || (mode & 2u)) return;
-    if (graphics == 0) graphics = read_graphics() ? 1 : -1;
-    if (graphics < 0) return;
+    if (khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON || (mode & 2u))
+        return;
+    if (graphics == 0)
+        graphics = read_graphics() ? 1 : -1;
+    if (graphics < 0)
+        return;
     language = GetLanguage();
     room = *(const volatile uint16_t *)KHDAYS_W(MODE_FLAGS + 2u);
     mission = *(const volatile uint16_t *)KHDAYS_W(MISSION);
     kinds = khdays_mission_badges(language, room, mission);
-    if (kinds == 0 || !khdays_bg_text_layer(1, 2, &l) || !find_counter(&l, &x, &y, &entry)) return;
+    if (kinds == 0 || !khdays_bg_text_layer(1, 2, &l) || !find_counter(&l, &x, &y, &entry))
+        return;
     found = (unsigned)GameState_GetField(FOUND_FIELD + 4 * mission, 4);
     context = *(const volatile uint32_t *)KHDAYS_W(FIELD_CONTEXT);
     for (unsigned bit = 0; bit < 4 && in_game_ram(context); ++bit) {
-        if (*(const volatile uint8_t *)KHDAYS_W(context + FOUND_HERE + 4u * bit)) found |= 1u << bit;
+        if (*(const volatile uint8_t *)KHDAYS_W(context + FOUND_HERE + 4u * bit))
+            found |= 1u << bit;
     }
     memset(&now, 0, sizeof(now));
     now.one = (khdays_host_frame_wants() & KHDAYS_WANT_SITUATION) != 0; /* one screen */
@@ -193,8 +205,10 @@ void khdays_ui_badges_emit(void)
     ranks = (kinds & 1u) + ((kinds >> 1) & 1u);
     for (unsigned i = 0; i < 3; ++i) {
         now.cell[i] = -1;
-        if (i < 2 && i < ranks) now.cell[i] = (found >> i) & 1u ? RANK_FOUND : RANK_OPEN;
-        if (i == 2 && (kinds & 8u)) now.cell[i] = (found & 8u) ? UNITY_FOUND : UNITY_OPEN;
+        if (i < 2 && i < ranks)
+            now.cell[i] = (found >> i) & 1u ? RANK_FOUND : RANK_OPEN;
+        if (i == 2 && (kinds & 8u))
+            now.cell[i] = (found & 8u) ? UNITY_FOUND : UNITY_OPEN;
         if (now.cell[i] >= 0) {
             now.total += 1;
             now.found += now.cell[i] == RANK_FOUND || now.cell[i] == UNITY_FOUND;
@@ -211,11 +225,13 @@ void khdays_ui_badges_emit(void)
         image_scale = scale;
         changed = 1;
     }
-    if (image < 0) return;
+    if (image < 0)
+        return;
     changed |= !drawn_once || memcmp(&drawn, &now, sizeof(now)) != 0;
     if (changed) {
         uint32_t *texels = khdays_ui_image_begin(image);
-        if (texels == NULL) return;
+        if (texels == NULL)
+            return;
         paint(&now, texels, scale);
         khdays_ui_image_end(image);
         drawn = now;
@@ -223,7 +239,7 @@ void khdays_ui_badges_emit(void)
     }
     e.id = "hud.badges";
     e.screen = 1;
-    e.slot = KES_DIRECT | 2u; /* above the panel, in its layer (BG2) */
+    e.slot = KES_DIRECT | 2u;               /* above the panel, in its layer (BG2) */
     e.x = (float)(x - (now.one ? 36 : 32)); /* on one screen 4 dots from the chest, as its counter is */
     e.y = (float)y;
     e.w = 24.0f;

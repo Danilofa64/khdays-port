@@ -42,9 +42,8 @@ enum { ABG, AOBJ, BBG, BOBJ, ABGEXT, AOBJEXT, BBGEXT, BOBJEXT, VRAM, AREAS };
 static const struct {
     int first, pages;
 } area[AREAS] = {
-    {KHDAYS_2D_ABG, 32},    {KHDAYS_2D_AOBJ, 16},    {KHDAYS_2D_BBG, 8},    {KHDAYS_2D_BOBJ, 8},
-    {KHDAYS_2D_ABGEXT, 2},  {KHDAYS_2D_AOBJEXT, 1},  {KHDAYS_2D_BBGEXT, 2}, {KHDAYS_2D_BOBJEXT, 1},
-    {KHDAYS_2D_VRAM, 8},
+    {KHDAYS_2D_ABG, 32},    {KHDAYS_2D_AOBJ, 16},  {KHDAYS_2D_BBG, 8},     {KHDAYS_2D_BOBJ, 8}, {KHDAYS_2D_ABGEXT, 2},
+    {KHDAYS_2D_AOBJEXT, 1}, {KHDAYS_2D_BBGEXT, 2}, {KHDAYS_2D_BOBJEXT, 1}, {KHDAYS_2D_VRAM, 8},
 };
 
 static SDL_GPUDevice *device;
@@ -71,7 +70,7 @@ static Uint32 area_bytes(int a)
 {
     return (Uint32)area[a].pages * (PAGE + (a <= BOBJ ? HD2D_PAGE : 0u));
 }
-static SDL_GPUTexture *dummy3d[2];                 /* bound in place of the 3D targets at 1x */
+static SDL_GPUTexture *dummy3d[2]; /* bound in place of the 3D targets at 1x */
 static SDL_GPUTexture *screen[2];
 static int screen_scale, screen_columns[2]; /* their scale, and each one's width in DS columns */
 static SDL_Texture *wrapped[2];
@@ -116,8 +115,8 @@ typedef struct Shrunk {
 static SDL_GPUComputePipeline *shrinker;
 static float shown; /* the window's pixels a DS pixel; 0: as made */
 static Shrunk shrunk_screen[2], shrunk_picture;
-static int screens_shrunk, picture_shrunk; /* the last draw's were */
-static uint32_t version[KHDAYS_FRAME_2D_PAGES];     /* the change counts of the card's copy */
+static int screens_shrunk, picture_shrunk;      /* the last draw's were */
+static uint32_t version[KHDAYS_FRAME_2D_PAGES]; /* the change counts of the card's copy */
 static int valid;
 
 static SDL_GPUBuffer *make_buffer(Uint32 size)
@@ -144,9 +143,10 @@ static SDL_GPUTexture *make_texture(SDL_GPUTextureFormat format, SDL_GPUTextureU
     return SDL_CreateGPUTexture(device, &info);
 }
 
-static SDL_GPUComputePipeline *make_pipeline_of(const unsigned char *dxil, unsigned dxil_size, const unsigned char *spirv,
-                                                unsigned spirv_size, const unsigned char *msl, unsigned msl_size,
-                                                const char *entry, int buffers, int textures)
+static SDL_GPUComputePipeline *make_pipeline_of(const unsigned char *dxil, unsigned dxil_size,
+                                                const unsigned char *spirv, unsigned spirv_size,
+                                                const unsigned char *msl, unsigned msl_size, const char *entry,
+                                                int buffers, int textures)
 {
     SDL_GPUComputePipelineCreateInfo info;
     const SDL_GPUShaderFormat formats = SDL_GetGPUShaderFormats(device);
@@ -185,8 +185,10 @@ static SDL_GPUComputePipeline *make_pipeline(void)
 
 static void drop_shrunk(Shrunk *s)
 {
-    if (s->wrapped != NULL) SDL_DestroyTexture(s->wrapped);
-    if (s->texture != NULL) SDL_ReleaseGPUTexture(device, s->texture);
+    if (s->wrapped != NULL)
+        SDL_DestroyTexture(s->wrapped);
+    if (s->texture != NULL)
+        SDL_ReleaseGPUTexture(device, s->texture);
     SDL_zerop(s);
 }
 
@@ -327,45 +329,62 @@ void khdays_gfx_render_close(void)
     drop_shrunk(&shrunk_screen[1]);
     drop_shrunk(&shrunk_picture);
     screens_shrunk = picture_shrunk = 0;
-    if (shrinker != NULL) SDL_ReleaseGPUComputePipeline(device, shrinker);
+    if (shrinker != NULL)
+        SDL_ReleaseGPUComputePipeline(device, shrinker);
     shrinker = NULL;
-    if (held_wrapped != NULL) SDL_DestroyTexture(held_wrapped);
-    if (held != NULL) SDL_ReleaseGPUTexture(device, held);
+    if (held_wrapped != NULL)
+        SDL_DestroyTexture(held_wrapped);
+    if (held != NULL)
+        SDL_ReleaseGPUTexture(device, held);
     held_wrapped = NULL;
     held_for = NULL;
     held = NULL;
     held_w = held_h = held_columns = held_ok = 0;
     drawn_any = 0;
-    if (picture_wrapped != NULL) SDL_DestroyTexture(picture_wrapped);
-    if (picture != NULL) SDL_ReleaseGPUTexture(device, picture);
+    if (picture_wrapped != NULL)
+        SDL_DestroyTexture(picture_wrapped);
+    if (picture != NULL)
+        SDL_ReleaseGPUTexture(device, picture);
     picture_wrapped = NULL;
     picture_for = NULL;
     picture = NULL;
     picture_w = picture_h = picture_columns = 0;
-    if (onescreen != NULL) SDL_ReleaseGPUComputePipeline(device, onescreen);
-    if (backdrop_texture != NULL) SDL_ReleaseGPUTexture(device, backdrop_texture);
-    if (no_backdrop != NULL) SDL_ReleaseGPUTexture(device, no_backdrop);
+    if (onescreen != NULL)
+        SDL_ReleaseGPUComputePipeline(device, onescreen);
+    if (backdrop_texture != NULL)
+        SDL_ReleaseGPUTexture(device, backdrop_texture);
+    if (no_backdrop != NULL)
+        SDL_ReleaseGPUTexture(device, no_backdrop);
     backdrop_texture = no_backdrop = NULL;
     backdrop_of = NULL;
-    if (shape_buffer != NULL) SDL_ReleaseGPUBuffer(device, shape_buffer);
-    if (key_buffer != NULL) SDL_ReleaseGPUBuffer(device, key_buffer);
-    if (piece_buffer != NULL) SDL_ReleaseGPUBuffer(device, piece_buffer);
+    if (shape_buffer != NULL)
+        SDL_ReleaseGPUBuffer(device, shape_buffer);
+    if (key_buffer != NULL)
+        SDL_ReleaseGPUBuffer(device, key_buffer);
+    if (piece_buffer != NULL)
+        SDL_ReleaseGPUBuffer(device, piece_buffer);
     piece_buffer = NULL;
     onescreen = NULL;
     shape_buffer = key_buffer = NULL;
-    if (compose != NULL) SDL_ReleaseGPUComputePipeline(device, compose);
+    if (compose != NULL)
+        SDL_ReleaseGPUComputePipeline(device, compose);
     for (int a = 0; a < AREAS; ++a) {
-        if (memory[a] != NULL) SDL_ReleaseGPUBuffer(device, memory[a]);
+        if (memory[a] != NULL)
+            SDL_ReleaseGPUBuffer(device, memory[a]);
         memory[a] = NULL;
     }
     for (int e = 0; e < 2; ++e) {
-        if (desc[e] != NULL) SDL_ReleaseGPUBuffer(device, desc[e]);
-        if (dummy3d[e] != NULL) SDL_ReleaseGPUTexture(device, dummy3d[e]);
+        if (desc[e] != NULL)
+            SDL_ReleaseGPUBuffer(device, desc[e]);
+        if (dummy3d[e] != NULL)
+            SDL_ReleaseGPUTexture(device, dummy3d[e]);
         desc[e] = NULL;
         dummy3d[e] = NULL;
     }
-    if (layer3d != NULL) SDL_ReleaseGPUBuffer(device, layer3d);
-    if (upload != NULL) SDL_ReleaseGPUTransferBuffer(device, upload);
+    if (layer3d != NULL)
+        SDL_ReleaseGPUBuffer(device, layer3d);
+    if (upload != NULL)
+        SDL_ReleaseGPUTransferBuffer(device, upload);
     compose = NULL;
     layer3d = NULL;
     upload = NULL;
@@ -449,8 +468,10 @@ static SDL_GPUTexture *backdrop_on_card(SDL_GPUCommandBuffer *cmd, const KhdaysO
     if (mapped == NULL) {
         fprintf(stderr, "one screen: the backdrop (%dx%d) cannot go to the graphics card: %s\n", one->backdrop_w,
                 one->backdrop_h, SDL_GetError());
-        if (transfer != NULL) SDL_ReleaseGPUTransferBuffer(device, transfer);
-        if (backdrop_texture != NULL) SDL_ReleaseGPUTexture(device, backdrop_texture);
+        if (transfer != NULL)
+            SDL_ReleaseGPUTransferBuffer(device, transfer);
+        if (backdrop_texture != NULL)
+            SDL_ReleaseGPUTexture(device, backdrop_texture);
         backdrop_texture = NULL;
         return no_backdrop;
     }
@@ -524,8 +545,10 @@ static void hold_capture(const KhdaysFramePackage *p)
         const int w = screens_shrunk ? shrunk_screen[0].w : screen_columns[0] * screen_scale;
         const int h = screens_shrunk ? shrunk_screen[0].h : KHDAYS_FRAME_H * screen_scale;
         if (held == NULL || held_w != w || held_h != h) {
-            if (held_wrapped != NULL) SDL_DestroyTexture(held_wrapped);
-            if (held != NULL) SDL_ReleaseGPUTexture(device, held);
+            if (held_wrapped != NULL)
+                SDL_DestroyTexture(held_wrapped);
+            if (held != NULL)
+                SDL_ReleaseGPUTexture(device, held);
             held_wrapped = NULL;
             held_for = NULL;
             held = make_texture(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTUREUSAGE_SAMPLER, w, h);
@@ -591,10 +614,10 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
         }
         return 0;
     }
-    if (one != NULL && (!ensure_buffer(&shape_buffer, &shape_buffer_bytes, shape_bytes) ||
-                        !ensure_buffer(&key_buffer, &key_buffer_bytes, key_bytes) ||
-                        !ensure_buffer(&piece_buffer, &piece_buffer_bytes, piece_bytes) ||
-                        !ensure_picture(one->columns, scale))) {
+    if (one != NULL &&
+        (!ensure_buffer(&shape_buffer, &shape_buffer_bytes, shape_bytes) ||
+         !ensure_buffer(&key_buffer, &key_buffer_bytes, key_bytes) ||
+         !ensure_buffer(&piece_buffer, &piece_buffer_bytes, piece_bytes) || !ensure_picture(one->columns, scale))) {
         valid = 0;
         return 0;
     }
@@ -603,7 +626,8 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
         const uint32_t need = DESC_BYTES + element_bytes(p, e);
         if (need > desc_bytes[e]) {
             uint32_t bytes = desc_bytes[e];
-            while (bytes < need) bytes *= 2;
+            while (bytes < need)
+                bytes *= 2;
             SDL_ReleaseGPUBuffer(device, desc[e]);
             desc[e] = make_buffer(bytes);
             desc_bytes[e] = desc[e] != NULL ? bytes : 0;
@@ -834,7 +858,8 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
         SDL_BindGPUComputePipeline(pass, compose);
         SDL_BindGPUComputeStorageBuffers(pass, 0, in, 8);
         SDL_PushGPUComputeUniformData(cmd, 0, &cp, sizeof(cp));
-        SDL_DispatchGPUCompute(pass, (cp.width + 7) / 8, (cp.height + 7) / 8, 1); /* the shader skips pixels past the edge */
+        SDL_DispatchGPUCompute(pass, (cp.width + 7) / 8, (cp.height + 7) / 8,
+                               1); /* the shader skips pixels past the edge */
         SDL_EndGPUComputePass(pass);
     }
     if (one != NULL) {
@@ -923,8 +948,8 @@ static int draw(const KhdaysFramePackage *p, int scale, int raster, const Khdays
         } else {
             screens_shrunk = 1;
             for (int e = 0; e < 2; ++e) {
-                screens_shrunk = screens_shrunk && shrink(cmd, screen[e], screen_columns[e] * scale, KHDAYS_FRAME_H * scale,
-                                                          screen_columns[e], &shrunk_screen[e]);
+                screens_shrunk = screens_shrunk && shrink(cmd, screen[e], screen_columns[e] * scale,
+                                                          KHDAYS_FRAME_H * scale, screen_columns[e], &shrunk_screen[e]);
             }
         }
     }
@@ -1026,7 +1051,8 @@ uint32_t *khdays_gfx_render_read(int engine, int *width, int *height)
     download = SDL_CreateGPUTransferBuffer(device, &info);
     cmd = download != NULL ? SDL_AcquireGPUCommandBuffer(device) : NULL;
     if (cmd == NULL) {
-        if (download != NULL) SDL_ReleaseGPUTransferBuffer(device, download);
+        if (download != NULL)
+            SDL_ReleaseGPUTransferBuffer(device, download);
         return NULL;
     }
     {

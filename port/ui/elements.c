@@ -22,10 +22,10 @@ typedef struct Image {
     int replacement;
     int width, height;
     int used;
-    uint32_t version;  /* counts its changes (khdays_ui_image_end) */
+    uint32_t version; /* counts its changes (khdays_ui_image_end) */
     /* for an element drawn on the other screen: its texels in direct colour,
      * from its own engine's palettes (made again when it or they changed) */
-    int direct;        /* that image, -1: none yet */
+    int direct; /* that image, -1: none yet */
     uint32_t direct_version, direct_palettes;
 } Image;
 
@@ -110,11 +110,11 @@ static void (*emitters[KHDAYS_UI_PARTS])(void);
 typedef struct Entry {
     KhdaysUiElement e;
     int part, order, seq;
-    int source;          /* the engine it belongs to */
+    int source;           /* the engine it belongs to */
     float dx, dy, dw, dh; /* its DS place */
-    uint32_t dslot;      /* its slot as given */
-    int placed;          /* a layout line placed it */
-    int leader;          /* the first element of its id the layout placed, which it moves with; -1: none */
+    uint32_t dslot;       /* its slot as given */
+    int placed;           /* a layout line placed it */
+    int leader;           /* the first element of its id the layout placed, which it moves with; -1: none */
 } Entry;
 
 static Entry *entries;
@@ -299,11 +299,11 @@ static uint32_t colour_of(int engine, uint32_t slot, uint32_t t)
         if (dispcnt & (1u << 30)) {
             const uint32_t ext = (bg < 2u && (cnt & 0x2000u)) ? bg + 2u : bg; /* gfx/describe.c ext_slot */
             const uint32_t a = ext * 0x2000u + ((t >> KET_EXT_PAL_SHIFT) & 15u) * 512u + (t & 0xffu) * 2u;
-            const uint8_t *page = khdays_vram_pages()->page[engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT]
-                                                         [a / KHDAYS_VRAM_PAGE];
-            return page != NULL ? rgb_of((uint32_t)(page[a % KHDAYS_VRAM_PAGE] | page[a % KHDAYS_VRAM_PAGE + 1] << 8) &
-                                         0x7fffu)
-                                : rgb_of(0);
+            const uint8_t *page =
+                khdays_vram_pages()->page[engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT][a / KHDAYS_VRAM_PAGE];
+            return page != NULL
+                       ? rgb_of((uint32_t)(page[a % KHDAYS_VRAM_PAGE] | page[a % KHDAYS_VRAM_PAGE + 1] << 8) & 0x7fffu)
+                       : rgb_of(0);
         }
     }
     return rgb_of((uint32_t)(pal[(t & 0xffu) * 2u] | pal[(t & 0xffu) * 2u + 1u] << 8) & 0x7fffu);
@@ -370,7 +370,7 @@ static int find_groups(void)
 {
     if (group_room < entry_count) {
         int *g = (int *)realloc(group_of, (size_t)entry_count * sizeof(*group_of));
-        float (*gx)[2] = g != NULL ? (float (*)[2])realloc(group_x, (size_t)entry_count * sizeof(*group_x)) : NULL;
+        float(*gx)[2] = g != NULL ? (float(*)[2])realloc(group_x, (size_t)entry_count * sizeof(*group_x)) : NULL;
         if (g != NULL) {
             group_of = g;
         }
@@ -420,7 +420,8 @@ void khdays_ui_collect(int wide_margin, int upper)
     memset(record_count, 0, sizeof(record_count));
     for (int list = 0; list < 2; ++list) {
         for (int s = 0; s < 2; ++s) {
-            if (left_any_cells[list][s]) memset(left_cells[list][s], 0, sizeof(left_cells[list][s]));
+            if (left_any_cells[list][s])
+                memset(left_cells[list][s], 0, sizeof(left_cells[list][s]));
         }
     }
     memset(left_obj, 0, sizeof(left_obj));
@@ -455,16 +456,16 @@ void khdays_ui_collect(int wide_margin, int upper)
         if (khdays_ui_mode(n->part) == KHDAYS_UI_ON) {
             /* if one with its id is placed already (a piece's other layers), it goes the same way */
             for (int k = 0; k < i && n->leader < 0; ++k) {
-                if (entries[k].placed && entries[k].source == n->source && entries[k].e.id != NULL &&
-                    n->e.id != NULL && strcmp(entries[k].e.id, n->e.id) == 0) {
+                if (entries[k].placed && entries[k].source == n->source && entries[k].e.id != NULL && n->e.id != NULL &&
+                    strcmp(entries[k].e.id, n->e.id) == 0) {
                     n->leader = k;
                 }
             }
             if (n->leader < 0) {
                 /* where the layout puts it (the check compares at the DS's place) */
                 const float *group = grouped && group_of[i] >= 0 ? group_x[group_root(i)] : NULL;
-                n->placed = khdays_ui_layout_place(n->e.id, &n->e.screen, upper, wide_margin, group, &n->e.x,
-                                                   &n->e.y, &n->e.w, &n->e.h, &n->e.slot, &n->order);
+                n->placed = khdays_ui_layout_place(n->e.id, &n->e.screen, upper, wide_margin, group, &n->e.x, &n->e.y,
+                                                   &n->e.w, &n->e.h, &n->e.slot, &n->order);
             }
         }
     }
@@ -504,9 +505,11 @@ void khdays_ui_collect(int wide_margin, int upper)
             n->e.h = n->dh * sy;
             n->e.screen = parent->e.screen;
             n->order = parent->order;
-            if (n->leader >= 0 && (n->dslot & (KES_SPRITES | KES_NUMBER_MASK)) == (parent->dslot & (KES_SPRITES | KES_NUMBER_MASK))) {
+            if (n->leader >= 0 &&
+                (n->dslot & (KES_SPRITES | KES_NUMBER_MASK)) == (parent->dslot & (KES_SPRITES | KES_NUMBER_MASK))) {
                 /* of its id and its layer (a piece's mods' tiles over it, ui/hud.c): its layer too */
-                n->e.slot = (n->e.slot & ~(KES_SPRITES | KES_NUMBER_MASK)) | (parent->e.slot & (KES_SPRITES | KES_NUMBER_MASK));
+                n->e.slot =
+                    (n->e.slot & ~(KES_SPRITES | KES_NUMBER_MASK)) | (parent->e.slot & (KES_SPRITES | KES_NUMBER_MASK));
             }
         }
     }

@@ -4,6 +4,7 @@ parameters than the definition takes, or a value it does not return -- harmless 
 registers, stack garbage natively (docs/BUILD.md, "The ABI repairs").
 Usage: python port/tools/check_prototypes.py [--out build/port/gen-x64]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,7 +20,8 @@ import prepare as P  # noqa: E402
 FUNC_RE = re.compile(
     r"(?:^|;|\}|\n)\s*((?:extern\s+|static\s+|inline\s+|__inline\s+)*)"
     r"([A-Za-z_][\w \t\*]*?)\b([A-Za-z_]\w*)\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)\s*([{;])",
-    re.MULTILINE)
+    re.MULTILINE,
+)
 NOT_TYPES = {"return", "if", "while", "for", "switch", "sizeof", "else", "do", "case", "goto"}
 
 # The printf family: the index of the format among the arguments, plus one.
@@ -80,7 +82,7 @@ def body_of(text: str, open_brace: int) -> str:
         elif text[i] == "}":
             depth -= 1
             if depth == 0:
-                return text[open_brace:i + 1]
+                return text[open_brace : i + 1]
     return text[open_brace:]
 
 
@@ -123,8 +125,7 @@ def is_declaration(text: str, start: int) -> bool:
     if word:
         return word[1] not in ("return", "else", "case", "do", "sizeof")
     if before.endswith("*"):
-        return re.search(r"[A-Za-z_]\w*\s*\*+$", before) is not None and \
-            not re.search(r"[=(,;{}]\s*\*+$", before)
+        return re.search(r"[A-Za-z_]\w*\s*\*+$", before) is not None and not re.search(r"[=(,;{}]\s*\*+$", before)
     return False
 
 
@@ -146,7 +147,7 @@ def value_uses(name: str, text: str) -> tuple[bool, set[str]]:
     for m in re.finditer(rf"\b{re.escape(name)}\s*\(", text):
         if is_declaration(text, m.start()):
             continue
-        before = text[:m.start()].rstrip()
+        before = text[: m.start()].rstrip()
         _, after_index = split_arguments(text, m.end() - 1)
         after = text[after_index:].lstrip()
         standalone = (not before or before[-1] in ";{}:" or before.endswith("else")) and after.startswith(";")
@@ -155,7 +156,7 @@ def value_uses(name: str, text: str) -> tuple[bool, set[str]]:
         if re.search(r"\breturn\s*(?:\([\w\s\*]+\)\s*)*$", before) and after.startswith(";"):
             # returned as the enclosing function's value
             enclosing = None
-            for d in FUNC_RE.finditer(text[:m.start()]):
+            for d in FUNC_RE.finditer(text[: m.start()]):
                 if d.group(5) == "{":
                     enclosing = d.group(3)
             if enclosing:
@@ -170,7 +171,7 @@ def main() -> int:
     ap.add_argument("--out", default=str(P.ROOT / "build" / "port" / "gen-x64"))
     args = ap.parse_args()
 
-    defs: dict[str, tuple] = {}            # name -> (ret, count, file, names, body, returns)
+    defs: dict[str, tuple] = {}  # name -> (ret, count, file, names, body, returns)
     decls = collections.defaultdict(list)  # name -> [(ret, count, file)]
     texts: dict[str, str] = {}
     # The ROM's tail calls (port/abi/tail_calls.txt) hand their target the
@@ -330,16 +331,32 @@ def main() -> int:
             f.write(f"{name}\tvoid in {dfile}\t{ret} in {rel}\n")
     # The same, structured, for the ROM analysis (ghidra_abi.py).
     import json
-    (out / "prototype_mismatches.json").write_text(json.dumps({
-        "fewer": [{"callee": n, "def_file": d, "def_count": dc, "caller_file": r, "decl_count": c,
-                   "reads": printf_reads.get(n) or reads[n]}
-                  for n, d, dc, r, c in fewer],
-        "void_used": [{"function": n, "def_file": d, "caller_file": r}
-                      for n, d, r, _ in phantom_return],
-    }, indent=1), encoding="utf-8")
-    print(f"{len(fewer)} declarations with fewer parameters than their definition, "
-          f"{len(phantom_return)} that read a return value the definition does not give "
-          f"(see {out / 'prototype_mismatches.txt'})")
+
+    (out / "prototype_mismatches.json").write_text(
+        json.dumps(
+            {
+                "fewer": [
+                    {
+                        "callee": n,
+                        "def_file": d,
+                        "def_count": dc,
+                        "caller_file": r,
+                        "decl_count": c,
+                        "reads": printf_reads.get(n) or reads[n],
+                    }
+                    for n, d, dc, r, c in fewer
+                ],
+                "void_used": [{"function": n, "def_file": d, "caller_file": r} for n, d, r, _ in phantom_return],
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    print(
+        f"{len(fewer)} declarations with fewer parameters than their definition, "
+        f"{len(phantom_return)} that read a return value the definition does not give "
+        f"(see {out / 'prototype_mismatches.txt'})"
+    )
     return 0
 
 

@@ -25,22 +25,22 @@
 #endif
 
 static struct {
-    volatile LONG active;      /* a mod's movie plays */
+    volatile LONG active; /* a mod's movie plays */
     char id[64];
     plm_t *video, *audio;
-    double fps;                /* the game's movie's frames a second */
-    int picture;               /* the canvas: a changing replacement */
+    double fps;  /* the game's movie's frames a second */
+    int picture; /* the canvas: a changing replacement */
     int width, height, left, top;
-    volatile LONG target;      /* the game's frame index + 1; 0 before its first */
+    volatile LONG target; /* the game's frame index + 1; 0 before its first */
     volatile LONG stop;
     HANDLE thread, wake;
     /* the sound's ring, stereo frames at `rate` */
     float *ring;
     u32 ring_frames;
-    volatile LONG written;     /* frames written, all told */
-    double read;               /* frames read, all told (the sound thread's) */
+    volatile LONG written; /* frames written, all told */
+    double read;           /* frames read, all told (the sound thread's) */
     int rate;
-    volatile LONG sound_on;    /* from the game's first frame */
+    volatile LONG sound_on; /* from the game's first frame */
 } mod = {0, "", NULL, NULL, 0.0, -1};
 
 /* the ring, between the sound thread and a stop */
@@ -81,7 +81,8 @@ static DWORD WINAPI decode(LPVOID unused)
                 ahead = NULL;
             }
         }
-        while (mod.audio != NULL && (u32)(mod.written - (LONG)mod.read) + PLM_AUDIO_SAMPLES_PER_FRAME <= mod.ring_frames) {
+        while (mod.audio != NULL &&
+               (u32)(mod.written - (LONG)mod.read) + PLM_AUDIO_SAMPLES_PER_FRAME <= mod.ring_frames) {
             const plm_samples_t *samples = plm_decode_audio(mod.audio);
             if (samples == NULL) {
                 break;
@@ -186,11 +187,12 @@ static void mod_opened(int slot, const char *path)
         if (strcmp(told, mod.id) != 0) {
             snprintf(told, sizeof(told), "%s", mod.id);
             fprintf(stderr, "movies: %s is not an MPEG-1 file pl_mpeg reads; the game's movie plays\n", file);
-            khdays_log("movie %s: %s is not an MPEG-1 file pl_mpeg reads; the game's movie plays", mod.id,
-                       file);
+            khdays_log("movie %s: %s is not an MPEG-1 file pl_mpeg reads; the game's movie plays", mod.id, file);
         }
-        if (mod.video != NULL) plm_destroy(mod.video);
-        if (mod.audio != NULL) plm_destroy(mod.audio);
+        if (mod.video != NULL)
+            plm_destroy(mod.video);
+        if (mod.audio != NULL)
+            plm_destroy(mod.audio);
         mod.video = mod.audio = NULL;
         return;
     }
@@ -212,7 +214,8 @@ static void mod_opened(int slot, const char *path)
         uint32_t *texels;
         if (ds_width <= 0 || ds_height <= 0) {
             plm_destroy(mod.video);
-            if (mod.audio != NULL) plm_destroy(mod.audio);
+            if (mod.audio != NULL)
+                plm_destroy(mod.audio);
             mod.video = mod.audio = NULL;
             return;
         }
@@ -231,7 +234,8 @@ static void mod_opened(int slot, const char *path)
                                                        (u32)ds_height << 16);
         if (mod.picture < 0) {
             plm_destroy(mod.video);
-            if (mod.audio != NULL) plm_destroy(mod.audio);
+            if (mod.audio != NULL)
+                plm_destroy(mod.audio);
             mod.video = mod.audio = NULL;
             return;
         }

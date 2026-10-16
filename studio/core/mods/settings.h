@@ -12,12 +12,12 @@ struct Settings {
     std::string port;            // the port's executable, for the dumps
     std::string graphics_dump = "saves/dump/graphics";
     std::string sounds_dump = "saves/dump/sounds";
-    std::string ffmpeg;          // the movie converter, empty: none
-    std::string language;        // the interface's: en, fr, de, it, es; empty: the system's
-    std::string mod;             // the last mod opened
-    int cache_mb = 512;          // the previews' memory budget (grows with use up to it)
-    bool browser_tree = true;    // the catalog as folders (else one list)
-    std::string theme;           // the colour palette: kh1, kh2, kh3, days, mom; empty: MoM's
+    std::string ffmpeg;        // the movie converter, empty: none
+    std::string language;      // the interface's: en, fr, de, it, es; empty: the system's
+    std::string mod;           // the last mod opened
+    int cache_mb = 512;        // the previews' memory budget (grows with use up to it)
+    bool browser_tree = true;  // the catalog as folders (else one list)
+    std::string theme;         // the colour palette: kh1, kh2, kh3, days, mom; empty: MoM's
 };
 
 // The settings file of a port folder.

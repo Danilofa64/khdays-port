@@ -3,6 +3,7 @@ every decompiled file): a register that only holds a value reaches plain memory 
 one that acts or is computed becomes khdays_io_store/khdays_io_load calls, one reached through a
 run-time address is routed at each access; registers_left.txt lists what it does not know.
 docs/BUILD.md, "The registers"."""
+
 from __future__ import annotations
 
 import re
@@ -17,13 +18,16 @@ IO2_END = 0x04100020
 # (port/runtime/core/io_regs.c: khdays_io_write, khdays_io_read).
 WRITE_ACTS = [
     (0x004, 0x008),  # DISPSTAT (its status bits are the frame loop's), VCOUNT
-    (0x0b8, 0x0bc), (0x0c4, 0x0c8), (0x0d0, 0x0d4), (0x0dc, 0x0e0),  # DMA control
+    (0x0B8, 0x0BC),
+    (0x0C4, 0x0C8),
+    (0x0D0, 0x0D4),
+    (0x0DC, 0x0E0),  # DMA control
     (0x100, 0x110),  # the timers (said once)
-    (0x180, 0x18c),  # IPC (said once)
-    (0x1a0, 0x1a8),  # the card: SPI, ROMCTRL
+    (0x180, 0x18C),  # IPC (said once)
+    (0x1A0, 0x1A8),  # the card: SPI, ROMCTRL
     (0x214, 0x218),  # IF: writing one clears
-    (0x240, 0x24a),  # VRAMCNT, WRAMCNT
-    (0x280, 0x2c0),  # the math unit (prepare.py's; here only so it is never "plain")
+    (0x240, 0x24A),  # VRAMCNT, WRAMCNT
+    (0x280, 0x2C0),  # the math unit (prepare.py's; here only so it is never "plain")
     (0x400, 0x604),  # GXFIFO, the geometry's command ports, GXSTAT
 ]
 READ_COMPUTED = [
@@ -31,16 +35,43 @@ READ_COMPUTED = [
     (0x100, 0x110),  # the timers
     (0x130, 0x132),  # KEYINPUT
     (0x180, 0x188),  # IPC
-    (0x280, 0x2c0),  # the math unit
-    (0x600, 0x6a4),  # the geometry's status and results
+    (0x280, 0x2C0),  # the math unit
+    (0x600, 0x6A4),  # the geometry's status and results
 ]
 
 SIZES = {
-    "u8": 1, "s8": 1, "vu8": 1, "vs8": 1, "char": 1, "REGType8": 1, "REGType8v": 1,
-    "u16": 2, "s16": 2, "vu16": 2, "vs16": 2, "short": 2, "REGType16": 2, "REGType16v": 2,
-    "u32": 4, "s32": 4, "vu32": 4, "vs32": 4, "int": 4, "unsigned": 4, "long": 4, "fx32": 4,
-    "REGType32": 4, "REGType32v": 4, "BOOL": 4, "OSIrqMask": 4,
-    "u64": 8, "s64": 8, "vu64": 8, "vs64": 8, "REGType64": 8, "REGType64v": 8,
+    "u8": 1,
+    "s8": 1,
+    "vu8": 1,
+    "vs8": 1,
+    "char": 1,
+    "REGType8": 1,
+    "REGType8v": 1,
+    "u16": 2,
+    "s16": 2,
+    "vu16": 2,
+    "vs16": 2,
+    "short": 2,
+    "REGType16": 2,
+    "REGType16v": 2,
+    "u32": 4,
+    "s32": 4,
+    "vu32": 4,
+    "vs32": 4,
+    "int": 4,
+    "unsigned": 4,
+    "long": 4,
+    "fx32": 4,
+    "REGType32": 4,
+    "REGType32v": 4,
+    "BOOL": 4,
+    "OSIrqMask": 4,
+    "u64": 8,
+    "s64": 8,
+    "vu64": 8,
+    "vs64": 8,
+    "REGType64": 8,
+    "REGType64v": 8,
     # structs the C lays over registers, their sizes from their definitions:
     "BgControl": 2,  # unsigned short bitfields, 16 bits (Ov002_GetItemFlag.c, TileTextRenderer_Init.c)
     "GXAffineReg": 16,  # paPb, pcPd, x, y (include/nitro/gx.h)
@@ -68,56 +99,87 @@ PLAIN_CALLEES = {
 # sdk_gx.c) that take a register's DS address as it is and reach the port
 # without a fault (khdays_io_is_register / touches_registers there).
 HAL_CALLEES = {
-    "MIi_CpuSend32", "MIi_CpuCopy32", "MIi_CpuCopy16", "MIi_CpuCopyFast", "MI_Copy36B", "MI_Copy48B",
-    "MI_Copy64B", "GX_SendFifo48B", "GXi_NopClearFifo128_",
+    "MIi_CpuSend32",
+    "MIi_CpuCopy32",
+    "MIi_CpuCopy16",
+    "MIi_CpuCopyFast",
+    "MI_Copy36B",
+    "MI_Copy48B",
+    "MI_Copy64B",
+    "GX_SendFifo48B",
+    "GXi_NopClearFifo128_",
 }
 # Routines given a register's DS address as a value, to program the DMA with
 # (the port's DMA reaches the register: runtime/core/io_regs.c).
-VALUE_CALLEES = {"MIi_DmaSetParams", "MIi_DmaSetParams_wait", "func_01ff85d0", "MIi_DmaSetChannelRegs",
-                 "func_01ff8664", "MIi_CardDmaCopy32", "MI_DmaFill32", "MI_DmaFill32Async", "MI_DmaFill16",
-                 "MI_DmaCopy32", "MI_DmaCopy16", "MI_DmaCopy32Async", "MI_DmaCopy16Async"}
+VALUE_CALLEES = {
+    "MIi_DmaSetParams",
+    "MIi_DmaSetParams_wait",
+    "func_01ff85d0",
+    "MIi_DmaSetChannelRegs",
+    "func_01ff8664",
+    "MIi_CardDmaCopy32",
+    "MI_DmaFill32",
+    "MI_DmaFill32Async",
+    "MI_DmaFill16",
+    "MI_DmaCopy32",
+    "MI_DmaCopy16",
+    "MI_DmaCopy32Async",
+    "MI_DmaCopy16Async",
+}
 # Files whose every register address is one that only holds a value, reached
 # in forms this does not follow (a table of pointers, an integer address,
 # pointers moved and cast), read off their C: each address there becomes its
 # place in the plain view. prepare.py stops if one is not a value register.
 REVIEWED_PLAIN_FILES = {
-    "libs/nns/g2d/auto/g2d_bg_cnt_table.c":
-        "NitroSystem's NNSiG2dBGCNTTable, each BG's BGnCNT: its users (LoadBGCharacter.c, SetBGnControlTo*.c, "
-        "BgCharVram_Upload.c, func_020149c4.c) read and write the u16 it points at",
-    "libs/nns/g2d/calls/GetBGExtPlttSlot.c":
-        "HW_REG_BASE plus data_02041a04's offset (g2d_screen_tables.c: each engine's BG0CNT and BG1CNT, or 0 for "
-        "none), the u16 there read",
-    "src/overlays/scenes/ov003/Ov003_DisplaySetup.c":
-        "every register it reaches is a 2D one of either engine (DISPCNT, BGnCNT, the scrolls, the windows, the "
-        "blending; not DISPSTAT), through pointers it moves and casts",
-    "src/overlays/scenes/ov004_calendar/Ov004_ConfigureGraphics.c":
-        "BG1-3CNT through pControl[0..2], DISPCNT and the blending (+0x50) through setup's pointers, BGnCNT, "
-        "DISP3DCNT and POWCNT1",
-    "src/overlays/screens/ov025_camp_menu_2/Ov025_InitDisplayRegs.c":
-        "engine B's DISPCNT and BG0-3CNT (+8 to +0xe) through one pointer",
+    "libs/nns/g2d/auto/g2d_bg_cnt_table.c": "NitroSystem's NNSiG2dBGCNTTable, each BG's BGnCNT: its users (LoadBGCharacter.c, SetBGnControlTo*.c, "
+    "BgCharVram_Upload.c, func_020149c4.c) read and write the u16 it points at",
+    "libs/nns/g2d/calls/GetBGExtPlttSlot.c": "HW_REG_BASE plus data_02041a04's offset (g2d_screen_tables.c: each engine's BG0CNT and BG1CNT, or 0 for "
+    "none), the u16 there read",
+    "src/overlays/scenes/ov003/Ov003_DisplaySetup.c": "every register it reaches is a 2D one of either engine (DISPCNT, BGnCNT, the scrolls, the windows, the "
+    "blending; not DISPSTAT), through pointers it moves and casts",
+    "src/overlays/scenes/ov004_calendar/Ov004_ConfigureGraphics.c": "BG1-3CNT through pControl[0..2], DISPCNT and the blending (+0x50) through setup's pointers, BGnCNT, "
+    "DISP3DCNT and POWCNT1",
+    "src/overlays/screens/ov025_camp_menu_2/Ov025_InitDisplayRegs.c": "engine B's DISPCNT and BG0-3CNT (+8 to +0xe) through one pointer",
 }
 # A register's address in the C that is no access, by file: why.
 NOT_ACCESSES = {
-    ("src/overlays/scenes/ov003/Ov003_SceneInit.c", 0x04001008):
-        "CamAnim_Start's fourth argument: CamAnim_Start (src/engine/CamAnim_Start.c) takes two",
+    (
+        "src/overlays/scenes/ov003/Ov003_SceneInit.c",
+        0x04001008,
+    ): "CamAnim_Start's fourth argument: CamAnim_Start (src/engine/CamAnim_Start.c) takes two",
 }
 
-TYPE = (r"(?:volatile\s+)?(?:const\s+)?(?:volatile\s+)?(?:struct\s+|union\s+)?(?:unsigned\s+|signed\s+)?[A-Za-z_]\w*"
-        r"(?:\s+(?:long|int|short|char))*")
+TYPE = (
+    r"(?:volatile\s+)?(?:const\s+)?(?:volatile\s+)?(?:struct\s+|union\s+)?(?:unsigned\s+|signed\s+)?[A-Za-z_]\w*"
+    r"(?:\s+(?:long|int|short|char))*"
+)
 LIT_CORE = r"0x0?4[01][0-9a-fA-F]{5}"
 LITERAL = r"(?<![\w.])" + LIT_CORE + r"[uUlL]*\b"
 NUMBER = r"(?:0x[0-9a-fA-F]+|\d+)[uUlL]*"
 REG_DEFINE = re.compile(
-    r"^([ \t]*#[ \t]*define[ \t]+)(\w+)([ \t]+)\(\s*\*\s*\(\s*(" + TYPE + r")\s*\*\s*\)\s*\(?\s*(" + LITERAL +
-    r"|[A-Za-z_]\w*)\s*\)?\s*\)[ \t]*$", re.M)
+    r"^([ \t]*#[ \t]*define[ \t]+)(\w+)([ \t]+)\(\s*\*\s*\(\s*("
+    + TYPE
+    + r")\s*\*\s*\)\s*\(?\s*("
+    + LITERAL
+    + r"|[A-Za-z_]\w*)\s*\)?\s*\)[ \t]*$",
+    re.M,
+)
 # a file's own macro for a pointer to a register: `#define NAME ((T *)LIT)`
 POINTER_DEFINE = re.compile(
-    r"^[ \t]*#[ \t]*define[ \t]+(\w+)[ \t]+(\(\s*\(\s*" + TYPE + r"\s*\*\s*\)\s*\(?\s*" + LITERAL +
-    r"\s*\)?\s*\))[ \t]*$", re.M)
+    r"^[ \t]*#[ \t]*define[ \t]+(\w+)[ \t]+(\(\s*\(\s*"
+    + TYPE
+    + r"\s*\*\s*\)\s*\(?\s*"
+    + LITERAL
+    + r"\s*\)?\s*\))[ \t]*$",
+    re.M,
+)
 # `#define NAME(p) (*(T *)(p))`
 DEREF_MACRO = re.compile(
-    r"^[ \t]*#[ \t]*define[ \t]+(\w+)\(\s*(\w+)\s*\)[ \t]+\(\s*\*\s*\(\s*(" + TYPE +
-    r")\s*\*\s*\)\s*\(\s*\2\s*\)\s*\)[ \t]*$", re.M)
+    r"^[ \t]*#[ \t]*define[ \t]+(\w+)\(\s*(\w+)\s*\)[ \t]+\(\s*\*\s*\(\s*("
+    + TYPE
+    + r")\s*\*\s*\)\s*\(\s*\2\s*\)\s*\)[ \t]*$",
+    re.M,
+)
 OBJECT_DEFINE = re.compile(r"^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)[ \t]+([^\n\\]*?)[ \t]*(?:/[/*][^\n]*)?$", re.M)
 DEFINE_LINE = re.compile(r"^[ \t]*#[ \t]*define\b[^\n]*(?:\\\n[^\n]*)*", re.M)
 # `*(T *)LIT` or `*(T *)(LIT)`
@@ -208,6 +270,7 @@ def constants(text: str, known: dict[str, int]) -> dict[str, int]:
 class Shared:
     """What the shared headers define: their constant macros, their register
     macros (name -> type, address, width), their structs."""
+
     values: dict[str, int]
     macros: dict[str, tuple[str, int, int]]
     layouts: dict[str, "Layout"] = field(default_factory=dict)
@@ -221,8 +284,12 @@ def header_tables(hw_text: str, *other_headers: str) -> Shared:
     for m in REG_DEFINE.finditer(hw_text):
         address = lit(m[5]) if m[5][0].isdigit() else values.get(m[5])
         size = type_size(m[4])
-        if address is not None and size is not None and kind(address, size) is not None and \
-                not overlaps(address - IO, size, [(0x280, 0x2c0)]):
+        if (
+            address is not None
+            and size is not None
+            and kind(address, size) is not None
+            and not overlaps(address - IO, size, [(0x280, 0x2C0)])
+        ):
             macros[m[2]] = (m[4], address, size)
     layouts: dict[str, Layout] = {}
     for header in (hw_text, *other_headers):
@@ -246,8 +313,10 @@ def plain_integer(address: int) -> str:
 def load(type_text: str, address: int, size: int) -> str:
     type_text = value_type(type_text)
     if size == 8:
-        return (f"(({type_text})((unsigned long long)khdays_io_load(0x{address:08x}u, 4) | "
-                f"(unsigned long long)khdays_io_load(0x{address + 4:08x}u, 4) << 32))")
+        return (
+            f"(({type_text})((unsigned long long)khdays_io_load(0x{address:08x}u, 4) | "
+            f"(unsigned long long)khdays_io_load(0x{address + 4:08x}u, 4) << 32))"
+        )
     return f"(({type_text})khdays_io_load(0x{address:08x}u, {size}))"
 
 
@@ -260,25 +329,31 @@ def load_at(type_text: str, address: str, size: int) -> str:
     """A read at a run-time address (an expression without side effects)."""
     type_text = value_type(type_text)
     if size == 8:
-        return (f"(({type_text})((unsigned long long)khdays_io_load({address}, 4) | "
-                f"(unsigned long long)khdays_io_load(({address}) + 4, 4) << 32))")
+        return (
+            f"(({type_text})((unsigned long long)khdays_io_load({address}, 4) | "
+            f"(unsigned long long)khdays_io_load(({address}) + 4, 4) << 32))"
+        )
     return f"(({type_text})khdays_io_load({address}, {size}))"
 
 
 def store_at(address: str, size: int, value: str) -> str:
     """A statement storing at a run-time address: a 64-bit one as two words, low first."""
     if size == 8:
-        return (f"{{ const unsigned long long khdays_v_ = (unsigned long long)({value}); "
-                f"khdays_io_store({address}, 4, (unsigned int)khdays_v_); "
-                f"khdays_io_store(({address}) + 4, 4, (unsigned int)(khdays_v_ >> 32)); }}")
+        return (
+            f"{{ const unsigned long long khdays_v_ = (unsigned long long)({value}); "
+            f"khdays_io_store({address}, 4, (unsigned int)khdays_v_); "
+            f"khdays_io_store(({address}) + 4, 4, (unsigned int)(khdays_v_ >> 32)); }}"
+        )
     return f"khdays_io_store({address}, {size}, (unsigned int)({value}));"
 
 
 def store(address: int, size: int, value: str) -> str:
     if size == 8:
-        return (f"{{ const unsigned long long khdays_v_ = (unsigned long long)({value}); "
-                f"khdays_io_store(0x{address:08x}u, 4, (unsigned int)khdays_v_); "
-                f"khdays_io_store(0x{address + 4:08x}u, 4, (unsigned int)(khdays_v_ >> 32)); }}")
+        return (
+            f"{{ const unsigned long long khdays_v_ = (unsigned long long)({value}); "
+            f"khdays_io_store(0x{address:08x}u, 4, (unsigned int)khdays_v_); "
+            f"khdays_io_store(0x{address + 4:08x}u, 4, (unsigned int)(khdays_v_ >> 32)); }}"
+        )
     return f"khdays_io_store(0x{address:08x}u, {size}, (unsigned int)({value}));"
 
 
@@ -341,7 +416,7 @@ def substitute(text: str, view: str, pattern: re.Pattern, fn) -> str:
     """`pattern` found in `view` (the same positions as `text`), each match
     replaced in `text` by fn(match), last first."""
     for m in reversed(list(pattern.finditer(view))):
-        text = text[:m.start()] + fn(m) + text[m.end():]
+        text = text[: m.start()] + fn(m) + text[m.end() :]
     return text
 
 
@@ -377,6 +452,7 @@ def enclosing_call(before: str) -> tuple[str, int] | None:
 
 
 # --- structs laid over registers --------------------------------------------------
+
 
 @dataclass
 class Field:
@@ -452,10 +528,10 @@ def struct_body(body: str, is_union: bool, layouts: dict[str, Layout], values: d
             close = matching_brace(body, brace)
             head = body[pos:brace]
             semi = body.find(";", close)
-            inner = struct_body(body[brace + 1:close], "union" in head, layouts, values)
+            inner = struct_body(body[brace + 1 : close], "union" in head, layouts, values)
             if inner is None:
                 return None
-            declarators = body[close + 1:semi]
+            declarators = body[close + 1 : semi]
             types = [(inner, d) for d in declarators.split(",") if d.strip()] or [(inner, "")]
             type_text = None
         else:
@@ -463,8 +539,12 @@ def struct_body(body: str, is_union: bool, layouts: dict[str, Layout], values: d
             pos = semi + 1
             if not decl:
                 continue
-            m = re.match(r"((?:(?:volatile|const|unsigned|signed|struct|union)\s+)*[A-Za-z_]\w*"
-                         r"(?:\s+(?:long|int|short|char))*)\s+(.*)$", decl, re.S)
+            m = re.match(
+                r"((?:(?:volatile|const|unsigned|signed|struct|union)\s+)*[A-Za-z_]\w*"
+                r"(?:\s+(?:long|int|short|char))*)\s+(.*)$",
+                decl,
+                re.S,
+            )
             if not m:
                 return None
             type_text = m[1]
@@ -529,20 +609,21 @@ def struct_layouts(text: str, known: dict[str, Layout], values: dict[str, int]) 
         close = matching_brace(view, open_at)
         if close < 0:
             continue
-        layout = struct_body(view[open_at + 1:close], (m[2] or m[5]) == "union", layouts, values)
+        layout = struct_body(view[open_at + 1 : close], (m[2] or m[5]) == "union", layouts, values)
         if layout is None:
             continue
         if m[3]:
             layouts[m[3]] = layout
         if m[1] or m[4]:
-            names = re.match(r"\s*([^;{}]*);", view[close + 1:])
-            for n in (names[1].split(",") if names else []):
+            names = re.match(r"\s*([^;{}]*);", view[close + 1 :])
+            for n in names[1].split(",") if names else []:
                 if re.fullmatch(r"\s*\w+\s*", n):
                     layouts[n.strip()] = layout
     return layouts
 
 
 # --- 1. macros and constant sums ----------------------------------------------
+
 
 def expand_macros(text: str, values: dict[str, int]) -> str:
     """Where used: the macros for a register's address (the shared headers'
@@ -552,8 +633,9 @@ def expand_macros(text: str, values: dict[str, int]) -> str:
     bodies.update({m[1]: m[2].strip() for m in POINTER_DEFINE.finditer(text)})
     used = [n for n in bodies if re.search(r"\b" + n + r"\b", text)]
     if used:
-        names = re.compile(r"(?<![\w.])(" + "|".join(map(re.escape, sorted(used, key=len, reverse=True))) +
-                           r")\b(?!\s*\()")
+        names = re.compile(
+            r"(?<![\w.])(" + "|".join(map(re.escape, sorted(used, key=len, reverse=True))) + r")\b(?!\s*\()"
+        )
         text = substitute(text, code_view(text), names, lambda m: bodies[m[1]])
     for m in list(DEREF_MACRO.finditer(text)):
         name, type_text = m[1], m[3]
@@ -569,12 +651,13 @@ def fold(text: str, values: dict[str, int]) -> str:
     after a cast or a name (a call's argument)."""
     names = [n for n in values if re.search(r"\b" + n + r"\b", text)]
     k = NUMBER if not names else r"(?:" + NUMBER + r"|" + "|".join(map(re.escape, names)) + r")"
-    sum_ = re.compile(r"\(\s*(" + LITERAL + r")\s*\)|(?<![\w)])(" + LITERAL + r")\s*([+-])\s*(" + k +
-                      r")(?![\w.]|\s*[*/%(\[])")
+    sum_ = re.compile(
+        r"\(\s*(" + LITERAL + r")\s*\)|(?<![\w)])(" + LITERAL + r")\s*([+-])\s*(" + k + r")(?![\w.]|\s*[*/%(\[])"
+    )
 
     def one(m: re.Match, view: str) -> str:
         if m[1]:
-            if re.search(r"(?:\*\s*\)|\w)\s*$", view[max(0, m.start() - 40):m.start()]):
+            if re.search(r"(?:\*\s*\)|\w)\s*$", view[max(0, m.start() - 40) : m.start()]):
                 return m[0]
             return m[1]
         k_text = m[4]
@@ -591,6 +674,7 @@ def fold(text: str, values: dict[str, int]) -> str:
 
 
 # --- 2. pointers set to a register's address -----------------------------------
+
 
 @dataclass
 class Init:
@@ -622,8 +706,9 @@ def closing(text: str, open_at: int) -> int:
 
 
 INIT_HEAD = re.compile(r"(?<![\w.>])([A-Za-z_]\w*)\s*=\s*(&\s*\(\s*)?\(\s*(" + TYPE + r")\s*\*\s*\)\s*")
-RUNTIME_BASE = re.compile(r"^\s*(?:\(\s*(?:u32|unsigned\s+int|unsigned\s+long)\s*\)\s*)?" + LITERAL + r"\s*[+-]|\+\s*" +
-                          LITERAL + r"\s*$")
+RUNTIME_BASE = re.compile(
+    r"^\s*(?:\(\s*(?:u32|unsigned\s+int|unsigned\s+long)\s*\)\s*)?" + LITERAL + r"\s*[+-]|\+\s*" + LITERAL + r"\s*$"
+)
 
 
 def pointer_inits(view: str) -> list[Init]:
@@ -646,7 +731,7 @@ def pointer_inits(view: str) -> list[Init]:
                 end, base = at + lm.end(), lit(lm[1] or lm[2])
             elif view.startswith("(", at):
                 close = closing(view, at)
-                if close < 0 or not RUNTIME_BASE.search(view[at + 1:close]):
+                if close < 0 or not RUNTIME_BASE.search(view[at + 1 : close]):
                     continue
                 end, base = close + 1, None
             else:
@@ -686,8 +771,8 @@ def pointer_uses(view: str, name: str, inits: list[Init], layouts: dict[str, Lay
     for u in re.finditer(r"(?<![\w.>])" + name + r"\b", view):
         if any(s <= u.start() < e for s, e in init_spans):
             continue
-        before = view[max(0, u.start() - 200):u.start()]
-        after = view[u.end():u.end() + 200]
+        before = view[max(0, u.start() - 200) : u.start()]
+        after = view[u.end() : u.end() + 200]
         b0 = u.start() - len(before)
         call = enclosing_call(before)
         if call and takes_address(call[0]):
@@ -698,16 +783,17 @@ def pointer_uses(view: str, name: str, inits: list[Init], layouts: dict[str, Lay
         if m and layout and m[1] in layout.fields and not re.search(r"&\s*$", before):
             f = layout.fields[m[1]]
             end = u.end() + m.end()
-            if after[m.end():].lstrip().startswith("[") and f.count:
-                open_at = end + after[m.end():].index("[")
+            if after[m.end() :].lstrip().startswith("[") and f.count:
+                open_at = end + after[m.end() :].index("[")
                 close = closing(view, open_at)
                 if close < 0:
                     return None
-                k = number(view[open_at + 1:close])
+                k = number(view[open_at + 1 : close])
                 width = f.size // f.count
-                uses.append(Use(u.start(), close + 1, "deref", None if k is None else f.offset + k * width, width,
-                                f.scalar))
-            elif re.match(r"\s*(?:\.|\[)", after[m.end():]) or f.scalar is None:
+                uses.append(
+                    Use(u.start(), close + 1, "deref", None if k is None else f.offset + k * width, width, f.scalar)
+                )
+            elif re.match(r"\s*(?:\.|\[)", after[m.end() :]) or f.scalar is None:
                 uses.append(Use(u.start(), end, "deref", f.offset, f.size, None))
             else:
                 uses.append(Use(u.start(), end, "deref", f.offset, f.size, f.scalar))
@@ -718,19 +804,20 @@ def pointer_uses(view: str, name: str, inits: list[Init], layouts: dict[str, Lay
             close = closing(view, open_at)
             if close < 0:
                 return None
-            k = number(view[open_at + 1:close])
+            k = number(view[open_at + 1 : close])
             uses.append(Use(u.start(), close + 1, "deref", None if k is None else k * elt, elt, scalar))
             continue
         # *(T2 *)((u8 *)N + e)  /  *(T2 *)(N + e)  /  *(T2 *)N  /  *(N + e)
-        mb = re.search(r"\*\s*(?:\(\s*(" + TYPE + r")\s*\*\s*\)\s*)?(\(\s*)?(?:\(\s*(" + BYTE_TYPE +
-                       r")\s*\*\s*\)\s*)?$", before)
+        mb = re.search(
+            r"\*\s*(?:\(\s*(" + TYPE + r")\s*\*\s*\)\s*)?(\(\s*)?(?:\(\s*(" + BYTE_TYPE + r")\s*\*\s*\)\s*)?$", before
+        )
         if mb and (mb[1] or mb[2]):
             width = type_size(mb[1]) if mb[1] else elt
             type_text = mb[1] or scalar
             if mb[2]:
                 open_at = b0 + mb.start(2)
                 close = closing(view, open_at)
-                inner = view[u.end():close] if close > 0 else ""
+                inner = view[u.end() : close] if close > 0 else ""
                 am = re.fullmatch(r"\s*\+\s*(.+)", inner, re.S)
                 if close < 0 or not (am or not inner.strip()):
                     return None
@@ -744,15 +831,18 @@ def pointer_uses(view: str, name: str, inits: list[Init], layouts: dict[str, Lay
                 uses.append(Use(b0 + mb.start(), end, "deref", off, width, type_text))
                 continue
         # its declaration (`T *N;`, `T *a, *N;`)
-        if re.search(r"(?:^|[;{}(])\s*(?:(?:register|static|volatile|const)\s+)*" + TYPE +
-                     r"\s*\*\s*(?:const\s+)?(?:\w+\s*,\s*\*\s*)*$", before) and re.match(r"\s*[;,]", after):
+        if re.search(
+            r"(?:^|[;{}(])\s*(?:(?:register|static|volatile|const)\s+)*"
+            + TYPE
+            + r"\s*\*\s*(?:const\s+)?(?:\w+\s*,\s*\*\s*)*$",
+            before,
+        ) and re.match(r"\s*[;,]", after):
             continue
         # *N (after an operator, or a cast: `(void)*N`)
         stripped = before.rstrip()
         if stripped.endswith("*") and not re.match(r"\s*(?:->|\+(?!\+)|-(?![-=]))", after) and elt:
             prev = stripped[:-1].rstrip()
-            if not prev or not re.match(r"[\w)\]]", prev[-1]) or \
-                    re.search(r"\(\s*" + TYPE + r"\s*(?:\*\s*)?\)$", prev):
+            if not prev or not re.match(r"[\w)\]]", prev[-1]) or re.search(r"\(\s*" + TYPE + r"\s*(?:\*\s*)?\)$", prev):
                 uses.append(Use(u.start() - (len(before) - len(stripped)) - 1, u.end(), "deref", 0, elt, scalar))
                 continue
         # N++, N += K: moved; N = e: set to something else
@@ -817,9 +907,10 @@ def route(text: str, view: str, lvalues: list[tuple[int, int, str]], rel: str, l
             op, value = m[1], m[2].strip()
             if op != "=":
                 value = f"{load_at(type_text, address, size)} {op[:-1]} ({value})"
-            text = text[:start] + store_at(address, size, value) + text[end + m.end():]
-        elif re.match(r"(?:\s*\))*\s*(?:\+\+|--|" + ASSIGN + r")", after) or \
-                re.search(r"(?:\+\+|--|&)\s*$", text[:start]):
+            text = text[:start] + store_at(address, size, value) + text[end + m.end() :]
+        elif re.match(r"(?:\s*\))*\s*(?:\+\+|--|" + ASSIGN + r")", after) or re.search(
+            r"(?:\+\+|--|&)\s*$", text[:start]
+        ):
             left.append(f"{rel}:{line}: {lvalue.strip()[:60]} -- an lvalue form not routed")
         else:
             text = text[:start] + load_at(type_text, address, size) + text[end:]
@@ -849,8 +940,11 @@ def rewrite_pointers(text: str, rel: str, left: list[str], layouts: dict[str, La
         if any(u.form == "set" for u in uses):
             left.append(f"{rel}:{line}: pointer {name} = {what} -- set to something else, and dereferenced")
             continue
-        if None not in bases and all(u.form in ("deref", "callee") and u.offset is not None for u in uses) and \
-                all(kind(b + u.offset, u.width) == "plain" for b in bases for u in reaches):
+        if (
+            None not in bases
+            and all(u.form in ("deref", "callee") and u.offset is not None for u in uses)
+            and all(kind(b + u.offset, u.width) == "plain" for b in bases for u in reaches)
+        ):
             for i in inits:
                 edits.append((i.cast_start, i.end, plain_pointer(i.type_text, i.base)))
             continue
@@ -863,7 +957,7 @@ def rewrite_pointers(text: str, rel: str, left: list[str], layouts: dict[str, La
     for m in re.finditer(r"\*\s*\(\s*(\(\s*)?(" + TYPE + r")\s*\*\s*\)\s*\(", view):
         open_at = m.end() - 1
         close = closing(view, open_at)
-        if close < 0 or not RUNTIME_BASE.search(view[open_at + 1:close]):
+        if close < 0 or not RUNTIME_BASE.search(view[open_at + 1 : close]):
             continue
         end = close + 1
         if m[1]:
@@ -874,11 +968,13 @@ def rewrite_pointers(text: str, rel: str, left: list[str], layouts: dict[str, La
         if not any(s <= m.start() < e for s, e, _ in lvalues):
             lvalues.append((m.start(), end, m[2]))
     # a struct laid over registers, through a cast of its address: each field
-    for m in re.finditer(r"\(\s*\(\s*(" + TYPE + r")\s*\*\s*\)\s*(?:\(\s*(" + LITERAL + r")\s*\)|(" + LITERAL +
-                         r"))\s*\)\s*->\s*(\w+)", view):
+    for m in re.finditer(
+        r"\(\s*\(\s*(" + TYPE + r")\s*\*\s*\)\s*(?:\(\s*(" + LITERAL + r")\s*\)|(" + LITERAL + r"))\s*\)\s*->\s*(\w+)",
+        view,
+    ):
         layout = layouts.get(base_type(m[1]))
         f = layout.fields.get(m[4]) if layout else None
-        if f is None or f.scalar is None or re.match(r"\s*[.\[]", view[m.end():]):
+        if f is None or f.scalar is None or re.match(r"\s*[.\[]", view[m.end() :]):
             line = view.count("\n", 0, m.start()) + 1
             left.append(f"{rel}:{line}: {m[0]} -- a field not known, or not a number")
             continue
@@ -897,6 +993,7 @@ def rewrite_pointers(text: str, rel: str, left: list[str], layouts: dict[str, La
 
 
 # --- 3. a register's address given to an SDK function ---------------------------
+
 
 def call_arguments(view: str, open_at: int) -> list[str] | None:
     """A call's arguments (its parenthesis at `open_at`), as text."""
@@ -947,8 +1044,16 @@ def rewrite_callee_arguments(text: str) -> str:
             continue
         arg_start = m.end() + sum(len(a) + 1 for a in args[:index])
         arg = args[index]
-        am = re.fullmatch(r"(\s*)(\(\s*)?(?:\(\s*(" + TYPE + r")\s*\*\s*\)\s*)?(?:\(\s*(" + LITERAL + r")\s*\)|(" +
-                          LITERAL + r"))(\s*\))?(\s*)", arg)
+        am = re.fullmatch(
+            r"(\s*)(\(\s*)?(?:\(\s*("
+            + TYPE
+            + r")\s*\*\s*\)\s*)?(?:\(\s*("
+            + LITERAL
+            + r")\s*\)|("
+            + LITERAL
+            + r"))(\s*\))?(\s*)",
+            arg,
+        )
         if not am or bool(am[2]) != bool(am[6]):
             continue
         address = lit(am[4] or am[5])
@@ -971,13 +1076,15 @@ def reviewed_plain(text: str, rel: str) -> str:
         address = lit(m[0])
         if not is_register(address):
             continue
-        cast = re.search(r"\(\s*(" + TYPE + r")\s*\*\s*\)\s*(\(\s*)?$", view[max(0, m.start() - 120):m.start()])
+        cast = re.search(r"\(\s*(" + TYPE + r")\s*\*\s*\)\s*(\(\s*)?$", view[max(0, m.start() - 120) : m.start()])
         size = type_size(cast[1]) if cast and type_size(cast[1]) else 2
         if kind(address, size) != "plain":
-            raise SystemExit(f"registers.py: {rel} is reviewed as reaching value registers only, "
-                             f"but names 0x{address:08x} ({kind(address, size)})")
+            raise SystemExit(
+                f"registers.py: {rel} is reviewed as reaching value registers only, "
+                f"but names 0x{address:08x} ({kind(address, size)})"
+            )
         if cast and cast[2]:
-            close = re.match(r"\s*\)", view[m.end():])
+            close = re.match(r"\s*\)", view[m.end() :])
             if close:
                 edits.append((m.start() - len(cast[0]), m.end() + close.end(), plain_pointer(cast[1], address)))
                 continue
@@ -991,6 +1098,7 @@ def reviewed_plain(text: str, rel: str) -> str:
 
 
 # --- the file ------------------------------------------------------------------
+
 
 def rewrite(text: str, rel: str, shared: Shared, left: list[str]) -> str:
     """One decompiled file's register accesses rewritten."""
@@ -1030,10 +1138,14 @@ def rewrite(text: str, rel: str, shared: Shared, left: list[str]) -> str:
         if k == "plain" or not re.search(r"\b" + name + r"\b", text):
             continue  # a shared plain one is the compat header's
         acting.append(name)
-        text = outside(text, define_spans(text),
-                       lambda part: re.sub(r"&\s*" + name + r"\b", f"({type_text} *)0x{address:08x}", part))
-        text = outside(text, define_spans(text),
-                       lambda part: rewrite_uses(part, r"\b" + name + r"\b", type_text, address, size, k))
+        text = outside(
+            text,
+            define_spans(text),
+            lambda part: re.sub(r"&\s*" + name + r"\b", f"({type_text} *)0x{address:08x}", part),
+        )
+        text = outside(
+            text, define_spans(text), lambda part: rewrite_uses(part, r"\b" + name + r"\b", type_text, address, size, k)
+        )
 
     # 3. pointers set to a register's address
     text = rewrite_pointers(text, rel, left, layouts)
@@ -1043,13 +1155,20 @@ def rewrite(text: str, rel: str, shared: Shared, left: list[str]) -> str:
         for m in reversed(list(CAST.finditer(part))):
             address, size = lit(m[2] or m[3]), type_size(m[1])
             if size is not None and kind(address, size) == "plain":
-                part = part[:m.start()] + plain_lvalue(m[1], address) + part[m.end():]
+                part = part[: m.start()] + plain_lvalue(m[1], address) + part[m.end() :]
         for type_text, literal in sorted({(m[1], m[2] or m[3]) for m in CAST.finditer(part)}):
             address, size = lit(literal), type_size(type_text)
             if size is None or kind(address, size) in (None, "plain"):
                 continue
-            target = (r"\*\s*\(\s*" + r"\s+".join(map(re.escape, type_text.split())) + r"\s*\*\s*\)\s*(?:\(\s*" +
-                      re.escape(literal) + r"\s*\)|" + re.escape(literal) + r"(?!\w))")
+            target = (
+                r"\*\s*\(\s*"
+                + r"\s+".join(map(re.escape, type_text.split()))
+                + r"\s*\*\s*\)\s*(?:\(\s*"
+                + re.escape(literal)
+                + r"\s*\)|"
+                + re.escape(literal)
+                + r"(?!\w))"
+            )
             part = rewrite_uses(part, target, type_text, address, size, kind(address, size))
         return part
 
@@ -1075,12 +1194,13 @@ def rewrite(text: str, rel: str, shared: Shared, left: list[str]) -> str:
         address = lit(m[0])
         if not is_register(address) or (rel, address) in NOT_ACCESSES:
             continue
-        before = view[max(0, m.start() - 200):m.start()]
+        before = view[max(0, m.start() - 200) : m.start()]
         call = enclosing_call(before)
         if call and takes_address(call[0]):
             continue  # an address the port takes as it is
-        if re.search(r"(?:[=!<>]=|[<>&|^]|\bcase)\s*(?:\(\s*(?:u32|unsigned\s+int)\s*\)\s*)?$", before) or \
-                re.match(r"\s*(?:[=!<>]=|[<>&|^](?![=&|]))", view[m.end():]):
+        if re.search(r"(?:[=!<>]=|[<>&|^]|\bcase)\s*(?:\(\s*(?:u32|unsigned\s+int)\s*\)\s*)?$", before) or re.match(
+            r"\s*(?:[=!<>]=|[<>&|^](?![=&|]))", view[m.end() :]
+        ):
             continue  # compared, or a bit mask: a number
         init = next((i for i in inits if i.cast_start <= m.start() < i.end), None)
         if init:

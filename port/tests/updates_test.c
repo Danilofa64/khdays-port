@@ -7,12 +7,12 @@
 
 static int failures;
 
-#define CHECK(c)                                                                \
-    do {                                                                        \
-        if (!(c)) {                                                             \
-            fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #c); \
-            ++failures;                                                         \
-        }                                                                       \
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #c);                                      \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 static void test_versions(void)
@@ -28,7 +28,7 @@ static void test_versions(void)
     CHECK(khdays_version_compare("v0.2.0", "0.1.9") > 0);
     CHECK(khdays_version_compare("v0.10.0", "0.9.0") > 0); /* numbers, not letters */
     CHECK(khdays_version_compare("v1", "0.9.9") > 0);
-    CHECK(khdays_version_compare("v0.1", "0.1.0") == 0);  /* missing parts count 0 */
+    CHECK(khdays_version_compare("v0.1", "0.1.0") == 0); /* missing parts count 0 */
     CHECK(khdays_version_compare("v0.1.0", "0.1.1") < 0);
     CHECK(khdays_version_compare("v0.2.0-rc1", "0.2.0") < 0); /* a pre-release is the older */
     CHECK(khdays_version_compare("v0.2.0-rc1", "0.1.0") > 0);

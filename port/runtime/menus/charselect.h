@@ -14,24 +14,24 @@ extern "C" {
 #define KHDAYS_SELECT_CHARACTERS 19 /* the game's: their names are mlt_&.s's records 0x0b on */
 #define KHDAYS_SELECT_PLACES 4
 #define KHDAYS_SELECT_STATS 7
-#define KHDAYS_SELECT_NAME 12       /* a player's name: the game's 11 UTF-16 characters and a NUL */
+#define KHDAYS_SELECT_NAME 12 /* a player's name: the game's 11 UTF-16 characters and a NUL */
 
 typedef struct KhdaysSelectPlace {
-    int present;     /* a player is in the place */
-    int ready;       /* the player chose (the game's A) */
-    int character;   /* the character the place is on, 0-18 */
+    int present;                       /* a player is in the place */
+    int ready;                         /* the player chose (the game's A) */
+    int character;                     /* the character the place is on, 0-18 */
     uint16_t name[KHDAYS_SELECT_NAME]; /* the player's (empty when the game has none) */
 } KhdaysSelectPlace;
 
 typedef struct KhdaysSelectView {
     int shown;
-    int language;          /* the game's (1-5) */
-    int16_t master;        /* the game's fade: its brightness, -16 black to 16 white */
-    int self;              /* this copy's place */
-    int character;         /* this copy's character as shown: the one moved to, or the game's */
-    uint32_t choosable;    /* a bit for each character the game lets be chosen */
+    int language;       /* the game's (1-5) */
+    int16_t master;     /* the game's fade: its brightness, -16 black to 16 white */
+    int self;           /* this copy's place */
+    int character;      /* this copy's character as shown: the one moved to, or the game's */
+    uint32_t choosable; /* a bit for each character the game lets be chosen */
     KhdaysSelectPlace places[KHDAYS_SELECT_PLACES];
-    int heading, help;     /* the game's messages: mlt_&.s's records */
+    int heading, help;                   /* the game's messages: mlt_&.s's records */
     int stat_label[KHDAYS_SELECT_STATS]; /* the gauges' names (records): the left column's four, then
                                           * the right's three, as the game lays them out */
     int stat[KHDAYS_SELECT_STATS];       /* this copy's character's gauges (0-10), in that order */

@@ -10,11 +10,11 @@
 #define KHDAYS_KEY_COUNT 512 /* SDL_SCANCODE_COUNT */
 
 typedef struct KhdaysDeviceState {
-    uint8_t key[KHDAYS_KEY_COUNT];  /* keyboard scancodes held */
-    uint8_t pad[KHDAYS_PAD_COUNT];  /* gamepad buttons held; the triggers come from trigger[] */
-    int16_t trigger[2];             /* left, right: 0..32767 */
-    int16_t stick[2][2];            /* [left, right][x, y] in SDL's range; y grows downwards */
-    int touching;                   /* the stylus: the left mouse button on the lower screen */
+    uint8_t key[KHDAYS_KEY_COUNT]; /* keyboard scancodes held */
+    uint8_t pad[KHDAYS_PAD_COUNT]; /* gamepad buttons held; the triggers come from trigger[] */
+    int16_t trigger[2];            /* left, right: 0..32767 */
+    int16_t stick[2][2];           /* [left, right][x, y] in SDL's range; y grows downwards */
+    int touching;                  /* the stylus: the left mouse button on the lower screen */
     int touch_x, touch_y;
 
     /* Inputs held when a mask was set (the settings menu closed, or the window

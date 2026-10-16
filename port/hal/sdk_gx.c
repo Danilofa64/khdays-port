@@ -44,10 +44,10 @@ void GX_SendFifo48B(const void *src, void *dst)
 
 /* The math unit's operands and modes in the register model's own view (its
  * results follow them when read: runtime/core/io_regs.c, khdays_io_cp). */
-#define REG_DIVCNT      IO16(0x280)
-#define REG_DIV_NUMER   ((volatile u32 *)(khdays_io_host + 0x290))  /* numer lo/hi, denom lo/hi */
-#define REG_SQRTCNT     IO16(0x2b0)
-#define REG_SQRT_PARAM  ((volatile u32 *)(khdays_io_host + 0x2b8))  /* param lo/hi */
+#define REG_DIVCNT IO16(0x280)
+#define REG_DIV_NUMER ((volatile u32 *)(khdays_io_host + 0x290)) /* numer lo/hi, denom lo/hi */
+#define REG_SQRTCNT IO16(0x2b0)
+#define REG_SQRT_PARAM ((volatile u32 *)(khdays_io_host + 0x2b8)) /* param lo/hi */
 
 /* Context: +0x00 DIV_NUMER/DIV_DENOM (4 words), +0x10 SQRT_PARAM (2 words),
  * +0x18 DIVCNT & 3, +0x1a SQRTCNT & 1. */

@@ -207,8 +207,8 @@ void khdays_gfx_compose_cpu(const uint32_t desc[KHDAYS_DESC_WORDS], const Khdays
     khdays_gfx_compose_cpu_rect(desc, memory, out, 0, 0, 256, 192);
 }
 
-void khdays_gfx_compose_cpu_rect(const uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory,
-                                 uint32_t *out, int x0, int y0, int x1, int y1)
+void khdays_gfx_compose_cpu_rect(const uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory, uint32_t *out,
+                                 int x0, int y0, int x1, int y1)
 {
     static KD_THREAD uint32_t line_desc[KHDAYS_DESC_WORDS];
     x0 = x0 < 0 ? 0 : x0;

@@ -3,6 +3,7 @@ tools the installer runs and the Python they run with, packed by Inno Setup. The
 repository's layout (tools/, installer/ beside data/, mods/, saves/); nothing of the game or the
 collections is packed. Output: build/installer/KH358-2-Days-Port-Setup-<version>.exe
   python installer/build_installer.py [--no-build] [--iscc PATH]"""
+
 from __future__ import annotations
 
 import argparse
@@ -61,12 +62,15 @@ def version() -> str:
     """The repository's VERSION ("0.1.0") when the commit is its release tag (v0.1.0) and nothing is
     changed; otherwise that version with the commit after it, and "-modified" when files changed."""
     number = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
-                            text=True, check=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT,
-                           capture_output=True, text=True, check=True).stdout.strip()
-    tags = subprocess.run(["git", "tag", "--points-at", "HEAD"], cwd=ROOT, capture_output=True,
-                          text=True, check=True).stdout.split()
+    commit = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    tags = subprocess.run(
+        ["git", "tag", "--points-at", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.split()
     if f"v{number}" in tags and not dirty:
         return number
     return f"{number}+{commit}" + ("-modified" if dirty else "")
@@ -75,12 +79,12 @@ def version() -> str:
 def pe_imports(exe: Path) -> list[str]:
     """The DLLs `exe` imports by name (its import directory)."""
     data = exe.read_bytes()
-    pe = struct.unpack_from("<I", data, 0x3c)[0]
+    pe = struct.unpack_from("<I", data, 0x3C)[0]
     sections = struct.unpack_from("<H", data, pe + 6)[0]
     optional = struct.unpack_from("<H", data, pe + 20)[0]
     opt = pe + 24
     magic = struct.unpack_from("<H", data, opt)[0]
-    directories = opt + (112 if magic == 0x20b else 96)
+    directories = opt + (112 if magic == 0x20B else 96)
     import_rva = struct.unpack_from("<I", data, directories + 8)[0]
     table = [struct.unpack_from("<IIIII", data, opt + optional + 40 * i + 8) for i in range(sections)]
 
@@ -96,7 +100,7 @@ def pe_imports(exe: Path) -> list[str]:
         if name_rva == 0:
             return names
         o = offset(name_rva)
-        names.append(data[o:data.index(b"\0", o)].decode("ascii"))
+        names.append(data[o : data.index(b"\0", o)].decode("ascii"))
         at += 20
 
 
@@ -158,10 +162,13 @@ def stage_python(packed: list[str]) -> None:
 
 
 def find_iscc(given: str | None) -> Path:
-    candidates = [given, os.environ.get("KHDAYS_ISCC"),
-                  os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"),
-                  os.path.expandvars(r"%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"),
-                  os.path.expandvars(r"%ProgramFiles%\Inno Setup 6\ISCC.exe")]
+    candidates = [
+        given,
+        os.environ.get("KHDAYS_ISCC"),
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Inno Setup 6\ISCC.exe"),
+    ]
     for c in candidates:
         if c and Path(c).is_file():
             return Path(c)
@@ -175,10 +182,8 @@ def main() -> int:
     args = ap.parse_args()
     iscc = find_iscc(args.iscc)
     if not args.no_build:
-        subprocess.run([sys.executable, str(ROOT / "port" / "build.py"), "--config", "Release"], cwd=ROOT,
-                       check=True)
-        subprocess.run([sys.executable, str(ROOT / "studio" / "build.py"), "--config", "Release"], cwd=ROOT,
-                       check=True)
+        subprocess.run([sys.executable, str(ROOT / "port" / "build.py"), "--config", "Release"], cwd=ROOT, check=True)
+        subprocess.run([sys.executable, str(ROOT / "studio" / "build.py"), "--config", "Release"], cwd=ROOT, check=True)
     exe = RELEASE / "khdays-native.exe"
     if not exe.is_file():
         sys.exit(f"build_installer: {exe} is not built")
@@ -217,14 +222,17 @@ def main() -> int:
     (STAGE / "setup").mkdir(exist_ok=True)
     (STAGE / "setup" / "version.txt").write_text(ver + "\n", encoding="utf-8")
 
-    subprocess.run([str(iscc), "/Qp", f"/DVersion={ver}", f"/DStage={STAGE}", f"/O{OUT}",
-                    str(HERE / "khdays.iss")], check=True)
+    subprocess.run(
+        [str(iscc), "/Qp", f"/DVersion={ver}", f"/DStage={STAGE}", f"/O{OUT}", str(HERE / "khdays.iss")], check=True
+    )
     setup = OUT / f"KH358-2-Days-Port-Setup-{ver}.exe"
     print("packed:")
     for p in packed:
         print("  " + p)
-    print(f"nothing from {', '.join(n + '/' for n in NEVER)}; installer: {setup} ({setup.stat().st_size:,} bytes, "
-          f"SHA-256 {sha256(setup)})")
+    print(
+        f"nothing from {', '.join(n + '/' for n in NEVER)}; installer: {setup} ({setup.stat().st_size:,} bytes, "
+        f"SHA-256 {sha256(setup)})"
+    )
     return 0
 
 

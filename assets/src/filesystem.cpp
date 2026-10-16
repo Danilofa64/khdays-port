@@ -53,8 +53,7 @@ std::optional<std::filesystem::path> find_in_mods(const std::filesystem::path& r
         return std::nullopt;
     }
     std::vector<std::filesystem::path> mods;
-    for (const auto& entry :
-         std::filesystem::directory_iterator(g_mods_root, ec)) {
+    for (const auto& entry : std::filesystem::directory_iterator(g_mods_root, ec)) {
         if (entry.is_directory(ec)) {
             mods.push_back(entry.path());
         }
@@ -72,8 +71,7 @@ std::optional<std::filesystem::path> find_in_mods(const std::filesystem::path& r
 namespace {
 
 // Mod overrides: mods/<Mod>/files/<rel>, mods visited in sorted order.
-std::optional<std::filesystem::path> find_mod_file(
-    const std::filesystem::path& rel) {
+std::optional<std::filesystem::path> find_mod_file(const std::filesystem::path& rel) {
     return find_in_mods(std::filesystem::path("files") / rel);
 }
 
@@ -96,15 +94,13 @@ bool autodetect_data_root(const std::filesystem::path& extracted_dir) {
     if (!std::filesystem::is_directory(extracted_dir, ec)) {
         return false;
     }
-    for (const auto& entry :
-         std::filesystem::directory_iterator(extracted_dir, ec)) {
+    for (const auto& entry : std::filesystem::directory_iterator(extracted_dir, ec)) {
         // an extraction still being made (the installer's, named <hash>.partial until it is whole)
         // is never taken
         if (entry.path().extension() == ".partial") {
             continue;
         }
-        if (entry.is_directory(ec)
-            && std::filesystem::is_directory(entry.path() / "nitrofs", ec)) {
+        if (entry.is_directory(ec) && std::filesystem::is_directory(entry.path() / "nitrofs", ec)) {
             g_data_root = entry.path();
             return true;
         }
@@ -135,8 +131,7 @@ std::optional<std::filesystem::path> resolve(std::string_view game_path) {
     return std::nullopt;
 }
 
-std::optional<std::filesystem::path> resolve_original(
-    std::string_view game_path) {
+std::optional<std::filesystem::path> resolve_original(std::string_view game_path) {
     const auto rel = normalize(game_path);
     if (!rel) {
         return std::nullopt;
@@ -160,8 +155,7 @@ bool exists(std::string_view game_path) {
 std::vector<std::uint8_t> read(std::string_view game_path) {
     const auto path = resolve(game_path);
     if (!path) {
-        throw std::runtime_error(
-            "game file not found: " + std::string{game_path});
+        throw std::runtime_error("game file not found: " + std::string{game_path});
     }
     std::ifstream stream{*path, std::ios::binary};
     if (!stream) {
@@ -169,13 +163,10 @@ std::vector<std::uint8_t> read(std::string_view game_path) {
     }
     stream.seekg(0, std::ios::end);
     const std::streamoff end = stream.tellg();
-    std::vector<std::uint8_t> data(
-        end > 0 ? static_cast<std::size_t>(end) : 0U);
+    std::vector<std::uint8_t> data(end > 0 ? static_cast<std::size_t>(end) : 0U);
     stream.seekg(0, std::ios::beg);
     if (!data.empty()) {
-        stream.read(
-            reinterpret_cast<char*>(data.data()),
-            static_cast<std::streamsize>(data.size()));
+        stream.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(data.size()));
     }
     return data;
 }

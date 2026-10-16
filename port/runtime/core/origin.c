@@ -14,9 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RAM_KEY     0x02000000u
-#define RAM_SIZE    0x00400000u
-#define VRAM_KEY    0x10000000u
+#define RAM_KEY 0x02000000u
+#define RAM_SIZE 0x00400000u
+#define VRAM_KEY 0x10000000u
 #define BANK_STRIDE 0x00100000u
 
 #define VRAM_KEYS_END (VRAM_KEY + KHDAYS_VRAM_BANKS * BANK_STRIDE)
@@ -30,9 +30,9 @@ static int vram_key(u32 key)
 }
 
 typedef struct Span {
-    u32 start, end;  /* keys */
-    u32 file;        /* into names */
-    u32 offset;      /* into the file's data, at `start` */
+    u32 start, end; /* keys */
+    u32 file;       /* into names */
+    u32 offset;     /* into the file's data, at `start` */
 } Span;
 
 static Span *spans;
@@ -73,23 +73,23 @@ u32 khdays_origin_bank_changes(int bank)
 static u32 key_of(u32 address, u32 *room)
 {
     if (address >= KHDAYS_HEADERS_BASE && address < 0x03000000u && !khdays_game_heap_ds_memory()) {
-        *room = 0x03000000u - address;  /* the headers' heaps, not a mirror */
+        *room = 0x03000000u - address; /* the headers' heaps, not a mirror */
         return address;
     }
     if (address >= 0x02000000u && address < 0x03000000u &&
-        !(address >= 0x027e0000u && address < 0x027e4000u)) {  /* not the DTCM */
+        !(address >= 0x027e0000u && address < 0x027e4000u)) { /* not the DTCM */
         const u32 at = address & (RAM_SIZE - 1);
         *room = RAM_SIZE - at;
         return RAM_KEY + at;
     }
-    if (address >= KHDAYS_HEAPS_BASE && address < KHDAYS_HEAPS_END) {  /* above every VRAM key */
+    if (address >= KHDAYS_HEAPS_BASE && address < KHDAYS_HEAPS_END) { /* above every VRAM key */
         *room = KHDAYS_HEAPS_END - address;
         return address;
     }
     if (address >= 0x06000000u && address < 0x068a4000u) {
         const u8 *host = (const u8 *)KHDAYS_W(address);
         for (int bank = 0; bank < KHDAYS_VRAM_BANKS; ++bank) {
-            const u8 *base = khdays_vram_bank(bank);  /* where it lives (vram.c) */
+            const u8 *base = khdays_vram_bank(bank); /* where it lives (vram.c) */
             if (host >= base && (u32)(host - base) < khdays_vram_bank_size[bank]) {
                 *room = khdays_vram_bank_size[bank] - (u32)(host - base);
                 return VRAM_KEY + (u32)bank * BANK_STRIDE + (u32)(host - base);
@@ -107,7 +107,10 @@ static int first_after(u32 key)
     int lo = 0, hi = nspans;
     while (lo < hi) {
         const int mid = (lo + hi) / 2;
-        if (spans[mid].end <= key) lo = mid + 1; else hi = mid;
+        if (spans[mid].end <= key)
+            lo = mid + 1;
+        else
+            hi = mid;
     }
     return lo;
 }
@@ -137,7 +140,8 @@ static void clear(u32 start, u32 end)
         Span *s = &spans[i];
         if (s->start < start && s->end > end) {
             /* the cleared range is inside: split in two */
-            if (!room_for(1)) return;
+            if (!room_for(1))
+                return;
             s = &spans[i];
             memmove(&spans[i + 2], &spans[i + 1], sizeof(Span) * (size_t)(nspans - i - 1));
             spans[i + 1] = *s;
@@ -165,7 +169,8 @@ static void put(u32 start, u32 end, u32 file, u32 offset)
 {
     int i;
     clear(start, end);
-    if (!room_for(1)) return;
+    if (!room_for(1))
+        return;
     i = first_after(start);
     memmove(&spans[i + 1], &spans[i], sizeof(Span) * (size_t)(nspans - i));
     spans[i].start = start;
@@ -178,12 +183,14 @@ static void put(u32 start, u32 end, u32 file, u32 offset)
 static u32 name_index(const char *name)
 {
     for (u32 i = 0; i < nnames; ++i) {
-        if (strcmp(names[i], name) == 0) return i;
+        if (strcmp(names[i], name) == 0)
+            return i;
     }
     if (nnames == cap_names) {
         const u32 n = cap_names ? cap_names * 2 : 256;
-        char (*grown)[128] = (char (*)[128])realloc(names, sizeof(names[0]) * n);
-        if (grown == NULL) return 0;
+        char(*grown)[128] = (char(*)[128])realloc(names, sizeof(names[0]) * n);
+        if (grown == NULL)
+            return 0;
         names = grown;
         cap_names = n;
     }
@@ -200,7 +207,7 @@ void khdays_origin_loaded(u32 top, u32 bottom, const void *buffer, u32 size, int
     if (!khdays_origin_on() || buffer == NULL || size == 0) {
         return;
     }
-    key = key_of(KHDAYS_REF(buffer), &room);  /* its DS address */
+    key = key_of(KHDAYS_REF(buffer), &room); /* its DS address */
     if (key == 0) {
         return;
     }
@@ -209,11 +216,12 @@ void khdays_origin_loaded(u32 top, u32 bottom, const void *buffer, u32 size, int
         within = 0;
     }
     if (within != 0) {
-        snprintf(name, sizeof(name), "%s@%x", path, within);  /* a part of a file (a packed entry) */
+        snprintf(name, sizeof(name), "%s@%x", path, within); /* a part of a file (a packed entry) */
     } else {
         snprintf(name, sizeof(name), "%s", path);
     }
-    if (size > room) size = room;
+    if (size > room)
+        size = room;
     put(key, key + size, name_index(name), 0);
     if (trace) {
         fprintf(stderr, "origin: %s (%u bytes in the ROM%s) loaded at 0x%08x, %u bytes\n", name, bottom - top,
@@ -239,11 +247,14 @@ static void say_upload(u32 destination, u32 dkey, u32 n, u32 source)
             const u8 *p = (const u8 *)KHDAYS_W(source);
             for (at = 0; at + 32 <= n; at += 32) {
                 int k = 0;
-                while (k < 32 && p[at + k] == 0) ++k;
-                if (k < 32) break;
+                while (k < 32 && p[at + k] == 0)
+                    ++k;
+                if (k < 32)
+                    break;
             }
             if (at + 32 <= n) {
-                for (int k = 0; k < 32; ++k) snprintf(bytes + 2 * k, 3, "%02x", p[at + k]);
+                for (int k = 0; k < 32; ++k)
+                    snprintf(bytes + 2 * k, 3, "%02x", p[at + k]);
             }
         }
         fprintf(stderr, "origin: bank %c+0x%05x (at 0x%08x) %u bytes <- no file (from 0x%08x: +%x %s)  [%s]\n",
@@ -261,11 +272,13 @@ void khdays_origin_copy(u32 source, u32 destination, u32 size)
         const u32 skey = key_of(source, &sroom);
         const u32 dkey = key_of(destination, &droom);
         if (dkey == 0) {
-            return;  /* to nothing the map keeps */
+            return; /* to nothing the map keeps */
         }
         n = size;
-        if (n > droom) n = droom;
-        if (skey != 0 && n > sroom) n = sroom;
+        if (n > droom)
+            n = droom;
+        if (skey != 0 && n > sroom)
+            n = sroom;
         clear(dkey, dkey + n);
         if (skey != 0) {
             /* the source's spans, moved to the destination */
@@ -276,9 +289,9 @@ void khdays_origin_copy(u32 source, u32 destination, u32 size)
                 const u32 file = spans[i].file, offset = spans[i].offset + (a - spans[i].start);
                 put(dkey + (a - skey), dkey + (b - skey), file, offset);
                 if (b >= skey + n) {
-                    break;  /* the copy's end: the span may go on past it */
+                    break; /* the copy's end: the span may go on past it */
                 }
-                i = first_after(b);  /* the map moved under us: find the next from b */
+                i = first_after(b); /* the map moved under us: find the next from b */
             }
         }
         if (trace && vram_key(dkey) && n >= 32) {

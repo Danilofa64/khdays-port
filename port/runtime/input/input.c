@@ -24,9 +24,9 @@
 /* What a step's frame counts from: boot, or the first frame of a scene (sN)
  * or of an object update (uName). */
 typedef struct Anchor {
-    char type;   /* 's' or 'u' */
-    unsigned long long value;  /* the scene id, or the update's native address */
-    u32 start;   /* the frame it began + 1; 0 = not yet */
+    char type;                /* 's' or 'u' */
+    unsigned long long value; /* the scene id, or the update's native address */
+    u32 start;                /* the frame it began + 1; 0 = not yet */
 } Anchor;
 
 typedef struct Step {
@@ -35,7 +35,7 @@ typedef struct Step {
     char kind;  /* '+', '-', '@', '~' or '^' */
     u16 keys;
     u32 actions; /* '+' and '-' of the port's own controls (KHDAYS_ACTION_*) */
-    int x, y;   /* '@': -1 lifts the stylus; '~' and '^': a stick's position */
+    int x, y;    /* '@': -1 lifts the stylus; '~' and '^': a stick's position */
 } Step;
 
 static Step *script;
@@ -68,20 +68,20 @@ static u32 last_frame;
 #define ARM7_XY (*(volatile u16 *)KHDAYS_W(0x027fffa8))
 
 /* The frame latch: what Pad_Sample reads this game frame. */
-static KhdaysInputSnapshot snapshot;  /* the host's input, taken at the latch */
-static KhdaysInputSnapshot previous;  /* the one taken at the latch before */
-static KhdaysMenuSequencer menu;      /* the command menu on the D-pad */
-static KhdaysLockSequencer lock;      /* lock-on on its own buttons */
-static u16 latched;                    /* the DS buttons for this game frame */
-static int latched_unread;             /* Pad_Sample has not read KEYINPUT yet */
-static u32 pad_samples;                /* game frames so far (Pad_Sample calls) */
-static int trace_pad;                  /* KHDAYS_TRACE_PAD */
+static KhdaysInputSnapshot snapshot; /* the host's input, taken at the latch */
+static KhdaysInputSnapshot previous; /* the one taken at the latch before */
+static KhdaysMenuSequencer menu;     /* the command menu on the D-pad */
+static KhdaysLockSequencer lock;     /* lock-on on its own buttons */
+static u16 latched;                  /* the DS buttons for this game frame */
+static int latched_unread;           /* Pad_Sample has not read KEYINPUT yet */
+static u32 pad_samples;              /* game frames so far (Pad_Sample calls) */
+static int trace_pad;                /* KHDAYS_TRACE_PAD */
 
-static int trace;  /* KHDAYS_TRACE_INPUT: each step as it is applied */
+static int trace; /* KHDAYS_TRACE_INPUT: each step as it is applied */
 /* KEYINPUT reads so far: the game's pad routine reads it once a frame, and
  * X and Y (which the ARM7 passes on) along with it. */
 static u32 reads;
-static u32 pressed_at[16];  /* the reads when the script pressed each key */
+static u32 pressed_at[16]; /* the reads when the script pressed each key */
 
 /* Whether the game has read these keys down at least twice. */
 static int seen_down(u16 keys)
@@ -98,10 +98,9 @@ static const struct {
     const char *name;
     u16 bit;
 } key_names[] = {
-    {"A", KHDAYS_KEY_A},         {"B", KHDAYS_KEY_B},       {"SELECT", KHDAYS_KEY_SELECT},
-    {"START", KHDAYS_KEY_START}, {"RIGHT", KHDAYS_KEY_RIGHT}, {"LEFT", KHDAYS_KEY_LEFT},
-    {"UP", KHDAYS_KEY_UP},       {"DOWN", KHDAYS_KEY_DOWN}, {"R", KHDAYS_KEY_R},
-    {"L", KHDAYS_KEY_L},         {"X", KHDAYS_KEY_X},       {"Y", KHDAYS_KEY_Y},
+    {"A", KHDAYS_KEY_A},         {"B", KHDAYS_KEY_B},       {"SELECT", KHDAYS_KEY_SELECT}, {"START", KHDAYS_KEY_START},
+    {"RIGHT", KHDAYS_KEY_RIGHT}, {"LEFT", KHDAYS_KEY_LEFT}, {"UP", KHDAYS_KEY_UP},         {"DOWN", KHDAYS_KEY_DOWN},
+    {"R", KHDAYS_KEY_R},         {"L", KHDAYS_KEY_L},       {"X", KHDAYS_KEY_X},           {"Y", KHDAYS_KEY_Y},
 };
 
 /* The port's own controls a script can hold, for the enhancements' runs. */
@@ -109,9 +108,9 @@ static const struct {
     const char *name;
     u32 bit;
 } action_names[] = {
-    {"LOCK_ON", KHDAYS_ACTION_LOCK_ON},     {"TARGET_NEXT", KHDAYS_ACTION_TARGET_NEXT},
+    {"LOCK_ON", KHDAYS_ACTION_LOCK_ON},         {"TARGET_NEXT", KHDAYS_ACTION_TARGET_NEXT},
     {"TARGET_PREV", KHDAYS_ACTION_TARGET_PREV}, {"MENU_UP", KHDAYS_ACTION_MENU_UP},
-    {"MENU_DOWN", KHDAYS_ACTION_MENU_DOWN}, {"MENU_LEFT", KHDAYS_ACTION_MENU_LEFT},
+    {"MENU_DOWN", KHDAYS_ACTION_MENU_DOWN},     {"MENU_LEFT", KHDAYS_ACTION_MENU_LEFT},
     {"MENU_RIGHT", KHDAYS_ACTION_MENU_RIGHT},
 };
 
@@ -244,8 +243,7 @@ void khdays_input_frame(u32 frame)
     while (script_next < script_len) {
         const Step *s = &script[script_next];
         if (s->anchor < 0 ? s->frame > frame
-                          : anchors[s->anchor].start == 0 ||
-                                anchors[s->anchor].start - 1 + s->frame > frame) {
+                          : anchors[s->anchor].start == 0 || anchors[s->anchor].start - 1 + s->frame > frame) {
             break;
         }
         /* A key is let go only once the game has read it down twice: the
@@ -257,8 +255,8 @@ void khdays_input_frame(u32 frame)
         }
         ++script_next;
         if (trace) {
-            fprintf(stderr, "input: frame %u, game frame %u, %u pad reads: %c%04x\n", frame, GAME_FRAMES,
-                    reads, s->kind, s->keys);
+            fprintf(stderr, "input: frame %u, game frame %u, %u pad reads: %c%04x\n", frame, GAME_FRAMES, reads,
+                    s->kind, s->keys);
         }
         if (s->kind == '+') {
             script_keys |= s->keys;
@@ -306,21 +304,21 @@ static u16 player_buttons(void)
                                 ((snapshot.actions & KHDAYS_ACTION_MENU_LEFT) ? 1u << KHDAYS_MENU_LEFT : 0) |
                                 ((snapshot.actions & KHDAYS_ACTION_MENU_RIGHT) ? 1u << KHDAYS_MENU_RIGHT : 0);
     const KhdaysMenuFrame step = khdays_menu_sequencer_frame(&menu, on ? directions : 0, field, game->command_scheme,
-                                                            game->lockon_scheme, (u16)(buttons | script_keys));
+                                                             game->lockon_scheme, (u16)(buttons | script_keys));
     /* Lock-on on its own buttons: while the game's lock-on logic takes the buttons (it did last frame),
      * their presses become the DS's R presses for them; anywhere else they are the DS's R and L. */
     const int lock_on = (snapshot.enhancements & KHDAYS_ENH_SEPARATE_LOCK_ON) != 0;
-    const int lock_field = lock_on && pad_samples > 0 && game->selection_frame == pad_samples &&
-                           game->selection_live_frame == pad_samples;
+    const int lock_field =
+        lock_on && pad_samples > 0 && game->selection_frame == pad_samples && game->selection_live_frame == pad_samples;
     const uint32_t lock_actions = ((snapshot.actions & KHDAYS_ACTION_LOCK_ON) ? 1u << KHDAYS_LOCK_ON : 0) |
                                   ((snapshot.actions & KHDAYS_ACTION_TARGET_NEXT) ? 1u << KHDAYS_LOCK_NEXT : 0) |
                                   ((snapshot.actions & KHDAYS_ACTION_TARGET_PREV) ? 1u << KHDAYS_LOCK_PREV : 0);
     /* An R press counts as a single one for the game once its counter has
      * passed 0x9000 (9 frames) since the last R (Ov022_ReadSelectionInput). */
     const int r_free = game->r_repeat >= 0x9000 && !game->r_pressed;
-    const u16 lock_buttons = khdays_lock_sequencer_frame(&lock, lock_on ? lock_actions : 0, lock_field,
-                                                         game->lock_active, game->lockon_scheme,
-                                                         (u16)(buttons | script_keys), r_free);
+    const u16 lock_buttons =
+        khdays_lock_sequencer_frame(&lock, lock_on ? lock_actions : 0, lock_field, game->lock_active,
+                                    game->lockon_scheme, (u16)(buttons | script_keys), r_free);
     if (step.dpad_own) {
         buttons &= (u16)~dpad;
     }
@@ -339,8 +337,8 @@ void khdays_input_pad_sample(void)
     khdays_language_frame(); /* a language the settings menu chose */
     if (trace_pad && pad_samples > 0) {
         /* what the game made of the previous frame's buttons */
-        fprintf(stderr, "pad: game frame %u, mode %u, given %04x, held %04x, pressed %04x\n",
-                pad_samples, FRAME_RATE_MODE, latched, PAD_HELD, PAD_PRESSED);
+        fprintf(stderr, "pad: game frame %u, mode %u, given %04x, held %04x, pressed %04x\n", pad_samples,
+                FRAME_RATE_MODE, latched, PAD_HELD, PAD_PRESSED);
     }
     previous = snapshot;
     khdays_host_input(&snapshot);
@@ -358,13 +356,13 @@ void khdays_input_pad_sample(void)
     /* While the settings menu is open the player's input is not the
      * game's (the script's still is: headless runs have no screen). */
     latched = khdays_movie_hd_game_buttons((u16)(script_keys | (snapshot.ui_open ? 0 : player_buttons())));
-    latched = khdays_newgame_buttons(latched); /* the port's question in the new game takes them */
-    latched = khdays_savelist_buttons(latched); /* the port's save list takes the files' rows */
-    khdays_cinelist_frame(); /* MODO CINE's list, for the port to draw (it takes no buttons) */
-    latched = khdays_roomlist_buttons(latched); /* the port's list of rooms takes the group list's */
+    latched = khdays_newgame_buttons(latched);    /* the port's question in the new game takes them */
+    latched = khdays_savelist_buttons(latched);   /* the port's save list takes the files' rows */
+    khdays_cinelist_frame();                      /* MODO CINE's list, for the port to draw (it takes no buttons) */
+    latched = khdays_roomlist_buttons(latched);   /* the port's list of rooms takes the group list's */
     latched = khdays_charselect_buttons(latched); /* the port's character select takes the directions */
-    latched = khdays_camp_buttons(latched); /* the port's Preferences page joins the game's tabs */
-    latched = khdays_retry_buttons(latched); /* the pause's Retry line in Mission Mode takes the directions */
+    latched = khdays_camp_buttons(latched);       /* the port's Preferences page joins the game's tabs */
+    latched = khdays_retry_buttons(latched);      /* the pause's Retry line in Mission Mode takes the directions */
     latched_unread = 1;
     ++pad_samples;
     /* Pad_Sample reads X and Y from here right after: the same moment as the

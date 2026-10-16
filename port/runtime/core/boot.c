@@ -44,16 +44,16 @@ static void user_settings(void)
     for (int i = 0; i < 0x70; ++i) {
         s[i] = 0;
     }
-    *(volatile u16 *)(s + 0x00) = 5;                      /* version */
-    *(volatile u16 *)(s + 0x58) = (u16)(x1 * 16);         /* adc.x1 */
-    *(volatile u16 *)(s + 0x5a) = (u16)(y1 * 16);         /* adc.y1 */
-    s[0x5c] = (u8)x1;                                     /* scr.x1 */
-    s[0x5d] = (u8)y1;                                     /* scr.y1 */
-    *(volatile u16 *)(s + 0x5e) = (u16)(x2 * 16);         /* adc.x2 */
-    *(volatile u16 *)(s + 0x60) = (u16)(y2 * 16);         /* adc.y2 */
-    s[0x62] = (u8)x2;                                     /* scr.x2 */
-    s[0x63] = (u8)y2;                                     /* scr.y2 */
-    *(volatile u16 *)(s + 0x64) = (u16)language_code();   /* language */
+    *(volatile u16 *)(s + 0x00) = 5;                    /* version */
+    *(volatile u16 *)(s + 0x58) = (u16)(x1 * 16);       /* adc.x1 */
+    *(volatile u16 *)(s + 0x5a) = (u16)(y1 * 16);       /* adc.y1 */
+    s[0x5c] = (u8)x1;                                   /* scr.x1 */
+    s[0x5d] = (u8)y1;                                   /* scr.y1 */
+    *(volatile u16 *)(s + 0x5e) = (u16)(x2 * 16);       /* adc.x2 */
+    *(volatile u16 *)(s + 0x60) = (u16)(y2 * 16);       /* adc.y2 */
+    s[0x62] = (u8)x2;                                   /* scr.x2 */
+    s[0x63] = (u8)y2;                                   /* scr.y2 */
+    *(volatile u16 *)(s + 0x64) = (u16)language_code(); /* language */
     khdays_boot_owner_name();
     console_mac(s + 0x74);
 }
@@ -114,20 +114,20 @@ void khdays_boot_environment(void)
     memcpy(KHDAYS_W(0x027ffe00), header, 0x170);
 
     /* Boot results, and their copies at 0x027ffc00. */
-    U32(0x027ff800) = KHDAYS_CARD_CHIP_ID;  /* chip ID 1, as the card answers it */
+    U32(0x027ff800) = KHDAYS_CARD_CHIP_ID; /* chip ID 1, as the card answers it */
     U32(0x027ffc00) = KHDAYS_CARD_CHIP_ID;
-    U16(0x027ff808) = header_crc;  /* header CRC (verified) */
-    U16(0x027ff80c) = 0;           /* cart CRC okay */
-    U16(0x027ff80e) = 0;           /* secure area okay */
-    U16(0x027ff810) = 0xffff;      /* boot handler task number at cart boot */
-    U16(0x027ff850) = 0x5835;      /* NDS7 BIOS CRC */
-    U32(0x027ff880) = 7;           /* message from NDS9 to NDS7 at cart boot */
-    U32(0x027ff884) = 6;           /* NDS7 boot task at cart boot */
+    U16(0x027ff808) = header_crc; /* header CRC (verified) */
+    U16(0x027ff80c) = 0;          /* cart CRC okay */
+    U16(0x027ff80e) = 0;          /* secure area okay */
+    U16(0x027ff810) = 0xffff;     /* boot handler task number at cart boot */
+    U16(0x027ff850) = 0x5835;     /* NDS7 BIOS CRC */
+    U32(0x027ff880) = 7;          /* message from NDS9 to NDS7 at cart boot */
+    U32(0x027ff884) = 6;          /* NDS7 boot task at cart boot */
     U16(0x027ffc08) = header_crc;
     U16(0x027ffc0c) = 0;
     U16(0x027ffc0e) = 0;
     U16(0x027ffc10) = 0x5835;
-    U16(0x027ffc40) = 1;           /* boot indicator: normal */
+    U16(0x027ffc40) = 1; /* boot indicator: normal */
 
     /* After OS_ResetSystem the game finds the parameter it left at 0x027ffc20; KHDAYS_RESET_PARAMETER
      * gives one to a game started afresh. */

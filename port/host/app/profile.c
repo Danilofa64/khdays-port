@@ -119,8 +119,13 @@ static void bind(KhdaysProfile *p, int device, int layer, int action, int first,
 
 void khdays_profile_default(KhdaysProfile *p)
 {
-    enum { K = KHDAYS_DEVICE_KEYBOARD, G = KHDAYS_DEVICE_GAMEPAD, BASE = KHDAYS_LAYER_BASE,
-           FIELD = KHDAYS_LAYER_FIELD, NONE = KHDAYS_NO_INPUT };
+    enum {
+        K = KHDAYS_DEVICE_KEYBOARD,
+        G = KHDAYS_DEVICE_GAMEPAD,
+        BASE = KHDAYS_LAYER_BASE,
+        FIELD = KHDAYS_LAYER_FIELD,
+        NONE = KHDAYS_NO_INPUT
+    };
     memset(p, 0, sizeof(*p));
     p->version = 1;
     p->preset = KHDAYS_PRESET_DS;
@@ -221,12 +226,12 @@ void khdays_video_default(KhdaysVideo *v)
     /* the window's own size: on a PC the DS's 1x is too small to read, and HD models and textures need the
      * pixels to show */
     v->internal_resolution = KHDAYS_RESOLUTION_WINDOW;
-    v->antialiasing = 1; /* off: 2x is four times the 3D's work */
+    v->antialiasing = 1;            /* off: 2x is four times the 3D's work */
     v->aspect = KHDAYS_ASPECT_16_9; /* for one screen; two screens use 4:3 */
     v->smooth_scaling = 0;
     v->texture_smoothing = 0;
     v->movies = KHDAYS_MOVIES_HD; /* the maintainer's choice */
-    v->picture_ds = 0; /* the maintainer's choice */
+    v->picture_ds = 0;            /* the maintainer's choice */
     v->show_fps = 0;
     v->backend = KHDAYS_BACKEND_AUTO;
     v->hd_graphics = 1;
@@ -277,12 +282,11 @@ int khdays_profile_owner(const KhdaysProfile *p, int device, int layer, int inpu
 
 int khdays_profile_set(KhdaysProfile *p, int device, int layer, int action, int slot, int input)
 {
-    if (action < 0 || action >= KHDAYS_ACT_COUNT || slot < 0 || slot >= KHDAYS_INPUTS_PER_ACTION ||
-        input < 0 || input >= input_count(device)) {
+    if (action < 0 || action >= KHDAYS_ACT_COUNT || slot < 0 || slot >= KHDAYS_INPUTS_PER_ACTION || input < 0 ||
+        input >= input_count(device)) {
         return -1;
     }
-    if (device == KHDAYS_DEVICE_KEYBOARD &&
-        (input == KHDAYS_SETTINGS_KEY || action == KHDAYS_ACT_OPEN_SETTINGS)) {
+    if (device == KHDAYS_DEVICE_KEYBOARD && (input == KHDAYS_SETTINGS_KEY || action == KHDAYS_ACT_OPEN_SETTINGS)) {
         return -1; /* Esc is the keyboard's settings key, and it needs no other */
     }
     /* An input does one thing per device and layer: take it from any other action. */
@@ -320,10 +324,10 @@ int khdays_profile_repair(KhdaysProfile *p)
             for (int a = 0; a < KHDAYS_ACT_COUNT; ++a) {
                 for (int s = 0; s < KHDAYS_INPUTS_PER_ACTION; ++s) {
                     int16_t *slot = &p->input[d][l][a][s];
-                    const int bad = *slot != KHDAYS_NO_INPUT &&
-                                    (*slot < 0 || *slot >= input_count(d) || seen[*slot] ||
-                                     (d == KHDAYS_DEVICE_KEYBOARD &&
-                                      (*slot == KHDAYS_SETTINGS_KEY || a == KHDAYS_ACT_OPEN_SETTINGS)));
+                    const int bad =
+                        *slot != KHDAYS_NO_INPUT && (*slot < 0 || *slot >= input_count(d) || seen[*slot] ||
+                                                     (d == KHDAYS_DEVICE_KEYBOARD &&
+                                                      (*slot == KHDAYS_SETTINGS_KEY || a == KHDAYS_ACT_OPEN_SETTINGS)));
                     if (bad) {
                         *slot = KHDAYS_NO_INPUT;
                         ++changed;
@@ -339,8 +343,10 @@ int khdays_profile_repair(KhdaysProfile *p)
         if (open[0] == KHDAYS_NO_INPUT && open[1] == KHDAYS_NO_INPUT) {
             /* The gamepad must always be able to open the settings menu:
              * give it Guide and L3 again, taking them from whatever had them. */
-            khdays_profile_set(p, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, KHDAYS_ACT_OPEN_SETTINGS, 0, KHDAYS_PAD_GUIDE);
-            khdays_profile_set(p, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, KHDAYS_ACT_OPEN_SETTINGS, 1, KHDAYS_PAD_LEFTSTICK);
+            khdays_profile_set(p, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, KHDAYS_ACT_OPEN_SETTINGS, 0,
+                               KHDAYS_PAD_GUIDE);
+            khdays_profile_set(p, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, KHDAYS_ACT_OPEN_SETTINGS, 1,
+                               KHDAYS_PAD_LEFTSTICK);
             ++changed;
         }
     }
@@ -611,14 +617,23 @@ static void cut_comment(char *value)
     }
 }
 
-enum Section { SEC_TOP, SEC_KEYS, SEC_STICKS, SEC_ENHANCEMENTS, SEC_VIDEO, SEC_SOUND, SEC_NETWORK, SEC_SAVE,
-               SEC_UNKNOWN };
+enum Section {
+    SEC_TOP,
+    SEC_KEYS,
+    SEC_STICKS,
+    SEC_ENHANCEMENTS,
+    SEC_VIDEO,
+    SEC_SOUND,
+    SEC_NETWORK,
+    SEC_SAVE,
+    SEC_UNKNOWN
+};
 
 typedef struct Reader {
     KhdaysProfile *profile;
     KhdaysNotice notice;
     enum Section section;
-    int device, layer;       /* for SEC_KEYS */
+    int device, layer; /* for SEC_KEYS */
     char section_name[40];
     /* Which action this file gave each input to (action + 1), to catch a
      * later line giving the same input to another action. */
@@ -711,23 +726,21 @@ static void read_binding(Reader *r, const char *key, char *value, const char *li
         }
         input = input_named(r->device, item);
         if (input < 0) {
-            say(r->notice, "settings: [%s] %s: \"%s\" is not an input this port knows; ignored", r->section_name,
-                key, item);
+            say(r->notice, "settings: [%s] %s: \"%s\" is not an input this port knows; ignored", r->section_name, key,
+                item);
             continue;
         }
         if (r->device == KHDAYS_DEVICE_KEYBOARD && input == KHDAYS_SETTINGS_KEY) {
-            say(r->notice, "settings: [%s] %s: Escape always opens the settings menu; ignored", r->section_name,
-                key);
+            say(r->notice, "settings: [%s] %s: Escape always opens the settings menu; ignored", r->section_name, key);
             continue;
         }
         if (r->owner[r->device][r->layer][input] != 0 && r->owner[r->device][r->layer][input] != action + 1) {
-            say(r->notice, "settings: [%s] %s: \"%s\" is already given to \"%s\"; ignored here", r->section_name,
-                key, item, khdays_action_name(r->owner[r->device][r->layer][input] - 1));
+            say(r->notice, "settings: [%s] %s: \"%s\" is already given to \"%s\"; ignored here", r->section_name, key,
+                item, khdays_action_name(r->owner[r->device][r->layer][input] - 1));
             continue;
         }
         if (slot == KHDAYS_INPUTS_PER_ACTION) {
-            say(r->notice, "settings: [%s] %s: only two inputs per action; \"%s\" ignored", r->section_name, key,
-                item);
+            say(r->notice, "settings: [%s] %s: only two inputs per action; \"%s\" ignored", r->section_name, key, item);
             continue;
         }
         khdays_profile_set(p, r->device, r->layer, action, slot++, input);
@@ -758,8 +771,8 @@ static int read_switch(Reader *r, const char *key, const char *value, int *out)
         *out = 1;
         return 1;
     }
-    if (SDL_strcasecmp(value, "off") == 0 || SDL_strcasecmp(value, "no") == 0 ||
-        SDL_strcasecmp(value, "false") == 0 || strcmp(value, "0") == 0) {
+    if (SDL_strcasecmp(value, "off") == 0 || SDL_strcasecmp(value, "no") == 0 || SDL_strcasecmp(value, "false") == 0 ||
+        strcmp(value, "0") == 0) {
         *out = 0;
         return 1;
     }
@@ -1018,10 +1031,8 @@ static void read_sound(Reader *r, const char *key, const char *value, const char
         const char *name;
         size_t offset;
     } volumes[] = {
-        {"volume", offsetof(KhdaysSound, volume)},
-        {"music", offsetof(KhdaysSound, music)},
-        {"effects", offsetof(KhdaysSound, effects)},
-        {"voices", offsetof(KhdaysSound, voices)},
+        {"volume", offsetof(KhdaysSound, volume)},   {"music", offsetof(KhdaysSound, music)},
+        {"effects", offsetof(KhdaysSound, effects)}, {"voices", offsetof(KhdaysSound, voices)},
         {"movies", offsetof(KhdaysSound, movies)},
     };
     KhdaysSound *s = &r->profile->sound;
@@ -1249,8 +1260,10 @@ void khdays_profile_load(KhdaysProfile *profile, const char *path, KhdaysNotice 
             char bad[512];
             SDL_snprintf(bad, sizeof(bad), "%s.bad", path);
             SDL_CopyFile(path, bad);
-            say(notice, "settings: %s is not a settings file the port can read; it was kept as %s and the "
-                        "defaults are used", path, bad);
+            say(notice,
+                "settings: %s is not a settings file the port can read; it was kept as %s and the "
+                "defaults are used",
+                path, bad);
             khdays_profile_default(profile);
             forget_unknown();
         } else if (!r->aspect_seen) {
@@ -1304,12 +1317,16 @@ static void add(Text *t, const char *format, ...)
 
 /* The actions each section lists, in the order the file shows them. */
 static const int base_actions[] = {
-    KHDAYS_ACT_UP, KHDAYS_ACT_DOWN, KHDAYS_ACT_LEFT, KHDAYS_ACT_RIGHT, KHDAYS_ACT_A, KHDAYS_ACT_B,
-    KHDAYS_ACT_X, KHDAYS_ACT_Y, KHDAYS_ACT_L, KHDAYS_ACT_R, KHDAYS_ACT_START, KHDAYS_ACT_SELECT,
+    KHDAYS_ACT_UP,      KHDAYS_ACT_DOWN,        KHDAYS_ACT_LEFT,        KHDAYS_ACT_RIGHT,
+    KHDAYS_ACT_A,       KHDAYS_ACT_B,           KHDAYS_ACT_X,           KHDAYS_ACT_Y,
+    KHDAYS_ACT_L,       KHDAYS_ACT_R,           KHDAYS_ACT_START,       KHDAYS_ACT_SELECT,
     KHDAYS_ACT_LOCK_ON, KHDAYS_ACT_TARGET_NEXT, KHDAYS_ACT_TARGET_PREV, KHDAYS_ACT_OPEN_SETTINGS,
 };
 static const int field_actions[] = {
-    KHDAYS_ACT_MENU_UP, KHDAYS_ACT_MENU_DOWN, KHDAYS_ACT_MENU_LEFT, KHDAYS_ACT_MENU_RIGHT,
+    KHDAYS_ACT_MENU_UP,
+    KHDAYS_ACT_MENU_DOWN,
+    KHDAYS_ACT_MENU_LEFT,
+    KHDAYS_ACT_MENU_RIGHT,
 };
 
 static void add_unknown(Text *t, const char *section)
@@ -1361,17 +1378,18 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
     char *slash;
     int ok;
 
-    add(&t, "# Kingdom Hearts 358/2 Days, native port: the player's control settings.\n"
-            "# The port writes this file when its settings menu closes; you may edit it.\n"
-            "# Each line is \"action = input\" (two inputs at most, separated by a comma;\n"
-            "# nothing after = means no input). Keyboard inputs are SDL key names, gamepad\n"
-            "# inputs are positions: south, east, west, north, dpup, leftshoulder, ...\n"
-            "version = 1\n"
-            "# language: system (the system's, if the game has it), en, fr, de, it or es\n"
-            "language = %s\n"
-            "# log: on writes the session log to saves/logs (F12 marks a moment in it)\n"
-            "log = %s\n"
-            "preset = %s\n",
+    add(&t,
+        "# Kingdom Hearts 358/2 Days, native port: the player's control settings.\n"
+        "# The port writes this file when its settings menu closes; you may edit it.\n"
+        "# Each line is \"action = input\" (two inputs at most, separated by a comma;\n"
+        "# nothing after = means no input). Keyboard inputs are SDL key names, gamepad\n"
+        "# inputs are positions: south, east, west, north, dpup, leftshoulder, ...\n"
+        "version = 1\n"
+        "# language: system (the system's, if the game has it), en, fr, de, it or es\n"
+        "language = %s\n"
+        "# log: on writes the session log to saves/logs (F12 marks a moment in it)\n"
+        "log = %s\n"
+        "preset = %s\n",
         khdays_language_code(p->language), p->session_log ? "on" : "off",
         p->preset == KHDAYS_PRESET_KH2 ? "kh2" : "ds");
     add_unknown(&t, "");
@@ -1412,69 +1430,76 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
         } else {
             SDL_strlcpy(antialiasing, "off", sizeof(antialiasing));
         }
-        add(&t, "\n[video]\n"
-                "# display: window, borderless (a window without borders over the whole screen) or fullscreen\n"
-                "display = %s\n"
-                "# internal_resolution: window (the window's size, the default) or a whole multiple of the DS's\n"
-                "# picture: the settings offer 2 to 16; 1, the DS's own, only for comparing with the DS\n"
-                "internal_resolution = %s\n"
-                "# antialiasing: off, 2x, 3x or 4x -- the picture made that many times larger and shrunk,\n"
-                "# the 3D's edges smooth (2x is four times the work, 4x sixteen)\n"
-                "antialiasing = %s\n"
-                "# screens: two (the DS's, one above the other) or one (one picture)\n"
-                "screens = %s\n"
-                "# hud_size: 1 to 8, the HUD's size on one screen (4 the default)\n"
-                "hud_size = %d\n"
-                "# aspect: 4:3 (the DS's), 16:9, 16:10, or window\n"
-                "aspect = %s\n"
-                "# scaling: sharp (the DS's pixels) or smooth\n"
-                "scaling = %s\n"
-                "texture_smoothing = %s\nhd_graphics = %s\ndump_graphics = %s\n"
-                "# movies: hd (the HD collection's videos where data/cutscenes/cinematics has them,\n"
-                "#         else pc), pc (full colour) or ds (the DS's 15-bit colour, dithered)\n"
-                "movies = %s\n"
-                "# subtitles: on or off, the movies' subtitles (a new game asks)\n"
-                "subtitles = %s\n"
-                "# picture_pace: smooth (the 3D at the monitor's rate, up to a logic frame behind) or ds\n"
-                "picture_pace = %s\n"
-                "# show_fps: the pictures and the game's frames a second, in a corner\n"
-                "show_fps = %s\n"
-                "# backend: the graphics API -- auto (SDL's choice), direct3d12 or vulkan\n"
-                "backend = %s\n",
+        add(&t,
+            "\n[video]\n"
+            "# display: window, borderless (a window without borders over the whole screen) or fullscreen\n"
+            "display = %s\n"
+            "# internal_resolution: window (the window's size, the default) or a whole multiple of the DS's\n"
+            "# picture: the settings offer 2 to 16; 1, the DS's own, only for comparing with the DS\n"
+            "internal_resolution = %s\n"
+            "# antialiasing: off, 2x, 3x or 4x -- the picture made that many times larger and shrunk,\n"
+            "# the 3D's edges smooth (2x is four times the work, 4x sixteen)\n"
+            "antialiasing = %s\n"
+            "# screens: two (the DS's, one above the other) or one (one picture)\n"
+            "screens = %s\n"
+            "# hud_size: 1 to 8, the HUD's size on one screen (4 the default)\n"
+            "hud_size = %d\n"
+            "# aspect: 4:3 (the DS's), 16:9, 16:10, or window\n"
+            "aspect = %s\n"
+            "# scaling: sharp (the DS's pixels) or smooth\n"
+            "scaling = %s\n"
+            "texture_smoothing = %s\nhd_graphics = %s\ndump_graphics = %s\n"
+            "# movies: hd (the HD collection's videos where data/cutscenes/cinematics has them,\n"
+            "#         else pc), pc (full colour) or ds (the DS's 15-bit colour, dithered)\n"
+            "movies = %s\n"
+            "# subtitles: on or off, the movies' subtitles (a new game asks)\n"
+            "subtitles = %s\n"
+            "# picture_pace: smooth (the 3D at the monitor's rate, up to a logic frame behind) or ds\n"
+            "picture_pace = %s\n"
+            "# show_fps: the pictures and the game's frames a second, in a corner\n"
+            "show_fps = %s\n"
+            "# backend: the graphics API -- auto (SDL's choice), direct3d12 or vulkan\n"
+            "backend = %s\n",
             displays[v->display >= 0 && v->display < KHDAYS_DISPLAY_COUNT ? v->display : 0], resolution, antialiasing,
             v->one_screen ? "one" : "two", v->hud_size,
             aspects[v->aspect >= 0 && v->aspect < KHDAYS_ASPECT_COUNT ? v->aspect : 0],
-            v->smooth_scaling ? "smooth" : "sharp", v->texture_smoothing ? "on" : "off",
-            v->hd_graphics ? "on" : "off", v->dump_graphics ? "on" : "off",
-            v->movies == KHDAYS_MOVIES_DS ? "ds" : v->movies == KHDAYS_MOVIES_PC ? "pc" : "hd",
+            v->smooth_scaling ? "smooth" : "sharp", v->texture_smoothing ? "on" : "off", v->hd_graphics ? "on" : "off",
+            v->dump_graphics ? "on" : "off",
+            v->movies == KHDAYS_MOVIES_DS   ? "ds"
+            : v->movies == KHDAYS_MOVIES_PC ? "pc"
+                                            : "hd",
             v->subtitles ? "on" : "off", v->picture_ds ? "ds" : "smooth", v->show_fps ? "on" : "off",
-            v->backend == KHDAYS_BACKEND_D3D12 ? "direct3d12" : v->backend == KHDAYS_BACKEND_VULKAN ? "vulkan" : "auto");
+            v->backend == KHDAYS_BACKEND_D3D12    ? "direct3d12"
+            : v->backend == KHDAYS_BACKEND_VULKAN ? "vulkan"
+                                                  : "auto");
     }
     add_unknown(&t, "video");
     {
         const KhdaysSound *snd = &p->sound;
-        add(&t, "\n[sound]\n"
-                "# volume, music, effects, voices, movies: 0 to 100\n"
-                "volume = %d\nmusic = %d\neffects = %d\nvoices = %d\nmovies = %d\n"
-                "# ds_exact: on gives the DS's own output (32,728 Hz, 10 bits); off, the PC's\n"
-                "ds_exact = %s\n",
+        add(&t,
+            "\n[sound]\n"
+            "# volume, music, effects, voices, movies: 0 to 100\n"
+            "volume = %d\nmusic = %d\neffects = %d\nvoices = %d\nmovies = %d\n"
+            "# ds_exact: on gives the DS's own output (32,728 Hz, 10 bits); off, the PC's\n"
+            "ds_exact = %s\n",
             snd->volume, snd->music, snd->effects, snd->voices, snd->movies, snd->ds_exact ? "on" : "off");
     }
     add_unknown(&t, "sound");
     {
         const KhdaysNetwork *n = &p->network;
-        add(&t, "\n[network]\n"
-                "# nickname: the name Mission Mode's multiplayer shows the others, up to 10 characters;\n"
-                "# nothing after = gives an automatic one (\"Player\" and four digits)\n"
-                "nickname = %s\n"
-                "# online: on also finds and offers rooms through the server, besides this PC and the\n"
-                "# local network; server: its address (host or host:port, the port 35821 if none)\n"
-                "online = %s\nserver = %s\n"
-                "# show_ping: in a session, the round trip to each other player, in a corner\n"
-                "show_ping = %s\n"
-                "# check_updates: once a day, ask GitHub whether a newer release of the port is out, and\n"
-                "# say so on the title screen (nothing about you is sent)\n"
-                "check_updates = %s\n",
+        add(&t,
+            "\n[network]\n"
+            "# nickname: the name Mission Mode's multiplayer shows the others, up to 10 characters;\n"
+            "# nothing after = gives an automatic one (\"Player\" and four digits)\n"
+            "nickname = %s\n"
+            "# online: on also finds and offers rooms through the server, besides this PC and the\n"
+            "# local network; server: its address (host or host:port, the port 35821 if none)\n"
+            "online = %s\nserver = %s\n"
+            "# show_ping: in a session, the round trip to each other player, in a corner\n"
+            "show_ping = %s\n"
+            "# check_updates: once a day, ask GitHub whether a newer release of the port is out, and\n"
+            "# say so on the title screen (nothing about you is sent)\n"
+            "check_updates = %s\n",
             n->nickname, n->online ? "on" : "off", n->server, n->show_ping ? "on" : "off",
             n->check_updates ? "on" : "off");
     }
@@ -1482,13 +1507,14 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
     {
         static const char *const autosaves[KHDAYS_AUTOSAVE_MODES] = {"off", "file99", "played"};
         const KhdaysSave *s = &p->save;
-        add(&t, "\n[save]\n"
-                "# files: 99, the game's own save lists page through the port's 99 files; 3, the DS's three\n"
-                "files = %s\n"
-                "# autosave: after each completed mission, where the game lets you save next --\n"
-                "# file99 (file 99, \"Autosave\" in the lists), played (the file being played; a new game\n"
-                "# the first file without a save) or off\n"
-                "autosave = %s\n",
+        add(&t,
+            "\n[save]\n"
+            "# files: 99, the game's own save lists page through the port's 99 files; 3, the DS's three\n"
+            "files = %s\n"
+            "# autosave: after each completed mission, where the game lets you save next --\n"
+            "# file99 (file 99, \"Autosave\" in the lists), played (the file being played; a new game\n"
+            "# the first file without a save) or off\n"
+            "autosave = %s\n",
             s->all_files ? "99" : "3",
             autosaves[s->autosave >= 0 && s->autosave < KHDAYS_AUTOSAVE_MODES ? s->autosave : KHDAYS_AUTOSAVE_FILE99]);
     }
@@ -1498,8 +1524,8 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
         const char *s = unknown[i].section;
         if (*s == '\0' || SDL_strcasecmp(s, "sticks") == 0 || SDL_strcasecmp(s, "enhancements") == 0 ||
             SDL_strcasecmp(s, "video") == 0 || SDL_strcasecmp(s, "sound") == 0 || SDL_strcasecmp(s, "network") == 0 ||
-            SDL_strcasecmp(s, "save") == 0 ||
-            SDL_strncasecmp(s, "keyboard", 8) == 0 || SDL_strncasecmp(s, "gamepad", 7) == 0) {
+            SDL_strcasecmp(s, "save") == 0 || SDL_strncasecmp(s, "keyboard", 8) == 0 ||
+            SDL_strncasecmp(s, "gamepad", 7) == 0) {
             continue;
         }
         if (i == 0 || SDL_strcasecmp(unknown[i - 1].section, s) != 0) {

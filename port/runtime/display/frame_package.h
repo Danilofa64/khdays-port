@@ -43,7 +43,7 @@ enum {
     KHDAYS_2D_AOBJEXT = 66, /* engine A's extended sprite palette, 8 KB of its page */
     KHDAYS_2D_BBGEXT = 67,
     KHDAYS_2D_BOBJEXT = 69,
-    KHDAYS_2D_VRAM = 70,    /* the bank engine A's VRAM display shows, 128 KB */
+    KHDAYS_2D_VRAM = 70, /* the bank engine A's VRAM display shows, 128 KB */
     KHDAYS_FRAME_2D_PAGES = 78
 };
 
@@ -60,31 +60,31 @@ typedef struct KhdaysFrameElements {
 } KhdaysFrameElements;
 
 typedef struct KhdaysFramePackage {
-    uint32_t frame;  /* the VBlank it was drawn at */
-    uint32_t alike;  /* how many VBlanks before it showed the frame before it again (nothing changed) */
-    uint32_t wants;  /* what was filled (KHDAYS_WANT_*) */
-    uint8_t upper;   /* the engine on the upper screen (POWCNT1 bit 15) */
+    uint32_t frame;     /* the VBlank it was drawn at */
+    uint32_t alike;     /* how many VBlanks before it showed the frame before it again (nothing changed) */
+    uint32_t wants;     /* what was filled (KHDAYS_WANT_*) */
+    uint8_t upper;      /* the engine on the upper screen (POWCNT1 bit 15) */
     uint8_t list3d_cut; /* nothing to draw between the list before and list3d */
-    uint8_t capture; /* the game uses the display capture: engine A's picture may show on the other screen next */
+    uint8_t capture;    /* the game uses the display capture: engine A's picture may show on the other screen next */
     uint8_t pad[1];
-    uint64_t time;        /* the VBlank's time, in the game's cycles (runtime/core/clock.h) */
-    uint64_t list3d_time; /* the VBlank list3d was first shown at: the logic frame's time */
+    uint64_t time;          /* the VBlank's time, in the game's cycles (runtime/core/clock.h) */
+    uint64_t list3d_time;   /* the VBlank list3d was first shown at: the logic frame's time */
     uint32_t list3d_serial; /* moves with each new list3d (one per logic frame) */
     uint32_t pad2;
     uint32_t screens[2][KHDAYS_FRAME_PIXELS]; /* engine A, engine B: 0x00RRGGBB, as port/gpu draws them */
-    KhdaysGpu2dInfo info[2];  /* blending, master brightness, BG0 scroll */
+    KhdaysGpu2dInfo info[2];                  /* blending, master brightness, BG0 scroll */
     /* KHDAYS_WANT_3D */
-    uint32_t layer3d[KHDAYS_FRAME_PIXELS];    /* the 3D the software renderer drew (6-bit RGB, alpha 5) */
-    uint8_t io3d[0x100];                      /* the ARM9 I/O registers 0x04000300-0x040003ff (fog, edge, toon, clear, alpha test) */
+    uint32_t layer3d[KHDAYS_FRAME_PIXELS]; /* the 3D the software renderer drew (6-bit RGB, alpha 5) */
+    uint8_t io3d[0x100]; /* the ARM9 I/O registers 0x04000300-0x040003ff (fog, edge, toon, clear, alpha test) */
     uint16_t disp3dcnt;
     uint16_t unused3d;
-    KhdaysG3dList list3d;                   /* gfx/g3d.h, in drawing order */
+    KhdaysG3dList list3d; /* gfx/g3d.h, in drawing order */
     /* Per 16 KB page, a count that moves whenever the page's bytes change:
      * the host re-reads a page whose count differs from the one it last
      * read (packages it never drew do not hide a change). */
     uint32_t tex_version[KHDAYS_FRAME_TEX_BYTES / KHDAYS_FRAME_VRAM_PAGE];
     uint32_t texpal_version[KHDAYS_FRAME_TEXPAL_BYTES / KHDAYS_FRAME_VRAM_PAGE];
-    uint8_t tex[KHDAYS_FRAME_TEX_BYTES];      /* the texture slots as the 3D engine read them (unmapped: 0) */
+    uint8_t tex[KHDAYS_FRAME_TEX_BYTES]; /* the texture slots as the 3D engine read them (unmapped: 0) */
     uint8_t texpal[KHDAYS_FRAME_TEXPAL_BYTES];
     /* KHDAYS_WANT_COMPOSITION */
     KhdaysGpu2dComposition composition[KHDAYS_FRAME_PIXELS]; /* gpu2d.h */
@@ -95,8 +95,8 @@ typedef struct KhdaysFramePackage {
     KhdaysGpu2dPiece wide_piece[KHDAYS_GPU2D_MAX_PIECES];
     KhdaysGpu2dComposition wide[KHDAYS_GPU2D_MAX_COLUMNS * KHDAYS_FRAME_H];
     /* KHDAYS_WANT_2D */
-    uint32_t desc2d[2][KHDAYS_DESC_WORDS];    /* engine A's screen, engine B's (port/gfx/frame.h) */
-    uint8_t palette2d[0x800];                 /* both engines' palettes, 0x05000000 */
+    uint32_t desc2d[2][KHDAYS_DESC_WORDS];         /* engine A's screen, engine B's (port/gfx/frame.h) */
+    uint8_t palette2d[0x800];                      /* both engines' palettes, 0x05000000 */
     uint32_t mem2d_version[KHDAYS_FRAME_2D_PAGES]; /* as tex_version */
     uint8_t mem2d[KHDAYS_FRAME_2D_PAGES * KHDAYS_FRAME_VRAM_PAGE];
     /* the tiles drawn instead (HD 2D from mods): the map of the layers' and

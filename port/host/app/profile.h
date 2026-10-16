@@ -57,9 +57,9 @@ typedef enum KhdaysPadInput {
     KHDAYS_PAD_DPRIGHT,
     KHDAYS_PAD_LEFTSHOULDER,
     KHDAYS_PAD_RIGHTSHOULDER,
-    KHDAYS_PAD_LEFTTRIGGER,  /* a trigger counts as pressed past half its travel */
+    KHDAYS_PAD_LEFTTRIGGER, /* a trigger counts as pressed past half its travel */
     KHDAYS_PAD_RIGHTTRIGGER,
-    KHDAYS_PAD_LEFTSTICK,    /* stick clicks (L3, R3) */
+    KHDAYS_PAD_LEFTSTICK, /* stick clicks (L3, R3) */
     KHDAYS_PAD_RIGHTSTICK,
     KHDAYS_PAD_START,
     KHDAYS_PAD_BACK,
@@ -104,14 +104,14 @@ typedef struct KhdaysStick {
 
 typedef struct KhdaysEnhancements {
     int analog_camera;
-    int camera_speed;     /* percent of the game's own turn rate, 10..300 */
+    int camera_speed; /* percent of the game's own turn rate, 10..300 */
     int camera_invert_x;
     int camera_invert_y;
     int separate_lock_on;
     int dpad_command_menu;
     int analog_movement;
-    int run_threshold;    /* percent of stick travel, 50..95 */
-    int walk_speed;       /* percent of the game's own speed, 20..90 */
+    int run_threshold; /* percent of stick travel, 50..95 */
+    int walk_speed;    /* percent of the game's own speed, 20..90 */
 } KhdaysEnhancements;
 
 typedef enum KhdaysPreset { KHDAYS_PRESET_DS, KHDAYS_PRESET_KH2 } KhdaysPreset;
@@ -119,7 +119,7 @@ typedef enum KhdaysPreset { KHDAYS_PRESET_DS, KHDAYS_PRESET_KH2 } KhdaysPreset;
 /* The picture ([video] in the settings file). The defaults are the DS's:
  * its resolution, its proportions, its pixels as they are. */
 typedef enum KhdaysAspect {
-    KHDAYS_ASPECT_4_3,    /* the DS's */
+    KHDAYS_ASPECT_4_3, /* the DS's */
     KHDAYS_ASPECT_16_9,
     KHDAYS_ASPECT_16_10,
     KHDAYS_ASPECT_WINDOW, /* the window's own */
@@ -134,16 +134,16 @@ typedef struct KhdaysVideo {
     int aspect;              /* KhdaysAspect */
     int smooth_scaling;      /* 0 sharp (the DS's pixels), 1 smooth */
     int texture_smoothing;
-    int hd_graphics;         /* use the replacements in mods/ */
-    int dump_graphics;       /* write the graphics shown to saves/dump/ */
-    int movies;              /* KhdaysMovies: HD videos, full colour or the DS's */
-    int picture_ds;          /* the DS's pace (a picture each logic frame), else the 3D at the monitor's rate */
-    int show_fps;            /* the pictures and the game's frames a second, in a corner of the window */
-    int backend;             /* KhdaysBackend: the graphics API the picture goes through */
-    int one_screen;          /* screens = one: one picture, else the DS's two */
-    int hud_size;            /* the HUD's size on one screen, 1 to 8 (4) */
-    int subtitles;           /* the movies' subtitles show (runtime/menus/newgame.h: the new game asks) */
-    int display;             /* KhdaysDisplay: a window, a borderless one over the screen, or full screen */
+    int hd_graphics;   /* use the replacements in mods/ */
+    int dump_graphics; /* write the graphics shown to saves/dump/ */
+    int movies;        /* KhdaysMovies: HD videos, full colour or the DS's */
+    int picture_ds;    /* the DS's pace (a picture each logic frame), else the 3D at the monitor's rate */
+    int show_fps;      /* the pictures and the game's frames a second, in a corner of the window */
+    int backend;       /* KhdaysBackend: the graphics API the picture goes through */
+    int one_screen;    /* screens = one: one picture, else the DS's two */
+    int hud_size;      /* the HUD's size on one screen, 1 to 8 (4) */
+    int subtitles;     /* the movies' subtitles show (runtime/menus/newgame.h: the new game asks) */
+    int display;       /* KhdaysDisplay: a window, a borderless one over the screen, or full screen */
 } KhdaysVideo;
 
 /* The window ([video] display): one that moves and resizes, one without borders
@@ -157,12 +157,7 @@ typedef enum KhdaysDisplay {
 
 /* The movies ([video] movies): the player's HD videos where there is one, the rest at full colour;
  * full colour; or as the DS showed them. */
-typedef enum KhdaysMovies {
-    KHDAYS_MOVIES_HD,
-    KHDAYS_MOVIES_PC,
-    KHDAYS_MOVIES_DS,
-    KHDAYS_MOVIES_COUNT
-} KhdaysMovies;
+typedef enum KhdaysMovies { KHDAYS_MOVIES_HD, KHDAYS_MOVIES_PC, KHDAYS_MOVIES_DS, KHDAYS_MOVIES_COUNT } KhdaysMovies;
 
 /* The graphics API ([video] backend): SDL's choice (Direct3D 12 on Windows),
  * or one asked for -- Vulkan where Direct3D 12 misbehaves on a card. */

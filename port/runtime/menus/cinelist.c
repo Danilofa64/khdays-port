@@ -29,7 +29,7 @@ u32 khdays_events_vblank_count(void);
 #define ROWS 0x9670u
 #define ROW_SIZE 0x18u
 #define ROW_MOVIE 0x8u
-#define SEEN_FRAMES 2u  /* the list is gone when none of its updates ran for longer */
+#define SEEN_FRAMES 2u /* the list is gone when none of its updates ran for longer */
 
 static SRWLOCK lock = SRWLOCK_INIT;
 static KhdaysCineView shown;
@@ -42,7 +42,7 @@ static u32 rd32(u32 address)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 void khdays_cinelist_update_ran(uintptr_t update)

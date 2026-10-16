@@ -33,7 +33,7 @@
 #define SHADER_FORMATS (SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL)
 
 static SDL_Window *window;
-static SDL_GPUDevice *device;     /* NULL before the window is made, and while it is remade */
+static SDL_GPUDevice *device; /* NULL before the window is made, and while it is remade */
 static SDL_Renderer *renderer;
 static SDL_Texture *screens;      /* the two screens, upper above lower */
 static uint32_t shown[2 * W * H]; /* what it holds, to upload it again after a reset */
@@ -42,15 +42,15 @@ static KhdaysNotice notice;
 static int said_backend;
 
 /* The older HD path: engine A's screen at N x, and which screen it goes on. */
-static int raster_ready;    /* gpu_raster3d.c opened on this device */
-static SDL_Texture *hd;     /* this frame's, or NULL to show the 1x picture as it is */
-static SDL_Texture *hd_movie;  /* an HD video's picture, NV12 */
+static int raster_ready;      /* gpu_raster3d.c opened on this device */
+static SDL_Texture *hd;       /* this frame's, or NULL to show the 1x picture as it is */
+static SDL_Texture *hd_movie; /* an HD video's picture, NV12 */
 static int hd_movie_w, hd_movie_h;
 static double hd_movie_time, hd_movie_fps; /* the picture's time and its file's rate, for its subtitles */
-static int hd_upper;        /* engine A is the upper screen */
-static int hd_columns;      /* its width in DS pixels (256 is the DS's) */
-static int columns;         /* the picture's width now, in DS pixels (the logical presentation's) */
-static int refused_scale;   /* a scale the device could not make (reported once) */
+static int hd_upper;                       /* engine A is the upper screen */
+static int hd_columns;                     /* its width in DS pixels (256 is the DS's) */
+static int columns;                        /* the picture's width now, in DS pixels (the logical presentation's) */
+static int refused_scale;                  /* a scale the device could not make (reported once) */
 
 /* The graphics card stopped answering (a driver reset: D3D12's device removed, hung or reset, Vulkan's
  * lost). SDL's renderer does not notice on D3D12, so the port notices from its own calls' errors and
@@ -94,14 +94,14 @@ int khdays_present_lost(void)
 static void layout(void); /* where the screens go, for the picture's width */
 
 /* KHDAYS_GFX: the port's own 2D */
-static int port2d_mode = -1; /* 0 off, 1 port, 2 check */
-static int port2d_ready;     /* gfx_render.c opened on this device */
-static int port2d_drawn;     /* this frame's screens were drawn by it */
-static int one_drawn;        /* and the one-screen picture made from them */
-static int one_made;         /* a one-screen picture has been made (the last one stays shown until the next) */
-static int one_kind;         /* how the frame's screens are shown on one screen (KHDAYS_SCREENS_*) */
+static int port2d_mode = -1;         /* 0 off, 1 port, 2 check */
+static int port2d_ready;             /* gfx_render.c opened on this device */
+static int port2d_drawn;             /* this frame's screens were drawn by it */
+static int one_drawn;                /* and the one-screen picture made from them */
+static int one_made;                 /* a one-screen picture has been made (the last one stays shown until the next) */
+static int one_kind;                 /* how the frame's screens are shown on one screen (KHDAYS_SCREENS_*) */
 static int presented_w, presented_h; /* the logical presentation set now */
-static int port2d_upper;     /* the engine on the upper screen */
+static int port2d_upper;             /* the engine on the upper screen */
 static struct {
     int frames;
     unsigned long long pixels;
@@ -111,7 +111,9 @@ static int port2d_wanted(void)
 {
     if (port2d_mode < 0) {
         const char *v = SDL_getenv("KHDAYS_GFX");
-        port2d_mode = v != NULL && SDL_strcmp(v, "reference") == 0 ? 0 : v != NULL && SDL_strcmp(v, "check") == 0 ? 2 : 1;
+        port2d_mode = v != NULL && SDL_strcmp(v, "reference") == 0 ? 0
+                      : v != NULL && SDL_strcmp(v, "check") == 0   ? 2
+                                                                   : 1;
     }
     return port2d_mode;
 }
@@ -182,8 +184,9 @@ static SDL_Renderer *gpu_renderer(char *why, size_t size)
     }
     if (port2d_wanted()) {
         port2d_ready = khdays_gfx_render_open(device);
-        fprintf(stderr, port2d_ready ? "host: the 2D is the port's own renderer's\n"
-                                     : "host: the port's own 2D renderer cannot run here: %s\n",
+        fprintf(stderr,
+                port2d_ready ? "host: the 2D is the port's own renderer's\n"
+                             : "host: the port's own 2D renderer cannot run here: %s\n",
                 SDL_GetError());
     }
     return r;
@@ -300,17 +303,14 @@ static int columns_now(void)
         return W;
     }
     switch (video.aspect) {
-    case KHDAYS_ASPECT_16_9:
-        return 342;
-    case KHDAYS_ASPECT_16_10:
-        return 308;
+    case KHDAYS_ASPECT_16_9: return 342;
+    case KHDAYS_ASPECT_16_10: return 308;
     case KHDAYS_ASPECT_WINDOW:
         SDL_GetWindowSizeInPixels(window, &pw, &ph);
         /* the window's width at the picture's height: 384 lines for two screens, 192 for one */
         n = ph > 0 ? (int)((double)pw * (video.one_screen ? H : 2 * H) / ph) & ~1 : W;
         return n < W ? W : n > 3 * W ? 3 * W : n;
-    default:
-        return W;
+    default: return W;
     }
 }
 
@@ -512,8 +512,9 @@ static void count_frame(const KhdaysFramePackage *p, double hd_ms)
         stats.hd_max_ms = hd_ms > stats.hd_max_ms ? hd_ms : stats.hd_max_ms;
     }
     if (++stats.frames == 300) {
-        fprintf(stderr, "host: 300 frames drawn, %d frames the game showed not drawn; %d at internal resolution %d, "
-                        "prepared in %.2f ms on average, %.2f at most\n",
+        fprintf(stderr,
+                "host: 300 frames drawn, %d frames the game showed not drawn; %d at internal resolution %d, "
+                "prepared in %.2f ms on average, %.2f at most\n",
                 stats.not_drawn, stats.hd_frames, scale_now(), stats.hd_frames ? stats.hd_ms / stats.hd_frames : 0.0,
                 stats.hd_max_ms);
         SDL_zero(stats);
@@ -600,8 +601,8 @@ static uint64_t logic_time[2];
 static uint64_t logic_arrival; /* the VBlank of the package that brought the newer list */
 static uint32_t logic_serial = ~0u;
 static int logic_count, logic_cut;
-static uint8_t logic_upper; /* the screen the newer list's 3D is on (the package's `upper`) */
-static KhdaysG3dList between;      /* the list being drawn, interpolated */
+static uint8_t logic_upper;   /* the screen the newer list's 3D is on (the package's `upper`) */
+static KhdaysG3dList between; /* the list being drawn, interpolated */
 static KhdaysG3dInterp interp;
 static const KhdaysFramePackage *latest; /* the package shown now */
 static int latest_drawn_by_card;         /* its 3D was drawn by the graphics card */
@@ -614,7 +615,7 @@ static int settings_button_count, settings_button_room;
 static float button_picture_w, button_picture_h, button_ax, button_ay;
 static int button_fit;
 static float one_at_x, one_at_w;
-static uint64_t last_refresh;            /* the game's time of the last picture */
+static uint64_t last_refresh; /* the game's time of the last picture */
 
 static void fps_count(int picture); /* Video: Show FPS (below) */
 
@@ -659,11 +660,15 @@ static void log_picture(const char *what, double alpha)
         if (logic_count == 2) {
             camera_step(&logic_list[0], &logic_list[1], &step);
         }
-        fprintf(frame_log, "%.3f %u %.3f %d/%d %s %.3f %.3f moved %.4f turned %.3f pivot %.3f drift %.4f depth %.3f %d %d\n",
+        fprintf(frame_log,
+                "%.3f %u %.3f %d/%d %s %.3f %.3f moved %.4f turned %.3f pivot %.3f drift %.4f depth %.3f %d %d\n",
                 (double)khdays_clock_cycles() * 1000.0 / KHDAYS_CLOCK_HZ, logic_serial, alpha, interp.matched,
                 interp.polygons, what, (double)logic_time[0] * 1000.0 / KHDAYS_CLOCK_HZ,
                 (double)logic_time[1] * 1000.0 / KHDAYS_CLOCK_HZ, step.moved,
-                acos(step.cosine > 1.0 ? 1.0 : step.cosine < -1.0 ? -1.0 : step.cosine) * 180.0 / 3.14159265358979,
+                acos(step.cosine > 1.0    ? 1.0
+                     : step.cosine < -1.0 ? -1.0
+                                          : step.cosine) *
+                    180.0 / 3.14159265358979,
                 step.pivot, step.drift, step.depth, logic_list[1].flushes, logic_cut);
     }
 }
@@ -835,7 +840,7 @@ int khdays_present_settings_button_at(float x, float y)
     /* the window's point in the one picture, then in the backdrop that covers it or fits in it
      * (gfx_render.c) */
     s = (one_at_w / button_picture_w > (float)H / button_picture_h) != (button_fit != 0) ? one_at_w / button_picture_w
-                                                                                        : (float)H / button_picture_h;
+                                                                                         : (float)H / button_picture_h;
     bx = (lx - one_at_x - (one_at_w - button_picture_w * s) * button_ax) / s;
     by = (ly - ((float)H - button_picture_h * s) * button_ay) / s;
     for (int b = 0; b < settings_button_count; ++b) {
@@ -956,7 +961,8 @@ static void present(const KhdaysFramePackage *p, int first)
                     settings_buttons = more;
                     settings_button_room = room;
                 }
-                SDL_memcpy(&settings_buttons[4 * settings_button_count++], composition.buttons[b].rect, 4 * sizeof(float));
+                SDL_memcpy(&settings_buttons[4 * settings_button_count++], composition.buttons[b].rect,
+                           4 * sizeof(float));
             }
             button_picture_w = (float)composition.picture_w;
             button_picture_h = (float)composition.picture_h;
@@ -973,8 +979,8 @@ static void present(const KhdaysFramePackage *p, int first)
         }
         khdays_raster3d_set_one_screen(picture);
         khdays_raster3d_set_hud_shapes(picture ? composition.shapes3d : NULL, picture ? composition.shape3d_count : 0);
-        const int raster = raster_ready && !(port2d_mode == 2 && n == 1 && columns_now() == W) &&
-                           n != refused_scale && (p->wants & KHDAYS_WANT_3D) && p->info[0].is3d &&
+        const int raster = raster_ready && !(port2d_mode == 2 && n == 1 && columns_now() == W) && n != refused_scale &&
+                           (p->wants & KHDAYS_WANT_3D) && p->info[0].is3d &&
                            khdays_raster3d_rasterize(p, n, video.texture_smoothing);
         /* shrunk to the size the window shows it at (smooth scaling: its own pixels), or by the
          * antialiasing (sharp: the DS's pixels kept square, then stretched by whole pixels) */
@@ -1086,10 +1092,10 @@ int khdays_host_graphics_flags(void)
 
 void khdays_present_set_video(const KhdaysVideo *v)
 {
-    graphics_flags = (v->hd_graphics ? KHDAYS_HOST_HD_GRAPHICS : 0) | (v->dump_graphics ? KHDAYS_HOST_DUMP_GRAPHICS : 0) |
-                     (v->movies == KHDAYS_MOVIES_DS ? KHDAYS_HOST_MOVIES_DS : 0) |
-                     (v->movies == KHDAYS_MOVIES_HD ? KHDAYS_HOST_MOVIES_HD : 0) |
-                     (v->one_screen ? KHDAYS_HOST_ONE_SCREEN : 0);
+    graphics_flags =
+        (v->hd_graphics ? KHDAYS_HOST_HD_GRAPHICS : 0) | (v->dump_graphics ? KHDAYS_HOST_DUMP_GRAPHICS : 0) |
+        (v->movies == KHDAYS_MOVIES_DS ? KHDAYS_HOST_MOVIES_DS : 0) |
+        (v->movies == KHDAYS_MOVIES_HD ? KHDAYS_HOST_MOVIES_HD : 0) | (v->one_screen ? KHDAYS_HOST_ONE_SCREEN : 0);
     khdays_subtitles_set(v->subtitles);
     if (v->internal_resolution != video.internal_resolution || v->antialiasing != video.antialiasing) {
         refused_scale = 0; /* try the new choice */
@@ -1238,7 +1244,8 @@ void khdays_present_draw(void)
         SDL_Texture *upper = screen_texture(port2d_upper, &cu);
         SDL_Texture *lower = screen_texture(!port2d_upper, &cl);
         const float wu = (float)cu, wl = (float)cl;
-        const SDL_FRect upper_at = {((float)columns - wu) / 2, 0, wu, H}, lower_at = {((float)columns - wl) / 2, H, wl, H};
+        const SDL_FRect upper_at = {((float)columns - wu) / 2, 0, wu, H},
+                        lower_at = {((float)columns - wl) / 2, H, wl, H};
         if (upper != NULL && lower != NULL) {
             SDL_SetTextureScaleMode(upper, mode_for(upper, wu, H));
             SDL_SetTextureScaleMode(lower, mode_for(lower, wl, H));

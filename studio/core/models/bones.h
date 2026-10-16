@@ -47,7 +47,7 @@ struct Rig {
     std::vector<RigJoint> joints;
     std::map<std::uint32_t, int> joint_of_palette;  // a vertex's joint index -> Rig::joints
     float scale = 1.0f;
-    std::vector<std::string> missing_nodes;          // pairs naming a node the game model lacks
+    std::vector<std::string> missing_nodes;  // pairs naming a node the game model lacks
 };
 
 // The joints of `mod` on the game model `g` with `pairs` and `scale`

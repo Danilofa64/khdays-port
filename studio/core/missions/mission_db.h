@@ -15,7 +15,8 @@ struct CountedRecords {
     std::size_t record_size = 0;
     std::vector<std::vector<std::uint8_t>> records;
 };
-bool parse_counted_records(const std::vector<std::uint8_t>& d, std::size_t record_size, CountedRecords* out, std::string* why);
+bool parse_counted_records(const std::vector<std::uint8_t>& d, std::size_t record_size, CountedRecords* out,
+                           std::string* why);
 std::vector<std::uint8_t> write_counted_records(const CountedRecords& r);
 
 // A count, that many offsets (from the file's start), then the bytes they
@@ -46,7 +47,8 @@ bool parse_placed_sets(const std::vector<std::uint8_t>& d, std::vector<PlacedSet
 // The set of `mission`, or null (the first, as Ov002_FindHandlerByKey takes it).
 const PlacedSet* placed_set(const std::vector<PlacedSet>& sets, int mission);
 // mi/mi/<name> read and its sets parsed (trbox, evi).
-bool load_placed_sets(const std::filesystem::path& nitrofs, const std::string& name, std::vector<PlacedSet>* out, std::string* why);
+bool load_placed_sets(const std::filesystem::path& nitrofs, const std::string& name, std::vector<PlacedSet>* out,
+                      std::string* why);
 
 // The four files' names under mi/mi, and the check of one: read (LZ
 // undone for .z), parsed, written back the same bytes.

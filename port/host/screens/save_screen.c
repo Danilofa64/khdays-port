@@ -13,8 +13,16 @@
 #include <string.h>
 
 /* the game's strings (see above) */
-enum { LRD_TITLE = 0, LRD_KEYS = 1, LRD_DELETE_KEY = 2, LRD_YES = 7, LRD_NO = 8, LRD_TIME = 11, LRD_LEVEL = 12,
-       LRD_BROKEN = 13 };
+enum {
+    LRD_TITLE = 0,
+    LRD_KEYS = 1,
+    LRD_DELETE_KEY = 2,
+    LRD_YES = 7,
+    LRD_NO = 8,
+    LRD_TIME = 11,
+    LRD_LEVEL = 12,
+    LRD_BROKEN = 13
+};
 enum { STRINGS_LRD, STRINGS_SAV, STRINGS_NGM, STRINGS_INFO, STRINGS_MLT, STRINGS_FILES };
 enum { SAV_TITLE = 0, SAV_NOTE = 1, SAV_YES = 5, SAV_NO = 6 };
 #define NGM_DIFFICULTY 2
@@ -22,7 +30,7 @@ enum { SAV_TITLE = 0, SAV_NOTE = 1, SAV_YES = 5, SAV_NO = 6 };
 #define MLT_KEYS 63
 
 static struct {
-    int tried, ok;         /* the language last tried, and whether its pieces were there */
+    int tried, ok; /* the language last tried, and whether its pieces were there */
     KhdaysLayout layout;
     float rows[4];
     float row_pitch;
@@ -31,7 +39,7 @@ static struct {
     float pitch_ask, pitch_tell;
     unsigned short empty[64], guest[64];
     KhdaysLayoutStrings strings[STRINGS_FILES];
-    int top;               /* the first row shown */
+    int top; /* the first row shown */
 } s;
 
 /* ---- The pieces' file ------------------------------------------------------------------------- */
@@ -253,16 +261,12 @@ static void draw_row(const KhdaysLayoutFrame *fr, const KhdaysSaveView *v, int i
             }
             draw_text(fr, "time", line, x, y);
         }
-        draw_text(fr, "difficulty", string_of(STRINGS_NGM, NGM_DIFFICULTY + (r->difficulty < 3 ? r->difficulty : 0)),
-                  x, y);
+        draw_text(fr, "difficulty", string_of(STRINGS_NGM, NGM_DIFFICULTY + (r->difficulty < 3 ? r->difficulty : 0)), x,
+                  y);
         break;
     }
-    case KHDAYS_SLOT_BROKEN:
-        draw_text(fr, "empty", string_of(STRINGS_LRD, LRD_BROKEN), x, y);
-        break;
-    default:
-        draw_text(fr, "empty", s.empty, x, y);
-        break;
+    case KHDAYS_SLOT_BROKEN: draw_text(fr, "empty", string_of(STRINGS_LRD, LRD_BROKEN), x, y); break;
+    default: draw_text(fr, "empty", s.empty, x, y); break;
     }
 }
 
@@ -284,8 +288,8 @@ int khdays_save_screen_draw(SDL_Renderer *renderer)
     }
     khdays_layout_begin(renderer, &fr);
     khdays_layout_draw_placed(&s.layout, &fr, "screen", 0, 0, 1.0f);
-    khdays_layout_draw_placed(&s.layout, &fr, v.screen == KHDAYS_SAVELIST_SAVE ? "heading_save" : "heading_load", 0,
-                              0, 1.0f);
+    khdays_layout_draw_placed(&s.layout, &fr, v.screen == KHDAYS_SAVELIST_SAVE ? "heading_save" : "heading_load", 0, 0,
+                              1.0f);
 
     /* the rows: the files, then the guest's; the cursor's in sight */
     rows_in = KHDAYS_SLOT_COUNT + (v.guest ? 1 : 0);

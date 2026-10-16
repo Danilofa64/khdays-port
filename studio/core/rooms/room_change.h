@@ -75,15 +75,16 @@ void place_model(khdays::assets::ImportedModel* model, const RoomPlacement& plac
 // 0). A model that shares nothing with the room keeps its placement.
 struct RoomAlignment {
     RoomPlacement place;
-    double share = 0;   // under `place`
-    double as_is = 0;   // with nothing changed
+    double share = 0;  // under `place`
+    double as_is = 0;  // with nothing changed
     // what to do: `turned` -- `place` puts it on the room (at least 5% of its
     // points, twice as many as it has as it is); `in_place` -- it lines up as
     // it is (3% or more: a room remade in the same place keeps some of the
     // game's points); `unrelated` -- it shares nothing worth saying
     enum Verdict { turned, in_place, unrelated } verdict = unrelated;
 };
-RoomAlignment align_with_room(const std::vector<std::array<float, 3>>& room_points, const khdays::assets::ImportedModel& model);
+RoomAlignment align_with_room(const std::vector<std::array<float, 3>>& room_points,
+                              const khdays::assets::ImportedModel& model);
 bool placed_model(const std::filesystem::path& model, const RoomPlacement& place, khdays::assets::ImportedModel* out,
                   std::string* why);
 
@@ -127,7 +128,8 @@ struct WorldOutcome {
 // the archive (checked before it replaces anything) and the rooms' models;
 // with no change left, removes them. False with the reason; what was there stays.
 bool write_world_outputs(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump,
-                         const std::filesystem::path& mod_dir, const std::string& code, WorldOutcome* out, std::string* why);
+                         const std::filesystem::path& mod_dir, const std::string& code, WorldOutcome* out,
+                         std::string* why);
 
 // Saves a change: the model files (and their companions) copied beside it,
 // the change written, then the world's outputs.
@@ -137,6 +139,7 @@ bool save_change(const std::filesystem::path& nitrofs, const std::filesystem::pa
 
 // Removes a room's change and the models it wrote, then writes its world again.
 bool revert_change(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump,
-                   const std::filesystem::path& mod_dir, const std::string& code, int room, WorldOutcome* out, std::string* why);
+                   const std::filesystem::path& mod_dir, const std::string& code, int room, WorldOutcome* out,
+                   std::string* why);
 
 }  // namespace studio

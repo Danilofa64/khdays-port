@@ -416,8 +416,8 @@ void khdays_layout_draw_piece(const KhdaysLayout *l, const KhdaysLayoutFrame *fr
     khdays_layout_draw_tinted(l, fr, name, x, y, w, h, NULL, alpha);
 }
 
-void khdays_layout_draw_placed(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const char *name, float dx,
-                               float dy, float alpha)
+void khdays_layout_draw_placed(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const char *name, float dx, float dy,
+                               float alpha)
 {
     const KhdaysLayoutPlace *pl = khdays_layout_place(l, name);
     if (pl != NULL) {
@@ -507,16 +507,23 @@ static int input_icon(const KhdaysLayout *l, int action, Icon *out)
             }
         } else {
             /* any other pad: Switch's letters, the DS's in the same places */
-            static const char *const switch_names[KHDAYS_PAD_COUNT] = {
-                [KHDAYS_PAD_SOUTH] = "switch_button_b", [KHDAYS_PAD_EAST] = "switch_button_a",
-                [KHDAYS_PAD_WEST] = "switch_button_y", [KHDAYS_PAD_NORTH] = "switch_button_x",
-                [KHDAYS_PAD_DPUP] = "switch_dpad_up", [KHDAYS_PAD_DPDOWN] = "switch_dpad_down",
-                [KHDAYS_PAD_DPLEFT] = "switch_dpad_left", [KHDAYS_PAD_DPRIGHT] = "switch_dpad_right",
-                [KHDAYS_PAD_LEFTSHOULDER] = "switch_button_l", [KHDAYS_PAD_RIGHTSHOULDER] = "switch_button_r",
-                [KHDAYS_PAD_LEFTTRIGGER] = "switch_button_zl", [KHDAYS_PAD_RIGHTTRIGGER] = "switch_button_zr",
-                [KHDAYS_PAD_LEFTSTICK] = "switch_stick_l_press", [KHDAYS_PAD_RIGHTSTICK] = "switch_stick_r_press",
-                [KHDAYS_PAD_START] = "switch_button_plus", [KHDAYS_PAD_BACK] = "switch_button_minus",
-                [KHDAYS_PAD_GUIDE] = "switch_button_home"};
+            static const char *const switch_names[KHDAYS_PAD_COUNT] = {[KHDAYS_PAD_SOUTH] = "switch_button_b",
+                                                                       [KHDAYS_PAD_EAST] = "switch_button_a",
+                                                                       [KHDAYS_PAD_WEST] = "switch_button_y",
+                                                                       [KHDAYS_PAD_NORTH] = "switch_button_x",
+                                                                       [KHDAYS_PAD_DPUP] = "switch_dpad_up",
+                                                                       [KHDAYS_PAD_DPDOWN] = "switch_dpad_down",
+                                                                       [KHDAYS_PAD_DPLEFT] = "switch_dpad_left",
+                                                                       [KHDAYS_PAD_DPRIGHT] = "switch_dpad_right",
+                                                                       [KHDAYS_PAD_LEFTSHOULDER] = "switch_button_l",
+                                                                       [KHDAYS_PAD_RIGHTSHOULDER] = "switch_button_r",
+                                                                       [KHDAYS_PAD_LEFTTRIGGER] = "switch_button_zl",
+                                                                       [KHDAYS_PAD_RIGHTTRIGGER] = "switch_button_zr",
+                                                                       [KHDAYS_PAD_LEFTSTICK] = "switch_stick_l_press",
+                                                                       [KHDAYS_PAD_RIGHTSTICK] = "switch_stick_r_press",
+                                                                       [KHDAYS_PAD_START] = "switch_button_plus",
+                                                                       [KHDAYS_PAD_BACK] = "switch_button_minus",
+                                                                       [KHDAYS_PAD_GUIDE] = "switch_button_home"};
             const char *icon = input < KHDAYS_PAD_COUNT ? switch_names[input] : NULL;
             SDL_Texture *t = icon != NULL ? switch_icon(l->renderer, icon) : NULL;
             if (t != NULL) {
@@ -595,8 +602,8 @@ float khdays_layout_line_width(const KhdaysLayout *l, const unsigned short *t, f
     return w;
 }
 
-static void draw_line_rgb(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const unsigned short *t, float x,
-                          float y, float size, const float rgb[3], float alpha, int shadow);
+static void draw_line_rgb(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const unsigned short *t, float x, float y,
+                          float size, const float rgb[3], float alpha, int shadow);
 
 float khdays_layout_draw_action(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, int action, float x, float y,
                                 float h, float alpha)
@@ -637,8 +644,8 @@ void khdays_layout_draw_line(const KhdaysLayout *l, const KhdaysLayoutFrame *fr,
 }
 
 /* A line in a colour (0-255 each): a plain font's grey made it, an outlined font's white. */
-static void draw_line_rgb(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const unsigned short *t, float x,
-                          float y, float size, const float rgb[3], float alpha, int shadow)
+static void draw_line_rgb(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const unsigned short *t, float x, float y,
+                          float size, const float rgb[3], float alpha, int shadow)
 {
     const float ink = (l->ink_bottom - l->ink_top) * size;
     const float top = y - l->ink_top * size; /* the cells' top */
@@ -727,7 +734,11 @@ void khdays_layout_draw_text(const KhdaysLayout *l, const KhdaysLayoutFrame *fr,
 
 /* The points around an oval, or around a rectangle with round corners (clockwise from the left),
  * in the window's pixels. */
-enum { OVAL_STEPS = 48, ARC_STEPS = 10, PATH_MOST = 4 * (ARC_STEPS + 1) > OVAL_STEPS ? 4 * (ARC_STEPS + 1) : OVAL_STEPS };
+enum {
+    OVAL_STEPS = 48,
+    ARC_STEPS = 10,
+    PATH_MOST = 4 * (ARC_STEPS + 1) > OVAL_STEPS ? 4 * (ARC_STEPS + 1) : OVAL_STEPS
+};
 
 static int oval_path(SDL_FRect c, float *xy)
 {
@@ -814,8 +825,8 @@ static float corner(const KhdaysLayoutFrame *fr, SDL_FRect r, float radius)
     return SDL_max(0.0f, SDL_min(k.w, SDL_min(r.w, r.h) / 2));
 }
 
-void khdays_layout_fill_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w,
-                                float h, float radius, const Uint8 colour[3], float alpha)
+void khdays_layout_fill_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w, float h,
+                                float radius, const Uint8 colour[3], float alpha)
 {
     float xy[2 * PATH_MOST];
     const SDL_FRect r = khdays_layout_to_window(fr, x, y, w, h);
@@ -823,13 +834,13 @@ void khdays_layout_fill_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame 
     fill_band(renderer, xy, NULL, n, colour, alpha);
 }
 
-void khdays_layout_ring_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w,
-                                float h, float radius, float thickness, const Uint8 colour[3], float alpha)
+void khdays_layout_ring_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w, float h,
+                                float radius, float thickness, const Uint8 colour[3], float alpha)
 {
     float outer[2 * PATH_MOST], inner[2 * PATH_MOST];
     const SDL_FRect r = khdays_layout_to_window(fr, x, y, w, h);
-    const SDL_FRect in = khdays_layout_to_window(fr, x + thickness, y + thickness, w - 2 * thickness,
-                                                 h - 2 * thickness);
+    const SDL_FRect in =
+        khdays_layout_to_window(fr, x + thickness, y + thickness, w - 2 * thickness, h - 2 * thickness);
     const int n = rounded_path(r, corner(fr, r, radius), outer);
     rounded_path(in, corner(fr, in, radius - thickness), inner);
     fill_band(renderer, outer, inner, n, colour, alpha);

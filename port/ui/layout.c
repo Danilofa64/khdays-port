@@ -11,23 +11,32 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { ANCHOR_TOP_LEFT, ANCHOR_TOP, ANCHOR_TOP_RIGHT, ANCHOR_LEFT, ANCHOR_CENTRE, ANCHOR_RIGHT,
-       ANCHOR_BOTTOM_LEFT, ANCHOR_BOTTOM, ANCHOR_BOTTOM_RIGHT };
-static const char *const anchors[9] = {"top-left", "top", "top-right", "left", "centre", "right",
-                                       "bottom-left", "bottom", "bottom-right"};
+enum {
+    ANCHOR_TOP_LEFT,
+    ANCHOR_TOP,
+    ANCHOR_TOP_RIGHT,
+    ANCHOR_LEFT,
+    ANCHOR_CENTRE,
+    ANCHOR_RIGHT,
+    ANCHOR_BOTTOM_LEFT,
+    ANCHOR_BOTTOM,
+    ANCHOR_BOTTOM_RIGHT
+};
+static const char *const anchors[9] = {"top-left", "top",         "top-right", "left",        "centre",
+                                       "right",    "bottom-left", "bottom",    "bottom-right"};
 
 typedef struct Entry {
-    char *id;     /* an identifier, or a family's beginning (`family`) */
+    char *id; /* an identifier, or a family's beginning (`family`) */
     int family;
     int at, anchor;
     float ax, ay;
     int move;
     float dx, dy;
-    float scale;  /* 0: keep the DS's size */
+    float scale; /* 0: keep the DS's size */
     int has_order, order;
-    int slot;     /* KE_SLOT's number and KES_SPRITES; -1: keep its own */
-    int screen;   /* 0 the upper screen, 1 the lower; -1: keep its own */
-    char *when;   /* the line applies while an element of that id is there (its section); NULL: always */
+    int slot;   /* KE_SLOT's number and KES_SPRITES; -1: keep its own */
+    int screen; /* 0 the upper screen, 1 the lower; -1: keep its own */
+    char *when; /* the line applies while an element of that id is there (its section); NULL: always */
 } Entry;
 
 static Entry *entries;
@@ -123,7 +132,8 @@ static void read_line(const char *file, int line_no, char *line)
         if (strcmp(w, "at") == 0 && i + 3 < n) {
             int a = -1;
             for (int k = 0; k < 9; ++k) {
-                if (strcmp(words[i + 1], anchors[k]) == 0) a = k;
+                if (strcmp(words[i + 1], anchors[k]) == 0)
+                    a = k;
             }
             if (a < 0 || !number(words[i + 2], &e.ax) || !number(words[i + 3], &e.ay) || e.move) {
                 say(file, line_no, "`at <anchor> <x> <y>` (and not with `move`)", original);

@@ -9,21 +9,20 @@
 enum { PCM8, PCM16, ADPCM, PSG };
 enum { MANUAL, LOOP, ONE_SHOT };
 
-#define REG8(offset)  (*(uint8_t *)(hw->regs + (offset)))
+#define REG8(offset) (*(uint8_t *)(hw->regs + (offset)))
 #define REG16(offset) (*(uint16_t *)(hw->regs + (offset)))
 #define REG32(offset) (*(uint32_t *)(hw->regs + (offset)))
 
 /* IMA-ADPCM (GBATEK "DS Sound Notes"). */
 static const int8_t adpcm_index_table[8] = {-1, -1, -1, -1, 2, 4, 6, 8};
 static const uint16_t adpcm_table[89] = {
-    0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x0010, 0x0011, 0x0013, 0x0015,
-    0x0017, 0x0019, 0x001c, 0x001f, 0x0022, 0x0025, 0x0029, 0x002d, 0x0032, 0x0037, 0x003c, 0x0042,
-    0x0049, 0x0050, 0x0058, 0x0061, 0x006b, 0x0076, 0x0082, 0x008f, 0x009d, 0x00ad, 0x00be, 0x00d1,
-    0x00e6, 0x00fd, 0x0117, 0x0133, 0x0151, 0x0173, 0x0198, 0x01c1, 0x01ee, 0x0220, 0x0256, 0x0292,
-    0x02d4, 0x031c, 0x036c, 0x03c3, 0x0424, 0x048e, 0x0502, 0x0583, 0x0610, 0x06ab, 0x0756, 0x0812,
-    0x08e0, 0x09c3, 0x0abd, 0x0bd0, 0x0cff, 0x0e4c, 0x0fba, 0x114c, 0x1307, 0x14ee, 0x1706, 0x1954,
-    0x1bdc, 0x1ea5, 0x21b6, 0x2515, 0x28ca, 0x2cdf, 0x315b, 0x364b, 0x3bb9, 0x41b2, 0x4844, 0x4f7e,
-    0x5771, 0x602f, 0x69ce, 0x7462, 0x7fff,
+    0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x0010, 0x0011, 0x0013, 0x0015, 0x0017,
+    0x0019, 0x001c, 0x001f, 0x0022, 0x0025, 0x0029, 0x002d, 0x0032, 0x0037, 0x003c, 0x0042, 0x0049, 0x0050,
+    0x0058, 0x0061, 0x006b, 0x0076, 0x0082, 0x008f, 0x009d, 0x00ad, 0x00be, 0x00d1, 0x00e6, 0x00fd, 0x0117,
+    0x0133, 0x0151, 0x0173, 0x0198, 0x01c1, 0x01ee, 0x0220, 0x0256, 0x0292, 0x02d4, 0x031c, 0x036c, 0x03c3,
+    0x0424, 0x048e, 0x0502, 0x0583, 0x0610, 0x06ab, 0x0756, 0x0812, 0x08e0, 0x09c3, 0x0abd, 0x0bd0, 0x0cff,
+    0x0e4c, 0x0fba, 0x114c, 0x1307, 0x14ee, 0x1706, 0x1954, 0x1bdc, 0x1ea5, 0x21b6, 0x2515, 0x28ca, 0x2cdf,
+    0x315b, 0x364b, 0x3bb9, 0x41b2, 0x4844, 0x4f7e, 0x5771, 0x602f, 0x69ce, 0x7462, 0x7fff,
 };
 
 /* Each oddity once, so the model grows from what the driver really does. */
@@ -129,19 +128,26 @@ static int32_t adpcm_step(KhdaysSoundChannel *c, uint32_t nibble)
 {
     const int32_t step = adpcm_table[c->index];
     int32_t diff = step >> 3;
-    if (nibble & 1) diff += step >> 2;
-    if (nibble & 2) diff += step >> 1;
-    if (nibble & 4) diff += step;
+    if (nibble & 1)
+        diff += step >> 2;
+    if (nibble & 2)
+        diff += step >> 1;
+    if (nibble & 4)
+        diff += step;
     if (nibble & 8) {
         c->pcm -= diff;
-        if (c->pcm < -0x7fff) c->pcm = -0x7fff;
+        if (c->pcm < -0x7fff)
+            c->pcm = -0x7fff;
     } else {
         c->pcm += diff;
-        if (c->pcm > 0x7fff) c->pcm = 0x7fff;
+        if (c->pcm > 0x7fff)
+            c->pcm = 0x7fff;
     }
     c->index += adpcm_index_table[nibble & 7];
-    if (c->index < 0) c->index = 0;
-    if (c->index > 88) c->index = 88;
+    if (c->index < 0)
+        c->index = 0;
+    if (c->index > 88)
+        c->index = 88;
     return c->pcm;
 }
 
@@ -168,15 +174,14 @@ uint32_t khdays_sound_decode(const uint8_t *data, uint32_t words, int format, in
         c.pcm = (int16_t)(data[0] | data[1] << 8);
         c.index = data[2] & 0x7f;
         if (c.index > 88) {
-            c.index = 88;  /* as start() takes it */
+            c.index = 88; /* as start() takes it */
         }
         for (; n < (words - 1) * 8; ++n) {
             out[n] = (int16_t)adpcm_step(&c, (data[4 + n / 2] >> ((n & 1) * 4)) & 0xf);
         }
         return n;
     }
-    default:
-        return 0;
+    default: return 0;
     }
 }
 
@@ -208,7 +213,7 @@ static void advance(KhdaysSoundHw *hw, int n)
         return;
     }
     if (c->position < 0 || c->pnt + c->len < 4) {
-        return;  /* the start delay; or hung */
+        return; /* the start delay; or hung */
     }
     total = (int32_t)((c->pnt + c->len) * per_word);
     loop_start = (int32_t)(c->pnt * per_word);
@@ -227,10 +232,10 @@ static void advance(KhdaysSoundHw *hw, int n)
         }
     }
     if (((cnt >> 27) & 3) != LOOP && c->position == total - 1) {
-        set_busy(hw, n, 0);  /* the busy bit clears as the last sample begins */
+        set_busy(hw, n, 0); /* the busy bit clears as the last sample begins */
     }
     if (format == ADPCM && c->position < 8) {
-        c->sample = 0;  /* the header's time */
+        c->sample = 0; /* the header's time */
         return;
     }
     if (format == ADPCM && c->position == loop_start && !c->loop_saved) {
@@ -293,7 +298,7 @@ void khdays_sound_hw_write(KhdaysSoundHw *hw, uint32_t offset, int size, uint32_
                 hw->channels[n].busy = 0;
                 silence(hw, n);
             } else if (!hw->channels[n].playing && !(control(hw, n) & 0x8000)) {
-                hw->channels[n].sample = 0;  /* Hold cleared: the held sample ends */
+                hw->channels[n].sample = 0; /* Hold cleared: the held sample ends */
             }
         } else if (reg != 8 && hw->channels[n].playing) {
             report("SAD, PNT or LEN written while playing (taken at the next start)", n);

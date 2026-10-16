@@ -47,8 +47,8 @@ typedef KhdaysG3dPolygon Polygon;
 #define H 192
 
 typedef struct Pixel {
-    uint8_t r, g, b, a;  /* 6/6/6 bits, alpha 5 */
-    uint32_t depth;      /* 24 bits */
+    uint8_t r, g, b, a; /* 6/6/6 bits, alpha 5 */
+    uint32_t depth;     /* 24 bits */
     uint8_t opaque_id, trans_id, fog, edge, stencil, translucent;
     uint8_t mask_run; /* the last polygon drawn here was a shadow mask */
 } Pixel;
@@ -90,14 +90,16 @@ static uint32_t depth_of(const Vertex *unused, float z, float w, int wbuffer)
          * uses, widened to 24 bits the same way (x 0x200) */
         d = ((double)z * 0x4000 + 0x3fff) * 0x200;
     }
-    if (d < 0) return 0;
-    if (d > 0xffffff) return 0xffffff;
+    if (d < 0)
+        return 0;
+    if (d > 0xffffff)
+        return 0xffffff;
     return (uint32_t)d;
 }
 
 typedef struct Attrs {
-    float iw;             /* 1/w */
-    float r, g, b, s, t;  /* over w */
+    float iw;            /* 1/w */
+    float r, g, b, s, t; /* over w */
     float z;
 } Attrs;
 
@@ -140,22 +142,30 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
     int rv = (int)(at->r * w + 0.5f), gv = (int)(at->g * w + 0.5f), bv = (int)(at->b * w + 0.5f);
     int r, gg, b, a;
     int pass;
-    if (mode == 3 && id == 0) {  /* a run of shadow masks starts from a clear stencil */
-        if (!px->mask_run) px->stencil = 0;
+    if (mode == 3 && id == 0) { /* a run of shadow masks starts from a clear stencil */
+        if (!px->mask_run)
+            px->stencil = 0;
         px->mask_run = 1;
     } else {
         px->mask_run = 0;
     }
-    if (alpha == 0) {  /* wire-frame: only the edges, solid */
-        if (!edge) return;
+    if (alpha == 0) { /* wire-frame: only the edges, solid */
+        if (!edge)
+            return;
         alpha = 31;
     }
-    if (rv > 63) rv = 63;
-    if (gv > 63) gv = 63;
-    if (bv > 63) bv = 63;
-    if (rv < 0) rv = 0;
-    if (gv < 0) gv = 0;
-    if (bv < 0) bv = 0;
+    if (rv > 63)
+        rv = 63;
+    if (gv > 63)
+        gv = 63;
+    if (bv > 63)
+        bv = 63;
+    if (rv < 0)
+        rv = 0;
+    if (gv < 0)
+        gv = 0;
+    if (bv < 0)
+        bv = 0;
 
     if (p->attr & 0x4000) {
         const int64_t diff = (int64_t)depth - px->depth;
@@ -170,7 +180,8 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
          * shadow draws where a mark is and its depth test passes. GBATEK's wording would shade
          * everything behind the volume (docs/RENDERING.md, "Shadow volumes"). */
         if (id == 0) {
-            if (!pass) px->stencil = 1;
+            if (!pass)
+                px->stencil = 1;
             return;
         }
         if (!px->stencil || !pass) {
@@ -198,16 +209,22 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
             bt = expand5((tx >> 10) & 31);
             at6 = expand_alpha(at5);
         }
-        if (mode == 1 && textured) {  /* decal */
-            if (at5 == 0) { r = rv; gg = gv; b = bv; }
-            else if (at5 == 31) { r = rt; gg = gt; b = bt; }
-            else {
+        if (mode == 1 && textured) { /* decal */
+            if (at5 == 0) {
+                r = rv;
+                gg = gv;
+                b = bv;
+            } else if (at5 == 31) {
+                r = rt;
+                gg = gt;
+                b = bt;
+            } else {
                 r = (rt * at5 + rv * (63 - at5)) / 64;
                 gg = (gt * at5 + gv * (63 - at5)) / 64;
                 b = (bt * at5 + bv * (63 - at5)) / 64;
             }
             a = av6;
-        } else if (mode == 2) {  /* toon / highlight: the red component indexes the table */
+        } else if (mode == 2) { /* toon / highlight: the red component indexes the table */
             const uint16_t toon = io16(0x380 + 2 * (rv >> 1));
             const int rs = expand5(toon & 31), gs = expand5((toon >> 5) & 31), bs = expand5((toon >> 10) & 31);
             r = ((rt + 1) * (rs + 1) - 1) / 64;
@@ -219,13 +236,13 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
                 b = b + bs > 63 ? 63 : b + bs;
             }
             a = ((at6 + 1) * (av6 + 1) - 1) / 64;
-        } else {  /* modulation (and shadow) */
+        } else { /* modulation (and shadow) */
             r = ((rt + 1) * (rv + 1) - 1) / 64;
             gg = ((gt + 1) * (gv + 1) - 1) / 64;
             b = ((bt + 1) * (bv + 1) - 1) / 64;
             a = ((at6 + 1) * (av6 + 1) - 1) / 64;
         }
-        a >>= 1;  /* back to 5 bits */
+        a >>= 1; /* back to 5 bits */
     }
     /* alpha test */
     if ((disp3dcnt & 4) ? a <= (int)(io16(0x340) & 31) : a == 0) {
@@ -233,13 +250,14 @@ static void plot(const Polygon *p, int x, int y, const Attrs *at, int edge, uint
     }
     if (a < 31 || mode == 3) {
         if (px->translucent && px->trans_id == id && mode != 3) {
-            return;  /* no double blending within one translucent polygon ID */
+            return; /* no double blending within one translucent polygon ID */
         }
         if ((disp3dcnt & 8) && px->a > 0) {
             px->r = (uint8_t)((r * (a + 1) + px->r * (31 - a)) / 32);
             px->g = (uint8_t)((gg * (a + 1) + px->g * (31 - a)) / 32);
             px->b = (uint8_t)((b * (a + 1) + px->b * (31 - a)) / 32);
-            if (a > px->a) px->a = (uint8_t)a;
+            if (a > px->a)
+                px->a = (uint8_t)a;
         } else {
             px->r = (uint8_t)r;
             px->g = (uint8_t)gg;
@@ -277,11 +295,13 @@ static void draw_polygon(const Polygon *p, const Vertex *v, uint32_t disp3dcnt, 
     }
     y0 = (int)ceilf(p->ymin - 0.5f);
     y1 = (int)ceilf(p->ymax - 0.5f) - 1;
-    if (y1 < y0) {  /* flatter than a pixel row: one row */
+    if (y1 < y0) { /* flatter than a pixel row: one row */
         y0 = y1 = (int)floorf(p->ymin);
     }
-    if (y0 < 0) y0 = 0;
-    if (y1 > H - 1) y1 = H - 1;
+    if (y0 < 0)
+        y0 = 0;
+    if (y1 > H - 1)
+        y1 = H - 1;
     for (int y = y0; y <= y1; ++y) {
         const float cy = y + 0.5f;
         float xl = 1e9f, xr = -1e9f;
@@ -293,31 +313,47 @@ static void draw_polygon(const Polygon *p, const Vertex *v, uint32_t disp3dcnt, 
             float f, x;
             Attrs e;
             if (hi == lo) {
-                if (y0 != y1 || (int)floorf(lo) != y) continue;
+                if (y0 != y1 || (int)floorf(lo) != y)
+                    continue;
                 /* a horizontal edge on a single-row polygon: both ends */
                 for (int k = 0; k < 2; ++k) {
                     const Vertex *q = k ? b : a;
                     Attrs qa;
                     attrs_of(q, &qa);
-                    if (q->x < xl) { xl = q->x; al = qa; }
-                    if (q->x > xr) { xr = q->x; ar = qa; }
+                    if (q->x < xl) {
+                        xl = q->x;
+                        al = qa;
+                    }
+                    if (q->x > xr) {
+                        xr = q->x;
+                        ar = qa;
+                    }
                     found = 1;
                 }
                 continue;
             }
-            if (cy < lo || cy > hi) continue;
+            if (cy < lo || cy > hi)
+                continue;
             f = (cy - a->y) / (b->y - a->y);
             x = a->x + (b->x - a->x) * f;
             lerp(&at[i], &at[(i + 1) % p->count], f, &e);
-            if (x < xl) { xl = x; al = e; }
-            if (x > xr) { xr = x; ar = e; }
+            if (x < xl) {
+                xl = x;
+                al = e;
+            }
+            if (x > xr) {
+                xr = x;
+                ar = e;
+            }
             found = 1;
         }
-        if (!found) continue;
+        if (!found)
+            continue;
         {
             int x0 = (int)ceilf(xl - 0.5f), x1 = (int)ceilf(xr - 0.5f) - 1;
             const float span = xr - xl;
-            if (x1 < x0) x1 = x0;  /* at least a pixel: lines and dots */
+            if (x1 < x0)
+                x1 = x0; /* at least a pixel: lines and dots */
             for (int x = x0 < 0 ? 0 : x0; x <= x1 && x < W; ++x) {
                 Attrs pa;
                 const float f = span > 0 ? ((x + 0.5f) - xl) / span : 0.0f;
@@ -331,8 +367,10 @@ static void draw_polygon(const Polygon *p, const Vertex *v, uint32_t disp3dcnt, 
 static int compare_translucent(const void *a, const void *b)
 {
     const Polygon *pa = *(const Polygon *const *)a, *pb = *(const Polygon *const *)b;
-    if (pa->ymin != pb->ymin) return pa->ymin < pb->ymin ? -1 : 1;
-    if (pa->ymax != pb->ymax) return pa->ymax < pb->ymax ? -1 : 1;
+    if (pa->ymin != pb->ymin)
+        return pa->ymin < pb->ymin ? -1 : 1;
+    if (pa->ymax != pb->ymax)
+        return pa->ymax < pb->ymax ? -1 : 1;
     return pa < pb ? -1 : pa > pb;
 }
 
@@ -341,7 +379,7 @@ static void rear_plane(uint32_t disp3dcnt)
     const uint32_t clear = io32(0x350);
     const uint16_t cd = io16(0x354) & 0x7fff;
     const uint32_t clear_depth = (uint32_t)cd * 0x200 + ((cd + 1u) / 0x8000u) * 0x1ff;
-    if (disp3dcnt & 0x4000) {  /* bitmap: colour in texture slot 2, depth in slot 3 */
+    if (disp3dcnt & 0x4000) { /* bitmap: colour in texture slot 2, depth in slot 3 */
         const uint16_t offset = io16(0x356);
         for (int y = 0; y < H; ++y) {
             for (int x = 0; x < W; ++x) {
@@ -388,7 +426,8 @@ static void edge_marking(void)
         for (int x = 0; x < W; ++x) {
             const Pixel *px = &fb[y * W + x];
             static const int dx[4] = {-1, 1, 0, 0}, dy[4] = {0, 0, -1, 1};
-            if (!px->edge || px->translucent) continue;
+            if (!px->edge || px->translucent)
+                continue;
             for (int k = 0; k < 4; ++k) {
                 const int nx = x + dx[k], ny = y + dy[k];
                 uint8_t nid;
@@ -427,9 +466,10 @@ static void fog(uint32_t disp3dcnt, int wbuffer)
     const int fa = (color >> 16) & 31;
     for (int i = 0; i < W * H; ++i) {
         Pixel *px = &fb[i];
-        const uint32_t d = wbuffer ? px->depth : px->depth >> 9;  /* the 15-bit scale of FOG_OFFSET */
+        const uint32_t d = wbuffer ? px->depth : px->depth >> 9; /* the 15-bit scale of FOG_OFFSET */
         int density;
-        if (!px->fog) continue;
+        if (!px->fog)
+            continue;
         if (step == 0 || d <= offset + step) {
             density = rio[0x360] & 0x7f;
         } else if (d >= offset + step * 32) {
@@ -440,7 +480,8 @@ static void fog(uint32_t disp3dcnt, int wbuffer)
             const int d0 = rio[0x360 + n] & 0x7f, d1 = rio[0x360 + n + 1] & 0x7f;
             density = d0 + (int)((d1 - d0) * (int)(d - lo) / (int)step);
         }
-        if (density == 127) density = 128;
+        if (density == 127)
+            density = 128;
         if (!(disp3dcnt & 0x40)) {
             px->r = (uint8_t)((fr * density + px->r * (128 - density)) / 128);
             px->g = (uint8_t)((fg * density + px->g * (128 - density)) / 128);
@@ -464,7 +505,7 @@ void khdays_gpu3d_draw(const KhdaysG3dList *list, const uint8_t *io, const Khday
     rear_plane(disp3dcnt);
     for (int i = 0; i < list->npolys; ++i) {
         if (list->polys[i].flags & (KHDAYS_G3D_BEYOND_DS | KHDAYS_G3D_MOD)) {
-            continue;  /* the DS's RAM would not have held it, or a mod's model drew it */
+            continue; /* the DS's RAM would not have held it, or a mod's model drew it */
         }
         draw_polygon(&list->polys[i], &list->verts[list->polys[i].first], disp3dcnt, wbuffer);
     }

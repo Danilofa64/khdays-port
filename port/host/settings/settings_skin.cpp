@@ -33,7 +33,7 @@ struct Glyph {
 };
 
 struct Skin {
-    int language = -1;      // the one loaded (KHDAYS_LANGUAGE_*), -1 none tried
+    int language = -1; // the one loaded (KHDAYS_LANGUAGE_*), -1 none tried
     bool on = false;
     float pw = 1920, ph = 1080;
     std::string folder, atlas_file, font_file;
@@ -221,7 +221,8 @@ bool khdays_skin_use(SDL_Renderer *renderer, int language)
     int w = 0, h = 0;
     uint8_t *px = khdays_png_read((s.folder + s.atlas_file).c_str(), &w, &h, &error);
     if (px == nullptr) {
-        std::fprintf(stderr, "settings: %s%s: %s\n", s.folder.c_str(), s.atlas_file.c_str(), error ? error : "not read");
+        std::fprintf(stderr, "settings: %s%s: %s\n", s.folder.c_str(), s.atlas_file.c_str(),
+                     error ? error : "not read");
         return false;
     }
     s.atlas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, w, h);
@@ -418,7 +419,8 @@ bool khdays_skin_slider(ImDrawList *dl, const char *state, ImVec2 min, ImVec2 ma
         if (p->role == "track") {
             image(dl, *p, min, max);
         } else if (p->role == "left") {
-            image(dl, *p, ImVec2(min.x - (track->x - p->x) * k, top), ImVec2(min.x - (track->x - p->x - p->w) * k, bottom));
+            image(dl, *p, ImVec2(min.x - (track->x - p->x) * k, top),
+                  ImVec2(min.x - (track->x - p->x - p->w) * k, bottom));
         } else if (p->role == "right") {
             const float right = track->x + track->w;
             image(dl, *p, ImVec2(max.x + (p->x - right) * k, top), ImVec2(max.x + (p->x + p->w - right) * k, bottom));

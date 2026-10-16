@@ -24,7 +24,7 @@ extern int Ov025_SelectTierIfActive(int list, unsigned tab, int c);
 extern int GetFrameRateMode(void);
 extern int GameState_IsFlagSet(int flag);
 extern int Ov008_IsSessionReady(void);
-int khdays_language_wanted(void);  /* language.c */
+int khdays_language_wanted(void); /* language.c */
 u32 khdays_events_vblank_count(void);
 int khdays_overlay_loaded(int id); /* overlays.c */
 
@@ -34,18 +34,18 @@ int khdays_overlay_loaded(int id); /* overlays.c */
 #define SCREEN_STATE 0x959cu
 #define ENTRY 0x88u
 #define DESCRIPTION 0x5c4u
-#define NOTICE 0x5c0u             /* the line over the menu: a root_&.s record (see camp.h) */
+#define NOTICE 0x5c0u /* the line over the menu: a root_&.s record (see camp.h) */
 #define NOTICE_FIRST 0x16
 #define NOTICE_LAST 0x1c
-#define WAITING 9                 /* Mission Mode's entry while the group waits for the mission */
-#define MISSION_ACCEPTED 0x200c   /* the game state's flag Ov008_DrawMenuValue reads */
-#define WAIT_FOR_MISSION 0x20     /* root_&.s: "stay waiting for your mission" */
+#define WAITING 9               /* Mission Mode's entry while the group waits for the mission */
+#define MISSION_ACCEPTED 0x200c /* the game state's flag Ov008_DrawMenuValue reads */
+#define WAIT_FOR_MISSION 0x20   /* root_&.s: "stay waiting for your mission" */
 #define FIRST_OPTION 101
 #define ANSWER_YES 7
 #define ANSWER_NO 8
-#define QUIT_QUESTION 0x15      /* root_&.s: "Quit the game?" */
-#define TITLE_SCREEN 6          /* the options' last, whose question it is */
-#define GAME_STATE 0x0204be18u   /* gGameState: the game's state, a reference */
+#define QUIT_QUESTION 0x15     /* root_&.s: "Quit the game?" */
+#define TITLE_SCREEN 6         /* the options' last, whose question it is */
+#define GAME_STATE 0x0204be18u /* gGameState: the game's state, a reference */
 #define MUNNY 0x8u
 #define HEARTS 0xcu
 #define ITEM_COUNTS 0x810u
@@ -56,29 +56,29 @@ int khdays_overlay_loaded(int id); /* overlays.c */
 #define NAMES_PRESENT 0x434u
 #define NAMES 0x436u
 #define NAME_LENGTH 11u
-#define HEAP 0x02090f00u          /* the camp's heap: a reference */
+#define HEAP 0x02090f00u /* the camp's heap: a reference */
 #define MASK 0x2cu
 #define RECORDS 0x2eu
 #define RECORD_SIZE 6u
 #define RECORD_PAGE 3u
-#define PAGE_GONE 7               /* Ov008_BuildSlotMatchMask(7): left out of the members shown */
-#define STORY_QUESTION 0x5c0u     /* the story's: its question open (Ov025_Hub_SetSubMenu) */
-#define ROXAS 12                  /* mlt_&.s's order */
-#define ENTRY_LIST 0x4a38u        /* the context's entries (see above) */
+#define PAGE_GONE 7           /* Ov008_BuildSlotMatchMask(7): left out of the members shown */
+#define STORY_QUESTION 0x5c0u /* the story's: its question open (Ov025_Hub_SetSubMenu) */
+#define ROXAS 12              /* mlt_&.s's order */
+#define ENTRY_LIST 0x4a38u    /* the context's entries (see above) */
 #define ENTRY_ID 0xcu
-#define ENTRY_ALTERNATE 0x84u     /* bit 0: locked, its alternate (dimmed) set shown */
-#define CONFIG_SCREEN 5           /* the Preferences page (see above) */
-#define PREFERENCES 4             /* its option: the options' fifth in both camps */
+#define ENTRY_ALTERNATE 0x84u /* bit 0: locked, its alternate (dimmed) set shown */
+#define CONFIG_SCREEN 5       /* the Preferences page (see above) */
+#define PREFERENCES 4         /* its option: the options' fifth in both camps */
 #define CONFIG_TAB 0x0u
 #define CONFIG_LIST 0x2u
 #define CONFIG_ENTRY 0x4cu
 #define CONFIG_VALUES 0x4eu
 #define ENTRY_SIZE 0x14u
 #define LIST_SIZE 0x12u
-#define LISTS 3                   /* Ov008_GetPageTableEntry's three */
+#define LISTS 3 /* Ov008_GetPageTableEntry's three */
 #define PAGE_SIZE 4u
-#define TITLE_SETTINGS 0          /* cfg_&.s: "Adjust your settings." */
-#define CAMP_REPEAT 0x963eu       /* the camp's KeyRepeat (savelist.c's) */
+#define TITLE_SETTINGS 0    /* cfg_&.s: "Adjust your settings." */
+#define CAMP_REPEAT 0x963eu /* the camp's KeyRepeat (savelist.c's) */
 #define REPEAT_DELAY 2u
 #define REPEAT_INTERVAL 4u
 
@@ -158,7 +158,7 @@ static u8 rd8(u32 address)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 static int tracing(void)
@@ -192,7 +192,10 @@ void khdays_camp_field(void *panel, int field, unsigned int delta, int style, vo
     }
     a = v[0];
     switch (field) {
-    case 7: case 9: case 0xb: case 0xd: {
+    case 7:
+    case 9:
+    case 0xb:
+    case 0xd: {
         /* the value, with the panel's animated offset while it moves; capped as drawn */
         static const int offset_of[0xe] = {[7] = 0, [9] = 1, [0xb] = 2, [0xd] = 3};
         if (animate) {
@@ -221,18 +224,15 @@ void khdays_camp_field(void *panel, int field, unsigned int delta, int style, vo
         }
         break;
     }
-    case 0x12:
-        b = v[1];
-        break;
-    default:
-        break;
+    case 0x12: b = v[1]; break;
+    default: break;
     }
     fields[field].has = 1;
     fields[field].value[0] = a;
     fields[field].value[1] = b;
     if (tracing()) {
-        khdays_log("camp: field 0x%x = %u %u (delta %u, raw 0x%08x 0x%08x, animate %d)", field, a, b, delta, v[0],
-                   v[1], animate);
+        khdays_log("camp: field 0x%x = %u %u (delta %u, raw 0x%08x 0x%08x, animate %d)", field, a, b, delta, v[0], v[1],
+                   animate);
     }
 }
 
@@ -504,8 +504,9 @@ static int read_menu(const Camp *c, KhdaysCampView *v)
     if (tracing() && (screen != last_screen || page != last_page || entry != last_entry)) {
         khdays_log("camp: ov%03d screen %d, page %d, entry %d, %s %d", c->overlay, screen, page, entry,
                    c->story ? "question" : "description",
-                   screen == 0 && in_ram(state) ? (int)(c->story ? rd32(state + STORY_QUESTION) : rd16(state + DESCRIPTION))
-                                                : -1);
+                   screen == 0 && in_ram(state)
+                       ? (int)(c->story ? rd32(state + STORY_QUESTION) : rd16(state + DESCRIPTION))
+                       : -1);
     }
     last_screen = screen;
     last_page = page;

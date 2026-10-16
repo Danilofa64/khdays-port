@@ -71,18 +71,47 @@ u32 OS_GetProcMode(void)
 void DC_InvalidateAll(void) {}
 void DC_StoreAll(void) {}
 void DC_FlushAll(void) {}
-void DC_InvalidateRange(void *start, u32 size) { (void)start; (void)size; }
-void DC_StoreRange(const void *start, u32 size) { (void)start; (void)size; }
-void DC_FlushRange(const void *start, u32 size) { (void)start; (void)size; }
+void DC_InvalidateRange(void *start, u32 size)
+{
+    (void)start;
+    (void)size;
+}
+void DC_StoreRange(const void *start, u32 size)
+{
+    (void)start;
+    (void)size;
+}
+void DC_FlushRange(const void *start, u32 size)
+{
+    (void)start;
+    (void)size;
+}
 void DC_WaitWriteBufferEmpty(void) {}
 void IC_InvalidateAll(void) {}
-void IC_InvalidateRange(void *start, u32 size) { (void)start; (void)size; }
+void IC_InvalidateRange(void *start, u32 size)
+{
+    (void)start;
+    (void)size;
+}
 void OS_EnableProtectionUnit(void) {}
 void OS_DisableProtectionUnit(void) {}
-void OS_SetProtectionRegion1(u32 param) { (void)param; }
-void OS_SetProtectionRegion2(u32 param) { (void)param; }
-void OS_SetDPermissionsForProtectionRegion(u32 set, u32 flags) { (void)set; (void)flags; }
-void OS_UnLockCartridge(u16 lockId) { (void)lockId; }
+void OS_SetProtectionRegion1(u32 param)
+{
+    (void)param;
+}
+void OS_SetProtectionRegion2(u32 param)
+{
+    (void)param;
+}
+void OS_SetDPermissionsForProtectionRegion(u32 set, u32 flags)
+{
+    (void)set;
+    (void)flags;
+}
+void OS_UnLockCartridge(u16 lockId)
+{
+    (void)lockId;
+}
 
 /* The DTCM sits where the process maps it. */
 u32 OS_GetDTCMAddress(void)
@@ -162,7 +191,7 @@ void OSi_CancelDma0(void)
 {
     volatile u32 *const ime = &IO32(0x208);
     const u32 saved = *ime;
-    *ime = 0x04000000;  /* the register base, as the assembly stores it: bit 0 clear */
+    *ime = 0x04000000; /* the register base, as the assembly stores it: bit 0 clear */
     *ime = saved;
 }
 
@@ -179,7 +208,7 @@ void OSi_AlarmHandler(void)
 KHDAYS_HAL_TODO(OSi_ExceptionHandler)
 KHDAYS_HAL_TODO(OSi_GetAndDisplayContext)
 KHDAYS_HAL_TODO(OSi_SetExContext)
-KHDAYS_HAL_TODO(func_0200302c)  /* OSi_DisplayExContext */
+KHDAYS_HAL_TODO(func_0200302c) /* OSi_DisplayExContext */
 /* OS_ResetSystem (0x02003948): a restart of the whole console, the
  * parameter left for OS_GetResetParameter (runtime/core/start.c). */
 extern void khdays_reset_system(u32 parameter);
@@ -188,4 +217,4 @@ void OS_ResetSystem(u32 parameter)
 {
     khdays_reset_system(parameter);
 }
-KHDAYS_HAL_TODO(func_01ff8330)  /* OSi_DoBoot */
+KHDAYS_HAL_TODO(func_01ff8330) /* OSi_DoBoot */

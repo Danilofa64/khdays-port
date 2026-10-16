@@ -19,7 +19,9 @@ namespace studio {
 struct ScriptStep {
     std::uint8_t group = 0, command = 0, field = 0;
     std::vector<std::uint32_t> words;  // after the 4-byte header
-    std::size_t length() const { return 1 + words.size(); }  // in words
+    std::size_t length() const {
+        return 1 + words.size();
+    }  // in words
 };
 
 struct Script {
@@ -60,20 +62,34 @@ struct MissionFile {
 // row's class up to `limit` (docs/FORMATS.md, "Missions").
 struct EnemyKind {
     std::array<std::uint8_t, 16> raw{};
-    int id() const { return raw[0]; }
-    int kind() const { return raw[1] & 15; }
-    int high() const { return raw[1] >> 4; }
-    int param() const { return static_cast<std::int8_t>(raw[5]); }
-    int drop_key() const { return static_cast<std::int16_t>(raw[10] | raw[11] << 8); }
-    int drop_chance() const { return static_cast<std::int16_t>(raw[12] | raw[13] << 8); }
+    int id() const {
+        return raw[0];
+    }
+    int kind() const {
+        return raw[1] & 15;
+    }
+    int high() const {
+        return raw[1] >> 4;
+    }
+    int param() const {
+        return static_cast<std::int8_t>(raw[5]);
+    }
+    int drop_key() const {
+        return static_cast<std::int16_t>(raw[10] | raw[11] << 8);
+    }
+    int drop_chance() const {
+        return static_cast<std::int16_t>(raw[12] | raw[13] << 8);
+    }
 };
 struct EnemyGroupPart {
     std::uint8_t row = 0, limit = 0, count = 0, last_player = 0;
-    int spawned() const { return limit == 0xff ? count : std::min<int>(limit, count); }
+    int spawned() const {
+        return limit == 0xff ? count : std::min<int>(limit, count);
+    }
 };
 struct EnemyGroup {
-    std::uint8_t state = 0;     // +1 (bit 0: the group already made, Ov002_CreateSlotObjectAndStart skips it)
-    std::uint16_t total = 0;    // +2, not read by the code
+    std::uint8_t state = 0;   // +1 (bit 0: the group already made, Ov002_CreateSlotObjectAndStart skips it)
+    std::uint16_t total = 0;  // +2, not read by the code
     std::vector<EnemyGroupPart> parts;
 };
 struct EnemyTable {

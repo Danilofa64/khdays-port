@@ -20,7 +20,7 @@ def literal_lz10(payload: bytes) -> bytes:
     header = bytes([0x10]) + len(payload).to_bytes(3, "little")
     body = bytearray()
     for offset in range(0, len(payload), 8):
-        chunk = payload[offset:offset + 8]
+        chunk = payload[offset : offset + 8]
         body.append(0x00)
         body.extend(chunk)
     return header + bytes(body)
@@ -68,9 +68,7 @@ class DecompressDataTests(unittest.TestCase):
             self.assertEqual(len(records), 1)
             self.assertEqual((output / "asset.bin").read_bytes(), payload)
 
-            generated = json.loads(
-                (output / "decompressed_manifest.json").read_text(encoding="utf-8")
-            )
+            generated = json.loads((output / "decompressed_manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(generated["files"][0]["inner_magic_ascii"][:4], "BTX0")
 
 

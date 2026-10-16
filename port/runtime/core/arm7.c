@@ -57,16 +57,11 @@ static u32 pxi_skipped; /* touch samples skipped while the ARM9 was behind */
 static u32 pxi_kind_of(u32 tag, u32 data, u32 err)
 {
     switch (tag) {
-    case TAG_RTC:
-        return (data >> 8) & 0x7f;
-    case TAG_TP:
-        return (data & 0x2000000) ? 0x100 | ((data >> 8) & 0x7f) : 0x200 | ((data >> 8) & 0x7f);
-    case TAG_SOUND:
-        return data == 0 ? 0 : 1; /* process / a list's address */
-    case 11:
-        return err << 16 | (data < 0x100 ? data : 0xff);
-    default:
-        return err << 16 | (data & 0xffff);
+    case TAG_RTC: return (data >> 8) & 0x7f;
+    case TAG_TP: return (data & 0x2000000) ? 0x100 | ((data >> 8) & 0x7f) : 0x200 | ((data >> 8) & 0x7f);
+    case TAG_SOUND: return data == 0 ? 0 : 1; /* process / a list's address */
+    case 11: return err << 16 | (data < 0x100 ? data : 0xff);
+    default: return err << 16 | (data & 0xffff);
     }
 }
 
@@ -74,8 +69,9 @@ static void pxi_report(void)
 {
     fprintf(stderr, "pxi: %d kinds of message so far, %u touch samples skipped:\n", pxi_kind_count, pxi_skipped);
     for (int i = 0; i < pxi_kind_count; ++i) {
-        fprintf(stderr, "pxi:   %s tag %2u kind 0x%05x: %u\n", (pxi_kinds[i].key >> 31) ? "to the ARM9 " : "to the ARM7 ",
-                (pxi_kinds[i].key >> 24) & 0x1f, pxi_kinds[i].key & 0xffffff, pxi_kinds[i].count);
+        fprintf(stderr, "pxi:   %s tag %2u kind 0x%05x: %u\n",
+                (pxi_kinds[i].key >> 31) ? "to the ARM9 " : "to the ARM7 ", (pxi_kinds[i].key >> 24) & 0x1f,
+                pxi_kinds[i].key & 0xffffff, pxi_kinds[i].count);
     }
     fflush(stderr);
 }
@@ -112,8 +108,8 @@ static void pxi_note(int to_arm9, u32 tag, u32 data, u32 err)
         ++pxi_kind_count;
         khdays_diag_callers(callers, sizeof(callers), 2);
         fprintf(stderr, "pxi: first %s tag %u kind 0x%x (data 0x%07x, error %u) at VBlank %u: %s\n",
-                to_arm9 ? "to the ARM9" : "to the ARM7", tag, key & 0xffffff, data, err,
-                khdays_events_vblank_count(), callers);
+                to_arm9 ? "to the ARM9" : "to the ARM7", tag, key & 0xffffff, data, err, khdays_events_vblank_count(),
+                callers);
         fflush(stderr);
     }
     ++pxi_kinds[i].count;
@@ -226,7 +222,7 @@ static void rtc_service(u32 data, u32 err)
 
 static u32 tp_words[4];
 static int tp_count;
-static u32 tp_auto_frequency;  /* 0 = off */
+static u32 tp_auto_frequency; /* 0 = off */
 
 static void tp_sample(void)
 {
@@ -250,24 +246,15 @@ static void tp_service(u32 data, u32 err)
         tp_words[tp_count++] = data;
     }
     if (!(data & 0x1000000)) {
-        return;  /* more words to come */
+        return; /* more words to come */
     }
     command = (tp_words[0] >> 8) & 0x7f;
     switch (command) {
-    case 0:
-        tp_sample();
-        break;
-    case 1:
-        tp_auto_frequency = tp_words[0] & 0xff;
-        break;
-    case 2:
-        tp_auto_frequency = 0;
-        break;
-    case 3:
-        break;
-    default:
-        refused(TAG_TP, tp_words[0], "a touch panel command, not answered here: refused");
-        return;
+    case 0: tp_sample(); break;
+    case 1: tp_auto_frequency = tp_words[0] & 0xff; break;
+    case 2: tp_auto_frequency = 0; break;
+    case 3: break;
+    default: refused(TAG_TP, tp_words[0], "a touch panel command, not answered here: refused"); return;
     }
     khdays_arm7_reply(TAG_TP, 0x1000000 | command << 8, 0);
 }
@@ -383,7 +370,7 @@ static int backup_range(u32 offset, u32 length)
 
 static void card_service(u32 data, u32 err)
 {
-    u32 result = 0;  /* CARD_RESULT_SUCCESS */
+    u32 result = 0; /* CARD_RESULT_SUCCESS */
     if (!err) {
         /* the backup's requests always carry it (CARDi_Request) */
         said_once(TAG_FS, data, "a backup word without the request flag: ignored");
@@ -396,12 +383,8 @@ static void card_service(u32 data, u32 err)
         return;
     }
     switch (data) {
-    case 0:  /* INIT: the command block's address comes next */
-        card_expect_address = 1;
-        return;
-    case 2:
-        backup_identify(CARD_CMD(0x04));
-        break;
+    case 0: /* INIT: the command block's address comes next */ card_expect_address = 1; return;
+    case 2: backup_identify(CARD_CMD(0x04)); break;
     case 6: {
         const u32 src = CARD_CMD(0x0c), dst = CARD_CMD(0x10), len = CARD_CMD(0x14);
         if (!backup_range(src, len)) {
@@ -452,7 +435,7 @@ static void card_service(u32 data, u32 err)
             u32 at;
             const u8 *b = khdays_slots_byte(dst + i, 0, &at);
             if (b == NULL || *b != *(volatile u8 *)KHDAYS_W(src + i)) {
-                result = 1;  /* CARD_RESULT_FAILURE */
+                result = 1; /* CARD_RESULT_FAILURE */
                 break;
             }
         }
@@ -484,13 +467,8 @@ static void pm_service(u32 data, u32 err)
 }
 
 static void (*const services[32])(u32 data, u32 err) = {
-    [TAG_RTC] = rtc_service,
-    [TAG_TP] = tp_service,
-    [TAG_SOUND] = sound_service,
-    [TAG_PM] = pm_service,
-    [TAG_FS] = card_service,
-    [TAG_OS] = os_service,
-    [TAG_CTRDG] = ctrdg_service,
+    [TAG_RTC] = rtc_service, [TAG_TP] = tp_service, [TAG_SOUND] = sound_service, [TAG_PM] = pm_service,
+    [TAG_FS] = card_service, [TAG_OS] = os_service, [TAG_CTRDG] = ctrdg_service,
 };
 
 void khdays_arm7_reset(void)
@@ -504,7 +482,7 @@ void khdays_arm7_reset(void)
     pm_first = 0;
     khdays_pxi_reset();
     ARM7_HANDLE_CHECKER = 0;
-    *(volatile u16 *)KHDAYS_W(0x027fffa8) = khdays_input_xy();  /* X, Y, hinge */
+    *(volatile u16 *)KHDAYS_W(0x027fffa8) = khdays_input_xy(); /* X, Y, hinge */
     for (u32 tag = 0; tag < 32; ++tag) {
         if (services[tag] != NULL) {
             ARM7_HANDLE_CHECKER |= 1u << tag;
@@ -525,4 +503,3 @@ void khdays_arm7_receive(u32 word)
     }
     services[tag](data, err);
 }
-

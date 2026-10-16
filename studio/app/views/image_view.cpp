@@ -20,7 +20,8 @@ namespace {
 // with it.
 void fill_to(float y) {
     const float rest = y - ImGui::GetCursorPosY();
-    if (rest > 0) ImGui::Dummy(ImVec2(1.0f, rest));
+    if (rest > 0)
+        ImGui::Dummy(ImVec2(1.0f, rest));
 }
 
 // The box is always taken whole, so what follows stays in place whatever the
@@ -50,10 +51,13 @@ void draw_picture(App& app, const fs::path& png, ImVec2 box) {
                                 dark ? IM_COL32(60, 60, 64, 255) : IM_COL32(90, 90, 96, 255));
         }
     }
-    if (pio.DrawCallback_SetSamplerNearest != nullptr) list->AddCallback(pio.DrawCallback_SetSamplerNearest, nullptr);
+    if (pio.DrawCallback_SetSamplerNearest != nullptr)
+        list->AddCallback(pio.DrawCallback_SetSamplerNearest, nullptr);
     ImGui::Image(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(image.texture))), size);
-    if (pio.DrawCallback_SetSamplerLinear != nullptr) list->AddCallback(pio.DrawCallback_SetSamplerLinear, nullptr);
-    ImGui::TextDisabled("%s", fmt(app.language, S::size, {std::to_string(image.width), std::to_string(image.height)}).c_str());
+    if (pio.DrawCallback_SetSamplerLinear != nullptr)
+        list->AddCallback(pio.DrawCallback_SetSamplerLinear, nullptr);
+    ImGui::TextDisabled(
+        "%s", fmt(app.language, S::size, {std::to_string(image.width), std::to_string(image.height)}).c_str());
     fill_to(start.y + box.y + line);
 }
 
@@ -78,13 +82,15 @@ S verdict_word(Verdict v) {
 // Saves the candidate into the mod, as the port reads it.
 void save(App& app, const Item& item) {
     const Mod* m = app.current_mod();
-    if (m == nullptr || app.candidate.item != app.selected) return;
+    if (m == nullptr || app.candidate.item != app.selected)
+        return;
     const std::string ext = item.kind == Kind::sound ? lower(u8(app.candidate.staged.extension())) : ".png";
     const fs::path destination = m->dir / path_u8(replacement_path(item, ext, app.candidate.any_palette));
     const fs::path staged = app.candidate.staged;
     int ow = 0, oh = 0;
     std::string ignored;
-    if (item.kind == Kind::texture || item.kind == Kind::sheet) png_size(item.original, &ow, &oh, &ignored);
+    if (item.kind == Kind::texture || item.kind == Kind::sheet)
+        png_size(item.original, &ow, &oh, &ignored);
 
     const WriteResult r = write_into_mod(
         m->dir, destination, [&](const fs::path& temporary) { return copy_bytes(staged, temporary); },
@@ -92,7 +98,8 @@ void save(App& app, const Item& item) {
             CheckResult c = item.kind == Kind::texture ? check_texture(temporary, ow, oh)
                             : item.kind == Kind::sheet ? check_sheet(temporary, ow, oh)
                                                        : check_sound(temporary);
-            if (c.verdict != Verdict::refused) return {};
+            if (c.verdict != Verdict::refused)
+                return {};
             return c.findings.empty() ? std::string("refused") : finding_text(app, c.findings.back());
         });
     if (!r.ok) {
@@ -104,7 +111,8 @@ void save(App& app, const Item& item) {
     if (item.kind == Kind::sound) {
         for (const auto& f : files_in_mod(m->dir, item)) {
             std::error_code ec;
-            if (!fs::equivalent(f, destination, ec)) fs::remove(f, ec);
+            if (!fs::equivalent(f, destination, ec))
+                fs::remove(f, ec);
         }
     }
     app.images->forget(destination);
@@ -123,13 +131,17 @@ void choose_file(App& app, const Item& item) {
     const bool picture = item.kind == Kind::texture || item.kind == Kind::sheet;
     SDL_ShowOpenFileDialog(
         [](void* user, const char* const* files, int) {
-            if (files == nullptr || files[0] == nullptr) return;
+            if (files == nullptr || files[0] == nullptr)
+                return;
             App* a = static_cast<App*>(user);
             std::lock_guard lock(a->dialog_mutex);
             a->dialog_files.emplace_back(files[0]);
         },
-        &app, app.window, picture ? pictures : item.kind == Kind::model || item.kind == Kind::room ? models : sounds, 1, nullptr,
-        false);
+        &app, app.window,
+        picture                                               ? pictures
+        : item.kind == Kind::model || item.kind == Kind::room ? models
+                                                              : sounds,
+        1, nullptr, false);
 }
 
 void draw_item(App& app) {
@@ -148,14 +160,14 @@ void draw_item(App& app) {
     // which file the game uses now
     const auto held = holders(app.mods_root, item);
     if (item.kind != Kind::movie) {  // a movie's view says it, the player's own HD video included
-        ImGui::TextUnformatted(
-            fmt(app.language, S::in_game_now,
-                {held.empty() ? std::string(tr(app.language, S::from_game)) : held.front().mod})
-                .c_str());
+        ImGui::TextUnformatted(fmt(app.language, S::in_game_now,
+                                   {held.empty() ? std::string(tr(app.language, S::from_game)) : held.front().mod})
+                                   .c_str());
     }
     if (held.size() > 1) {
         ImGui::TextDisabled("%s", tr(app.language, S::held_by));
-        for (const auto& h : held) ImGui::BulletText("%s  %s", h.mod.c_str(), u8(h.file.filename()).c_str());
+        for (const auto& h : held)
+            ImGui::BulletText("%s  %s", h.mod.c_str(), u8(h.file.filename()).c_str());
     }
     ImGui::Separator();
 
@@ -179,35 +191,43 @@ void draw_candidate_controls(App& app, const Item& item) {
     }
     ImGui::TextUnformatted(tr(app.language, S::drop_here));
     same_line_if_room(button_width(tr(app.language, S::choose_file)));
-    if (ImGui::Button(tr(app.language, S::choose_file))) choose_file(app, item);
-    if (!app.candidate_error.empty()) ImGui::TextColored(verdict_colour(Verdict::refused), "%s", app.candidate_error.c_str());
-    if (app.candidate.item != app.selected) return;
+    if (ImGui::Button(tr(app.language, S::choose_file)))
+        choose_file(app, item);
+    if (!app.candidate_error.empty())
+        ImGui::TextColored(verdict_colour(Verdict::refused), "%s", app.candidate_error.c_str());
+    if (app.candidate.item != app.selected)
+        return;
 
     ImGui::TextDisabled("%s", u8(app.candidate.source).c_str());
     ImGui::TextColored(verdict_colour(app.candidate.check.verdict), "%s",
                        tr(app.language, verdict_word(app.candidate.check.verdict)));
-    for (const auto& f : app.candidate.check.findings) ImGui::BulletText("%s", finding_text(app, f).c_str());
-    if (!any_palette_key(item).empty()) ImGui::Checkbox(tr(app.language, S::any_palette), &app.candidate.any_palette);
+    for (const auto& f : app.candidate.check.findings)
+        ImGui::BulletText("%s", finding_text(app, f).c_str());
+    if (!any_palette_key(item).empty())
+        ImGui::Checkbox(tr(app.language, S::any_palette), &app.candidate.any_palette);
 
     ImGui::BeginDisabled(app.candidate.check.verdict == Verdict::refused);
     const Mod* m = app.current_mod();
     const auto existing = files_in_mod(m->dir, item);
     if (ImGui::Button(tr(app.language, S::save))) {
-        if (existing.empty()) save(app, item);
-        else ImGui::OpenPopup("###overwrite");
+        if (existing.empty())
+            save(app, item);
+        else
+            ImGui::OpenPopup("###overwrite");
     }
     ImGui::EndDisabled();
     if (ImGui::BeginPopupModal((std::string(tr(app.language, S::replace)) + "###overwrite").c_str(), nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted(
-            fmt(app.language, S::overwrite_confirm, {existing.empty() ? std::string() : u8(existing.front().filename())})
-                .c_str());
+        ImGui::TextUnformatted(fmt(app.language, S::overwrite_confirm,
+                                   {existing.empty() ? std::string() : u8(existing.front().filename())})
+                                   .c_str());
         if (ImGui::Button(tr(app.language, S::replace))) {
             save(app, item);
             ImGui::CloseCurrentPopup();
         }
         same_line_if_room(button_width(tr(app.language, S::cancel)));
-        if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr(app.language, S::cancel)))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 }
@@ -240,8 +260,10 @@ void draw_image_view(App& app, const Item& item) {
         draw_picture(app, item.original, ImVec2(half, box_h));
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted(tr(app.language, S::replacement));
-        if (!replacement.empty()) draw_picture(app, replacement, ImVec2(half, box_h));
-        else ImGui::Dummy(ImVec2(half, box_h + ImGui::GetTextLineHeightWithSpacing()));
+        if (!replacement.empty())
+            draw_picture(app, replacement, ImVec2(half, box_h));
+        else
+            ImGui::Dummy(ImVec2(half, box_h + ImGui::GetTextLineHeightWithSpacing()));
         ImGui::EndTable();
     }
     ImGui::Separator();

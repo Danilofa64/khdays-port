@@ -59,7 +59,8 @@ std::uint32_t le32(const std::vector<std::uint8_t>& d, std::size_t at) {
 std::vector<std::size_t> bca0s(const std::vector<std::uint8_t>& d) {
     std::vector<std::size_t> out;
     for (std::size_t at = 0; at + 0x18 <= d.size(); at += 4) {
-        if (std::memcmp(&d[at], "BCA0", 4) == 0 && le32(d, at + 8) <= d.size() - at) out.push_back(at);
+        if (std::memcmp(&d[at], "BCA0", 4) == 0 && le32(d, at + 8) <= d.size() - at)
+            out.push_back(at);
     }
     return out;
 }
@@ -70,13 +71,15 @@ int label_entry(const std::string& label) {
 }
 
 // The data `label` names in `file`, and how to put it back.
-bool unwrap(const std::vector<std::uint8_t>& file, const std::string& label, P2File* p2, std::vector<std::uint8_t>* data,
-            std::string* why) {
+bool unwrap(const std::vector<std::uint8_t>& file, const std::string& label, P2File* p2,
+            std::vector<std::uint8_t>* data, std::string* why) {
     const int entry = label_entry(label);
     if (entry >= 0) {
-        if (!parse_p2(file, p2, why)) return false;
+        if (!parse_p2(file, p2, why))
+            return false;
         if (static_cast<std::size_t>(entry) >= p2->entries.size()) {
-            if (why != nullptr) *why = "no entry " + std::to_string(entry);
+            if (why != nullptr)
+                *why = "no entry " + std::to_string(entry);
             return false;
         }
         *data = p2->entries[static_cast<std::size_t>(entry)].data;
@@ -86,7 +89,8 @@ bool unwrap(const std::vector<std::uint8_t>& file, const std::string& label, P2F
         try {
             *data = assets::lz_decompress(file);
         } catch (const std::exception& e) {
-            if (why != nullptr) *why = e.what();
+            if (why != nullptr)
+                *why = e.what();
             return false;
         }
         return true;
@@ -128,44 +132,54 @@ bool rebuild_with_animation(const std::vector<std::uint8_t>& file, const std::ve
                             std::string* why) {
     P2File p2, original_p2;
     std::vector<std::uint8_t> data, original_data;
-    if (!unwrap(original, label, &original_p2, &original_data, why)) return false;
-    if (!unwrap(file, label, &p2, &data, why)) return false;
+    if (!unwrap(original, label, &original_p2, &original_data, why))
+        return false;
+    if (!unwrap(file, label, &p2, &data, why))
+        return false;
     std::vector<std::uint8_t> rebuilt;
     std::size_t at = 0;
     if (is_kaph(original_data)) {
         // the block by its order in the game's own file
         KaphFile kaph, original_kaph;
-        if (!parse_kaph(original_data, &original_kaph, why)) return false;
+        if (!parse_kaph(original_data, &original_kaph, why))
+            return false;
         std::size_t order = original_kaph.blocks.size();
         for (std::size_t b = 0; b < original_kaph.blocks.size(); ++b) {
-            if (original_kaph.blocks[b].offset == offset) order = b;
+            if (original_kaph.blocks[b].offset == offset)
+                order = b;
         }
         if (order == original_kaph.blocks.size()) {
-            if (why != nullptr) *why = "no KAPH block at the animation's place";
+            if (why != nullptr)
+                *why = "no KAPH block at the animation's place";
             return false;
         }
         if (!is_kaph(data) || !parse_kaph(data, &kaph, why) || kaph.blocks.size() != original_kaph.blocks.size()) {
-            if (why != nullptr) *why = "the mod's copy of the file is not laid out as the game's";
+            if (why != nullptr)
+                *why = "the mod's copy of the file is not laid out as the game's";
             return false;
         }
         std::vector<std::uint8_t> bca0;
-        if (!replace_bca0_animation(kaph.blocks[order].data, index, pose, keep, &original_kaph.blocks[order].data, &bca0,
-                                    why)) {
+        if (!replace_bca0_animation(kaph.blocks[order].data, index, pose, keep, &original_kaph.blocks[order].data,
+                                    &bca0, why)) {
             return false;
         }
         kaph.blocks[order].data = std::move(bca0);
         rebuilt = write_kaph(kaph);
         KaphFile written;
-        if (!parse_kaph(rebuilt, &written, why)) return false;
+        if (!parse_kaph(rebuilt, &written, why))
+            return false;
         at = written.blocks[order].offset;
     } else if (offset == 0) {
-        if (!replace_bca0_animation(data, index, pose, keep, &original_data, &rebuilt, why)) return false;
+        if (!replace_bca0_animation(data, index, pose, keep, &original_data, &rebuilt, why))
+            return false;
     } else {
-        if (why != nullptr) *why = "the animation is inside data the tool cannot rebuild (not a KAPH)";
+        if (why != nullptr)
+            *why = "the animation is inside data the tool cannot rebuild (not a KAPH)";
         return false;
     }
     *out = wrap(label, p2, original[0], std::move(rebuilt));
-    if (new_offset != nullptr) *new_offset = at;
+    if (new_offset != nullptr)
+        *new_offset = at;
     return true;
 }
 
@@ -173,20 +187,24 @@ bool read_animation(const std::vector<std::uint8_t>& file, const std::string& la
                     std::size_t index, assets::SkeletalAnimation* out, std::string* why) {
     P2File p2;
     std::vector<std::uint8_t> data;
-    if (!unwrap(file, label, &p2, &data, why)) return false;
+    if (!unwrap(file, label, &p2, &data, why))
+        return false;
     if (offset + 0x10 > data.size()) {
-        if (why != nullptr) *why = "no animation there";
+        if (why != nullptr)
+            *why = "no animation there";
         return false;
     }
     const std::size_t size = le32(data, offset + 8);
     if (offset + size > data.size()) {
-        if (why != nullptr) *why = "the animation runs past its data";
+        if (why != nullptr)
+            *why = "the animation runs past its data";
         return false;
     }
     try {
         *out = assets::load_nsbca(&data[offset], size, index);
     } catch (const std::exception& e) {
-        if (why != nullptr) *why = e.what();
+        if (why != nullptr)
+            *why = e.what();
         return false;
     }
     return true;
@@ -237,11 +255,12 @@ std::string where_worst(const AnimationPose& pose, const assets::SkeletalAnimati
                 lp += o[static_cast<std::size_t>(4 * p + k)] * o[static_cast<std::size_t>(4 * p + k)];
                 lq += o[static_cast<std::size_t>(4 * q + k)] * o[static_cast<std::size_t>(4 * q + k)];
             }
-            if (lp > 1e-12f && lq > 1e-12f) skew = std::max(skew, std::fabs(dot) / std::sqrt(lp * lq));
+            if (lp > 1e-12f && lq > 1e-12f)
+                skew = std::max(skew, std::fabs(dot) / std::sqrt(lp * lq));
         }
     }
-    return " (frame " + std::to_string(wf) + " node " + std::to_string(wn) + " element " + std::to_string(wi) +
-           ": " + std::to_string(want_at) + " read " + std::to_string(got_at) + "; its columns' cosine " +
+    return " (frame " + std::to_string(wf) + " node " + std::to_string(wn) + " element " + std::to_string(wi) + ": " +
+           std::to_string(want_at) + " read " + std::to_string(got_at) + "; its columns' cosine " +
            std::to_string(skew) + ")";
 }
 
@@ -249,15 +268,18 @@ std::string where_worst(const AnimationPose& pose, const assets::SkeletalAnimati
 
 std::vector<std::string> nodes_not_plain(const GameModel& g) {
     std::vector<std::string> out;
-    if (g.model.skinning == nullptr) return out;  // its rest is its nodes' own matrices: nothing to compare
+    if (g.model.skinning == nullptr)
+        return out;  // its rest is its nodes' own matrices: nothing to compare
     for (std::size_t b = 0; b < g.rest.size() && b < g.model.object_matrices.size(); ++b) {
         const int p = g.parents[b];
         const Mat local = p >= 0 && static_cast<std::size_t>(p) < g.rest.size()
                               ? mat_mul(mat_inverse(g.rest[static_cast<std::size_t>(p)]), g.rest[b])
                               : g.rest[b];
         float worst = 0;
-        for (std::size_t i = 0; i < 16; ++i) worst = std::max(worst, std::fabs(local[i] - g.model.object_matrices[b][i]));
-        if (worst > 1e-3f) out.push_back(g.model.object_names[b]);
+        for (std::size_t i = 0; i < 16; ++i)
+            worst = std::max(worst, std::fabs(local[i] - g.model.object_matrices[b][i]));
+        if (worst > 1e-3f)
+            out.push_back(g.model.object_names[b]);
     }
     return out;
 }
@@ -266,11 +288,13 @@ bool replace_animation_in_mod(const fs::path& nitrofs, const fs::path& mod_dir, 
                               const GameAnimation& a, const fs::path& clip_file, AnimationReplacement* out,
                               std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
     assets::SkeletalAnimation original_animation;
-    if (!load_game_animation(nitrofs, a, &original_animation, why)) return false;
+    if (!load_game_animation(nitrofs, a, &original_animation, why))
+        return false;
     Clip clip;
     std::string reason;
     if (!load_clip(clip_file, g.model.object_names, animation_pose(g, original_animation), &clip, &reason,
@@ -280,7 +304,8 @@ bool replace_animation_in_mod(const fs::path& nitrofs, const fs::path& mod_dir, 
 
     const std::string game_path = label_path(a.label);
     const std::vector<std::uint8_t> original = read_all(nitrofs / path_u8(game_path));
-    if (original.empty()) return fail("cannot read the game's " + game_path);
+    if (original.empty())
+        return fail("cannot read the game's " + game_path);
     const fs::path destination = mod_dir / "files" / path_u8(game_path);
     std::error_code ec;
     const bool on_copy = fs::is_regular_file(destination, ec);
@@ -288,7 +313,8 @@ bool replace_animation_in_mod(const fs::path& nitrofs, const fs::path& mod_dir, 
     std::vector<std::uint8_t> rebuilt;
     std::size_t at = 0;
     std::vector<bool> keep(clip.moved.size());
-    for (std::size_t n = 0; n < keep.size(); ++n) keep[n] = !clip.moved[n];
+    for (std::size_t n = 0; n < keep.size(); ++n)
+        keep[n] = !clip.moved[n];
     if (!rebuild_with_animation(base, original, a.label, a.offset, a.index, clip.pose, keep, &rebuilt, &at, &reason)) {
         return fail(reason);
     }
@@ -297,7 +323,8 @@ bool replace_animation_in_mod(const fs::path& nitrofs, const fs::path& mod_dir, 
     AnimationPose expected = clip.pose;
     for (auto& frame : expected) {
         for (std::size_t n = 0; n < frame.size(); ++n) {
-            if (!keep[n]) frame[n] = bca0_trs(frame[n]);
+            if (!keep[n])
+                frame[n] = bca0_trs(frame[n]);
         }
     }
     float difference = 0;
@@ -315,10 +342,12 @@ bool replace_animation_in_mod(const fs::path& nitrofs, const fs::path& mod_dir, 
                 return "the written file does not read back: " + problem;
             }
             difference = pose_difference(expected, read);
-            if (difference > 2e-3f) return "the written animation reads back different from the clip";
+            if (difference > 2e-3f)
+                return "the written animation reads back different from the clip";
             return {};
         });
-    if (!w.ok) return fail(w.why);
+    if (!w.ok)
+        return fail(w.why);
     AnimationReplacement r;
     r.written = destination;
     r.clip_name = clip.name;
@@ -336,7 +365,8 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
     std::error_code ec;
     for (fs::recursive_directory_iterator it(nitrofs, ec), end; !ec && it != end; it.increment(ec)) {
         std::error_code type_ec;
-        if (it->is_regular_file(type_ec)) files.push_back(u8(it->path().lexically_relative(nitrofs)));
+        if (it->is_regular_file(type_ec))
+            files.push_back(u8(it->path().lexically_relative(nitrofs)));
     }
     std::sort(files.begin(), files.end());
     int animations = 0, problems = 0, not_rotations = 0, not_replaceable = 0, labels = 0, label_problems = 0;
@@ -356,13 +386,14 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
         const std::vector<std::uint8_t> whole = read_all(nitrofs / path_u8(file));
         for (const auto& data : game_file_data(nitrofs, file)) {
             const auto found = bca0s(data.bytes);
-            if (found.empty()) continue;
+            if (found.empty())
+                continue;
             ++labels;
             AnimationPose first_pose;
             for (const std::size_t at : found) {
-                const std::vector<std::uint8_t> bca0(
-                    data.bytes.begin() + static_cast<std::ptrdiff_t>(at),
-                    data.bytes.begin() + static_cast<std::ptrdiff_t>(at + le32(data.bytes, at + 8)));
+                const std::vector<std::uint8_t> bca0(data.bytes.begin() + static_cast<std::ptrdiff_t>(at),
+                                                     data.bytes.begin() +
+                                                         static_cast<std::ptrdiff_t>(at + le32(data.bytes, at + 8)));
                 for (std::size_t i = 0;; ++i) {
                     assets::SkeletalAnimation a;
                     try {
@@ -371,20 +402,22 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
                         break;
                     }
                     ++animations;
-                    const std::string where = data.label + " @" + std::to_string(at) + " animation " + std::to_string(i);
+                    const std::string where =
+                        data.label + " @" + std::to_string(at) + " animation " + std::to_string(i);
                     AnimationPose pose;
                     const std::vector<Mat> rest(a.bones.size(), kIdentity);
                     for (int f = 0; f < a.frame_count; ++f) {
                         const auto m = assets::sample_animation(a, static_cast<float>(f), rest);
                         pose.emplace_back(m.begin(), m.end());
                     }
-                    if (at == found.front() && i == 0) first_pose = pose;
+                    if (at == found.front() && i == 0)
+                        first_pose = pose;
                     std::vector<std::uint8_t> replaced;
                     std::string why;
                     assets::SkeletalAnimation read;
                     // every node kept: it reads back as it was
-                    if (!replace_bca0_animation(bca0, i, pose, std::vector<bool>(a.bones.size(), true), nullptr, &replaced,
-                                                &why) ||
+                    if (!replace_bca0_animation(bca0, i, pose, std::vector<bool>(a.bones.size(), true), nullptr,
+                                                &replaced, &why) ||
                         !read_back(replaced, i, &read, &why)) {
                         ++problems;
                         line(where + ", every node kept: " + why);
@@ -399,7 +432,8 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
                     // every node replaced by itself: it reads back as the format holds it
                     if (a.frame_count == 0 || a.frame_count > 0x0FFF) {
                         ++not_replaceable;
-                        line(where + ": " + std::to_string(a.frame_count) + " frames, not replaceable (a curve's 12 bits)");
+                        line(where + ": " + std::to_string(a.frame_count) +
+                             " frames, not replaceable (a curve's 12 bits)");
                         continue;
                     }
                     AnimationPose nearest = pose;
@@ -408,12 +442,14 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
                         for (auto& m : f) {
                             const Mat n = bca0_trs(m);
                             for (std::size_t e = 0; e < 16; ++e) {
-                                if (element_difference(m, n, e) > 2e-3f) all_rotations = false;
+                                if (element_difference(m, n, e) > 2e-3f)
+                                    all_rotations = false;
                             }
                             m = n;
                         }
                     }
-                    if (!all_rotations) ++not_rotations;
+                    if (!all_rotations)
+                        ++not_rotations;
                     if (!replace_bca0_animation(bca0, i, pose, {}, nullptr, &replaced, &why) ||
                         !read_back(replaced, i, &read, &why)) {
                         ++problems;
@@ -435,23 +471,27 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
             std::string why;
             if (unwrap(whole, data.label, &p2, &inner, &why) && is_kaph(inner)) {
                 KaphFile k;
-                if (!parse_kaph(inner, &k, &why)) ++unchanged["KAPH not parsed"];
-                else ++unchanged[write_kaph(k) == inner ? "KAPH the same bytes" : "KAPH different bytes"];
+                if (!parse_kaph(inner, &k, &why))
+                    ++unchanged["KAPH not parsed"];
+                else
+                    ++unchanged[write_kaph(k) == inner ? "KAPH the same bytes" : "KAPH different bytes"];
             }
-            if (first_pose.empty() || first_pose.size() > 0x0FFF) continue;
+            if (first_pose.empty() || first_pose.size() > 0x0FFF)
+                continue;
             std::vector<bool> keep(first_pose.front().size());
             AnimationPose expected = first_pose;
             for (std::size_t n = 0; n < keep.size(); ++n) {
                 keep[n] = n % 2 == 0;
                 if (!keep[n]) {
-                    for (auto& f : expected) f[n] = bca0_trs(f[n]);
+                    for (auto& f : expected)
+                        f[n] = bca0_trs(f[n]);
                 }
             }
             std::vector<std::uint8_t> rebuilt;
             std::size_t at = 0;
             assets::SkeletalAnimation read;
-            bool ok = rebuild_with_animation(whole, whole, data.label, found.front(), 0, first_pose, keep, &rebuilt, &at,
-                                             &why) &&
+            bool ok = rebuild_with_animation(whole, whole, data.label, found.front(), 0, first_pose, keep, &rebuilt,
+                                             &at, &why) &&
                       read_animation(rebuilt, data.label, at, 0, &read, &why);
             if (ok && pose_difference(expected, read) > 2e-3f) {
                 ok = false;
@@ -463,13 +503,15 @@ bool check_all_animations(const fs::path& nitrofs, const std::function<void(cons
             }
         }
     }
-    for (const auto& [what, count] : unchanged) line(std::to_string(count) + " " + what + " when rebuilt unchanged");
-    line(std::to_string(animations) + " animations: " + std::to_string(problems) + " problems; kept nodes' largest difference " +
-         std::to_string(worst_kept) + ", replaced nodes' " + std::to_string(worst_new) + "; " +
-         std::to_string(not_rotations) + " with frames that are not a rotation times a scale (written as the nearest), " +
+    for (const auto& [what, count] : unchanged)
+        line(std::to_string(count) + " " + what + " when rebuilt unchanged");
+    line(std::to_string(animations) + " animations: " + std::to_string(problems) +
+         " problems; kept nodes' largest difference " + std::to_string(worst_kept) + ", replaced nodes' " +
+         std::to_string(worst_new) + "; " + std::to_string(not_rotations) +
+         " with frames that are not a rotation times a scale (written as the nearest), " +
          std::to_string(not_replaceable) + " not replaceable");
-    line(std::to_string(labels) + " files' data rebuilt with an animation half replaced: " + std::to_string(label_problems) +
-         " problems");
+    line(std::to_string(labels) +
+         " files' data rebuilt with an animation half replaced: " + std::to_string(label_problems) + " problems");
     return problems == 0 && label_problems == 0;
 }
 

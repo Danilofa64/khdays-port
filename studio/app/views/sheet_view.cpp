@@ -48,7 +48,7 @@ struct SheetView {
     // screen that stands for it or given by the modder, kept in the mod
     std::vector<int> tile_rows, screen_rows;
     bool painting = false, dragging = false;
-    ImVec2 drag_from{};               // in the assembly's pixels
+    ImVec2 drag_from{};                // in the assembly's pixels
     int whole_top = 0, whole_end = 0;  // where the sheet as it is lies in the picture
     Assembly assembly;
     assets::Palette2D colours;
@@ -95,10 +95,12 @@ void take_edited() {
     v.have_result = false;
     v.result_error.clear();
     ++v.result_version;
-    if (v.edited.empty()) return;
-    v.have_result = take_back(v.source, v.assembly, v.current, v.colours, v.edited, v.ew, v.eh, v.mode, false, &v.result,
-                              &v.result_error);
-    if (v.have_result) v.result_picture = render_assembly(v.source, v.assembly, v.result.sheet, v.colours);
+    if (v.edited.empty())
+        return;
+    v.have_result = take_back(v.source, v.assembly, v.current, v.colours, v.edited, v.ew, v.eh, v.mode, false,
+                              &v.result, &v.result_error);
+    if (v.have_result)
+        v.result_picture = render_assembly(v.source, v.assembly, v.result.sheet, v.colours);
 }
 
 // The picture again: the arrangements chosen, one under the other, the sheet
@@ -109,11 +111,13 @@ void rebuild(App& app) {
     v.game_picture.clear();
     v.assembly = Assembly{};
     v.error.clear();
-    if (v.fits.empty()) return;
+    if (v.fits.empty())
+        return;
     Arrangement with_palette;
     with_palette.palette = v.palette;
     v.colours = arrangement_palette(v.source, with_palette);
-    v.current = current_sheet(mod_dir(app), app.catalog.items[static_cast<std::size_t>(v.item)].key, v.source, &v.current_from);
+    v.current =
+        current_sheet(mod_dir(app), app.catalog.items[static_cast<std::size_t>(v.item)].key, v.source, &v.current_from);
     const SheetPixels small = rescale(v.current, 1);
     v.thumbs.assign(v.fits.size(), {});
     std::vector<Arrangement> list;
@@ -123,10 +127,12 @@ void rebuild(App& app) {
         if (assemble(v.source, a, &one, nullptr)) {
             v.thumbs[i] = {render_assembly(v.source, one, small, v.colours), one.width, one.height};
         }
-        if (v.chosen[i]) list.push_back(a);
+        if (v.chosen[i])
+            list.push_back(a);
     }
     std::string why;
-    if (list.empty()) return;
+    if (list.empty())
+        return;
     std::vector<int> tops;
     if (!assemble_stack(v.source, list, &v.assembly, &tops, &why)) {
         v.error = why;
@@ -134,7 +140,8 @@ void rebuild(App& app) {
     }
     v.whole_top = v.whole_end = 0;
     for (std::size_t i = 0; i < list.size(); ++i) {
-        if (list[i].whole) v.whole_top = tops[i], v.whole_end = tops[i] + v.source.height();
+        if (list[i].whole)
+            v.whole_top = tops[i], v.whole_end = tops[i] + v.source.height();
     }
     v.picture = render_assembly(v.source, v.assembly, v.current, v.colours);
     v.game = v.current_from.empty() ? v.current : game_sheet_pixels(v.source);
@@ -142,8 +149,10 @@ void rebuild(App& app) {
     v.unseen.clear();
     if (v.palette == v.source.seen_palette) {
         for (int t = 0; t < v.source.tiles; ++t) {
-            const int own = static_cast<std::size_t>(t) < v.tile_rows.size() ? v.tile_rows[static_cast<std::size_t>(t)] : -1;
-            if ((own < 0 ? v.row : own) == kUnseenRow && tile_draws(v.source, t)) v.unseen.push_back(t);
+            const int own =
+                static_cast<std::size_t>(t) < v.tile_rows.size() ? v.tile_rows[static_cast<std::size_t>(t)] : -1;
+            if ((own < 0 ? v.row : own) == kUnseenRow && tile_draws(v.source, t))
+                v.unseen.push_back(t);
         }
     }
     take_edited();
@@ -174,20 +183,24 @@ void open(App& app) {
     if (const auto kept = rows_without_mod.find(item.key); v.tile_rows.empty() && kept != rows_without_mod.end()) {
         v.tile_rows = kept->second;
     }
-    if (v.tile_rows.empty()) v.tile_rows = v.screen_rows;
+    if (v.tile_rows.empty())
+        v.tile_rows = v.screen_rows;
     v.chosen.assign(v.fits.size(), false);
-    for (std::size_t i = 0; i < choice.together; ++i) v.chosen[i] = true;
+    for (std::size_t i = 0; i < choice.together; ++i)
+        v.chosen[i] = true;
     rebuild(app);
 }
 
 std::string arrangement_name(App& app, const Arrangement& a) {
     try {
-        if (a.whole) return fmt(app.language, S::sheet_whole, {std::to_string(v.row)});
+        if (a.whole)
+            return fmt(app.language, S::sheet_whole, {std::to_string(v.row)});
         if (!a.cells) {
             const auto& r = v.source.screens[static_cast<std::size_t>(a.resource)];
             const auto map = assets::decode_nscr(&v.source.data[r.at], r.size);
             return fmt(app.language, S::sheet_screen,
-                       {std::to_string(a.resource), std::to_string(map.width_tiles * 8), std::to_string(map.height_tiles * 8)});
+                       {std::to_string(a.resource), std::to_string(map.width_tiles * 8),
+                        std::to_string(map.height_tiles * 8)});
         }
         const auto& r = v.source.cell_banks[static_cast<std::size_t>(a.resource)];
         const auto bank = assets::decode_ncer(&v.source.data[r.at], r.size);
@@ -198,19 +211,20 @@ std::string arrangement_name(App& app, const Arrangement& a) {
 }
 
 struct Shown {
-    ImVec2 at{};      // the picture's top left on the screen
+    ImVec2 at{};       // the picture's top left on the screen
     float factor = 0;  // screen pixels a picture pixel
 };
 
 // Space down to `y` (window coordinates), as an item, so the layout grows with it.
 void fill_to(float y) {
     const float rest = y - ImGui::GetCursorPosY();
-    if (rest > 0) ImGui::Dummy(ImVec2(1.0f, rest));
+    if (rest > 0)
+        ImGui::Dummy(ImVec2(1.0f, rest));
 }
 
 // A picture fitted into `box`, sharp, over a checkerboard.
-Shown show(App& app, const std::string& name, std::uint64_t version, const std::vector<std::uint8_t>& rgba, int w, int h,
-           ImVec2 box) {
+Shown show(App& app, const std::string& name, std::uint64_t version, const std::vector<std::uint8_t>& rgba, int w,
+           int h, ImVec2 box) {
     Shown s;
     const ImVec2 start = ImGui::GetCursorPos();
     const GpuImage& image = app.images->pixels(name, version, rgba, w, h);
@@ -235,21 +249,25 @@ Shown show(App& app, const std::string& name, std::uint64_t version, const std::
                                 dark ? IM_COL32(60, 60, 64, 255) : IM_COL32(90, 90, 96, 255));
         }
     }
-    if (pio.DrawCallback_SetSamplerNearest != nullptr) list->AddCallback(pio.DrawCallback_SetSamplerNearest, nullptr);
+    if (pio.DrawCallback_SetSamplerNearest != nullptr)
+        list->AddCallback(pio.DrawCallback_SetSamplerNearest, nullptr);
     ImGui::Image(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(image.texture))), size);
-    if (pio.DrawCallback_SetSamplerLinear != nullptr) list->AddCallback(pio.DrawCallback_SetSamplerLinear, nullptr);
+    if (pio.DrawCallback_SetSamplerLinear != nullptr)
+        list->AddCallback(pio.DrawCallback_SetSamplerLinear, nullptr);
     fill_to(start.y + box.y);
     return s;
 }
 
 // The tiles in `tiles` outlined where the assembly places them.
 void mark(const Shown& s, int scale, const std::vector<int>& tiles, ImU32 colour) {
-    if (s.factor <= 0 || tiles.empty()) return;
+    if (s.factor <= 0 || tiles.empty())
+        return;
     const std::set<int> wanted(tiles.begin(), tiles.end());
     ImDrawList* list = ImGui::GetWindowDrawList();
     const float k = s.factor * static_cast<float>(scale);
     for (const auto& spot : v.assembly.spots) {
-        if (wanted.count(spot.tile) == 0) continue;
+        if (wanted.count(spot.tile) == 0)
+            continue;
         const ImVec2 a(s.at.x + static_cast<float>(spot.x) * k, s.at.y + static_cast<float>(spot.y) * k);
         if (8 * k >= 8) {
             list->AddRect(a, ImVec2(a.x + 8 * k, a.y + 8 * k), colour, 0.0f, 0, 2.0f);
@@ -268,14 +286,16 @@ void keep_rows(App& app) {
         return;
     }
     const std::string e = write_tile_rows(dir, key, v.tile_rows == v.screen_rows ? std::vector<int>() : v.tile_rows);
-    if (!e.empty()) app.tell(fmt(app.language, S::save_failed, {e}), false);
+    if (!e.empty())
+        app.tell(fmt(app.language, S::save_failed, {e}), false);
 }
 
 // Painting rows on the sheet as it is in the picture `s` (the game's own
 // sheet, at its scale): the tile under the pointer outlined; a rectangle
 // dragged gives its tiles the row chosen.
 void paint_rows(App& app, const Shown& s) {
-    if (s.factor <= 0 || v.whole_end <= v.whole_top) return;
+    if (s.factor <= 0 || v.whole_end <= v.whole_top)
+        return;
     const float k = s.factor * static_cast<float>(v.game.scale);
     const ImVec2 m = ImGui::GetIO().MousePos;
     // the pointer in the assembly's pixels, kept inside the sheet as it is
@@ -284,31 +304,40 @@ void paint_rows(App& app, const Shown& s) {
                         px < static_cast<float>(v.assembly.width) && py < static_cast<float>(v.whole_end);
     ImDrawList* list = ImGui::GetWindowDrawList();
     auto box = [&](float x0, float y0, float x1, float y1, ImU32 colour) {
-        list->AddRect(ImVec2(s.at.x + x0 * k, s.at.y + y0 * k), ImVec2(s.at.x + x1 * k, s.at.y + y1 * k), colour, 0.0f, 0, 2.0f);
+        list->AddRect(ImVec2(s.at.x + x0 * k, s.at.y + y0 * k), ImVec2(s.at.x + x1 * k, s.at.y + y1 * k), colour, 0.0f,
+                      0, 2.0f);
     };
     if (inside && !v.dragging) {
-        const float tx = std::floor(px / 8) * 8, ty = std::floor((py - static_cast<float>(v.whole_top)) / 8) * 8 + static_cast<float>(v.whole_top);
+        const float tx = std::floor(px / 8) * 8,
+                    ty = std::floor((py - static_cast<float>(v.whole_top)) / 8) * 8 + static_cast<float>(v.whole_top);
         box(tx, ty, tx + 8, ty + 8, IM_COL32(80, 160, 255, 255));
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) v.dragging = true, v.drag_from = ImVec2(px, py);
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            v.dragging = true, v.drag_from = ImVec2(px, py);
     }
-    if (!v.dragging) return;
+    if (!v.dragging)
+        return;
     const float cx = std::clamp(px, 0.0f, static_cast<float>(v.assembly.width));
     const float cy = std::clamp(py, static_cast<float>(v.whole_top), static_cast<float>(v.whole_end));
     const float x0 = std::min(v.drag_from.x, cx), x1 = std::max(v.drag_from.x, cx);
     const float y0 = std::min(v.drag_from.y, cy), y1 = std::max(v.drag_from.y, cy);
     box(x0, y0, x1, y1, IM_COL32(80, 160, 255, 255));
-    if (!ImGui::IsMouseReleased(ImGuiMouseButton_Left)) return;
+    if (!ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+        return;
     v.dragging = false;
-    if (v.tile_rows.size() != static_cast<std::size_t>(v.source.tiles)) v.tile_rows.resize(static_cast<std::size_t>(v.source.tiles), -1);
+    if (v.tile_rows.size() != static_cast<std::size_t>(v.source.tiles))
+        v.tile_rows.resize(static_cast<std::size_t>(v.source.tiles), -1);
     bool any = false;
     for (const auto& spot : v.assembly.spots) {
         const float sx = static_cast<float>(spot.x), sy = static_cast<float>(spot.y);
-        if (sy < static_cast<float>(v.whole_top) || sy >= static_cast<float>(v.whole_end)) continue;
-        if (sx + 8 <= x0 || sx >= std::max(x1, x0 + 0.01f) || sy + 8 <= y0 || sy >= std::max(y1, y0 + 0.01f)) continue;
+        if (sy < static_cast<float>(v.whole_top) || sy >= static_cast<float>(v.whole_end))
+            continue;
+        if (sx + 8 <= x0 || sx >= std::max(x1, x0 + 0.01f) || sy + 8 <= y0 || sy >= std::max(y1, y0 + 0.01f))
+            continue;
         v.tile_rows[static_cast<std::size_t>(spot.tile)] = v.row;
         any = true;
     }
-    if (!any) return;
+    if (!any)
+        return;
     keep_rows(app);
     rebuild(app);
 }
@@ -322,19 +351,21 @@ std::string tile_list(const std::vector<int>& tiles, bool uses = false) {
             break;
         }
         out += (i == 0 ? "" : ", ") + std::to_string(tiles[i]);
-        if (uses) out += " x" + std::to_string(v.assembly.uses[static_cast<std::size_t>(tiles[i])]);
+        if (uses)
+            out += " x" + std::to_string(v.assembly.uses[static_cast<std::size_t>(tiles[i])]);
     }
     return out;
 }
 
 void save(App& app) {
     const Mod* m = app.current_mod();
-    if (m == nullptr || !v.have_result) return;
+    if (m == nullptr || !v.have_result)
+        return;
     const Item& item = app.catalog.items[static_cast<std::size_t>(v.item)];
     fs::path written;
     std::string why;
-    if (!save_sheet(m->dir, item.key, v.source, v.result.sheet, display_colours(v.source, v.assembly, v.colours), &written,
-                    &why)) {
+    if (!save_sheet(m->dir, item.key, v.source, v.result.sheet, display_colours(v.source, v.assembly, v.colours),
+                    &written, &why)) {
         app.tell(fmt(app.language, S::save_failed, {why}), false);
         return;
     }
@@ -350,7 +381,8 @@ void save(App& app) {
 }  // namespace
 
 bool sheet_offer(App& app, const fs::path& file) {
-    if (!v.assembled || v.item != app.selected || v.assembly.width == 0) return false;
+    if (!v.assembled || v.item != app.selected || v.assembly.width == 0)
+        return false;
     const std::string path = u8(file);
     const char* error = nullptr;
     int w = 0, h = 0;
@@ -372,26 +404,33 @@ bool sheet_offer(App& app, const fs::path& file) {
 }
 
 void sheet_export_to(App& app, const fs::path& chosen) {
-    if (v.item != app.selected || v.assembly.width == 0) return;
+    if (v.item != app.selected || v.assembly.width == 0)
+        return;
     fs::path file = chosen;
-    if (lower(u8(file.extension())) != ".png") file += ".png";
+    if (lower(u8(file.extension())) != ".png")
+        file += ".png";
     const SheetPixels p = v.export_scale > 0 ? rescale(v.current, v.export_scale) : v.current;
     const auto rgba = render_assembly(v.source, v.assembly, p, v.colours);
-    const char* e = khdays_png_write(u8(file).c_str(), rgba.data(), v.assembly.width * p.scale, v.assembly.height * p.scale);
-    app.tell(e != nullptr ? fmt(app.language, S::save_failed, {e}) : fmt(app.language, S::sheet_exported, {u8(file)}), e == nullptr);
+    const char* e =
+        khdays_png_write(u8(file).c_str(), rgba.data(), v.assembly.width * p.scale, v.assembly.height * p.scale);
+    app.tell(e != nullptr ? fmt(app.language, S::save_failed, {e}) : fmt(app.language, S::sheet_exported, {u8(file)}),
+             e == nullptr);
 }
 
 bool draw_sheet_mode(App& app) {
-    if (ImGui::RadioButton(tr(app.language, S::sheet_as_tiles), !v.assembled)) v.assembled = false;
+    if (ImGui::RadioButton(tr(app.language, S::sheet_as_tiles), !v.assembled))
+        v.assembled = false;
     same_line_if_room(check_width(tr(app.language, S::sheet_assembled)));
-    if (ImGui::RadioButton(tr(app.language, S::sheet_assembled), v.assembled)) v.assembled = true;
+    if (ImGui::RadioButton(tr(app.language, S::sheet_assembled), v.assembled))
+        v.assembled = true;
     return v.assembled;
 }
 
 void draw_sheet_assembled(App& app, const Item& item) {
     (void)item;
     const std::string mod = app.current_mod() != nullptr ? app.current_mod()->name : std::string();
-    if (v.item != app.selected || v.mod != mod) open(app);
+    if (v.item != app.selected || v.mod != mod)
+        open(app);
     if (!v.error.empty() && v.fits.empty()) {
         ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", v.error.c_str());
         return;
@@ -408,7 +447,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
     const float thumb_w = 112.0f * dpi, thumb_h = 84.0f * dpi;
     // two rows of them at most in sight, the rest scrolled to
     const float row_h = thumb_h + ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
-    ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, row_h * 2.0f + ImGui::GetStyle().WindowPadding.y * 2));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0),
+                                        ImVec2(FLT_MAX, row_h * 2.0f + ImGui::GetStyle().WindowPadding.y * 2));
     ImGui::BeginChild("##thumbs", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY);
     const float right_edge = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
     bool changed = false;
@@ -419,7 +459,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
                                                    ImGui::CalcTextSize(name.c_str()).x);
         if (i > 0) {
             ImGui::SameLine();
-            if (ImGui::GetCursorScreenPos().x + item_w > right_edge) ImGui::NewLine();
+            if (ImGui::GetCursorScreenPos().x + item_w > right_edge)
+                ImGui::NewLine();
         }
         ImGui::BeginGroup();
         const auto& t = v.thumbs[i];
@@ -431,10 +472,11 @@ void draw_sheet_assembled(App& app, const Item& item) {
         ImDrawList* list = ImGui::GetWindowDrawList();
         list->AddRectFilled(at, ImVec2(at.x + thumb_w, at.y + thumb_h), IM_COL32(40, 40, 44, 255));
         if (t.w > 0) {
-            const GpuImage& g = app.images->pixels("sheet:" + std::to_string(v.item) + ":thumb:" + std::to_string(i), v.version,
-                                                   t.rgba, t.w, t.h);
+            const GpuImage& g = app.images->pixels("sheet:" + std::to_string(v.item) + ":thumb:" + std::to_string(i),
+                                                   v.version, t.rgba, t.w, t.h);
             if (g.texture != nullptr) {
-                const float k = std::min((thumb_w - 4) / static_cast<float>(t.w), (thumb_h - 4) / static_cast<float>(t.h));
+                const float k =
+                    std::min((thumb_w - 4) / static_cast<float>(t.w), (thumb_h - 4) / static_cast<float>(t.h));
                 const ImVec2 size(static_cast<float>(t.w) * k, static_cast<float>(t.h) * k);
                 const ImVec2 p(at.x + (thumb_w - size.x) * 0.5f, at.y + (thumb_h - size.y) * 0.5f);
                 list->AddImage(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(g.texture))), p,
@@ -442,7 +484,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
             }
         }
         list->AddRect(at, ImVec2(at.x + thumb_w, at.y + thumb_h),
-                      v.chosen[i] ? IM_COL32(80, 160, 255, 255) : IM_COL32(90, 90, 96, 255), 0.0f, 0, v.chosen[i] ? 3.0f : 1.0f);
+                      v.chosen[i] ? IM_COL32(80, 160, 255, 255) : IM_COL32(90, 90, 96, 255), 0.0f, 0,
+                      v.chosen[i] ? 3.0f : 1.0f);
         bool on = v.chosen[i];
         if (ImGui::Checkbox(name.c_str(), &on)) {
             v.chosen[i] = on;
@@ -452,10 +495,13 @@ void draw_sheet_assembled(App& app, const Item& item) {
         ImGui::PopID();
     }
     ImGui::EndChild();
-    if (changed) rebuild(app);
+    if (changed)
+        rebuild(app);
     auto palette_name = [&](int i) {
-        if (i < 0) return std::string(tr(app.language, S::sheet_no_palette));
-        if (i == v.source.seen_palette) return fmt(app.language, S::sheet_palette_seen, {std::to_string(i)});
+        if (i < 0)
+            return std::string(tr(app.language, S::sheet_no_palette));
+        if (i == v.source.seen_palette)
+            return fmt(app.language, S::sheet_palette_seen, {std::to_string(i)});
         const std::string from = palette_from(v.source, i);
         return from.empty() ? fmt(app.language, S::sheet_palette_n, {std::to_string(i)})
                             : fmt(app.language, S::sheet_palette_from, {std::to_string(i), from});
@@ -479,7 +525,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
     // the sheet as it is: which palette row draws it (the game gives each tile
     // its own: the modder paints them on the picture, once, kept in the mod)
     bool whole_chosen = false;
-    for (std::size_t i = 0; i < v.fits.size(); ++i) whole_chosen = whole_chosen || (v.fits[i].whole && v.chosen[i]);
+    for (std::size_t i = 0; i < v.fits.size(); ++i)
+        whole_chosen = whole_chosen || (v.fits[i].whole && v.chosen[i]);
     const int rows = palette_rows(v.source, v.colours);
     if (whole_chosen && rows > 1) {
         same_line_if_room(140.0f * ImGui::GetStyle().FontScaleDpi + check_width(tr(app.language, S::sheet_row)));
@@ -516,8 +563,9 @@ void draw_sheet_assembled(App& app, const Item& item) {
     }
     ImGui::TextWrapped("%s", tr(app.language, S::sheet_choice_note));
     ImGui::PopStyleColor();
-    ImGui::TextUnformatted(v.current_from.empty() ? tr(app.language, S::sheet_from_game)
-                                                  : fmt(app.language, S::sheet_from_mod, {std::to_string(v.current.scale)}).c_str());
+    ImGui::TextUnformatted(v.current_from.empty()
+                               ? tr(app.language, S::sheet_from_game)
+                               : fmt(app.language, S::sheet_from_mod, {std::to_string(v.current.scale)}).c_str());
     if (v.assembly.overlaps > 0) {
         ImGui::TextDisabled("%s", fmt(app.language, S::sheet_overlaps, {std::to_string(v.assembly.overlaps)}).c_str());
     }
@@ -525,13 +573,16 @@ void draw_sheet_assembled(App& app, const Item& item) {
     if (v.palette == v.source.seen_palette && v.source.unseen_tiles > 0) {
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.3f, 1), "%s",
-                           fmt(app.language, S::sheet_unseen_tiles, {std::to_string(v.source.unseen_tiles), std::to_string(kUnseenRow)}).c_str());
+                           fmt(app.language, S::sheet_unseen_tiles,
+                               {std::to_string(v.source.unseen_tiles), std::to_string(kUnseenRow)})
+                               .c_str());
         ImGui::PopTextWrapPos();
         ImGui::Checkbox(tr(app.language, S::sheet_mark_unseen), &v.mark_unseen);
     }
 
     if (v.assembly.width == 0) {  // none ticked
-        if (!v.error.empty()) ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", v.error.c_str());
+        if (!v.error.empty())
+            ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", v.error.c_str());
         return;
     }
 
@@ -547,8 +598,10 @@ void draw_sheet_assembled(App& app, const Item& item) {
         ImGui::TextUnformatted(tr(app.language, S::original));
         const Shown game = show(app, key + ":game", v.version, v.game_picture, v.assembly.width * v.game.scale,
                                 v.assembly.height * v.game.scale, ImVec2(half, box_h));
-        if (v.painting) paint_rows(app, game);
-        if (v.mark_unseen) mark(game, v.game.scale, v.unseen, IM_COL32(90, 170, 255, 255));
+        if (v.painting)
+            paint_rows(app, game);
+        if (v.mark_unseen)
+            mark(game, v.game.scale, v.unseen, IM_COL32(90, 170, 255, 255));
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted(tr(app.language, S::replacement));
         if (!v.have_result && !v.current_from.empty()) {
@@ -556,8 +609,9 @@ void draw_sheet_assembled(App& app, const Item& item) {
             show(app, key + ":now", v.version, v.picture, v.assembly.width * v.current.scale,
                  v.assembly.height * v.current.scale, ImVec2(half, box_h));
         } else if (v.have_result) {
-            const Shown s = show(app, key + ":new", v.result_version, v.result_picture, v.assembly.width * v.result.scale, v.assembly.height * v.result.scale,
-                                 ImVec2(half, box_h));
+            const Shown s =
+                show(app, key + ":new", v.result_version, v.result_picture, v.assembly.width * v.result.scale,
+                     v.assembly.height * v.result.scale, ImVec2(half, box_h));
             if (v.marks) {
                 mark(s, v.result.scale, v.result.repeated, IM_COL32(240, 200, 60, 255));
                 mark(s, v.result.scale, v.result.conflicts, IM_COL32(240, 70, 70, 255));
@@ -570,25 +624,30 @@ void draw_sheet_assembled(App& app, const Item& item) {
 
     // export
     ImGui::SetNextItemWidth(110.0f * ImGui::GetStyle().FontScaleDpi);
-    const std::string size_now = v.export_scale == 0 ? std::to_string(v.current.scale) + "x" : std::to_string(v.export_scale) + "x";
+    const std::string size_now =
+        v.export_scale == 0 ? std::to_string(v.current.scale) + "x" : std::to_string(v.export_scale) + "x";
     if (ImGui::BeginCombo(tr(app.language, S::sheet_export_size), size_now.c_str())) {
         for (int k = 1; k <= 8; ++k) {
-            if (ImGui::Selectable((std::to_string(k) + "x").c_str(), (v.export_scale == 0 ? v.current.scale : v.export_scale) == k)) {
+            if (ImGui::Selectable((std::to_string(k) + "x").c_str(),
+                                  (v.export_scale == 0 ? v.current.scale : v.export_scale) == k)) {
                 v.export_scale = k;
             }
         }
         ImGui::EndCombo();
     }
     same_line_if_room(button_width(tr(app.language, S::sheet_export)));
-    if (ImGui::Button(tr(app.language, S::sheet_export))) choose_export(app);
+    if (ImGui::Button(tr(app.language, S::sheet_export)))
+        choose_export(app);
     same_line_if_room(button_width(tr(app.language, S::sheet_bring_back)));
-    if (ImGui::Button(tr(app.language, S::sheet_bring_back))) choose_file(app, app.catalog.items[static_cast<std::size_t>(v.item)]);
+    if (ImGui::Button(tr(app.language, S::sheet_bring_back)))
+        choose_file(app, app.catalog.items[static_cast<std::size_t>(v.item)]);
     same_line_if_room(button_width(tr(app.language, S::sheets_export_all)));
     ImGui::BeginDisabled(app.sheets_export != nullptr && !app.sheets_export->done);
     if (ImGui::Button(tr(app.language, S::sheets_export_all))) {
         SDL_ShowOpenFolderDialog(
             [](void* user, const char* const* folders, int) {
-                if (folders == nullptr || folders[0] == nullptr) return;
+                if (folders == nullptr || folders[0] == nullptr)
+                    return;
                 App* a = static_cast<App*>(user);
                 std::lock_guard lock(a->dialog_mutex);
                 a->dialog_sheet_folders.emplace_back(folders[0]);
@@ -596,23 +655,29 @@ void draw_sheet_assembled(App& app, const Item& item) {
             &app, app.window, nullptr, false);
     }
     ImGui::EndDisabled();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", tr(app.language, S::sheets_export_all_note));
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("%s", tr(app.language, S::sheets_export_all_note));
 
     // the edited picture
-    if (v.edited_file.empty()) return;
+    if (v.edited_file.empty())
+        return;
     ImGui::Separator();
     if (!v.have_result) {
-        ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s: %s", u8(v.edited_file.filename()).c_str(), v.result_error.c_str());
+        ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s: %s", u8(v.edited_file.filename()).c_str(),
+                           v.result_error.c_str());
         return;
     }
     const TakeBack& t = v.result;
-    ImGui::TextUnformatted(fmt(app.language, S::sheet_edited, {u8(v.edited_file.filename()), std::to_string(t.scale)}).c_str());
+    ImGui::TextUnformatted(
+        fmt(app.language, S::sheet_edited, {u8(v.edited_file.filename()), std::to_string(t.scale)}).c_str());
     ImGui::SameLine();
     ImGui::TextDisabled("%s", fmt(app.language, S::sheet_changed, {std::to_string(t.changed)}).c_str());
     const ImVec4 warn(0.95f, 0.80f, 0.35f, 1);
-    if (t.outside > 0) ImGui::TextColored(warn, "%s", fmt(app.language, S::sheet_outside, {std::to_string(t.outside)}).c_str());
+    if (t.outside > 0)
+        ImGui::TextColored(warn, "%s", fmt(app.language, S::sheet_outside, {std::to_string(t.outside)}).c_str());
     if (t.off_palette > 0) {
-        ImGui::TextColored(warn, "%s", fmt(app.language, S::sheet_off_palette, {std::to_string(t.off_palette)}).c_str());
+        ImGui::TextColored(warn, "%s",
+                           fmt(app.language, S::sheet_off_palette, {std::to_string(t.off_palette)}).c_str());
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(tr(app.language, S::sheet_colours));
         same_line_if_room(check_width(tr(app.language, S::sheet_colours_own)));
@@ -639,38 +704,43 @@ void draw_sheet_assembled(App& app, const Item& item) {
     flag(S::sheet_flipped, t.flipped);
     flag(S::sheet_several_rows, t.several_rows);
     if (t.unplaced_coloured > 0) {
-        ImGui::TextColored(warn, "%s", fmt(app.language, S::sheet_unplaced, {std::to_string(t.unplaced_coloured)}).c_str());
+        ImGui::TextColored(warn, "%s",
+                           fmt(app.language, S::sheet_unplaced, {std::to_string(t.unplaced_coloured)}).c_str());
     }
-    if (!t.conflicts.empty() || !t.repeated.empty()) ImGui::Checkbox(tr(app.language, S::sheet_marks), &v.marks);
+    if (!t.conflicts.empty() || !t.repeated.empty())
+        ImGui::Checkbox(tr(app.language, S::sheet_marks), &v.marks);
     if (app.current_mod() == nullptr) {
         ImGui::TextColored(warn, "%s", tr(app.language, S::choose_mod_first));
         return;
     }
     ImGui::BeginDisabled(t.changed == 0);
-    if (ImGui::Button(tr(app.language, S::sheet_save))) save(app);
+    if (ImGui::Button(tr(app.language, S::sheet_save)))
+        save(app);
     ImGui::EndDisabled();
 }
 
 void sheets_export_to(App& app, const fs::path& folder) {
-    if (app.sheets_export != nullptr && !app.sheets_export->done) return;
+    if (app.sheets_export != nullptr && !app.sheets_export->done)
+        return;
     app.sheets_export = std::make_unique<App::SheetsExport>();
     App::SheetsExport* job = app.sheets_export.get();
     job->folder = folder;
     const fs::path dump = resolve(app.settings, app.settings.graphics_dump), mod = mod_dir(app), game = nitrofs();
     job->thread = std::thread([job, dump, mod, game]() {
         std::vector<std::string> failed;
-        const int written = export_sheets(game, dump, mod, job->folder,
-                                          [job](std::size_t done, std::size_t files, const std::string& key) {
-                                              job->files_done = done;
-                                              job->files = files;
-                                              if (!key.empty()) {
-                                                  ++job->written;
-                                                  std::lock_guard lock(job->mutex);
-                                                  job->current = key;
-                                              }
-                                              return !job->stop.load();
-                                          },
-                                          &failed);
+        const int written = export_sheets(
+            game, dump, mod, job->folder,
+            [job](std::size_t done, std::size_t files, const std::string& key) {
+                job->files_done = done;
+                job->files = files;
+                if (!key.empty()) {
+                    ++job->written;
+                    std::lock_guard lock(job->mutex);
+                    job->current = key;
+                }
+                return !job->stop.load();
+            },
+            &failed);
         {
             std::lock_guard lock(job->mutex);
             job->failed = std::move(failed);
@@ -681,7 +751,8 @@ void sheets_export_to(App& app, const fs::path& folder) {
 }
 
 void draw_sheets_export(App& app) {
-    if (app.sheets_export == nullptr) return;
+    if (app.sheets_export == nullptr)
+        return;
     App::SheetsExport& job = *app.sheets_export;
     std::string current;
     std::vector<std::string> failed;
@@ -694,9 +765,12 @@ void draw_sheets_export(App& app) {
     if (!job.done) {
         ImGui::TextUnformatted(fmt(app.language, S::sheets_exporting, {written}).c_str());
         const std::size_t files = job.files.load();
-        ImGui::ProgressBar(files > 0 ? static_cast<float>(job.files_done.load()) / static_cast<float>(files) : 0.0f, ImVec2(-1, 0));
-        if (!current.empty()) ImGui::TextDisabled("%s", current.c_str());
-        if (ImGui::Button(tr(app.language, S::stop))) job.stop = true;
+        ImGui::ProgressBar(files > 0 ? static_cast<float>(job.files_done.load()) / static_cast<float>(files) : 0.0f,
+                           ImVec2(-1, 0));
+        if (!current.empty())
+            ImGui::TextDisabled("%s", current.c_str());
+        if (ImGui::Button(tr(app.language, S::stop)))
+            job.stop = true;
     } else {
         if (!job.told) {
             job.told = true;
@@ -704,14 +778,17 @@ void draw_sheets_export(App& app) {
         }
         ImGui::TextWrapped("%s", fmt(app.language, S::sheets_exported, {written, folder}).c_str());
         if (!failed.empty()) {
-            ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.3f, 1), "%s", fmt(app.language, S::sheets_not_written, {std::to_string(failed.size())}).c_str());
+            ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.3f, 1), "%s",
+                               fmt(app.language, S::sheets_not_written, {std::to_string(failed.size())}).c_str());
             if (ImGui::IsItemHovered()) {
                 std::string list;
-                for (std::size_t i = 0; i < failed.size() && i < 20; ++i) list += failed[i] + "\n";
+                for (std::size_t i = 0; i < failed.size() && i < 20; ++i)
+                    list += failed[i] + "\n";
                 ImGui::SetTooltip("%s", list.c_str());
             }
         }
-        if (ImGui::Button(tr(app.language, S::open_folder))) SDL_OpenURL(("file:///" + folder).c_str());
+        if (ImGui::Button(tr(app.language, S::open_folder)))
+            SDL_OpenURL(("file:///" + folder).c_str());
         same_line_if_room(button_width(tr(app.language, S::close)));
         if (ImGui::Button(tr(app.language, S::close))) {
             app.sheets_export.reset();
@@ -725,7 +802,8 @@ void choose_export(App& app) {
     static const SDL_DialogFileFilter png[] = {{"PNG", "png"}};
     SDL_ShowSaveFileDialog(
         [](void* user, const char* const* files, int) {
-            if (files == nullptr || files[0] == nullptr) return;
+            if (files == nullptr || files[0] == nullptr)
+                return;
             App* a = static_cast<App*>(user);
             std::lock_guard lock(a->dialog_mutex);
             a->dialog_exports.emplace_back(files[0]);

@@ -3,6 +3,7 @@ convention (fewer arguments than the callee reads, the result of a void function
 ROM shows those registers hold (port/abi/ghidra_abi.txt); everything else becomes a stop naming
 the call (KHDAYS_ABI_GAP). docs/BUILD.md, "The ABI repairs".
 """
+
 from __future__ import annotations
 
 import collections
@@ -15,9 +16,9 @@ from pathlib import Path
 
 @dataclass
 class Source:
-    kind: str                   # call, tail, entry, const, pool, struct, stack, other
-    target: int | None = None   # call/tail: the callee's address, when direct
-    value: int | None = None    # const/pool
+    kind: str  # call, tail, entry, const, pool, struct, stack, other
+    target: int | None = None  # call/tail: the callee's address, when direct
+    value: int | None = None  # const/pool
     register: int | None = None  # entry: which argument register
     text: str = ""
 
@@ -37,7 +38,7 @@ def parse_source(s: str) -> Source:
     m = re.search(r" (mov|mvn)\s+r\d+,#(-?0x[0-9a-f]+|-?\d+)$", s)
     if m:
         v = int(m[2], 0)
-        return Source("const", value=(~v if m[1] == "mvn" else v) & 0xffffffff, text=s)
+        return Source("const", value=(~v if m[1] == "mvn" else v) & 0xFFFFFFFF, text=s)
     m = re.search(r" ldr\s+r\d+,\[0x[0-9a-f]+\] = 0x([0-9a-f]+)", s)
     if m:
         return Source("pool", value=int(m[1], 16), text=s)
@@ -142,7 +143,7 @@ def depth_at(text: str, mask: bytearray, index: int) -> int:
     for i in range(index):
         if mask[i]:
             if text[i] == "{":
-                counted.append(not EXTERN_C_OPEN.search(text[max(0, i - 16):i]))
+                counted.append(not EXTERN_C_OPEN.search(text[max(0, i - 16) : i]))
             elif text[i] == "}" and counted:
                 counted.pop()
     return sum(counted)
@@ -150,10 +151,10 @@ def depth_at(text: str, mask: bytearray, index: int) -> int:
 
 @dataclass
 class Definition:
-    ret_start: int            # start of the line with the return type
+    ret_start: int  # start of the line with the return type
     name_start: int
-    params: tuple[int, int]   # inside the parentheses
-    body: tuple[int, int]     # the braces
+    params: tuple[int, int]  # inside the parentheses
+    body: tuple[int, int]  # the braces
 
 
 def find_definition(text: str, mask: bytearray, name: str) -> Definition | None:
@@ -162,19 +163,18 @@ def find_definition(text: str, mask: bytearray, name: str) -> Definition | None:
             continue
         close = matching(text, mask, m.end() - 1)
         # a function returning a function pointer: `T (*name(params))(args) {`
-        tail = re.match(r"(\s*\)\s*\([^(){};]*\))*\s*\{", text[close + 1:])
+        tail = re.match(r"(\s*\)\s*\([^(){};]*\))*\s*\{", text[close + 1 :])
         if not tail:
             continue
         after = tail
         open_brace = close + 1 + after.end() - 1
         line_start = text.rfind("\n", 0, m.start()) + 1
-        return Definition(line_start, m.start(), (m.end(), close),
-                          (open_brace, matching(text, mask, open_brace)))
+        return Definition(line_start, m.start(), (m.end(), close), (open_brace, matching(text, mask, open_brace)))
     return None
 
 
 def param_list(text: str, d: Definition) -> list[str]:
-    inner = text[d.params[0]:d.params[1]].strip()
+    inner = text[d.params[0] : d.params[1]].strip()
     if inner in ("", "void"):
         return []
     parts, depth, cur = [], 0, ""
@@ -218,15 +218,39 @@ def param_name(param: str) -> str:
 
 
 NOT_TYPES = ("return", "else", "case", "do", "sizeof")
-BASIC_TYPES = {"void", "int", "char", "short", "long", "unsigned", "signed", "float", "double",
-               "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "fx16", "fx32", "fx64",
-               "BOOL", "OSIntrMode", "vu8", "vu16", "vu32"}
+BASIC_TYPES = {
+    "void",
+    "int",
+    "char",
+    "short",
+    "long",
+    "unsigned",
+    "signed",
+    "float",
+    "double",
+    "u8",
+    "u16",
+    "u32",
+    "u64",
+    "s8",
+    "s16",
+    "s32",
+    "s64",
+    "fx16",
+    "fx32",
+    "fx64",
+    "BOOL",
+    "OSIntrMode",
+    "vu8",
+    "vu16",
+    "vu32",
+}
 
 
 def call_sites(text: str, mask: bytearray, name: str, span: tuple[int, int]) -> list[tuple[int, int]]:
     """(start of the name, index of the closing parenthesis) of each call."""
     out = []
-    for m in re.finditer(rf"\b{re.escape(name)}\s*\(", text[span[0]:span[1]]):
+    for m in re.finditer(rf"\b{re.escape(name)}\s*\(", text[span[0] : span[1]]):
         start = span[0] + m.start()
         if not mask[start]:
             continue
@@ -243,7 +267,7 @@ def call_sites(text: str, mask: bytearray, name: str, span: tuple[int, int]) -> 
 def value_unused(text: str, mask: bytearray, start: int, close: int) -> bool:
     """Whether the call at start..close is a statement of its own (`f(...);`,
     also under `if (...)`, `else` or a `(void)` cast): its value goes nowhere."""
-    if not re.match(r"\s*;", text[close + 1:]):
+    if not re.match(r"\s*;", text[close + 1 :]):
         return False
     before = text[:start].rstrip()
     if not before or before[-1] in ";{}:" or re.search(r"\belse$", before):
@@ -260,7 +284,7 @@ def value_unused(text: str, mask: bytearray, start: int, close: int) -> bool:
                     break
             i -= 1
         head = before[:i].rstrip()
-        return bool(re.search(r"\b(?:if|while|for)$", head)) or before[i + 1:-1].strip() == "void"
+        return bool(re.search(r"\b(?:if|while|for)$", head)) or before[i + 1 : -1].strip() == "void"
     return False
 
 
@@ -278,7 +302,7 @@ def argument_of(text: str, mask: bytearray, start: int, close: int) -> tuple[str
     """(callee, argument index) when the call at start..close is, alone, an
     argument of another call: `g(a, f(...), b)`."""
     before = text[:start].rstrip()
-    after = text[close + 1:].lstrip()
+    after = text[close + 1 :].lstrip()
     if not before or before[-1] not in "(," or not after or after[0] not in "),":
         return None
     depth, commas, i = 0, 0, len(before) - 1
@@ -307,12 +331,12 @@ def declarations(text: str, mask: bytearray, name: str) -> list[tuple[int, int, 
     for m in re.finditer(rf"\b{re.escape(name)}\s*\(", text):
         if not mask[m.start()]:
             continue
-        before = text[:m.start()].rstrip()
+        before = text[: m.start()].rstrip()
         word = re.search(r"([A-Za-z_]\w*|\*)$", before)
         if not word or word[1] in NOT_TYPES:
             continue
         close = matching(text, mask, m.end() - 1)
-        if not re.match(r"\s*;", text[close + 1:]):
+        if not re.match(r"\s*;", text[close + 1 :]):
             continue
         out.append((text.rfind("\n", 0, m.start()) + 1, m.end() - 1, close))
     return out
@@ -343,9 +367,12 @@ def written_params(body: str, names: list[str]) -> list[int]:
         n = re.escape(name)
         # `name = x`, `name += x`, `name++` (also `*name++`), `--name`, `&name`
         # -- not `*name =`, `p->name =`, `s.name =` or `name[i] =`
-        for m in re.finditer(rf"\b{n}\s*(?:[-+*/%|&^]|<<|>>)?=(?!=)|(?:\+\+|--)\s*{n}\b|\b{n}\s*(?:\+\+|--)"
-                             rf"|(?<![&\w])&\s*{n}\b(?!\s*(?:[\[.(]|->))", body):
-            before = body[:m.start()]
+        for m in re.finditer(
+            rf"\b{n}\s*(?:[-+*/%|&^]|<<|>>)?=(?!=)|(?:\+\+|--)\s*{n}\b|\b{n}\s*(?:\+\+|--)"
+            rf"|(?<![&\w])&\s*{n}\b(?!\s*(?:[\[.(]|->))",
+            body,
+        ):
+            before = body[: m.start()]
             if m[0][0] == "&":
                 # unary: not after an operand (`a & name` is a bitwise and)
                 if re.search(r"(?:[\w)\]]|\breturn)\s*$", before) and not re.search(r"\breturn\s*$", before):
@@ -353,8 +380,11 @@ def written_params(body: str, names: list[str]) -> list[int]:
                 out.append(k)
                 break
             member = re.search(r"(?:\.|->)\s*$", before)
-            if m[0][0] in "+-" or (m[0].endswith(("++", "--")) and not member) \
-                    or not (member or re.search(r"\*\s*$", before)):
+            if (
+                m[0][0] in "+-"
+                or (m[0].endswith(("++", "--")) and not member)
+                or not (member or re.search(r"\*\s*$", before))
+            ):
                 out.append(k)
                 break
     return out
@@ -378,8 +408,7 @@ def unoptimize_callbacks(texts: dict[str, str]) -> tuple[dict[str, str], list[st
         code = strip_comments_code(text, code_mask(text))
         taken.update(n for n in UNCALLED_NAME.findall(code) if n in defined)
     files = sorted({rel for name in taken for rel in defined[name]})
-    out = {rel: '#pragma optimize("", off)  /* reached through pointers (port/abi) */\n' + texts[rel]
-           for rel in files}
+    out = {rel: '#pragma optimize("", off)  /* reached through pointers (port/abi) */\n' + texts[rel] for rel in files}
     return out, sorted(taken)
 
 
@@ -398,8 +427,9 @@ def init_self_subtracted(texts: dict[str, str]) -> tuple[dict[str, str], int]:
         mask = code_mask(text)
         edits = []
         for name in names:
-            for m in re.finditer(rf"^(\s*(?:int|u32|s32|unsigned(?:\s+int)?|long\s+long|u64|s64)\s+{name})\s*;",
-                                 text, re.MULTILINE):
+            for m in re.finditer(
+                rf"^(\s*(?:int|u32|s32|unsigned(?:\s+int)?|long\s+long|u64|s64)\s+{name})\s*;", text, re.MULTILINE
+            ):
                 at = m.start(1) + len(m[1]) - len(name)
                 if mask[at] and depth_at(text, mask, at) > 0:
                     edits.append((m.end(1), m.end(1), " = 0"))
@@ -437,7 +467,7 @@ def pad_short_calls(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
             return None
         params = [p for p in param_list(texts[rel], d) if p.strip() != "..."]
         names = [param_name(p) for p in params]
-        code = strip_comments_code(texts[rel][d.body[0]:d.body[1]], mask(rel)[d.body[0]:d.body[1]])
+        code = strip_comments_code(texts[rel][d.body[0] : d.body[1]], mask(rel)[d.body[0] : d.body[1]])
         return [param_words(p) for p in params], [names[k] for k in written_params(code, names)]
 
     edits: dict[str, list[tuple[int, int, str]]] = collections.defaultdict(list)
@@ -464,33 +494,39 @@ def pad_short_calls(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
                 # outside any body: a prototype after a comma (`extern void a(void), b(void);`)
                 if depth_at(text, mask(rel), start) == 0:
                     continue
-                inner = text[text.find("(", start) + 1:close].strip()
+                inner = text[text.find("(", start) + 1 : close].strip()
                 passed = 0 if not inner else len(split_top_level(inner))
                 if passed < count:
                     short.append((close, inner, passed))
             if not short:
                 continue
+
             # one int per word: a 64-bit or struct parameter takes several
             def pads(first: int) -> list[str]:
                 return [f"int khdays_p{k}_{w}" for k in range(first, count) for w in range(sizes[k])]
+
             for close, inner, passed in short:
                 zeros = ", ".join("0" for _ in pads(passed))
                 edits[rel].append((close, close, (", " if inner else "") + zeros))
             for _, open_paren, close_paren in declarations(text, mask(rel), name):
-                inner = text[open_paren + 1:close_paren].strip()
+                inner = text[open_paren + 1 : close_paren].strip()
                 if inner == "void":
                     edits[rel].append((open_paren + 1, close_paren, ", ".join(pads(0))))
                 elif inner:
                     have = len(split_top_level(inner))
                     if have < count:
                         edits[rel].append((close_paren, close_paren, ", " + ", ".join(pads(have))))
-            report.append(f"{name} in {rel}: {len(short)} call(s) passing "
-                          f"{min(p for _, _, p in short)} of {count}"
-                          + (f" (the definition writes {', '.join(which)})" if which else ""))
+            report.append(
+                f"{name} in {rel}: {len(short)} call(s) passing "
+                f"{min(p for _, _, p in short)} of {count}"
+                + (f" (the definition writes {', '.join(which)})" if which else "")
+            )
     return {rel: apply_edits(texts[rel], e) for rel, e in edits.items()}, report
 
 
-NARROW_TYPE = re.compile(r"^(?:u8|s8|u16|s16|(?:unsigned\s+|signed\s+)?char|(?:unsigned\s+|signed\s+)?short(?:\s+int)?)$")
+NARROW_TYPE = re.compile(
+    r"^(?:u8|s8|u16|s16|(?:unsigned\s+|signed\s+)?char|(?:unsigned\s+|signed\s+)?short(?:\s+int)?)$"
+)
 PROTOTYPE = re.compile(r"^[ \t]*(?:extern\s+)?[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\(([^;{}()]*)\)\s*;", re.MULTILINE)
 
 
@@ -502,7 +538,7 @@ def param_type(param: str) -> str:
     if any(c in p for c in "*[("):
         return "ptr"
     name = param_name(p)
-    return p[:-len(name)].strip() if name and p.endswith(name) and p != name else p
+    return p[: -len(name)].strip() if name and p.endswith(name) and p != name else p
 
 
 def argument_spans(text: str, mask: bytearray, open_paren: int, close: int) -> list[tuple[int, int]]:
@@ -537,8 +573,7 @@ def widen_narrow_params(texts: dict[str, str]) -> tuple[dict[str, str], list[str
     for rel, text in texts.items():
         for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\(([^;{}]*)\)\s*\{", text, re.MULTILINE):
             if m[1] not in definitions and m[1] not in NOT_TYPES + ("if", "while", "for", "switch"):
-                definitions[m[1]] = [param_type(p) for p in split_top_level(m[2])
-                                     if p.strip() not in ("", "void")]
+                definitions[m[1]] = [param_type(p) for p in split_top_level(m[2]) if p.strip() not in ("", "void")]
     out: dict[str, str] = {}
     report = []
     for rel, text in texts.items():
@@ -575,26 +610,42 @@ def widen_narrow_params(texts: dict[str, str]) -> tuple[dict[str, str], list[str
                         edits.append((s, s, f"({ks[k]})("))
                         edits.append((e, e, ")"))
                 calls += 1
-            report.append(f"{name} in {rel}: " + ", ".join(f"argument {k} {t}" for k, t in sorted(ks.items()))
-                          + f" ({calls} call(s))")
+            report.append(
+                f"{name} in {rel}: "
+                + ", ".join(f"argument {k} {t}" for k, t in sorted(ks.items()))
+                + f" ({calls} call(s))"
+            )
         out[rel] = apply_edits(text, edits)
     return out, report
 
 
 # A narrow return type, and the C type it is (a declaring file may not see the typedef).
 NARROW_RETURN = {
-    "u8": "unsigned char", "vu8": "unsigned char", "unsigned char": "unsigned char",
-    "s8": "signed char", "vs8": "signed char", "signed char": "signed char",
-    "u16": "unsigned short", "vu16": "unsigned short", "unsigned short": "unsigned short",
+    "u8": "unsigned char",
+    "vu8": "unsigned char",
+    "unsigned char": "unsigned char",
+    "s8": "signed char",
+    "vs8": "signed char",
+    "signed char": "signed char",
+    "u16": "unsigned short",
+    "vu16": "unsigned short",
+    "unsigned short": "unsigned short",
     "unsigned short int": "unsigned short",
-    "s16": "short", "vs16": "short", "fx16": "short", "short": "short", "short int": "short",
-    "signed short": "short", "signed short int": "short",
+    "s16": "short",
+    "vs16": "short",
+    "fx16": "short",
+    "short": "short",
+    "short int": "short",
+    "signed short": "short",
+    "signed short int": "short",
 }
 # A declared return the ARM caller reads whole from r0: a 32-bit integer.
-WORD_RETURN = re.compile(r"^(?P<lead>[ \t]*(?:extern[ \t]+)?)"
-                         r"(?P<type>(?:unsigned|signed)(?:[ \t]+int)?|int|u32|s32|long|BOOL)"
-                         r"(?P<gap>[ \t]+)(?P<name>[A-Za-z_]\w*)(?P<rest>[ \t]*\([^;{}()]*\)[ \t]*;)",
-                         re.MULTILINE)
+WORD_RETURN = re.compile(
+    r"^(?P<lead>[ \t]*(?:extern[ \t]+)?)"
+    r"(?P<type>(?:unsigned|signed)(?:[ \t]+int)?|int|u32|s32|long|BOOL)"
+    r"(?P<gap>[ \t]+)(?P<name>[A-Za-z_]\w*)(?P<rest>[ \t]*\([^;{}()]*\)[ \t]*;)",
+    re.MULTILINE,
+)
 
 
 def narrow_return_declarations(texts: dict[str, str]) -> tuple[dict[str, str], list[str]]:
@@ -636,15 +687,15 @@ def narrow_return_declarations(texts: dict[str, str]) -> tuple[dict[str, str], l
 
 @dataclass
 class Plan:
-    edits: dict[str, list[tuple[int, int, str]]] = field(
-        default_factory=lambda: collections.defaultdict(list))
+    edits: dict[str, list[tuple[int, int, str]]] = field(default_factory=lambda: collections.defaultdict(list))
     applied: list[str] = field(default_factory=list)
     gaps: list[str] = field(default_factory=list)
 
 
 class Repairer:
-    def __init__(self, texts: dict[str, str], module_of: dict[str, str],
-                 functions: dict[str, dict[int, str]], findings: Findings):
+    def __init__(
+        self, texts: dict[str, str], module_of: dict[str, str], functions: dict[str, dict[int, str]], findings: Findings
+    ):
         self.texts = texts
         self.module_of = module_of
         self.functions = functions  # module -> address -> function name
@@ -652,12 +703,15 @@ class Repairer:
         self.masks: dict[str, bytearray] = {}
         self.def_file: dict[str, str] = {}
         for rel, text in texts.items():
-            for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{",
-                                 text, re.MULTILINE):
+            for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{", text, re.MULTILINE):
                 self.def_file.setdefault(m[1], rel)
             # returning a function pointer: `T (*name(params))(args) {`
-            for m in re.finditer(r"^[A-Za-z_][\w \t\*]*\(\s*\*\s*([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\)"
-                                 r"\s*\([^;{}]*\)\s*\{", text, re.MULTILINE):
+            for m in re.finditer(
+                r"^[A-Za-z_][\w \t\*]*\(\s*\*\s*([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\)"
+                r"\s*\([^;{}]*\)\s*\{",
+                text,
+                re.MULTILINE,
+            ):
                 self.def_file.setdefault(m[1], rel)
         self.plan = Plan()
         # definitions that must take more parameters: name -> count
@@ -669,8 +723,11 @@ class Repairer:
         self.hal_values: set[str] = set()
         hal = Path(__file__).resolve().parents[1] / "hal"
         for source in hal.glob("*.c"):
-            for m in re.finditer(r"^(?!static\b)([A-Za-z_][\w \t\*]*?)\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{",
-                                 source.read_text(encoding="utf-8"), re.MULTILINE):
+            for m in re.finditer(
+                r"^(?!static\b)([A-Za-z_][\w \t\*]*?)\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{",
+                source.read_text(encoding="utf-8"),
+                re.MULTILINE,
+            ):
                 if m[1].split()[-1:] != ["void"] or "*" in m[1]:
                     self.hal_values.add(m[2])
 
@@ -697,7 +754,7 @@ class Repairer:
         if rel is None:
             return False
         d = find_definition(self.texts[rel], self.mask(rel), name)
-        return d is not None and not re.search(r"\bvoid\s*$", self.texts[rel][d.ret_start:d.name_start])
+        return d is not None and not re.search(r"\bvoid\s*$", self.texts[rel][d.ret_start : d.name_start])
 
     def value_edits(self, rel: str, callee: str) -> list[tuple[int, int, str]] | None:
         """Edits giving callee's prototypes in rel a value, or None if callee
@@ -729,7 +786,7 @@ class Repairer:
                     continue
                 if "*" in words or words[-1] in BASIC_TYPES:
                     return False
-                params = [p for p in split_top_level(text[open_paren + 1:close]) if p.strip() not in ("", "void")]
+                params = [p for p in split_top_level(text[open_paren + 1 : close]) if p.strip() not in ("", "void")]
                 if len(params) != defined - 1:
                     return False
                 seen = True
@@ -746,7 +803,7 @@ class Repairer:
         d = find_definition(text, mask, name)
         if d is None:
             return "definition not found"
-        void = re.search(r"\bvoid\s*$", text[d.ret_start:d.name_start])
+        void = re.search(r"\bvoid\s*$", text[d.ret_start : d.name_start])
         if not void:
             return "return type is not plain void"
         params = param_list(text, d)
@@ -765,14 +822,18 @@ class Repairer:
             why = "the result pointer, as MSVC returns a struct"
         elif kinds == {"entry"} and {s.register for s in alternatives} == {0} and params:
             p0 = param_name(params[0])
-            body = text[d.body[0]:d.body[1]]
+            body = text[d.body[0] : d.body[1]]
             if not p0 or re.search(rf"\b{p0}\s*(?:[-+*/|&^]?=(?!=)|\+\+|--)|(?:\+\+|--)\s*{p0}\b", body):
                 return "first argument reassigned"
             init = f"(int){p0}"
         elif kinds == {"const"} and len({s.value for s in alternatives}) == 1:
             init = f"(int)0x{alternatives[0].value:x}"
-        elif kinds and kinds <= {"call", "tail"} and len({s.target for s in alternatives}) == 1 \
-                and alternatives[0].target is not None:
+        elif (
+            kinds
+            and kinds <= {"call", "tail"}
+            and len({s.target for s in alternatives}) == 1
+            and alternatives[0].target is not None
+        ):
             callee = self.name_at(rel, alternatives[0].target) or ""
             if not callee:
                 return f"callee 0x{alternatives[0].target:x} has no symbol"
@@ -791,12 +852,11 @@ class Repairer:
             v = VOID_BEFORE_NAME.search(text[line_start:open_paren])
             if v:
                 edits.append((line_start + v.start(), line_start + v.end(), "int"))
-        edits.append((d.body[0] + 1, d.body[0] + 1,
-                      f"\n    int khdays_r0 = {init};  /* {why} (port/abi) */"))
+        edits.append((d.body[0] + 1, d.body[0] + 1, f"\n    int khdays_r0 = {init};  /* {why} (port/abi) */"))
         for start, close in captures:
             edits.append((start, start, "(khdays_r0 = (int)"))
             edits.append((close + 1, close + 1, ")"))
-        for m in re.finditer(r"\breturn\s*;", text[d.body[0]:d.body[1]]):
+        for m in re.finditer(r"\breturn\s*;", text[d.body[0] : d.body[1]]):
             at = d.body[0] + m.start()
             if mask[at]:
                 edits.append((at, at + len(m[0]), "return khdays_r0;"))
@@ -827,14 +887,17 @@ class Repairer:
         # counting them covers the definition as the DS laid them out (Ov226_HandleMessageArgs;
         # references/build.py block_abi).
         for _, open_paren, close in declarations(text, mask, callee):
-            params = [p for p in split_top_level(text[open_paren + 1:close]) if p.strip() not in ("", "void")]
+            params = [p for p in split_top_level(text[open_paren + 1 : close]) if p.strip() not in ("", "void")]
             if params and sum(param_words(p) for p in params) >= defined:
                 return "resolved"
         # every call already passes them (a manual fix, ABI_FIXES)
         present = call_sites(text, mask, callee, d.body)
-        if present and all(len(split_top_level(text[text.find("(", s) + 1:c].strip())) >= defined
-                           for s, c in present if text[text.find("(", s) + 1:c].strip()):
-            if all(text[text.find("(", s) + 1:c].strip() for s, c in present):
+        if present and all(
+            len(split_top_level(text[text.find("(", s) + 1 : c].strip())) >= defined
+            for s, c in present
+            if text[text.find("(", s) + 1 : c].strip()
+        ):
+            if all(text[text.find("(", s) + 1 : c].strip() for s, c in present):
                 return "resolved"
         # The caller expects a struct by value where the definition takes the ARM ABI's result
         # pointer, which MSVC passes the same way but as a host pointer: references/build.py stops
@@ -868,8 +931,7 @@ class Repairer:
                     return f"argument {k} is an unnamed parameter of the caller"
             elif kinds == {"const"} and len({s.value for s in alts}) == 1:
                 exprs[k] = f"(int)0x{alts[0].value:x}"
-            elif kinds == {"pool"} and len({s.value for s in alts}) == 1 \
-                    and self.name_at(rel, alts[0].value) is None:
+            elif kinds == {"pool"} and len({s.value for s in alts}) == 1 and self.name_at(rel, alts[0].value) is None:
                 exprs[k] = f"(int)0x{alts[0].value:x}"  # data sits at its DS address natively
             elif kinds == {"call"} and k == 0 and all(s.target is not None for s in alts):
                 # each call passes the result of the call before it (several
@@ -889,7 +951,7 @@ class Repairer:
             return "no call in the C"
         edits: list[tuple[int, int, str]] = []
         for start, close in sites:
-            inner = text[text.find("(", start) + 1:close].strip()
+            inner = text[text.find("(", start) + 1 : close].strip()
             passed = 0 if not inner else len(split_top_level(inner))
             missing = [exprs[k] for k in range(max(passed, declared), defined)]
             if missing:
@@ -907,21 +969,27 @@ class Repairer:
                 edits.append((ps, ps, f"(khdays_c{k} = (int)"))
                 edits.append((pc + 1, pc + 1, ")"))
         for k, _ in captures:
-            edits.append((d.body[0] + 1, d.body[0] + 1,
-                          f"\n    int khdays_c{k} = 0;  /* r{k} as the ROM passes it (port/abi) */"))
+            edits.append(
+                (
+                    d.body[0] + 1,
+                    d.body[0] + 1,
+                    f"\n    int khdays_c{k} = 0;  /* r{k} as the ROM passes it (port/abi) */",
+                )
+            )
         for line_start, open_paren, close_paren in declarations(text, mask, callee):
-            inner = text[open_paren + 1:close_paren].strip()
+            inner = text[open_paren + 1 : close_paren].strip()
             if inner in ("", "void"):
-                edits.append((open_paren + 1, close_paren,
-                              ", ".join(f"int khdays_p{k}" for k in range(defined))))
+                edits.append((open_paren + 1, close_paren, ", ".join(f"int khdays_p{k}" for k in range(defined))))
             else:
                 have = len(split_top_level(inner))
                 if have < defined:
-                    edits.append((close_paren, close_paren, ", " + ", ".join(
-                        f"int khdays_p{k}" for k in range(have, defined))))
+                    edits.append(
+                        (close_paren, close_paren, ", " + ", ".join(f"int khdays_p{k}" for k in range(have, defined)))
+                    )
         self.plan.edits[rel] += edits
-        self.plan.applied.append(f"{caller} -> {callee}: passes " +
-                                 ", ".join(exprs[k] for k in range(declared, defined)))
+        self.plan.applied.append(
+            f"{caller} -> {callee}: passes " + ", ".join(exprs[k] for k in range(declared, defined))
+        )
         return None
 
     def gap_call(self, caller: str, callee: str, why: str, needed: int = 0) -> None:
@@ -935,7 +1003,7 @@ class Repairer:
         span = d.body if d else (0, len(text))
         quoted = message.replace("\\", "\\\\").replace('"', "'")
         for start, close in call_sites(text, mask, callee, span):
-            inner = text[text.find("(", start) + 1:close].strip()
+            inner = text[text.find("(", start) + 1 : close].strip()
             if needed and inner and len(split_top_level(inner)) >= needed:
                 continue  # this call already passes them
             # stop before the call, keeping its type for the expression around it
@@ -960,8 +1028,7 @@ class Repairer:
                     self.plan.edits[rel].append((open_at, close_at, ", ".join(extra)))
                 else:
                     self.plan.edits[rel].append((close_at, close_at, ", " + ", ".join(extra)))
-            self.plan.applied.append(f"{name} takes {count} parameters (its own r{have}..r{count - 1} "
-                                     "pass through)")
+            self.plan.applied.append(f"{name} takes {count} parameters (its own r{have}..r{count - 1} pass through)")
 
     def next_targets(self, where: dict[str, tuple[str, int]]) -> list[str]:
         """Ghidra targets for the next round: calls of the extended functions
@@ -974,21 +1041,21 @@ class Repairer:
                 if name not in text or rel == self.def_file.get(name):
                     continue
                 mask = self.mask(rel)
-                for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{",
-                                     text, re.MULTILINE):
+                for m in re.finditer(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*\{", text, re.MULTILINE):
                     d = find_definition(text, mask, m[1])
                     if not d or m[1] not in where:
                         continue
                     passed = []
                     for start, close in call_sites(text, mask, name, d.body):
-                        inner = text[text.find("(", start) + 1:close].strip()
+                        inner = text[text.find("(", start) + 1 : close].strip()
                         passed.append(0 if not inner else len(split_top_level(inner)))
                     if passed and min(passed) < count:
                         cs, ca = where[m[1]]
                         out.append(f"B {m[1]} {cs} {ca:08x} {name} {fs} {fa:08x} {min(passed)} {count}")
         for gap in self.plan.gaps:
-            m = re.search(r"'s value: (\w+) gives no value either", gap) or \
-                re.search(r": (\w+) gives no value to pass", gap)
+            m = re.search(r"'s value: (\w+) gives no value either", gap) or re.search(
+                r": (\w+) gives no value to pass", gap
+            )
             if m and m[1] in where and m[1] not in self.findings.returns:
                 s, a = where[m[1]]
                 out.append(f"A {m[1]} {s} {a:08x}")

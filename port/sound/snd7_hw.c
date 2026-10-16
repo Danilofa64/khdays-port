@@ -5,10 +5,10 @@
 #include "snd7_internal.h"
 
 /* The layer's state, at its ARM7 addresses. */
-static int32_t master_pan;       /* 0x03807400 (initialised data): < 0, none */
-static int32_t surround_decay;   /* 0x038077b8: 0, none */
-static uint8_t pan_of[16];       /* 0x038077bc: each channel's own pan */
-static uint8_t volume_of[16];    /* 0x038077cc: each channel's own volume */
+static int32_t master_pan;     /* 0x03807400 (initialised data): < 0, none */
+static int32_t surround_decay; /* 0x038077b8: 0, none */
+static uint8_t pan_of[16];     /* 0x038077bc: each channel's own pan */
+static uint8_t volume_of[16];  /* 0x038077cc: each channel's own volume */
 
 /* The channels the surround decay leaves alone are 1 and 3 (the literal
  * 0xfff5 each routine tests). */
@@ -61,8 +61,8 @@ void snd7_hw_setup_pcm(int channel, uint32_t source, int format, int repeat, int
         volume = surround(volume, pan);
     }
     snd7_reg_write(CNT(channel), 4,
-                   (uint32_t)volume | ((uint32_t)format << 29 | (uint32_t)repeat << 27 | (uint32_t)pan << 16 |
-                                       (uint32_t)shift << 8));
+                   (uint32_t)volume |
+                       ((uint32_t)format << 29 | (uint32_t)repeat << 27 | (uint32_t)pan << 16 | (uint32_t)shift << 8));
     snd7_reg_write(TMR(channel), 2, (uint16_t)(0x10000 - timer));
     snd7_reg_write(PNT(channel), 2, (uint16_t)loop_start);
     snd7_reg_write(LEN(channel), 4, length);
@@ -81,8 +81,8 @@ void snd7_hw_setup_psg(int channel, int duty, int volume, int shift, int timer, 
         volume = surround(volume, pan);
     }
     snd7_reg_write(CNT(channel), 4,
-                   (uint32_t)volume | ((uint32_t)duty << 24 | 0x60000000u | (uint32_t)pan << 16 |
-                                       (uint32_t)shift << 8));
+                   (uint32_t)volume |
+                       ((uint32_t)duty << 24 | 0x60000000u | (uint32_t)pan << 16 | (uint32_t)shift << 8));
     snd7_reg_write(TMR(channel), 2, (uint16_t)(0x10000 - timer));
 }
 
@@ -97,8 +97,7 @@ void snd7_hw_setup_noise(int channel, int volume, int shift, int timer, int pan)
     if (decays(channel)) {
         volume = surround(volume, pan);
     }
-    snd7_reg_write(CNT(channel), 4,
-                   (uint32_t)volume | ((uint32_t)pan << 16 | 0x60000000u | (uint32_t)shift << 8));
+    snd7_reg_write(CNT(channel), 4, (uint32_t)volume | ((uint32_t)pan << 16 | 0x60000000u | (uint32_t)shift << 8));
     snd7_reg_write(TMR(channel), 2, (uint16_t)(0x10000 - timer));
 }
 
@@ -265,6 +264,6 @@ void snd7_hw_set_output_selector(int left, int right, int mixch1, int mixch3)
 {
     const uint32_t enabled = (snd7_reg_read(0x101, 1) & 0x80) != 0;
     snd7_reg_write(0x101, 1,
-                   (uint8_t)((uint32_t)left | ((uint32_t)mixch3 << 5 | enabled << 7 | (uint32_t)mixch1 << 4 |
-                                               (uint32_t)right << 2)));
+                   (uint8_t)((uint32_t)left |
+                             ((uint32_t)mixch3 << 5 | enabled << 7 | (uint32_t)mixch1 << 4 | (uint32_t)right << 2)));
 }

@@ -12,11 +12,11 @@
 
 namespace {
 
-constexpr const char* kFontPath = "text/font_eu_10.nftr";
-constexpr std::size_t kMaxCached = 512;  // labels; a settings menu has far fewer
+constexpr const char *kFontPath = "text/font_eu_10.nftr";
+constexpr std::size_t kMaxCached = 512; // labels; a settings menu has far fewer
 
 struct Cached {
-    SDL_Texture* texture = nullptr;
+    SDL_Texture *texture = nullptr;
     int width = 0;
     int height = 0;
 };
@@ -27,9 +27,10 @@ std::unordered_map<std::string, Cached> g_cache;
 
 // UTF-8 to UTF-16, enough for the settings menu's English and the key names
 // SDL gives (every character the font can draw is in the basic plane).
-std::u16string to_utf16(const char* s) {
+std::u16string to_utf16(const char *s)
+{
     std::u16string out;
-    const auto* p = reinterpret_cast<const unsigned char*>(s);
+    const auto *p = reinterpret_cast<const unsigned char *>(s);
     while (*p != 0) {
         char32_t c = *p++;
         int more = 0;
@@ -51,25 +52,25 @@ std::u16string to_utf16(const char* s) {
     return out;
 }
 
-}  // namespace
+} // namespace
 
-extern "C" int khdays_ui_font_load(void) {
+extern "C" int khdays_ui_font_load(void)
+{
     if (g_tried) {
         return g_font.has_value();
     }
     g_tried = true;
     if (khdays::vfs::data_root().empty()) {
-        khdays::vfs::autodetect_data_root();  // the game has done it already; a test may not have
+        khdays::vfs::autodetect_data_root(); // the game has done it already; a test may not have
     }
     const auto path = khdays::vfs::resolve(kFontPath);
     if (!path) {
-        std::fprintf(stderr, "host: the game's font %s was not found; the settings menu uses plain text\n",
-                     kFontPath);
+        std::fprintf(stderr, "host: the game's font %s was not found; the settings menu uses plain text\n", kFontPath);
         return 0;
     }
     try {
         g_font = khdays::assets::decode_nftr(*path);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::fprintf(stderr, "host: the game's font %s could not be read (%s); the settings menu uses plain text\n",
                      kFontPath, e.what());
         return 0;
@@ -77,11 +78,13 @@ extern "C" int khdays_ui_font_load(void) {
     return 1;
 }
 
-extern "C" int khdays_ui_font_line_height(void) {
+extern "C" int khdays_ui_font_line_height(void)
+{
     return g_font ? (g_font->line_feed > 0 ? g_font->line_feed : g_font->cell_height) : 8;
 }
 
-extern "C" int khdays_ui_font_width(const char* utf8) {
+extern "C" int khdays_ui_font_width(const char *utf8)
+{
     if (utf8 == nullptr) {
         return 0;
     }
@@ -98,7 +101,8 @@ extern "C" int khdays_ui_font_width(const char* utf8) {
     return width;
 }
 
-extern "C" SDL_Texture* khdays_ui_font_text(SDL_Renderer* renderer, const char* utf8, int* width, int* height) {
+extern "C" SDL_Texture *khdays_ui_font_text(SDL_Renderer *renderer, const char *utf8, int *width, int *height)
+{
     if (!g_font || utf8 == nullptr) {
         return nullptr;
     }
@@ -114,22 +118,23 @@ extern "C" SDL_Texture* khdays_ui_font_text(SDL_Renderer* renderer, const char* 
     if (image.width <= 0 || image.height <= 0) {
         return nullptr;
     }
-    SDL_Texture* texture =
+    SDL_Texture *texture =
         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, image.width, image.height);
     if (texture == nullptr) {
         return nullptr;
     }
     SDL_UpdateTexture(texture, nullptr, image.rgba.data(), image.width * 4);
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);  // crisp pixels at any size, as on the DS
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST); // crisp pixels at any size, as on the DS
     g_cache[utf8] = Cached{texture, image.width, image.height};
     *width = image.width;
     *height = image.height;
     return texture;
 }
 
-extern "C" void khdays_ui_font_forget(void) {
-    for (auto& [text, cached] : g_cache) {
+extern "C" void khdays_ui_font_forget(void)
+{
+    for (auto &[text, cached] : g_cache) {
         SDL_DestroyTexture(cached.texture);
     }
     g_cache.clear();

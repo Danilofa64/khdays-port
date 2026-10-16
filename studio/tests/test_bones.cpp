@@ -55,8 +55,9 @@ assets::ImportedModel mod_arm(const char* root, const char* arm, float x, float 
 
 TEST(bones_file_as_the_port_reads_it) {
     const fs::path dir = studio_test::scratch("bones_file");
-    studio_test::write(dir / "a.bones.txt",
-                       "# a comment\r\nscale 0.92\r\nBone0 Bip01 extra words\r\ncull back\r\n  \r\nBone2 Bip01_Pelvis # why\r\n");
+    studio_test::write(
+        dir / "a.bones.txt",
+        "# a comment\r\nscale 0.92\r\nBone0 Bip01 extra words\r\ncull back\r\n  \r\nBone2 Bip01_Pelvis # why\r\n");
     BonesFile b = read_bones_file(dir / "a.bones.txt");
     CHECK(near(b.scale, 0.92f));
     CHECK(b.cull == Cull::back);
@@ -71,7 +72,8 @@ TEST(bones_file_as_the_port_reads_it) {
     b.cull = Cull::none;
     studio_test::write(dir / "b.bones.txt", bones_text(b));
     const BonesFile again = read_bones_file(dir / "b.bones.txt");
-    CHECK(near(again.scale, 0.92f) && again.cull == Cull::none && again.pairs == b.pairs && again.comments == b.comments);
+    CHECK(near(again.scale, 0.92f) && again.cull == Cull::none && again.pairs == b.pairs &&
+          again.comments == b.comments);
     BonesFile fresh;
     studio_test::write(dir / "c.bones.txt", bones_text(fresh));
     const BonesFile plain = read_bones_file(dir / "c.bones.txt");
@@ -91,7 +93,7 @@ TEST(joints_follow_nodes_by_name_and_pairs) {
     CHECK(rig.joints[1].node == -1);  // follows nothing: moves with its parent
     rig = build_rig(g, mod, {{"Bone7", "arm"}}, 1.0f);
     CHECK(rig.joints[1].node == 1);
-    CHECK(rig.joints[1].exact);       // at its node's place, uncorrected
+    CHECK(rig.joints[1].exact);  // at its node's place, uncorrected
     rig = build_rig(g, mod, {{"Bone7", "nothere"}}, 1.0f);
     CHECK(rig.joints[1].node == -1 && rig.missing_nodes.size() == 1u);
 }

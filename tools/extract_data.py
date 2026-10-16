@@ -81,10 +81,7 @@ def read_exact(stream: BinaryIO, offset: int, size: int, label: str) -> bytes:
     stream.seek(offset)
     data = stream.read(size)
     if len(data) != size:
-        raise ValueError(
-            f"{label}: expected {size} bytes at 0x{offset:X}, "
-            f"but only {len(data)} could be read."
-        )
+        raise ValueError(f"{label}: expected {size} bytes at 0x{offset:X}, but only {len(data)} could be read.")
     return data
 
 
@@ -135,8 +132,7 @@ def read_header(stream: BinaryIO, rom_size: int) -> RomHeader:
             continue
         if offset + size > rom_size:
             raise ValueError(
-                f"{label}: range outside the ROM "
-                f"(offset=0x{offset:X}, size=0x{size:X}, rom=0x{rom_size:X})."
+                f"{label}: range outside the ROM (offset=0x{offset:X}, size=0x{size:X}, rom=0x{rom_size:X})."
             )
 
     if parsed.fat_size % 8 != 0:
@@ -179,14 +175,9 @@ def parse_fat(fat: bytes, rom_size: int) -> list[FatEntry]:
         start, end = struct.unpack_from("<II", fat, offset)
 
         if end < start:
-            raise ValueError(
-                f"FAT[{file_id}]: end 0x{end:X} precedes start 0x{start:X}."
-            )
+            raise ValueError(f"FAT[{file_id}]: end 0x{end:X} precedes start 0x{start:X}.")
         if end > rom_size:
-            raise ValueError(
-                f"FAT[{file_id}]: end 0x{end:X} outside the ROM "
-                f"(0x{rom_size:X})."
-            )
+            raise ValueError(f"FAT[{file_id}]: end 0x{end:X} outside the ROM (0x{rom_size:X}).")
 
         entries.append(FatEntry(file_id=file_id, start=start, end=end))
 
@@ -203,9 +194,7 @@ def parse_fnt(fnt: bytes, fat_count: int) -> dict[int, PurePosixPath]:
     if len(fnt) < 8:
         raise ValueError("The FNT is too small.")
 
-    root_subtable_offset, root_first_file_id, directory_count = struct.unpack_from(
-        "<IHH", fnt, 0
-    )
+    root_subtable_offset, root_first_file_id, directory_count = struct.unpack_from("<IHH", fnt, 0)
 
     if directory_count == 0:
         raise ValueError("The FNT declares zero directories.")
@@ -217,15 +206,11 @@ def parse_fnt(fnt: bytes, fat_count: int) -> dict[int, PurePosixPath]:
     main_entries: dict[int, tuple[int, int, int]] = {}
     for index in range(directory_count):
         offset = index * 8
-        subtable_offset, first_file_id, parent_id = struct.unpack_from(
-            "<IHH", fnt, offset
-        )
+        subtable_offset, first_file_id, parent_id = struct.unpack_from("<IHH", fnt, offset)
         directory_id = ROOT_DIRECTORY_ID + index
 
         if subtable_offset >= len(fnt):
-            raise ValueError(
-                f"Directory 0x{directory_id:04X}: subtable outside the FNT."
-            )
+            raise ValueError(f"Directory 0x{directory_id:04X}: subtable outside the FNT.")
 
         main_entries[directory_id] = (
             subtable_offset,
@@ -238,22 +223,16 @@ def parse_fnt(fnt: bytes, fat_count: int) -> dict[int, PurePosixPath]:
 
     def walk(directory_id: int, parent_path: PurePosixPath) -> None:
         if directory_id in visited:
-            raise ValueError(
-                f"Cycle detected in directory 0x{directory_id:04X}."
-            )
+            raise ValueError(f"Cycle detected in directory 0x{directory_id:04X}.")
         if directory_id not in main_entries:
-            raise ValueError(
-                f"Reference to nonexistent directory 0x{directory_id:04X}."
-            )
+            raise ValueError(f"Reference to nonexistent directory 0x{directory_id:04X}.")
 
         visited.add(directory_id)
         cursor, file_id, _parent_id = main_entries[directory_id]
 
         while True:
             if cursor >= len(fnt):
-                raise ValueError(
-                    f"Directory 0x{directory_id:04X}: subtable without terminator."
-                )
+                raise ValueError(f"Directory 0x{directory_id:04X}: subtable without terminator.")
 
             descriptor = fnt[cursor]
             cursor += 1
@@ -265,15 +244,11 @@ def parse_fnt(fnt: bytes, fat_count: int) -> dict[int, PurePosixPath]:
             name_length = descriptor & 0x7F
 
             if name_length == 0:
-                raise ValueError(
-                    f"Directory 0x{directory_id:04X}: zero-length name."
-                )
+                raise ValueError(f"Directory 0x{directory_id:04X}: zero-length name.")
             if cursor + name_length > len(fnt):
-                raise ValueError(
-                    f"Directory 0x{directory_id:04X}: name outside the FNT."
-                )
+                raise ValueError(f"Directory 0x{directory_id:04X}: name outside the FNT.")
 
-            raw_name = fnt[cursor:cursor + name_length]
+            raw_name = fnt[cursor : cursor + name_length]
             cursor += name_length
             decoded_name = raw_name.decode("ascii", errors="replace")
 
@@ -291,8 +266,7 @@ def parse_fnt(fnt: bytes, fat_count: int) -> dict[int, PurePosixPath]:
             else:
                 if file_id >= fat_count:
                     raise ValueError(
-                        f"The FNT references file_id {file_id}, "
-                        f"but the FAT only contains {fat_count} entries."
+                        f"The FNT references file_id {file_id}, but the FAT only contains {fat_count} entries."
                     )
 
                 file_name = safe_component(
@@ -324,9 +298,7 @@ def copy_range(
         while remaining:
             chunk = source.read(min(1024 * 1024, remaining))
             if not chunk:
-                raise ValueError(
-                    f"Truncated read while extracting {destination}."
-                )
+                raise ValueError(f"Truncated read while extracting {destination}.")
             output.write(chunk)
             digest.update(chunk)
             remaining -= len(chunk)
@@ -355,10 +327,7 @@ def extract_optional_range(
 def ensure_empty_output(path: Path, force: bool) -> None:
     if path.exists():
         if not force:
-            raise FileExistsError(
-                f"The output folder already exists: {path}\n"
-                "Use --force to replace it."
-            )
+            raise FileExistsError(f"The output folder already exists: {path}\nUse --force to replace it.")
         shutil.rmtree(path)
 
     path.mkdir(parents=True, exist_ok=True)
@@ -513,10 +482,7 @@ def parse_args() -> argparse.Namespace:
     default_output = repository_root / "data" / "extracted"
 
     parser = argparse.ArgumentParser(
-        description=(
-            "Extract NitroFS and selected system data from a user-provided "
-            "Nintendo DS ROM."
-        )
+        description=("Extract NitroFS and selected system data from a user-provided Nintendo DS ROM.")
     )
     parser.add_argument("rom", type=Path, help="Path to the .nds ROM")
     parser.add_argument(

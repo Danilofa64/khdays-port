@@ -26,9 +26,12 @@ void attach_parent_console() {
     const bool out = std_handle_free(STD_OUTPUT_HANDLE), err = std_handle_free(STD_ERROR_HANDLE),
                in = std_handle_free(STD_INPUT_HANDLE);
     if ((out || err || in) && AttachConsole(ATTACH_PARENT_PROCESS)) {
-        if (out) (void)std::freopen("CONOUT$", "w", stdout);
-        if (err) (void)std::freopen("CONOUT$", "w", stderr);
-        if (in) (void)std::freopen("CONIN$", "r", stdin);
+        if (out)
+            (void)std::freopen("CONOUT$", "w", stdout);
+        if (err)
+            (void)std::freopen("CONOUT$", "w", stderr);
+        if (in)
+            (void)std::freopen("CONIN$", "r", stdin);
     }
 #endif
 }

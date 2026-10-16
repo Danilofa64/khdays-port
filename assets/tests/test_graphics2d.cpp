@@ -39,8 +39,8 @@ int main() {
         // NCLR: 4-color palette (index 1 = red RGB555 0x001F).
         Bytes nclr(0x30, 0U);
         set_magic(nclr, "RLCN");
-        set_u32(nclr, 0x18U, 3U);   // bit depth 3 -> 16 colors/palette
-        set_u32(nclr, 0x20U, 8U);   // data size = 4 colors
+        set_u32(nclr, 0x18U, 3U);            // bit depth 3 -> 16 colors/palette
+        set_u32(nclr, 0x20U, 8U);            // data size = 4 colors
         set_u16(nclr, 0x28U + 0U, 0x0000U);  // index 0 black
         set_u16(nclr, 0x28U + 2U, 0x001FU);  // index 1 red
         set_u16(nclr, 0x28U + 4U, 0x03E0U);  // index 2 green
@@ -49,9 +49,9 @@ int main() {
         // NCGR: one 4bpp tile, every pixel index 1.
         Bytes ncgr(0x50, 0U);
         set_magic(ncgr, "RGCN");
-        set_u32(ncgr, 0x1CU, 3U);       // 4bpp
-        set_u32(ncgr, 0x28U, 32U);      // data size = 1 tile
-        set_u32(ncgr, 0x2CU, 0x18U);    // data offset -> tiles at 0x30
+        set_u32(ncgr, 0x1CU, 3U);     // 4bpp
+        set_u32(ncgr, 0x28U, 32U);    // data size = 1 tile
+        set_u32(ncgr, 0x2CU, 0x18U);  // data offset -> tiles at 0x30
         for (std::size_t i = 0x30U; i < 0x50U; ++i) {
             ncgr[i] = 0x11U;  // two index-1 pixels per byte
         }
@@ -59,15 +59,14 @@ int main() {
         // NSCR: one cell, tile 0, palette 0.
         Bytes nscr(0x26, 0U);
         set_magic(nscr, "RCSN");
-        set_u16(nscr, 0x18U, 8U);   // width px
-        set_u16(nscr, 0x1AU, 8U);   // height px
-        set_u32(nscr, 0x20U, 2U);   // data size = 1 cell
+        set_u16(nscr, 0x18U, 8U);  // width px
+        set_u16(nscr, 0x1AU, 8U);  // height px
+        set_u32(nscr, 0x20U, 2U);  // data size = 1 cell
         set_u16(nscr, 0x24U, 0x0000U);
 
         const auto palette = khdays::assets::decode_nclr(nclr.data(), nclr.size());
         expect(palette.colors.size() == 4U, "palette color count");
-        expect(palette.colors[1][0] == 255 && palette.colors[1][1] == 0
-                   && palette.colors[1][2] == 0,
+        expect(palette.colors[1][0] == 255 && palette.colors[1][1] == 0 && palette.colors[1][2] == 0,
                "palette index 1 is red");
 
         const auto tiles = khdays::assets::decode_ncgr(ncgr.data(), ncgr.size());
@@ -88,8 +87,7 @@ int main() {
         {
             const auto put_magic = [](Bytes& b, std::size_t o, const char* m) {
                 for (int i = 0; i < 4; ++i) {
-                    b.at(o + static_cast<std::size_t>(i)) =
-                        static_cast<std::uint8_t>(m[i]);
+                    b.at(o + static_cast<std::size_t>(i)) = static_cast<std::uint8_t>(m[i]);
                 }
             };
             Bytes pk(0x130U, 0xFFU);  // 0xFF fill = "empty slot" for unused ptrs
@@ -122,16 +120,12 @@ int main() {
             expect(pack.tiles.size() == 1U, "pk2d NCGR count");
             expect(pack.cells.size() == 1U, "pk2d NCER count");
             expect(pack.screens.empty() && pack.anims.empty(), "pk2d empties");
-            expect(pack.palettes[0].data == pk.data() + 0x100U
-                       && pack.palettes[0].size == 16U,
-                   "pk2d NCLR view");
+            expect(pack.palettes[0].data == pk.data() + 0x100U && pack.palettes[0].size == 16U, "pk2d NCLR view");
 
             // A non-D2KP blob yields an all-empty pack.
             Bytes junk(64U, 0U);
             const auto none = khdays::assets::parse_pk2d(junk.data(), junk.size());
-            expect(none.palettes.empty() && none.tiles.empty()
-                       && none.cells.empty(),
-                   "pk2d rejects non-D2KP");
+            expect(none.palettes.empty() && none.tiles.empty() && none.cells.empty(), "pk2d rejects non-D2KP");
         }
 
         {
@@ -152,13 +146,11 @@ int main() {
             kaph[0x3AU] = 'D';
             kaph[0x3BU] = '0';
 
-            const auto pack =
-                khdays::assets::parse_slot_container(kaph.data(), kaph.size());
+            const auto pack = khdays::assets::parse_slot_container(kaph.data(), kaph.size());
             expect(pack.valid, "KAPH is recognised as a slot container");
             expect(pack.slots[7].size() == 1U, "slot 7 holds one entry");
             expect(pack.slots[7][0].size == 8U, "slot 7 entry keeps its size");
-            expect(pack.slots[7][0].data == kaph.data() + 0x38U,
-                   "slot 7 entry points into the container");
+            expect(pack.slots[7][0].data == kaph.data() + 0x38U, "slot 7 entry points into the container");
             expect(pack.slots[0].empty(), "an unused slot stays empty");
 
             // The same layout under the UI magic.
@@ -167,23 +159,18 @@ int main() {
             d2kp[1] = '2';
             d2kp[2] = 'K';
             d2kp[3] = 'P';
-            expect(khdays::assets::parse_slot_container(d2kp.data(), d2kp.size())
-                       .slots[7]
-                       .size() == 1U,
+            expect(khdays::assets::parse_slot_container(d2kp.data(), d2kp.size()).slots[7].size() == 1U,
                    "D2KP shares the slot layout");
 
             // Anything else is rejected rather than parsed as garbage.
             const Bytes junk(0x40U, 0U);
-            expect(!khdays::assets::parse_slot_container(junk.data(), junk.size())
-                        .valid,
+            expect(!khdays::assets::parse_slot_container(junk.data(), junk.size()).valid,
                    "a blob with no container magic is rejected");
 
             // A section pointing past the end must not be trusted.
             Bytes bad = kaph;
             set_u32(bad, 0x08U + 7U * 4U, 0xFFFF0000U);
-            expect(khdays::assets::parse_slot_container(bad.data(), bad.size())
-                       .slots[7]
-                       .empty(),
+            expect(khdays::assets::parse_slot_container(bad.data(), bad.size()).slots[7].empty(),
                    "an out-of-range section is skipped");
         }
 

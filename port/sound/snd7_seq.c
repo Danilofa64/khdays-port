@@ -17,18 +17,18 @@ enum {
 
 /* A sequence player (0x24 bytes each at 0x03808258). */
 typedef struct Player {
-    uint8_t flags;           /* +0x00: PLAYER_* */
-    uint8_t number;          /* +0x01: its own */
-    uint8_t unused_02[2];    /* +0x02: the driver's code never touches them */
-    uint8_t priority;        /* +0x04: its notes' channel priority, with each track's */
-    uint8_t volume;          /* +0x05: 0-127, through the decibel table */
-    int16_t volume_offset;   /* +0x06: tenths of a dB, with each track's */
-    uint8_t tracks[16];      /* +0x08: the numbers of its tracks, 0xff none */
-    uint16_t tempo;          /* +0x18: beats a minute */
-    uint16_t tempo_ratio;    /* +0x1a: 256 as written */
-    uint16_t tempo_counter;  /* +0x1c: a tick for every 240 */
-    uint16_t unused_1e;      /* +0x1e */
-    uint32_t bank;           /* +0x20: its bank's address */
+    uint8_t flags;          /* +0x00: PLAYER_* */
+    uint8_t number;         /* +0x01: its own */
+    uint8_t unused_02[2];   /* +0x02: the driver's code never touches them */
+    uint8_t priority;       /* +0x04: its notes' channel priority, with each track's */
+    uint8_t volume;         /* +0x05: 0-127, through the decibel table */
+    int16_t volume_offset;  /* +0x06: tenths of a dB, with each track's */
+    uint8_t tracks[16];     /* +0x08: the numbers of its tracks, 0xff none */
+    uint16_t tempo;         /* +0x18: beats a minute */
+    uint16_t tempo_ratio;   /* +0x1a: 256 as written */
+    uint16_t tempo_counter; /* +0x1c: a tick for every 240 */
+    uint16_t unused_1e;     /* +0x1e */
+    uint32_t bank;          /* +0x20: its bank's address */
 } Player;
 
 enum {
@@ -45,34 +45,34 @@ enum {
 
 /* A track (0x40 bytes each at 0x03808498). */
 typedef struct Track {
-    uint8_t flags;             /* +0x00: TRACK_* */
-    uint8_t pan_range;         /* +0x01: 127 the full width */
-    uint16_t program;          /* +0x02: its instrument in the player's bank */
-    uint8_t volume;            /* +0x04: 0-127, through the decibel table */
-    uint8_t expression;        /* +0x05: a second volume, as the first */
-    int8_t bend;               /* +0x06: the pitch bend, in 128ths of its range */
-    uint8_t bend_range;        /* +0x07: semitones */
-    int8_t pan;                /* +0x08: -64..63 */
-    int8_t pan_offset;         /* +0x09 */
-    int16_t volume_offset;     /* +0x0a: tenths of a dB, with the player's */
-    int16_t pitch_offset;      /* +0x0c: 64ths of a semitone */
-    uint8_t attack;            /* +0x0e: 0xff the instrument's */
-    uint8_t decay;             /* +0x0f: 0xff the instrument's */
-    uint8_t sustain;           /* +0x10: 0xff the instrument's */
-    uint8_t release;           /* +0x11: 0xff the instrument's */
-    uint8_t priority;          /* +0x12: with the player's */
-    int8_t transpose;          /* +0x13: semitones */
-    uint8_t portamento_key;    /* +0x14: the key a portamento slides from, the last note's */
-    uint8_t portamento_time;   /* +0x15: 0: the slide lasts the note */
-    int16_t sweep_pitch;       /* +0x16: 64ths of a semitone each note starts off by */
-    Snd7LfoParam lfo;          /* +0x18: its notes' */
-    uint16_t channel_mask;     /* +0x1e: the channels its notes may take */
-    int32_t wait;              /* +0x20: ticks before its next command */
-    uint32_t base;             /* +0x24: its sequence's data */
-    uint32_t position;         /* +0x28: its next command, 0 before it starts */
-    uint32_t call_stack[3];    /* +0x2c: where a return or a loop goes back to */
-    uint8_t loop_count[3];     /* +0x38: 0 forever */
-    uint8_t depth;             /* +0x3b: in the call stack */
+    uint8_t flags;           /* +0x00: TRACK_* */
+    uint8_t pan_range;       /* +0x01: 127 the full width */
+    uint16_t program;        /* +0x02: its instrument in the player's bank */
+    uint8_t volume;          /* +0x04: 0-127, through the decibel table */
+    uint8_t expression;      /* +0x05: a second volume, as the first */
+    int8_t bend;             /* +0x06: the pitch bend, in 128ths of its range */
+    uint8_t bend_range;      /* +0x07: semitones */
+    int8_t pan;              /* +0x08: -64..63 */
+    int8_t pan_offset;       /* +0x09 */
+    int16_t volume_offset;   /* +0x0a: tenths of a dB, with the player's */
+    int16_t pitch_offset;    /* +0x0c: 64ths of a semitone */
+    uint8_t attack;          /* +0x0e: 0xff the instrument's */
+    uint8_t decay;           /* +0x0f: 0xff the instrument's */
+    uint8_t sustain;         /* +0x10: 0xff the instrument's */
+    uint8_t release;         /* +0x11: 0xff the instrument's */
+    uint8_t priority;        /* +0x12: with the player's */
+    int8_t transpose;        /* +0x13: semitones */
+    uint8_t portamento_key;  /* +0x14: the key a portamento slides from, the last note's */
+    uint8_t portamento_time; /* +0x15: 0: the slide lasts the note */
+    int16_t sweep_pitch;     /* +0x16: 64ths of a semitone each note starts off by */
+    Snd7LfoParam lfo;        /* +0x18: its notes' */
+    uint16_t channel_mask;   /* +0x1e: the channels its notes may take */
+    int32_t wait;            /* +0x20: ticks before its next command */
+    uint32_t base;           /* +0x24: its sequence's data */
+    uint32_t position;       /* +0x28: its next command, 0 before it starts */
+    uint32_t call_stack[3];  /* +0x2c: where a return or a loop goes back to */
+    uint8_t loop_count[3];   /* +0x38: 0 forever */
+    uint8_t depth;           /* +0x3b: in the call stack */
     /* +0x3c in the ARM7's: its notes playing, a list through their next */
     Snd7Channel *channels;
 } Track;
@@ -86,8 +86,8 @@ _Static_assert(offsetof(Track, channels) == KHDAYS_SND7_TRACK_COMPARED ||
                    offsetof(Track, channels) == KHDAYS_SND7_TRACK_SIZE,
                "the track's notes come after its ARM7 fields");
 
-static Player players[16];  /* 0x03808258 */
-static Track tracks[32];    /* 0x03808498 */
+static Player players[16]; /* 0x03808258 */
+static Track tracks[32];   /* 0x03808498 */
 
 const uint8_t *khdays_snd7_native_player_record(int n)
 {
@@ -196,10 +196,8 @@ enum { ARG_BYTE, ARG_HALFWORD, ARG_VARIABLE_LENGTH, ARG_RANDOM, ARG_VARIABLE };
 static int32_t read_arg(Track *t, const Player *p, int type)
 {
     switch (type) {
-    case ARG_BYTE:
-        return read_byte(t);
-    case ARG_HALFWORD:
-        return read16(t);
+    case ARG_BYTE: return read_byte(t);
+    case ARG_HALFWORD: return read16(t);
     case ARG_VARIABLE_LENGTH: {
         uint32_t value = 0;
         uint8_t b;
@@ -220,8 +218,7 @@ static int32_t read_arg(Track *t, const Player *p, int type)
          * that register: the argument's type, 4. */
         return at < 0 ? ARG_VARIABLE : variable_value(at);
     }
-    default:
-        return 0;
+    default: return 0;
     }
 }
 
@@ -402,12 +399,8 @@ static void finish_player(Player *p)
 static void mute_track(Track *t, const Player *p, int mode)
 {
     switch (mode) {
-    case 0:
-        t->flags &= (uint8_t)~TRACK_MUTED;
-        break;
-    case 1:
-        t->flags |= TRACK_MUTED;
-        break;
+    case 0: t->flags &= (uint8_t)~TRACK_MUTED; break;
+    case 1: t->flags |= TRACK_MUTED; break;
     case 2:
         t->flags |= TRACK_MUTED;
         release_channels(t, p, -1);
@@ -417,8 +410,7 @@ static void mute_track(Track *t, const Player *p, int mode)
         release_channels(t, p, 127);
         free_channels(t);
         break;
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -436,17 +428,10 @@ static Snd7Channel *start_note(Track *t, Player *p, int key, int velocity, int32
     }
     switch (instrument.type) {
     case 1:
-    case 4:
-        mask = 0xffff;
-        break;
-    case 2:
-        mask = 0x3f00;
-        break;
-    case 3:
-        mask = 0xc000;
-        break;
-    default:
-        return NULL;
+    case 4: mask = 0xffff; break;
+    case 2: mask = 0x3f00; break;
+    case 3: mask = 0xc000; break;
+    default: return NULL;
     }
     c = snd7_channel_alloc(mask & t->channel_mask, p->priority + t->priority, (t->flags & TRACK_OWN_CHANNELS) != 0,
                            channel_event, t);
@@ -556,26 +541,16 @@ static void variable_command(Track *t, Player *p, int command, int execute, int 
     }
     value = variable_value(at);
     switch (command) {
-    case 0xb0:
-        set_variable(at, arg);
-        return;
-    case 0xb1:
-        set_variable(at, (int16_t)(value + arg));
-        return;
-    case 0xb2:
-        set_variable(at, (int16_t)(value - arg));
-        return;
-    case 0xb3:
-        set_variable(at, (int16_t)(value * arg));
-        return;
+    case 0xb0: set_variable(at, arg); return;
+    case 0xb1: set_variable(at, (int16_t)(value + arg)); return;
+    case 0xb2: set_variable(at, (int16_t)(value - arg)); return;
+    case 0xb3: set_variable(at, (int16_t)(value * arg)); return;
     case 0xb4:
         if (arg != 0) {
             set_variable(at, (int16_t)(value / arg));
         }
         return;
-    case 0xb5:
-        set_variable(at, (int16_t)(arg >= 0 ? shift_left(value, arg) : shift_right(value, -arg)));
-        return;
+    case 0xb5: set_variable(at, (int16_t)(arg >= 0 ? shift_left(value, arg) : shift_right(value, -arg))); return;
     case 0xb6: {
         const int negative = arg < 0;
         int32_t random;
@@ -586,26 +561,13 @@ static void variable_command(Track *t, Player *p, int command, int execute, int 
         set_variable(at, (int16_t)(negative ? -random : random));
         return;
     }
-    case 0xb8:
-        condition = value == arg;
-        break;
-    case 0xb9:
-        condition = value >= arg;
-        break;
-    case 0xba:
-        condition = value > arg;
-        break;
-    case 0xbb:
-        condition = value <= arg;
-        break;
-    case 0xbc:
-        condition = value < arg;
-        break;
-    case 0xbd:
-        condition = value != arg;
-        break;
-    default:
-        return;
+    case 0xb8: condition = value == arg; break;
+    case 0xb9: condition = value >= arg; break;
+    case 0xba: condition = value > arg; break;
+    case 0xbb: condition = value <= arg; break;
+    case 0xbc: condition = value < arg; break;
+    case 0xbd: condition = value != arg; break;
+    default: return;
     }
     t->flags = (uint8_t)((t->flags & ~TRACK_CONDITION) | (condition ? TRACK_CONDITION : 0));
 }
@@ -623,30 +585,14 @@ static void setting_command(Track *t, Player *p, int command, int execute, int t
         return;
     }
     switch (command) {
-    case 0xc0:
-        t->pan = (int8_t)(arg - 0x40);
-        break;
-    case 0xc1:
-        t->volume = arg;
-        break;
-    case 0xc2:
-        p->volume = arg;
-        break;
-    case 0xc3:
-        t->transpose = (int8_t)arg;
-        break;
-    case 0xc4:
-        t->bend = (int8_t)arg;
-        break;
-    case 0xc5:
-        t->bend_range = arg;
-        break;
-    case 0xc6:
-        t->priority = arg;
-        break;
-    case 0xc7:
-        set_flag(t, TRACK_NOTE_WAIT, arg);
-        break;
+    case 0xc0: t->pan = (int8_t)(arg - 0x40); break;
+    case 0xc1: t->volume = arg; break;
+    case 0xc2: p->volume = arg; break;
+    case 0xc3: t->transpose = (int8_t)arg; break;
+    case 0xc4: t->bend = (int8_t)arg; break;
+    case 0xc5: t->bend_range = arg; break;
+    case 0xc6: t->priority = arg; break;
+    case 0xc7: set_flag(t, TRACK_NOTE_WAIT, arg); break;
     case 0xc8:
         set_flag(t, TRACK_TIE, arg);
         release_channels(t, p, -1);
@@ -656,36 +602,16 @@ static void setting_command(Track *t, Player *p, int command, int execute, int t
         t->portamento_key = (uint8_t)(arg + t->transpose);
         t->flags |= TRACK_PORTAMENTO;
         break;
-    case 0xca:
-        t->lfo.depth = arg;
-        break;
-    case 0xcb:
-        t->lfo.speed = arg;
-        break;
-    case 0xcc:
-        t->lfo.target = arg;
-        break;
-    case 0xcd:
-        t->lfo.range = arg;
-        break;
-    case 0xce:
-        set_flag(t, TRACK_PORTAMENTO, arg);
-        break;
-    case 0xcf:
-        t->portamento_time = arg;
-        break;
-    case 0xd0:
-        t->attack = arg;
-        break;
-    case 0xd1:
-        t->decay = arg;
-        break;
-    case 0xd2:
-        t->sustain = arg;
-        break;
-    case 0xd3:
-        t->release = arg;
-        break;
+    case 0xca: t->lfo.depth = arg; break;
+    case 0xcb: t->lfo.speed = arg; break;
+    case 0xcc: t->lfo.target = arg; break;
+    case 0xcd: t->lfo.range = arg; break;
+    case 0xce: set_flag(t, TRACK_PORTAMENTO, arg); break;
+    case 0xcf: t->portamento_time = arg; break;
+    case 0xd0: t->attack = arg; break;
+    case 0xd1: t->decay = arg; break;
+    case 0xd2: t->sustain = arg; break;
+    case 0xd3: t->release = arg; break;
     case 0xd4: /* a loop starts: back here, `arg` times (0 forever) */
         if (t->depth < 3) {
             t->call_stack[t->depth] = t->position;
@@ -693,16 +619,10 @@ static void setting_command(Track *t, Player *p, int command, int execute, int t
             ++t->depth;
         }
         break;
-    case 0xd5:
-        t->expression = arg;
-        break;
-    case 0xd6: /* a variable printed: nothing -- the ARM7 looks for a flag (0x03807cf8) nothing sets */
-        break;
-    case 0xd7:
-        mute_track(t, p, arg);
-        break;
-    default:
-        break;
+    case 0xd5: t->expression = arg; break;
+    case 0xd6: /* a variable printed: nothing -- the ARM7 looks for a flag (0x03807cf8) nothing sets */ break;
+    case 0xd7: mute_track(t, p, arg); break;
+    default: break;
     }
 }
 
@@ -754,7 +674,7 @@ static int run_command(Track *t, Player *p, int play)
             if (other != NULL && other != t) {
                 release_channels(other, p, -1);
                 free_channels(other);
-                other->base = t->base;             /* 0x038009d0 */
+                other->base = t->base; /* 0x038009d0 */
                 other->position = t->base + offset;
             }
         } else if (command == 0x94) { /* a jump */
@@ -770,13 +690,9 @@ static int run_command(Track *t, Player *p, int play)
             }
         }
         break;
-    case 0xb0:
-        variable_command(t, p, command, execute, type_given ? type : ARG_HALFWORD);
-        break;
+    case 0xb0: variable_command(t, p, command, execute, type_given ? type : ARG_HALFWORD); break;
     case 0xc0:
-    case 0xd0:
-        setting_command(t, p, command, execute, type_given ? type : ARG_BYTE);
-        break;
+    case 0xd0: setting_command(t, p, command, execute, type_given ? type : ARG_BYTE); break;
     case 0xe0: {
         const int16_t arg = (int16_t)read_arg(t, p, type_given ? type : ARG_HALFWORD);
         if (!execute) {
@@ -815,8 +731,7 @@ static int run_command(Track *t, Player *p, int play)
             return 1;
         }
         break;
-    default:
-        break;
+    default: break;
     }
     return 0;
 }
@@ -923,8 +838,7 @@ void snd7_seq_main(int periodic)
                     const uint32_t at = 0x40 + 0x24 * p->number;
                     snd7_shared_write32(at, snd7_shared_read32(at) + (uint32_t)played);
                 }
-                p->tempo_counter =
-                    (uint16_t)(p->tempo_counter + ((int32_t)((uint32_t)p->tempo * p->tempo_ratio) >> 8));
+                p->tempo_counter = (uint16_t)(p->tempo_counter + ((int32_t)((uint32_t)p->tempo * p->tempo_ratio) >> 8));
             }
             for (int i = 0; i < 16; ++i) {
                 Track *t = player_track(p, i);

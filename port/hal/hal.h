@@ -29,8 +29,11 @@ extern "C" {
  * fill from the SDK/hardware documentation, not something to paper over. */
 __declspec(noreturn) void khdays_hal_unimplemented(const char *what);
 
-#define KHDAYS_HAL_TODO(name) \
-    void name(void) { khdays_hal_unimplemented(#name); }
+#define KHDAYS_HAL_TODO(name)                                                                                          \
+    void name(void)                                                                                                    \
+    {                                                                                                                  \
+        khdays_hal_unimplemented(#name);                                                                               \
+    }
 
 /* The emulated ARM9 CPSR: the mode (bits 0-4) and the IRQ/FIQ disable bits
  * (0x80/0x40). Nothing else of it has a native meaning. */

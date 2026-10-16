@@ -105,8 +105,8 @@ void khdays_layout_draw_piece(const KhdaysLayout *l, const KhdaysLayoutFrame *fr
 void khdays_layout_draw_tinted(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const char *name, float x, float y,
                                float w, float h, const Uint8 colour[3], float alpha);
 /* A piece where its place says, offset by (dx, dy). */
-void khdays_layout_draw_placed(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const char *name, float dx,
-                               float dy, float alpha);
+void khdays_layout_draw_placed(const KhdaysLayout *l, const KhdaysLayoutFrame *fr, const char *name, float dx, float dy,
+                               float alpha);
 /* A line's width in the picture's texels at `size` (icons for the DS's buttons). */
 float khdays_layout_line_width(const KhdaysLayout *l, const unsigned short *t, float size);
 /* The icon of the input the player has for an action (KHDAYS_ACT_*) on the device played, `h` high
@@ -126,10 +126,10 @@ void khdays_layout_fill_oval(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr
                              float ry, const Uint8 colour[3], float alpha);
 void khdays_layout_ring_oval(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float cx, float cy, float rx,
                              float ry, float thickness, const Uint8 colour[3], float alpha);
-void khdays_layout_fill_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w,
-                                float h, float radius, const Uint8 colour[3], float alpha);
-void khdays_layout_ring_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w,
-                                float h, float radius, float thickness, const Uint8 colour[3], float alpha);
+void khdays_layout_fill_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w, float h,
+                                float radius, const Uint8 colour[3], float alpha);
+void khdays_layout_ring_rounded(SDL_Renderer *renderer, const KhdaysLayoutFrame *fr, float x, float y, float w, float h,
+                                float radius, float thickness, const Uint8 colour[3], float alpha);
 /* The game's fade over the whole window: a master brightness (-16 black to 16 white). */
 void khdays_layout_shade(SDL_Renderer *renderer, int master);
 /* The renderer is gone: the input icons' textures with it. */

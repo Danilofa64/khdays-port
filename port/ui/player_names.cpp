@@ -29,28 +29,30 @@ extern "C" unsigned int Session_GetLocalPlayerIndex(void);
 namespace {
 
 constexpr int kPlayers = 4;
-constexpr int kNameChars = 11;          // with the terminator
-constexpr std::uint32_t kSelect = 0x020565e4u;  // ov006's mission globals: the context first
-constexpr std::uint32_t kLobby = 0x02090f24u;   // ov008's
-constexpr std::uint32_t kMessage = 0x42c;       // the selection message in the context
-constexpr int kOwnRight = 197, kOwnTop = 175;   // the own name's right edge and top (DS dots): its label's top
-constexpr int kAllyRight = 214, kAllyTop = 120, kAllyStep = 24;  // the allies' (their labels at 216,120 measured)
-constexpr int kLabelHeight = 7;  // a label's plate: the names centred on it
-constexpr int kSizeQuarters = 3; // the names at three quarters of the font's own size
+constexpr int kNameChars = 11;                 // with the terminator
+constexpr std::uint32_t kSelect = 0x020565e4u; // ov006's mission globals: the context first
+constexpr std::uint32_t kLobby = 0x02090f24u;  // ov008's
+constexpr std::uint32_t kMessage = 0x42c;      // the selection message in the context
+constexpr int kOwnRight = 197, kOwnTop = 175;  // the own name's right edge and top (DS dots): its label's top
+constexpr int kAllyRight = 214, kAllyTop = 120, kAllyStep = 24; // the allies' (their labels at 216,120 measured)
+constexpr int kLabelHeight = 7;                                 // a label's plate: the names centred on it
+constexpr int kSizeQuarters = 3;                                // the names at three quarters of the font's own size
 
 std::u16string names[kPlayers];
 
-bool in_game_ram(std::uint32_t p) {
-    return khdays_game_ram(p) != 0;  // main RAM or the game's heaps
+bool in_game_ram(std::uint32_t p)
+{
+    return khdays_game_ram(p) != 0; // main RAM or the game's heaps
 }
 
-template <typename T>
-T at(std::uint32_t address) {
-    return *static_cast<const volatile T*>(KHDAYS_W(address));
+template <typename T> T at(std::uint32_t address)
+{
+    return *static_cast<const volatile T *>(KHDAYS_W(address));
 }
 
 // The names of the players present, while ov006 or ov008 has its context.
-void keep_names() {
+void keep_names()
+{
     std::uint32_t context = 0;
     if (khdays_overlay_loaded(6)) {
         context = at<std::uint32_t>(kSelect);
@@ -67,7 +69,8 @@ void keep_names() {
         }
         std::u16string name;
         for (int c = 0; c < kNameChars - 1; ++c) {
-            const char16_t ch = at<std::uint16_t>(context + kMessage + 0xa + static_cast<std::uint32_t>(i * kNameChars + c) * 2);
+            const char16_t ch =
+                at<std::uint16_t>(context + kMessage + 0xa + static_cast<std::uint32_t>(i * kNameChars + c) * 2);
             if (ch == 0) {
                 break;
             }
@@ -82,7 +85,8 @@ void keep_names() {
 std::optional<khdays::assets::Font> font;
 bool font_tried;
 
-const khdays::assets::Font* the_font() {
+const khdays::assets::Font *the_font()
+{
     if (!font_tried) {
         font_tried = true;
         const auto path = khdays::vfs::resolve("text/font_eu_08.nftr");
@@ -90,7 +94,7 @@ const khdays::assets::Font* the_font() {
             if (path) {
                 font = khdays::assets::decode_nftr(*path);
             }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             std::fprintf(stderr, "ui: the players' names' font could not be read (%s)\n", e.what());
         }
         if (!font) {
@@ -105,8 +109,8 @@ struct Drawn {
     std::u16string name;
     int scale = 0;
     int image = -1;
-    int w = 0, h = 0;  // the font's dots
-    int dot = 0;       // texels per font dot
+    int w = 0, h = 0; // the font's dots
+    int dot = 0;      // texels per font dot
 };
 Drawn drawn[kPlayers];
 
@@ -114,11 +118,12 @@ Drawn drawn[kPlayers];
 // internal resolution, the glyphs' coverage taken as shown from half up: a
 // font dot is three quarters of a DS dot's texels, whole texels so every dot
 // is as wide as the next.
-bool draw(Drawn& d, const std::u16string& name, int scale) {
+bool draw(Drawn &d, const std::u16string &name, int scale)
+{
     if (d.image >= 0 && d.name == name && d.scale == scale) {
         return true;
     }
-    const auto* f = the_font();
+    const auto *f = the_font();
     if (f == nullptr) {
         return false;
     }
@@ -150,7 +155,7 @@ bool draw(Drawn& d, const std::u16string& name, int scale) {
     if (d.image < 0) {
         return false;
     }
-    std::uint32_t* texels = khdays_ui_image_begin(d.image);
+    std::uint32_t *texels = khdays_ui_image_begin(d.image);
     if (texels == nullptr) {
         return false;
     }
@@ -169,9 +174,10 @@ bool draw(Drawn& d, const std::u16string& name, int scale) {
     return true;
 }
 
-void emit_name(int player, int right, int top) {
+void emit_name(int player, int right, int top)
+{
     const int scale = khdays_ui_scale();
-    Drawn& d = drawn[player];
+    Drawn &d = drawn[player];
     if (names[player].empty() || !draw(d, names[player], scale)) {
         return;
     }
@@ -187,9 +193,10 @@ void emit_name(int player, int right, int top) {
     khdays_ui_emit(KHDAYS_UI_HUD, &e);
 }
 
-}  // namespace
+} // namespace
 
-extern "C" void khdays_ui_player_names_emit(int party_there) {
+extern "C" void khdays_ui_player_names_emit(int party_there)
+{
     keep_names();
     if (!party_there || khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON || !Session_IsActive()) {
         return;

@@ -54,18 +54,18 @@ static Uint32 frame_event;          /* our SDL event: "a new frame is ready" */
  * clears FRESH, so a swap never loses a package either thread holds. */
 enum { FRESH = 4 };
 static KhdaysFramePackage *packages[3];
-static int game_slot;          /* the game thread's */
-static int host_slot = 1;      /* the host thread's */
-static SDL_AtomicInt mailbox;  /* = 2 at the start */
+static int game_slot;         /* the game thread's */
+static int host_slot = 1;     /* the host thread's */
+static SDL_AtomicInt mailbox; /* = 2 at the start */
 /* What the window asks the game thread to put in each package. */
-static SDL_AtomicInt wants;    /* KHDAYS_WANT_* */
-static SDL_AtomicInt columns;  /* how wide the 3D should be, in DS pixels (256 is the DS's width) */
-static SDL_AtomicInt scale;    /* the internal resolution the picture is composed at */
+static SDL_AtomicInt wants;   /* KHDAYS_WANT_* */
+static SDL_AtomicInt columns; /* how wide the 3D should be, in DS pixels (256 is the DS's width) */
+static SDL_AtomicInt scale;   /* the internal resolution the picture is composed at */
 
 static SDL_Mutex *input_lock;
 static KhdaysInputSnapshot input;
 
-static SDL_Semaphore *ready;  /* signalled when the window is up (or failed) */
+static SDL_Semaphore *ready; /* signalled when the window is up (or failed) */
 static SDL_AtomicInt started;
 static SDL_Semaphore *closed; /* signalled when the window and the sound are gone */
 static Uint32 close_event;    /* our SDL event: khdays_host_close's request */
@@ -207,11 +207,11 @@ static void redraw(SDL_Window *window, SDL_Renderer *renderer)
         return;
     }
     khdays_present_draw();
-    khdays_save_screen_draw(renderer); /* the port's save list over the game's (runtime/menus/savelist.h) */
-    khdays_cine_screen_draw(renderer); /* MODO CINE's list as the HD theater's (runtime/menus/cinelist.h) */
-    khdays_room_screen_draw(renderer); /* the port's list of rooms over the game's (runtime/net/roomlist.h) */
+    khdays_save_screen_draw(renderer);   /* the port's save list over the game's (runtime/menus/savelist.h) */
+    khdays_cine_screen_draw(renderer);   /* MODO CINE's list as the HD theater's (runtime/menus/cinelist.h) */
+    khdays_room_screen_draw(renderer);   /* the port's list of rooms over the game's (runtime/net/roomlist.h) */
     khdays_select_screen_draw(renderer); /* Mission Mode's character select on one screen (charselect.h) */
-    khdays_camp_screen_draw(renderer); /* Mission Mode's camp menu on one screen (camp.h) */
+    khdays_camp_screen_draw(renderer);   /* Mission Mode's camp menu on one screen (camp.h) */
     fps = khdays_present_fps(&pictures, &frames);
     if (fps) {
         khdays_settings_fps_draw(renderer, pictures, frames);
@@ -301,7 +301,7 @@ static void apply_changes(void)
         heard = p->sound;
     }
     if (changes & KHDAYS_CHANGE_NETWORK) {
-        save_settings(); /* the nickname is read back from the file */
+        save_settings();          /* the nickname is read back from the file */
         khdays_boot_owner_name(); /* for the next multiplayer session the game starts */
     }
     if (changes & KHDAYS_CHANGE_LANGUAGE) {
@@ -360,7 +360,8 @@ static void close_settings(void)
         khdays_present_set_video(&khdays_settings_profile()->video);
         khdays_sound_output_set(&khdays_settings_profile()->sound);
         khdays_log_want(khdays_settings_profile()->session_log);
-        khdays_savelist_set_settings(khdays_settings_profile()->save.all_files, khdays_settings_profile()->save.autosave);
+        khdays_savelist_set_settings(khdays_settings_profile()->save.all_files,
+                                     khdays_settings_profile()->save.autosave);
         khdays_boot_owner_name(); /* the nickname, for the next multiplayer session */
         tell_game();
     }
@@ -607,7 +608,7 @@ static int host_thread(void *unused)
             continue;
         }
         if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.scancode == SDL_SCANCODE_F12) {
-            khdays_log_mark(); /* F12 marks the session log: "the player saw something here" */
+            khdays_log_mark();     /* F12 marks the session log: "the player saw something here" */
             khdays_display_mark(); /* and saves what the DS shows then (runtime/display/display.c) */
         }
         if (khdays_room_screen_event(&event)) {
@@ -624,7 +625,8 @@ static int host_thread(void *unused)
         khdays_devices_handle(&event, renderer); /* keys, mouse, gamepads, focus */
         for (int n = khdays_devices_take_hud_mode_request(); n > 0; --n) {
             khdays_situation_hud_mode_next(); /* the one-screen HUD mode */
-            khdays_log("one screen: the HUD mode now %d (0 complete, 1 exploration, 2 none)", khdays_situation_hud_mode());
+            khdays_log("one screen: the HUD mode now %d (0 complete, 1 exploration, 2 none)",
+                       khdays_situation_hud_mode());
         }
         if (khdays_devices_take_settings_request()) {
             open_settings();

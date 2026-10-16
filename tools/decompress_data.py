@@ -46,9 +46,7 @@ def expected_size(data: bytes) -> int:
     if size <= 0:
         raise ValueError("Decompressed size is zero.")
     if size > MAX_OUTPUT_SIZE:
-        raise ValueError(
-            f"Refusing to allocate {size} bytes; maximum is {MAX_OUTPUT_SIZE}."
-        )
+        raise ValueError(f"Refusing to allocate {size} bytes; maximum is {MAX_OUTPUT_SIZE}.")
     return size
 
 
@@ -90,10 +88,7 @@ def decompress_lz10(data: bytes) -> bytes:
             displacement = (((first & 0x0F) << 8) | second) + 1
 
             if displacement > len(output):
-                raise ValueError(
-                    f"Invalid LZ10 displacement {displacement} at output offset "
-                    f"{len(output)}."
-                )
+                raise ValueError(f"Invalid LZ10 displacement {displacement} at output offset {len(output)}.")
 
             for _ in range(length):
                 if len(output) >= output_size:
@@ -150,11 +145,7 @@ def decompress_lz11(data: bytes) -> bytes:
                 second = data[cursor + 1]
                 third = data[cursor + 2]
                 fourth = data[cursor + 3]
-                length = (
-                    ((first & 0x0F) << 12)
-                    | (second << 4)
-                    | (third >> 4)
-                ) + 0x111
+                length = (((first & 0x0F) << 12) | (second << 4) | (third >> 4)) + 0x111
                 displacement = (((third & 0x0F) << 8) | fourth) + 1
                 cursor += 4
             else:
@@ -166,10 +157,7 @@ def decompress_lz11(data: bytes) -> bytes:
                 cursor += 2
 
             if displacement > len(output):
-                raise ValueError(
-                    f"Invalid LZ11 displacement {displacement} at output offset "
-                    f"{len(output)}."
-                )
+                raise ValueError(f"Invalid LZ11 displacement {displacement} at output offset {len(output)}.")
 
             for _ in range(length):
                 if len(output) >= output_size:
@@ -233,11 +221,10 @@ def decompress_extraction(
     output_root = output_root.resolve()
 
     if output_root.exists() and not force:
-        raise FileExistsError(
-            f"Output directory already exists: {output_root}. Use --force to replace it."
-        )
+        raise FileExistsError(f"Output directory already exists: {output_root}. Use --force to replace it.")
     if output_root.exists():
         import shutil
+
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
 
@@ -299,9 +286,7 @@ def decompress_extraction(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Decompress Nintendo DS LZ10/LZ11 files from an extracted ROM."
-    )
+    parser = argparse.ArgumentParser(description="Decompress Nintendo DS LZ10/LZ11 files from an extracted ROM.")
     parser.add_argument(
         "extraction",
         type=Path,

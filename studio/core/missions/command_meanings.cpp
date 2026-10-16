@@ -12,18 +12,26 @@ namespace {
 // A slot as a value: its integer, number, or what it refers to.
 std::string value_text(const OperandSlot& o) {
     char buf[48];
-    if (o.mode == 1) std::snprintf(buf, sizeof(buf), "%d", o.value);
-    else if (o.mode == 0x10) std::snprintf(buf, sizeof(buf), "%.3f", static_cast<double>(o.value) / 4096.0);
-    else if (o.mode == 4) std::snprintf(buf, sizeof(buf), "state[%u:%u]", static_cast<unsigned>(o.value) & 0xffff, static_cast<unsigned>(o.value) >> 16);
-    else if (o.mode == 8) std::snprintf(buf, sizeof(buf), "var[%d]", o.value);
-    else std::snprintf(buf, sizeof(buf), "(mode %04x, %d, %d)", static_cast<unsigned>(o.mode) & 0xffff, o.sel, o.value);
+    if (o.mode == 1)
+        std::snprintf(buf, sizeof(buf), "%d", o.value);
+    else if (o.mode == 0x10)
+        std::snprintf(buf, sizeof(buf), "%.3f", static_cast<double>(o.value) / 4096.0);
+    else if (o.mode == 4)
+        std::snprintf(buf, sizeof(buf), "state[%u:%u]", static_cast<unsigned>(o.value) & 0xffff,
+                      static_cast<unsigned>(o.value) >> 16);
+    else if (o.mode == 8)
+        std::snprintf(buf, sizeof(buf), "var[%d]", o.value);
+    else
+        std::snprintf(buf, sizeof(buf), "(mode %04x, %d, %d)", static_cast<unsigned>(o.mode) & 0xffff, o.sel, o.value);
     return buf;
 }
 
 // An integer slot (ScriptVm_ReadOperandInt: 0 when not an integer), shown as read when not one.
 std::string int_text(const OperandSlot& o, const char* (*name)(int) = nullptr) {
-    if (o.mode != 1) return value_text(o);
-    if (name != nullptr && name(o.value) != nullptr) return name(o.value);
+    if (o.mode != 1)
+        return value_text(o);
+    if (name != nullptr && name(o.value) != nullptr)
+        return name(o.value);
     return std::to_string(o.value);
 }
 
@@ -32,8 +40,10 @@ std::string seconds_text(std::int32_t ms) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%.3f", static_cast<double>(ms) / 1000.0);
     std::string s = buf;
-    while (!s.empty() && s.back() == '0') s.pop_back();
-    if (!s.empty() && s.back() == '.') s.pop_back();
+    while (!s.empty() && s.back() == '0')
+        s.pop_back();
+    if (!s.empty() && s.back() == '.')
+        s.pop_back();
     return s;
 }
 
@@ -50,14 +60,18 @@ std::string target_text(std::uint32_t word) {
 std::string data_text(const OperandSlot& o, const Script* script, int language) {
     char buf[32];
     if (o.mode == 2) {
-        const std::string t = script != nullptr ? script_string(*script, static_cast<std::uint32_t>(o.value)) : std::string();
-        if (!t.empty()) return t;
+        const std::string t =
+            script != nullptr ? script_string(*script, static_cast<std::uint32_t>(o.value)) : std::string();
+        if (!t.empty())
+            return t;
         std::snprintf(buf, sizeof(buf), "data+0x%x", static_cast<unsigned>(o.value));
         return buf;
     }
     if (o.mode == 0x40) {
-        const std::string t = script != nullptr ? script_text(*script, static_cast<std::uint32_t>(o.value), language) : std::string();
-        if (!t.empty()) return t;
+        const std::string t =
+            script != nullptr ? script_text(*script, static_cast<std::uint32_t>(o.value), language) : std::string();
+        if (!t.empty())
+            return t;
         std::snprintf(buf, sizeof(buf), "text(data+0x%x)", static_cast<unsigned>(o.value));
         return buf;
     }
@@ -79,7 +93,8 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
     // Game_ActionAssign (src/engine): destination (a variable, mode 8, or a state field, mode 4) = source
     // the three commands of group 0 that read words (missions.h raw_step): the script's own jumps
     if (raw_step(s)) {
-        if (is("ScriptCmd_SetElemOffset") && !s.words.empty()) return {StepMeaning::go_to, {target_text(s.words[0])}};
+        if (is("ScriptCmd_SetElemOffset") && !s.words.empty())
+            return {StepMeaning::go_to, {target_text(s.words[0])}};
         if (is("CommitRecordCursor") && s.words.size() >= 2) {
             // the expression when the script is given and it reads, else its place
             const std::string e = script != nullptr ? expression_text(*script, s.words[0], language) : std::string();
@@ -88,7 +103,8 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
             return {StepMeaning::branch_unless, {e.empty() ? std::string(buf) : e, target_text(s.words[1])}};
         }
         if (is("Game_ActionSetBranchTarget") && !s.words.empty()) {
-            if (s.words[0] == 0xffffffffu) return {StepMeaning::no_pending_jump, {}};
+            if (s.words[0] == 0xffffffffu)
+                return {StepMeaning::no_pending_jump, {}};
             return {StepMeaning::pending_jump, {target_text(s.words[0])}};
         }
         return {};
@@ -105,7 +121,8 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
     // (RunTextItemTagged: "_s")
     if (is("Ov002_ScriptQueueTextItem") && slots >= 5 && op(3).mode == 0 && (op(4).mode == 2 || op(4).mode == 0x40)) {
         const bool start = !(op(0).mode == 1 && op(0).value == 0);
-        return {start ? StepMeaning::on_event_start : StepMeaning::on_event, {int_text(op(1)), data_text(op(4), script, language)}};
+        return {start ? StepMeaning::on_event_start : StepMeaning::on_event,
+                {int_text(op(1)), data_text(op(4), script, language)}};
     }
     // Ov002_ScriptSubmitTaskNode: a node comparing each field of the game's state with `value`
     // (op 7 ==, 8 >, 9 <, 10 >=, 11 <=, 12 !=; mode 0 any field, else all), filed under the event's
@@ -116,16 +133,21 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
         static const char* const ops[] = {"==", ">", "<", ">=", "<=", "!="};
         const std::size_t count = static_cast<std::size_t>(op(3).value);
         const OperandSlot cmp = op(5 + count), value = op(6 + count);
-        const std::string sign = cmp.mode == 1 && cmp.value >= 7 && cmp.value <= 12 ? ops[cmp.value - 7] : "op " + value_text(cmp);
+        const std::string sign =
+            cmp.mode == 1 && cmp.value >= 7 && cmp.value <= 12 ? ops[cmp.value - 7] : "op " + value_text(cmp);
         std::string when;
         for (std::size_t i = 0; i < count; ++i) {
             const std::uint32_t w = static_cast<std::uint32_t>(op(5 + i).value);
             char field[40];
             std::snprintf(field, sizeof(field), "state[%u:%u]", w & 0xffff, w >> 16);
-            when += (i == 0 ? "" : op(4).mode == 1 && op(4).value == 0 ? " || " : " && ") + std::string(field) + " " + sign + " " + int_text(value);
+            when += (i == 0                                ? ""
+                     : op(4).mode == 1 && op(4).value == 0 ? " || "
+                                                           : " && ") +
+                    std::string(field) + " " + sign + " " + int_text(value);
         }
         std::string event = int_text(op(1));
-        if (!(op(0).mode == 1 && op(0).value == 0)) event += "+0x1000";
+        if (!(op(0).mode == 1 && op(0).value == 0))
+            event += "+0x1000";
         return {StepMeaning::event_when, {event, when, int_text(op(7 + count))}};
     }
     // Ov002_StartFieldEffect (command, value, limit): Ov002_DispatchHudCounterCommand. Command 0 value 0
@@ -133,18 +155,25 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
     // (root +0x8d00) and, when limit >= 0, sets the time limit in milliseconds (root +0x8d04), the panel
     // then counting down Ov002_GetRemainingTicks: limit - (now - start)
     if (is("Ov002_StartFieldEffect") && slots >= 3 && op(0).mode == 1 && op(1).mode == 1 && op(2).mode == 1) {
-        if (op(0).value == 0 && op(1).value == 0) return {StepMeaning::hud_on, {}};
-        if (op(0).value == 7 && op(1).value == 0 && op(2).value >= 0) return {StepMeaning::time_limit, {seconds_text(op(2).value)}};
-        if (op(0).value == 7 && op(1).value != 0 && op(2).value < 0) return {StepMeaning::time_limit_shown, {}};
+        if (op(0).value == 0 && op(1).value == 0)
+            return {StepMeaning::hud_on, {}};
+        if (op(0).value == 7 && op(1).value == 0 && op(2).value >= 0)
+            return {StepMeaning::time_limit, {seconds_text(op(2).value)}};
+        if (op(0).value == 7 && op(1).value != 0 && op(2).value < 0)
+            return {StepMeaning::time_limit_shown, {}};
         return {};
     }
     // Ov002_ScriptCmd_EditSessionClock (field, op, ms): Ov002_EditSessionClock on the clock's start (0) or
     // its limit (1): op 0 stamps now, 1 sets, 2 adds, 3 takes away, never below 0
     if (is("Ov002_ScriptCmd_EditSessionClock") && slots >= 3 && op(0).mode == 1 && op(1).mode == 1 && op(2).mode == 1) {
-        if (op(0).value == 0 && op(1).value == 0) return {StepMeaning::clock_restart, {}};
-        if (op(0).value == 1 && op(1).value == 1) return {StepMeaning::time_limit_set, {seconds_text(op(2).value)}};
-        if (op(0).value == 1 && op(1).value == 2) return {StepMeaning::time_limit_add, {seconds_text(op(2).value)}};
-        if (op(0).value == 1 && op(1).value == 3) return {StepMeaning::time_limit_sub, {seconds_text(op(2).value)}};
+        if (op(0).value == 0 && op(1).value == 0)
+            return {StepMeaning::clock_restart, {}};
+        if (op(0).value == 1 && op(1).value == 1)
+            return {StepMeaning::time_limit_set, {seconds_text(op(2).value)}};
+        if (op(0).value == 1 && op(1).value == 2)
+            return {StepMeaning::time_limit_add, {seconds_text(op(2).value)}};
+        if (op(0).value == 1 && op(1).value == 3)
+            return {StepMeaning::time_limit_sub, {seconds_text(op(2).value)}};
         return {};
     }
     // Ov002_ScriptMoveSlot (player, kind, tag, x, y, z, heading): tag 0, the point and the heading in
@@ -154,10 +183,12 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
     if (is("Ov002_ScriptMoveSlot") && slots >= 3) {
         if (op(2).mode == 0 && slots >= 7) {
             return {StepMeaning::player_at,
-                    {int_text(op(0)), int_text(op(1)), value_text(op(3)), value_text(op(4)), value_text(op(5)), int_text(op(6))}};
+                    {int_text(op(0)), int_text(op(1)), value_text(op(3)), value_text(op(4)), value_text(op(5)),
+                     int_text(op(6))}};
         }
         if (op(2).mode == 2 || op(2).mode == 0x40) {
-            return {StepMeaning::player_at_marker, {int_text(op(0)), int_text(op(1)), data_text(op(2), script, language)}};
+            return {StepMeaning::player_at_marker,
+                    {int_text(op(0)), int_text(op(1)), data_text(op(2), script, language)}};
         }
         return {};
     }
@@ -196,7 +227,8 @@ StepMeaning step_meaning(const ScriptStep& s, const Script* script, int language
     // Ov002_ScriptCreateSlotObject: (group, source, mask, mode, gate, x, y, z, a, tag, b, c, x, y, z, mode)
     // -> Ov002_CreateSlotObjectAndStart: a spawner object at (x, y, z) adding the group's enemies
     if (is("Ov002_ScriptCreateSlotObject") && slots >= 8) {
-        return {StepMeaning::spawner, {int_text(op(0)), int_text(op(1)), value_text(op(5)), value_text(op(6)), value_text(op(7))}};
+        return {StepMeaning::spawner,
+                {int_text(op(0)), int_text(op(1)), value_text(op(5)), value_text(op(6)), value_text(op(7))}};
     }
     return {};
 }
@@ -206,7 +238,8 @@ ScriptPlaces script_places(const Script& s) {
     for (std::size_t k = 0; k < s.steps.size(); ++k) {
         const ScriptStep& st = s.steps[k];
         const CommandName* n = command_name(st.group, st.command);
-        if (n == nullptr) continue;
+        if (n == nullptr)
+            continue;
         const auto op = [&](std::size_t i) { return operand_at(st, 2 * i); };
         const auto fx = [&](std::size_t i) {
             const OperandSlot o = op(i);  // ScriptVm_ReadOperandFx32: an integer as a whole number
@@ -215,7 +248,8 @@ ScriptPlaces script_places(const Script& s) {
         const std::size_t slots = st.words.size() / 2;
         if (std::strcmp(n->handler, "Ov002_ScriptCmd_LoadWorldLinkResources") == 0 && slots >= 1 && op(0).mode == 1) {
             p.world = op(0).value;
-        } else if (std::strcmp(n->handler, "Ov002_ScriptCmd_LoadPeerIntoSlot") == 0 && slots >= 2 && op(0).mode == 1 && op(1).mode == 1) {
+        } else if (std::strcmp(n->handler, "Ov002_ScriptCmd_LoadPeerIntoSlot") == 0 && slots >= 2 && op(0).mode == 1 &&
+                   op(1).mode == 1) {
             p.rooms.push_back({op(0).value, op(1).value});
         } else if (std::strcmp(n->handler, "Ov002_ScriptMoveSlot") == 0 && slots >= 3 && op(0).mode == 1) {
             ScriptPlaces::Start st0;
@@ -227,7 +261,8 @@ ScriptPlaces script_places(const Script& s) {
                 st0.heading = op(6).mode == 1 ? op(6).value : 0;
             } else if (op(2).mode == 2) {
                 st0.marker = script_string(s, static_cast<std::uint32_t>(op(2).value));
-                if (st0.marker.empty()) st0.marker = "?";
+                if (st0.marker.empty())
+                    st0.marker = "?";
             } else {
                 continue;
             }
@@ -253,14 +288,17 @@ std::string meaning_text(const StepMeaning& m) {
     case StepMeaning::load_room: return "slot " + arg(0) + " <- room " + arg(1);
     case StepMeaning::load_enemies: return "the enemy table (em0, em0m in multiplayer) and its drops (eid.z)";
     case StepMeaning::enemy_at: return "the enemy of row " + arg(1) + " at source " + arg(0);
-    case StepMeaning::spawner: return "a spawner of group " + arg(0) + " at (" + arg(2) + ", " + arg(3) + ", " + arg(4) + "), source " + arg(1);
+    case StepMeaning::spawner:
+        return "a spawner of group " + arg(0) + " at (" + arg(2) + ", " + arg(3) + ", " + arg(4) + "), source " +
+               arg(1);
     case StepMeaning::go_to: return "go to " + arg(0);
     case StepMeaning::branch_unless: return "unless " + arg(0) + ", go to " + arg(1);
     case StepMeaning::pending_jump: return "a jump kept for later, to " + arg(0);
     case StepMeaning::no_pending_jump: return "no jump kept for later";
     case StepMeaning::notice: return "a notice: \"" + arg(0) + "\"";
     case StepMeaning::on_event: return "on event " + arg(0) + ", run this area's script \"" + arg(1) + "\"";
-    case StepMeaning::on_event_start: return "on event " + arg(0) + " of the second list, run the start's script \"" + arg(1) + "\"";
+    case StepMeaning::on_event_start:
+        return "on event " + arg(0) + " of the second list, run the start's script \"" + arg(1) + "\"";
     case StepMeaning::event_when: return "event " + arg(0) + " when " + arg(1) + ", threshold " + arg(2);
     case StepMeaning::hud_on: return "the HUD made";
     case StepMeaning::time_limit: return "a time limit of " + arg(0) + " s on the HUD, counted from now";
@@ -269,10 +307,14 @@ std::string meaning_text(const StepMeaning& m) {
     case StepMeaning::time_limit_set: return "the time limit set to " + arg(0) + " s";
     case StepMeaning::time_limit_sub: return "the time limit - " + arg(0) + " s";
     case StepMeaning::clock_restart: return "the mission clock started now";
-    case StepMeaning::player_at: return "player slot " + arg(0) + " near (" + arg(2) + ", " + arg(3) + ", " + arg(4) + ") facing " + arg(5) + " degrees, kind " + arg(1);
-    case StepMeaning::chests: return "the mission's chests from trbox, their class in module slot " + arg(0) + ", model \"" + arg(1) + "\"";
+    case StepMeaning::player_at:
+        return "player slot " + arg(0) + " near (" + arg(2) + ", " + arg(3) + ", " + arg(4) + ") facing " + arg(5) +
+               " degrees, kind " + arg(1);
+    case StepMeaning::chests:
+        return "the mission's chests from trbox, their class in module slot " + arg(0) + ", model \"" + arg(1) + "\"";
     case StepMeaning::emblems: return "the mission's emblems from evi, those not yet found";
-    case StepMeaning::player_at_marker: return "player slot " + arg(0) + " at the room's marker \"" + arg(2) + "\", kind " + arg(1);
+    case StepMeaning::player_at_marker:
+        return "player slot " + arg(0) + " at the room's marker \"" + arg(2) + "\", kind " + arg(1);
     }
     return {};
 }

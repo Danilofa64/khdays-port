@@ -19,10 +19,20 @@
 extern const unsigned char khdays_compositions_port[];
 extern const unsigned int khdays_compositions_port_size;
 
-enum { CORNER_CENTRE, CORNER_TOP_LEFT, CORNER_TOP, CORNER_TOP_RIGHT, CORNER_RIGHT, CORNER_BOTTOM_RIGHT,
-       CORNER_BOTTOM, CORNER_BOTTOM_LEFT, CORNER_LEFT, CORNER_KEEP };
-static const char *const corner_names[] = {"centre", "top-left", "top", "top-right", "right", "bottom-right",
-                                           "bottom", "bottom-left", "left", "keep"};
+enum {
+    CORNER_CENTRE,
+    CORNER_TOP_LEFT,
+    CORNER_TOP,
+    CORNER_TOP_RIGHT,
+    CORNER_RIGHT,
+    CORNER_BOTTOM_RIGHT,
+    CORNER_BOTTOM,
+    CORNER_BOTTOM_LEFT,
+    CORNER_LEFT,
+    CORNER_KEEP
+};
+static const char *const corner_names[] = {"centre",       "top-left", "top",         "top-right", "right",
+                                           "bottom-right", "bottom",   "bottom-left", "left",      "keep"};
 static const char *const screens_names[] = {"upper", "lower", "stacked", "side-by-side"};
 static const char *const brightness_names[] = {"default", "upper", "lower", "halves", "own"};
 /* the HUD's screen-space 3D: the polygons the HUD's own drawing sends (gfx/g3d.h KHDAYS_G3D_HUD) */
@@ -32,15 +42,15 @@ static const char *const group_names[] = {"hud", "all"}; /* KHDAYS_SHAPE3D_* */
  * HUD's scale and a part that is not (`fixed(N)`). */
 typedef struct ShapeDef {
     int lower;
-    int whole;             /* no rectangle: the whole screen */
+    int whole; /* no rectangle: the whole screen */
     float x, y, w, h;
     int corner;
     float margin[4];       /* left, top, right, bottom */
     float margin_fixed[4]; /* their `fixed(N)` parts */
     float sx, sy;
     float sx_fixed, sy_fixed;
-    int cover;           /* `scale cover`: as large as covers the picture, its proportions kept */
-    uint32_t flags;      /* KOF_* */
+    int cover;      /* `scale cover`: as large as covers the picture, its proportions kept */
+    uint32_t flags; /* KOF_* */
     float fade[4], opacity;
     float round;          /* `round <r>`: the corners' radius, source dots */
     uint32_t see_through; /* KO_SEE_THROUGH: a colour and its opacity */
@@ -54,20 +64,20 @@ typedef struct Shape3dDef {
     int corner;
     float margin[4];
     float scale;
-    int fixed;     /* `scale fixed(N)`: its scale and margins do not follow the HUD's */
+    int fixed; /* `scale fixed(N)`: its scale and margins do not follow the HUD's */
 } Shape3dDef;
 
 enum { D_SCREENS, D_BRIGHTNESS, D_SHAPE, D_SHAPE3D, D_BACKDROP, D_PRELOAD, D_HIDE3D_ALL, D_MENU, D_STOP };
 typedef struct Directive {
     int kind;
-    int value;  /* D_SCREENS, D_BRIGHTNESS: the choice; D_SHAPE, D_SHAPE3D: its index; D_BACKDROP,
+    int value; /* D_SCREENS, D_BRIGHTNESS: the choice; D_SHAPE, D_SHAPE3D: its index; D_BACKDROP,
                  * D_PRELOAD: its name's (backdrops') */
 } Directive;
 
 typedef struct Condition {
-    int state;  /* KHDAYS_ST_*, or -1 for the picture's width */
+    int state; /* KHDAYS_ST_*, or -1 for the picture's width */
     int negate;
-    int width;  /* 1 `wide` (16:9 or wider), 2 `narrow` (4:3); 0 none */
+    int width; /* 1 `wide` (16:9 or wider), 2 `narrow` (4:3); 0 none */
 } Condition;
 
 /* The picture's columns the compositions are made for this frame (`wide`, `narrow`). */
@@ -139,14 +149,14 @@ typedef struct AnimClip {
 } AnimClip;
 
 typedef struct Animation {
-    char *name;  /* as the backdrop's name gave it */
+    char *name; /* as the backdrop's name gave it */
     char *group;
-    int ok;      /* read, its atlas there */
-    int atlas;   /* its picture (pictures' index) */
+    int ok;    /* read, its atlas there */
+    int atlas; /* its picture (pictures' index) */
     int picture_w, picture_h;
     uint32_t ground;
     int first_clip, clips;
-    int loop;    /* its loop (anim_clips' index), or -1 */
+    int loop; /* its loop (anim_clips' index), or -1 */
     int first_icon, icons;
     int first_button, buttons;
 } Animation;
@@ -373,7 +383,8 @@ static int read_shape(char **t, int n, ShapeDef *s, const char **why)
             *why = "a rectangle is four numbers";
             return 0;
         }
-        if (s->x < 0.0f || s->y < 0.0f || s->w <= 0.0f || s->x + s->w > 256.0f || s->h <= 0.0f || s->y + s->h > 192.0f) {
+        if (s->x < 0.0f || s->y < 0.0f || s->w <= 0.0f || s->x + s->w > 256.0f || s->h <= 0.0f ||
+            s->y + s->h > 192.0f) {
             *why = "the rectangle is not within its screen";
             return 0;
         }
@@ -410,7 +421,8 @@ static int read_shape(char **t, int n, ShapeDef *s, const char **why)
             }
         } else if (strcmp(w, "mirror") == 0 && i + 1 < n &&
                    (strcmp(t[i + 1], "x") == 0 || strcmp(t[i + 1], "y") == 0 || strcmp(t[i + 1], "xy") == 0)) {
-            s->flags |= (strchr(t[i + 1], 'x') != NULL ? KOF_MIRROR_X : 0u) | (strchr(t[i + 1], 'y') != NULL ? KOF_MIRROR_Y : 0u);
+            s->flags |= (strchr(t[i + 1], 'x') != NULL ? KOF_MIRROR_X : 0u) |
+                        (strchr(t[i + 1], 'y') != NULL ? KOF_MIRROR_Y : 0u);
             i += 2;
         } else if (strcmp(w, "repeat") == 0) {
             if (i + 1 < n && strcmp(t[i + 1], "x") == 0) {
@@ -454,14 +466,14 @@ static int read_shape(char **t, int n, ShapeDef *s, const char **why)
             s->see_through = c | (uint32_t)(a * 255.0f + 0.5f) << 16;
             s->flags |= KOF_SEE_THROUGH;
             i += 5;
-        } else if (strcmp(w, "dim") == 0 && i + 1 < n && (s->flags & KOF_WEIGHT) == 0u && number(t[i + 1], &s->opacity) &&
-                   s->opacity >= 0.0f && s->opacity <= 1.0f) {
+        } else if (strcmp(w, "dim") == 0 && i + 1 < n && (s->flags & KOF_WEIGHT) == 0u &&
+                   number(t[i + 1], &s->opacity) && s->opacity >= 0.0f && s->opacity <= 1.0f) {
             /* `dim <f>`: the shape's colours times f, toward black (not mixed with what is under
              * it, as opacity is) */
             s->flags |= KOF_DIM;
             i += 2;
-        } else if (strcmp(w, "opacity") == 0 && i + 1 < n && (s->flags & KOF_DIM) == 0u && number(t[i + 1], &s->opacity) && s->opacity >= 0.0f &&
-                   s->opacity <= 1.0f) {
+        } else if (strcmp(w, "opacity") == 0 && i + 1 < n && (s->flags & KOF_DIM) == 0u &&
+                   number(t[i + 1], &s->opacity) && s->opacity >= 0.0f && s->opacity <= 1.0f) {
             s->flags |= KOF_WEIGHT;
             i += 2;
         } else if (strcmp(w, "fade") == 0 && (s->flags & KOF_DIM) == 0u && four(t, n, i + 1, s->fade)) {
@@ -838,15 +850,15 @@ void khdays_composition_load(void)
         free(anim_clips[c].after);
     }
     for (int p = 0; p < anim_piece_count; ++p) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(anim_pieces[p].prompt);
     }
     for (int i = 0; i < anim_icon_count; ++i) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(anim_icons[i].name);
     }
     for (int b = 0; b < anim_button_count; ++b) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(anim_buttons[b].action);
     }
     animation_count = anim_clip_count = anim_piece_count = anim_key_count = 0;
@@ -855,7 +867,8 @@ void khdays_composition_load(void)
     if (khdays_mods_find("layouts/compositions.txt", path, (int)sizeof(path))) {
         text = read_whole(path);
         if (text != NULL && !in_port_units(text)) {
-            fprintf(stderr, "one screen: %s does not begin with `units port`; the port's own compositions are used\n", path);
+            fprintf(stderr, "one screen: %s does not begin with `units port`; the port's own compositions are used\n",
+                    path);
             khdays_log("one screen: %s does not begin with `units port`; the port's own compositions are used", path);
             free(text);
             text = NULL;
@@ -884,7 +897,7 @@ static int holds(const Section *s, const KhdaysSituation *situation)
     }
     for (int i = 0; i < s->conditions; ++i) {
         const Condition *c = &conditions[s->first_condition + i];
-        const int truth = c->state >= 0  ? (int)((situation->states >> c->state) & 1u)
+        const int truth = c->state >= 0   ? (int)((situation->states >> c->state) & 1u)
                           : c->width == 1 ? current_columns >= WIDE_COLUMNS
                                           : current_columns <= 256;
         if (truth == c->negate) {
@@ -898,8 +911,8 @@ static int holds(const Section *s, const KhdaysSituation *situation)
 static void backdrop_name(const char *pattern, const KhdaysSituation *s, char *out, size_t size)
 {
     static const char *const languages[] = {"", "en", "fr", "de", "it", "es"}; /* the firmware's 1-5 */
-    static const char *const menus[] = {"", "root", "story", "mission", "intro", "logo", "newgame1",
-                                        "newgame2"}; /* KHDAYS_TITLE_* */
+    static const char *const menus[] = {"",      "root", "story",    "mission",
+                                        "intro", "logo", "newgame1", "newgame2"}; /* KHDAYS_TITLE_* */
     size_t at = 0;
     for (const char *p = pattern; *p != '\0' && at + 1 < size;) {
         char value[16];
@@ -909,7 +922,7 @@ static void backdrop_name(const char *pattern, const KhdaysSituation *s, char *o
             p += 6;
         } else if (strncmp(p, "{menu}", 6) == 0) {
             name = s->title_menu >= 0 && s->title_menu < (int)(sizeof(menus) / sizeof(menus[0])) ? menus[s->title_menu]
-                                                                                                : "";
+                                                                                                 : "";
             p += 6;
         } else if (strncmp(p, "{count}", 7) == 0) {
             snprintf(value, sizeof(value), "%d", s->title_count);
@@ -999,8 +1012,8 @@ static int picture_entry(const char *name, int ahead)
         khdays_log("one screen: no mod gives %s", relative);
     } else if (!ahead || (p.reading = start_reading(path)) == NULL) {
         p.rgba = khdays_png_read(path, &p.w, &p.h, &error);
-        khdays_log("one screen: the backdrop %s%s%s", path, p.rgba != NULL ? "" : " cannot be read: ",
-                   p.rgba != NULL ? "" : (error != NULL ? error : "?"));
+        khdays_log("one screen: the backdrop %s%s%s", path,
+                   p.rgba != NULL ? "" : " cannot be read: ", p.rgba != NULL ? "" : (error != NULL ? error : "?"));
     }
     pictures[picture_count++] = p;
     return p.rgba != NULL || p.reading != NULL ? picture_count - 1 : -1;
@@ -1201,7 +1214,8 @@ static int read_animation(const char *name, Animation *a, int ahead)
                 why = is_icon ? "icon <name> <x> <y> <width> <height>" : "button <action> <x0> <y0> <x1> <y1>";
             } else if (word == NULL ||
                        !(is_icon ? grow((void **)&anim_icons, &anim_icon_room, anim_icon_count, sizeof(AnimIcon))
-                                 : grow((void **)&anim_buttons, &anim_button_room, anim_button_count, sizeof(AnimButton)))) {
+                                 : grow((void **)&anim_buttons, &anim_button_room, anim_button_count,
+                                        sizeof(AnimButton)))) {
                 why = "no memory";
             } else if (is_icon) {
                 if (a->icons == 0) {
@@ -1456,13 +1470,25 @@ static void build_shape(const ShapeDef *d, int columns, KhdaysShape *out, int ke
     float x1 = 0.0f, y1 = 0.0f;
     uint32_t *words = out->words;
     switch (d->corner) {
-    case CORNER_CENTRE: x1 = (c - width) / 2.0f; y1 = (192.0f - height) / 2.0f; break;
+    case CORNER_CENTRE:
+        x1 = (c - width) / 2.0f;
+        y1 = (192.0f - height) / 2.0f;
+        break;
     case CORNER_TOP_LEFT: break;
     case CORNER_TOP: x1 = (c - width) / 2.0f; break;
     case CORNER_TOP_RIGHT: x1 = c - width; break;
-    case CORNER_RIGHT: x1 = c - width; y1 = (192.0f - height) / 2.0f; break;
-    case CORNER_BOTTOM_RIGHT: x1 = c - width; y1 = 192.0f - height; break;
-    case CORNER_BOTTOM: x1 = (c - width) / 2.0f; y1 = 192.0f - height; break;
+    case CORNER_RIGHT:
+        x1 = c - width;
+        y1 = (192.0f - height) / 2.0f;
+        break;
+    case CORNER_BOTTOM_RIGHT:
+        x1 = c - width;
+        y1 = 192.0f - height;
+        break;
+    case CORNER_BOTTOM:
+        x1 = (c - width) / 2.0f;
+        y1 = 192.0f - height;
+        break;
     case CORNER_BOTTOM_LEFT: y1 = 192.0f - height; break;
     case CORNER_LEFT: y1 = (192.0f - height) / 2.0f; break;
     default: /* keep: the source's middle where it was, scaled */
@@ -1505,12 +1531,24 @@ static void build_shape3d(const Shape3dDef *d, int columns, KhdaysShape3d *out)
     const float width = d->w * d->scale / u, height = d->h * d->scale / u;
     float x1 = 0.0f, y1 = 0.0f;
     switch (d->corner) {
-    case CORNER_CENTRE: x1 = (c - width) / 2.0f; y1 = (192.0f - height) / 2.0f; break;
+    case CORNER_CENTRE:
+        x1 = (c - width) / 2.0f;
+        y1 = (192.0f - height) / 2.0f;
+        break;
     case CORNER_TOP: x1 = (c - width) / 2.0f; break;
     case CORNER_TOP_RIGHT: x1 = c - width; break;
-    case CORNER_RIGHT: x1 = c - width; y1 = (192.0f - height) / 2.0f; break;
-    case CORNER_BOTTOM_RIGHT: x1 = c - width; y1 = 192.0f - height; break;
-    case CORNER_BOTTOM: x1 = (c - width) / 2.0f; y1 = 192.0f - height; break;
+    case CORNER_RIGHT:
+        x1 = c - width;
+        y1 = (192.0f - height) / 2.0f;
+        break;
+    case CORNER_BOTTOM_RIGHT:
+        x1 = c - width;
+        y1 = 192.0f - height;
+        break;
+    case CORNER_BOTTOM:
+        x1 = (c - width) / 2.0f;
+        y1 = 192.0f - height;
+        break;
     case CORNER_BOTTOM_LEFT: y1 = 192.0f - height; break;
     case CORNER_LEFT: y1 = (192.0f - height) / 2.0f; break;
     default: break;
@@ -1556,12 +1594,8 @@ void khdays_composition_for(const KhdaysSituation *situation, int columns, Khday
         for (int i = 0; i < sections[s].directives && !stopped; ++i) {
             const Directive *d = &directives[sections[s].first_directive + i];
             switch (d->kind) {
-            case D_SCREENS:
-                out->screens = out->screens < 0 ? d->value : out->screens;
-                break;
-            case D_BRIGHTNESS:
-                out->brightness = out->brightness < 0 ? d->value : out->brightness;
-                break;
+            case D_SCREENS: out->screens = out->screens < 0 ? d->value : out->screens; break;
+            case D_BRIGHTNESS: out->brightness = out->brightness < 0 ? d->value : out->brightness; break;
             case D_SHAPE: {
                 const ShapeDef *def = &shape_defs[d->value];
                 if (!grow((void **)&shapes, &shape_room, shape_count, sizeof(KhdaysShape))) {
@@ -1632,15 +1666,9 @@ void khdays_composition_for(const KhdaysSituation *situation, int columns, Khday
                 }
                 break;
             }
-            case D_HIDE3D_ALL:
-                out->hide3d_all = 1;
-                break;
-            case D_MENU:
-                menu = 1;
-                break;
-            default:
-                stopped = 1;
-                break;
+            case D_HIDE3D_ALL: out->hide3d_all = 1; break;
+            case D_MENU: menu = 1; break;
+            default: stopped = 1; break;
             }
         }
     }
@@ -1651,7 +1679,8 @@ void khdays_composition_for(const KhdaysSituation *situation, int columns, Khday
         out->screens = situation->content == 2u   ? KHDAYS_SCREENS_LOWER
                        : situation->content == 3u ? KHDAYS_SCREENS_SIDE_BY_SIDE
                                                   : KHDAYS_SCREENS_UPPER;
-        if (out->screens != KHDAYS_SCREENS_SIDE_BY_SIDE && grow((void **)&shapes, &shape_room, shape_count, sizeof(KhdaysShape))) {
+        if (out->screens != KHDAYS_SCREENS_SIDE_BY_SIDE &&
+            grow((void **)&shapes, &shape_room, shape_count, sizeof(KhdaysShape))) {
             ShapeDef whole;
             memset(&whole, 0, sizeof(whole));
             whole.lower = out->screens == KHDAYS_SCREENS_LOWER;

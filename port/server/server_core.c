@@ -58,12 +58,12 @@ typedef struct Group {
     unsigned int ggid, build; /* the game and the port build it belongs to */
     unsigned char *body;      /* the room's announcement, as the host sent it */
     unsigned int body_size;
-    u64 seen;                 /* when the host last registered it */
-    u64 introduced;           /* when a guest was last introduced to it */
-    unsigned int index;       /* the slot of its game's index */
-    unsigned int index_pos;   /* its position in that index */
-    unsigned int prev, next;  /* the "last heard from" chain (slot + 1) */
-    u64 bytes;                /* what it costs from the memory budget */
+    u64 seen;                /* when the host last registered it */
+    u64 introduced;          /* when a guest was last introduced to it */
+    unsigned int index;      /* the slot of its game's index */
+    unsigned int index_pos;  /* its position in that index */
+    unsigned int prev, next; /* the "last heard from" chain (slot + 1) */
+    u64 bytes;               /* what it costs from the memory budget */
 } Group;
 
 /* A guest introduced to a host. */
@@ -230,8 +230,8 @@ static unsigned int slab_take(Slab *slab, size_t item)
 
 static void slab_give_back(Slab *slab, unsigned int slot)
 {
-    slab->free_list = (unsigned int *)grow(slab->free_list, &slab->free_room, slab->free_count + 1,
-                                           sizeof(unsigned int));
+    slab->free_list =
+        (unsigned int *)grow(slab->free_list, &slab->free_room, slab->free_count + 1, sizeof(unsigned int));
     slab->free_list[slab->free_count++] = slot;
 }
 
@@ -292,7 +292,7 @@ static void table_put(Table *t, unsigned int hash, unsigned int slot, HashOf has
     }
     {
         unsigned int i = hash & (t->size - 1);
-#pragma warning(suppress: 6001) /* the cells come from calloc: every one is set */
+#pragma warning(suppress : 6001) /* the cells come from calloc: every one is set */
         while (t->cell[i] != NONE && t->cell[i] != REMOVED) {
             i = (i + 1) & (t->size - 1);
         }
@@ -703,8 +703,7 @@ static unsigned int new_token(void)
     unsigned int token;
     do {
         khdays_host_random(&token, sizeof(token));
-    } while (token == 0 ||
-             table_find(&server.pair_by_token, token_hash(token), &token, pair_token_matches) != NONE);
+    } while (token == 0 || table_find(&server.pair_by_token, token_hash(token), &token, pair_token_matches) != NONE);
     return token;
 }
 
@@ -875,11 +874,11 @@ void khdays_server_start(KhdaysUdp *udp, u64 budget, int relay)
 void khdays_server_stop(void)
 {
     for (unsigned int i = 0; i < server.groups.count; ++i) {
-#pragma warning(suppress: 6001) /* slab_take and grow zero every slot: a body is NULL or its own */
+#pragma warning(suppress : 6001) /* slab_take and grow zero every slot: a body is NULL or its own */
         free(GROUP(i).body);
     }
     for (unsigned int i = 0; i < server.indexes.count; ++i) {
-#pragma warning(suppress: 6001) /* the same: slots NULL or their own */
+#pragma warning(suppress : 6001) /* the same: slots NULL or their own */
         free(INDEX(i).slots);
     }
     slab_free(&server.groups);

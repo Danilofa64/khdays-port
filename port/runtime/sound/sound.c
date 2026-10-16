@@ -27,12 +27,12 @@ static void report(const char *what, int channel)
 const u8 *khdays_sound_ds_memory(u32 address, int channel)
 {
     if (address >= KHDAYS_HEADERS_BASE && address < 0x03000000u && !khdays_game_heap_ds_memory()) {
-        return (const u8 *)KHDAYS_W(address);  /* the headers' heaps, not a mirror */
+        return (const u8 *)KHDAYS_W(address); /* the headers' heaps, not a mirror */
     }
     if (address >= 0x02000000u && address < 0x03000000u) {
         return (const u8 *)KHDAYS_W(0x02000000u | (address & 0x3fffffu));
     }
-    if (address >= KHDAYS_HEAPS_BASE && address < KHDAYS_HEAPS_END) {  /* the game's heaps */
+    if (address >= KHDAYS_HEAPS_BASE && address < KHDAYS_HEAPS_END) { /* the game's heaps */
         return (const u8 *)KHDAYS_W(address);
     }
     if (address >= 0x037f8000u && address < 0x03810000u) {

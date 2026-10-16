@@ -26,8 +26,8 @@ static const char *resolutions[RESOLUTION_CHOICES], *aspects[KHDAYS_ASPECT_COUNT
     *movies[KHDAYS_MOVIES_COUNT], *paces[2], *screens_choices[2], *backends[KHDAYS_BACKEND_COUNT],
     *displays[KHDAYS_DISPLAY_COUNT], *antialiasings[4];
 static const int antialiasing_values[4] = {1, 2, 3, 4};
-static const int resolution_values[RESOLUTION_CHOICES] = {1, KHDAYS_RESOLUTION_WINDOW, 2, 3, 4, 5, 6, 7, 8, 9,
-                                                         10, 11, 12, 13, 14, 15, 16};
+static const int resolution_values[RESOLUTION_CHOICES] = {
+    1, KHDAYS_RESOLUTION_WINDOW, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 /* texts put together from several parts */
 static char preset_line[160], kh2_note[1024], menu_note[512], automatic[64];
 
@@ -197,14 +197,16 @@ static void needs_graphics_card(Builder *b, KhdaysRow *r, int note)
     r->note = r->available ? khdays_text(note) : khdays_text(TXT_VIDEO_NEEDS_GPU);
 }
 
-enum { ALL_CELLS = (1u << KHDAYS_CELLS) - 1, PAD_CELLS = ((1u << KHDAYS_INPUTS_PER_ACTION) - 1)
-                                                          << KHDAYS_INPUTS_PER_ACTION };
+enum {
+    ALL_CELLS = (1u << KHDAYS_CELLS) - 1,
+    PAD_CELLS = ((1u << KHDAYS_INPUTS_PER_ACTION) - 1) << KHDAYS_INPUTS_PER_ACTION
+};
 
 static void build_controls(Builder *b, KhdaysProfile *w)
 {
     static const int ds_order[] = {
-        KHDAYS_ACT_UP, KHDAYS_ACT_DOWN, KHDAYS_ACT_LEFT, KHDAYS_ACT_RIGHT, KHDAYS_ACT_A, KHDAYS_ACT_B,
-        KHDAYS_ACT_X, KHDAYS_ACT_Y, KHDAYS_ACT_L, KHDAYS_ACT_R, KHDAYS_ACT_START, KHDAYS_ACT_SELECT,
+        KHDAYS_ACT_UP, KHDAYS_ACT_DOWN, KHDAYS_ACT_LEFT, KHDAYS_ACT_RIGHT, KHDAYS_ACT_A,     KHDAYS_ACT_B,
+        KHDAYS_ACT_X,  KHDAYS_ACT_Y,    KHDAYS_ACT_L,    KHDAYS_ACT_R,     KHDAYS_ACT_START, KHDAYS_ACT_SELECT,
     };
     const char *pad = b->context->gamepad;
     add(b, KHDAYS_ROW_LINE, KHDAYS_SET_GAMEPAD_NAME, pad != NULL ? pad : khdays_text(TXT_NO_GAMEPAD));
@@ -239,7 +241,7 @@ static void build_controls(Builder *b, KhdaysProfile *w)
         add_binding(b, KHDAYS_LAYER_BASE, ds_order[i], ALL_CELLS);
     }
     add_binding(b, KHDAYS_LAYER_BASE, KHDAYS_ACT_OPEN_SETTINGS, PAD_CELLS); /* the keyboard always has Esc */
-    add_binding(b, KHDAYS_LAYER_BASE, KHDAYS_ACT_HUD_MODE, ALL_CELLS); /* one screen's HUD mode */
+    add_binding(b, KHDAYS_LAYER_BASE, KHDAYS_ACT_HUD_MODE, ALL_CELLS);      /* one screen's HUD mode */
     if (w->enh.separate_lock_on) {
         add(b, KHDAYS_ROW_HEADING, KHDAYS_SET_NONE, khdays_text(TXT_HEADING_LOCK_ON));
         add_binding(b, KHDAYS_LAYER_BASE, KHDAYS_ACT_LOCK_ON, ALL_CELLS);
@@ -268,15 +270,13 @@ static void build_enhancements(Builder *b, KhdaysProfile *w)
     KhdaysEnhancements *e = &w->enh;
     SDL_snprintf(menu_note, sizeof(menu_note), khdays_text(TXT_ENH_MENU_NOTE), khdays_text(TXT_GAME_CONFIG),
                  khdays_text(TXT_GAME_COMMAND_LIST), khdays_text(TXT_GAME_ONLY));
-    add_switch(b, KHDAYS_SET_ENH_CAMERA, TXT_ENH_CAMERA, &e->analog_camera,
-               built(KHDAYS_ENH_ANALOG_CAMERA), khdays_text(TXT_ENH_CAMERA_NOTE));
-    add_switch(b, KHDAYS_SET_ENH_LOCK_ON, TXT_ENH_LOCK_ON, &e->separate_lock_on,
-               built(KHDAYS_ENH_SEPARATE_LOCK_ON),
+    add_switch(b, KHDAYS_SET_ENH_CAMERA, TXT_ENH_CAMERA, &e->analog_camera, built(KHDAYS_ENH_ANALOG_CAMERA),
+               khdays_text(TXT_ENH_CAMERA_NOTE));
+    add_switch(b, KHDAYS_SET_ENH_LOCK_ON, TXT_ENH_LOCK_ON, &e->separate_lock_on, built(KHDAYS_ENH_SEPARATE_LOCK_ON),
                khdays_text(TXT_ENH_LOCK_ON_NOTE));
-    add_switch(b, KHDAYS_SET_ENH_MENU, TXT_ENH_MENU, &e->dpad_command_menu,
-               built(KHDAYS_ENH_DPAD_COMMAND_MENU), menu_note);
-    add_switch(b, KHDAYS_SET_ENH_MOVEMENT, TXT_ENH_MOVEMENT, &e->analog_movement,
-               built(KHDAYS_ENH_ANALOG_MOVEMENT),
+    add_switch(b, KHDAYS_SET_ENH_MENU, TXT_ENH_MENU, &e->dpad_command_menu, built(KHDAYS_ENH_DPAD_COMMAND_MENU),
+               menu_note);
+    add_switch(b, KHDAYS_SET_ENH_MOVEMENT, TXT_ENH_MOVEMENT, &e->analog_movement, built(KHDAYS_ENH_ANALOG_MOVEMENT),
                khdays_text(TXT_ENH_MOVEMENT_NOTE));
 }
 
@@ -337,7 +337,7 @@ static void build_video(Builder *b, KhdaysProfile *w)
     r = add_choice(b, KHDAYS_SET_PACE, TXT_VIDEO_PACE, &v->picture_ds, paces, 2);
     r->note = khdays_text(TXT_VIDEO_PACE_NOTE);
     r->warning = khdays_text(TXT_VIDEO_PACE_WARNING); /* the pictures between the game's can go wrong */
-    r->safe = 1;                                       /* As on the DS */
+    r->safe = 1;                                      /* As on the DS */
     add_switch(b, KHDAYS_SET_SHOW_FPS, TXT_VIDEO_SHOW_FPS, &v->show_fps, 1, khdays_text(TXT_VIDEO_SHOW_FPS_NOTE));
     add_choice(b, KHDAYS_SET_BACKEND, TXT_VIDEO_BACKEND, &v->backend, backends, KHDAYS_BACKEND_COUNT)->note =
         khdays_text(TXT_VIDEO_BACKEND_NOTE);
@@ -416,7 +416,7 @@ static void build_language(Builder *b, KhdaysProfile *w)
     /* The menu's own text changes at once. For the game, KHDAYS_LANGUAGE
      * takes precedence over the setting, as it always has. */
     r->note = khdays_text(khdays_language_from_code(SDL_getenv("KHDAYS_LANGUAGE")) != 0 ? TXT_LANGUAGE_FIXED_NOTE
-                                                                                       : TXT_LANGUAGE_NOTE);
+                                                                                        : TXT_LANGUAGE_NOTE);
 }
 
 static void build_general(Builder *b, KhdaysProfile *w)
@@ -478,11 +478,8 @@ int khdays_model_adjust(KhdaysProfile *work, const KhdaysRow *row, int dir)
     case KHDAYS_ROW_CHOICE:
         khdays_model_set_choice(work, row, (khdays_model_choice_of(row) + dir + row->high + 1) % (row->high + 1));
         return 1;
-    case KHDAYS_ROW_SWITCH:
-        *row->value = dir > 0;
-        return 1;
-    default:
-        return 0;
+    case KHDAYS_ROW_SWITCH: *row->value = dir > 0; return 1;
+    default: return 0;
     }
 }
 

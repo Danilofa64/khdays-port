@@ -16,7 +16,10 @@
 
 /* the HAL's, in the rewritten game's data area */
 #include "khdays_data_area.h"
-static unsigned khdays_cpsr_value(void) { return *(const unsigned *)KHDAYS_W(KHDAYS_DATA_khdays_cpsr); }
+static unsigned khdays_cpsr_value(void)
+{
+    return *(const unsigned *)KHDAYS_W(KHDAYS_DATA_khdays_cpsr);
+}
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -52,16 +55,15 @@ static void print_stack(HANDLE thread, CONTEXT *context)
         DWORD64 displacement = 0;
         DWORD line_displacement = 0;
         IMAGEHLP_LINE64 line = {sizeof(line)};
-        if (!StackWalk64(MACHINE, process, thread, &frame, context, NULL,
-                         SymFunctionTableAccess64, SymGetModuleBase64, NULL) ||
+        if (!StackWalk64(MACHINE, process, thread, &frame, context, NULL, SymFunctionTableAccess64, SymGetModuleBase64,
+                         NULL) ||
             frame.AddrPC.Offset == 0) {
             break;
         }
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
         symbol->MaxNameLen = 255;
         if (SymFromAddr(process, frame.AddrPC.Offset, &displacement, symbol)) {
-            fprintf(stderr, "  #%-2d %08llx %s+0x%llx", depth, frame.AddrPC.Offset, symbol->Name,
-                    displacement);
+            fprintf(stderr, "  #%-2d %08llx %s+0x%llx", depth, frame.AddrPC.Offset, symbol->Name, displacement);
         } else {
             fprintf(stderr, "  #%-2d %08llx ?", depth, frame.AddrPC.Offset);
         }
@@ -81,15 +83,15 @@ static LONG WINAPI on_crash(EXCEPTION_POINTERS *info)
     fprintf(stderr, "khdays-native: exception 0x%08lx at %p", info->ExceptionRecord->ExceptionCode,
             info->ExceptionRecord->ExceptionAddress);
     if (info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-        fprintf(stderr, " (%s 0x%08lx)",
-                info->ExceptionRecord->ExceptionInformation[0] == 1 ? "writing" : "reading",
+        fprintf(stderr, " (%s 0x%08lx)", info->ExceptionRecord->ExceptionInformation[0] == 1 ? "writing" : "reading",
                 (unsigned long)info->ExceptionRecord->ExceptionInformation[1]);
     }
     fprintf(stderr, "\n");
     {
         const CONTEXT *c = info->ContextRecord;
-        fprintf(stderr, "  rax %016llx rbx %016llx rcx %016llx rdx %016llx\n  rsi %016llx rdi %016llx rbp %016llx "
-                        "rsp %016llx\n  r8 %016llx r9 %016llx r12 %016llx r13 %016llx\n",
+        fprintf(stderr,
+                "  rax %016llx rbx %016llx rcx %016llx rdx %016llx\n  rsi %016llx rdi %016llx rbp %016llx "
+                "rsp %016llx\n  r8 %016llx r9 %016llx r12 %016llx r13 %016llx\n",
                 c->Rax, c->Rbx, c->Rcx, c->Rdx, c->Rsi, c->Rdi, c->Rbp, c->Rsp, c->R8, c->R9, c->R12, c->R13);
         if (CONTEXT_FP(c) > CONTEXT_SP(c) && CONTEXT_FP(c) - CONTEXT_SP(c) < 0x1000 &&
             !IsBadReadPtr((const void *)(size_t)CONTEXT_SP(c), (UINT_PTR)(CONTEXT_FP(c) - CONTEXT_SP(c) + 0x20))) {
@@ -102,13 +104,15 @@ static LONG WINAPI on_crash(EXCEPTION_POINTERS *info)
     {
         const Word pc = CONTEXT_PC(info->ContextRecord);
         if (pc >= 0x01ff8000 && pc < 0x0b000000) {
-            fprintf(stderr, "  the game jumped to DS address 0x%08lx as a host address: a function reference "
-                            "called without its native function (KHDAYS_FN)\n",
+            fprintf(stderr,
+                    "  the game jumped to DS address 0x%08lx as a host address: a function reference "
+                    "called without its native function (KHDAYS_FN)\n",
                     (unsigned long)pc);
         } else if (khdays_window != NULL && pc >= (Word)(size_t)khdays_window + 0x01ff8000 &&
                    pc < (Word)(size_t)khdays_window + 0x0b000000) {
-            fprintf(stderr, "  the game jumped into its memory at DS address 0x%08lx: ARM code there (a routine "
-                            "it copies at run time) cannot run natively\n",
+            fprintf(stderr,
+                    "  the game jumped into its memory at DS address 0x%08lx: ARM code there (a routine "
+                    "it copies at run time) cannot run natively\n",
                     (unsigned long)(pc - (Word)(size_t)khdays_window));
         }
     }
@@ -188,8 +192,9 @@ static void sample_stacks(int samples)
         frame.AddrFrame.Mode = AddrModeFlat;
         frame.AddrStack.Offset = CONTEXT_SP(&context);
         frame.AddrStack.Mode = AddrModeFlat;
-        while (depth < 48 && StackWalk64(MACHINE, process, game_thread, &frame, &context,
-                                         NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL) &&
+        while (depth < 48 &&
+               StackWalk64(MACHINE, process, game_thread, &frame, &context, NULL, SymFunctionTableAccess64,
+                           SymGetModuleBase64, NULL) &&
                frame.AddrPC.Offset != 0) {
             char buffer[sizeof(SYMBOL_INFO) + 64];
             SYMBOL_INFO *symbol = (SYMBOL_INFO *)buffer;
@@ -251,8 +256,7 @@ static DWORD WINAPI watchdog(void *parameter)
     SuspendThread(game_thread);
     context.ContextFlags = CONTEXT_FULL;
     GetThreadContext(game_thread, &context);
-    fprintf(stderr, "khdays-native: still running after %u s; the game thread is at:\n",
-            (unsigned)(size_t)parameter);
+    fprintf(stderr, "khdays-native: still running after %u s; the game thread is at:\n", (unsigned)(size_t)parameter);
     print_stack(game_thread, &context);
     dump_memory();
     /* The SDK's threads: OSi_ThreadInfo (0x02044330) current and list, each
@@ -314,11 +318,11 @@ static int __cdecl on_runtime_check(int type, const wchar_t *file, int line, con
         fprintf(stderr, "  #%-2u %p %s\n", i, frames[i], symbol_name(frames[i]));
     }
     fflush(stderr);
-    return 0;  /* carry on */
+    return 0; /* carry on */
 }
 #endif
 
-static DWORD game_thread_id;  /* the thread that runs the game (main's) */
+static DWORD game_thread_id; /* the thread that runs the game (main's) */
 
 /* Last in the vectored chain: reports an exception no runtime handler took, before the structured
  * handlers see it (a broken chain there would hide it). */
@@ -383,9 +387,9 @@ static LONG CALLBACK on_watch(EXCEPTION_POINTERS *info)
         DWORD64 dr7 = 0;
         for (int i = 0; i < watched_count; ++i) {
             (&c->Dr0)[i] = watched[i];
-            dr7 |= 1ull << (2 * i);       /* enabled */
-            dr7 |= 1ull << (16 + 4 * i);  /* on writes */
-            dr7 |= 3ull << (18 + 4 * i);  /* 4 bytes */
+            dr7 |= 1ull << (2 * i);      /* enabled */
+            dr7 |= 1ull << (16 + 4 * i); /* on writes */
+            dr7 |= 3ull << (18 + 4 * i); /* 4 bytes */
         }
         c->Dr7 = dr7;
         c->ContextFlags |= CONTEXT_DEBUG_REGISTERS;
@@ -434,15 +438,18 @@ static void watch_init(void)
             break;
         }
         if (watched_count == 4) {
-            fprintf(stderr, "watch: four addresses at most (the processor's debug registers); 0x%08lx not "
-                            "watched\n", a);
+            fprintf(stderr,
+                    "watch: four addresses at most (the processor's debug registers); 0x%08lx not "
+                    "watched\n",
+                    a);
         } else {
             watched_ds[watched_count] = (uint32_t)(a & ~3ul);
             /* an I/O register: the register model's own bytes, which the C writes for a register that only
              * holds a value */
-            watched[watched_count++] = a >= KHDAYS_IO_BASE && a < KHDAYS_IO_BASE + KHDAYS_IO_SIZE && khdays_io_host != NULL
-                                           ? (DWORD64)(size_t)(khdays_io_host + ((a & ~3ul) - KHDAYS_IO_BASE))
-                                           : (DWORD64)(size_t)KHDAYS_W(a & ~3ul);
+            watched[watched_count++] =
+                a >= KHDAYS_IO_BASE && a < KHDAYS_IO_BASE + KHDAYS_IO_SIZE && khdays_io_host != NULL
+                    ? (DWORD64)(size_t)(khdays_io_host + ((a & ~3ul) - KHDAYS_IO_BASE))
+                    : (DWORD64)(size_t)KHDAYS_W(a & ~3ul);
         }
         s = *end == ',' ? end + 1 : end;
     }
@@ -466,8 +473,8 @@ void khdays_diag_init(void)
     SetUnhandledExceptionFilter(on_crash);
     watch_init();
     if (stall != NULL && atoi(stall) > 0) {
-        DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &game_thread,
-                        0, FALSE, DUPLICATE_SAME_ACCESS);
+        DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &game_thread, 0, FALSE,
+                        DUPLICATE_SAME_ACCESS);
         CreateThread(NULL, 0, watchdog, (void *)(size_t)atoi(stall), 0, NULL);
     }
 }
@@ -540,7 +547,7 @@ void khdays_trace_script(void *st, void *entry)
     static int enabled = -1;
     static u32 last[8];
     const u8 *e = (const u8 *)entry;
-    const u32 cmd_reference = *(const u32 *)(e + 0x10);  /* the game's pointer: a reference */
+    const u32 cmd_reference = *(const u32 *)(e + 0x10); /* the game's pointer: a reference */
     const u8 *cmd = cmd_reference ? (const u8 *)KHDAYS_W(cmd_reference) : NULL;
     u32 now[8];
     if (enabled < 0) {
@@ -575,7 +582,7 @@ void khdays_trace_script(void *st, void *entry)
 
 /* Obj_UpdateAll's check (prepare.py HOOKS) of the next update an update returned: 0 keeps the current
  * one, -1 and -2 are markers, anything else must be native code. */
-static void check_update(intptr_t fn, intptr_t next);  /* native addresses */
+static void check_update(intptr_t fn, intptr_t next); /* native addresses */
 
 /* `fn` and `next` are function references: looked up, checked and named. */
 void khdays_check_update(int fn, int next)
@@ -588,8 +595,10 @@ void khdays_check_update(int fn, int next)
     }
     native_next = khdays_function_lookup((KhdaysRef)next);
     if (native_next == NULL) {
-        fprintf(stderr, "khdays-native: the update %s returned 0x%08x as the object's next update, "
-                        "which is no function's reference\n", symbol_name((const void *)native), (u32)next);
+        fprintf(stderr,
+                "khdays-native: the update %s returned 0x%08x as the object's next update, "
+                "which is no function's reference\n",
+                symbol_name((const void *)native), (u32)next);
         fflush(stderr);
         exit(12);
     }
@@ -646,10 +655,9 @@ static void check_update(intptr_t fn, intptr_t next)
             frame_set[frame_count++] = fn;
         }
     }
-    if (trace && next != 0 && next != fn) {  /* KHDAYS_TRACE_UPDATES: every change of update */
+    if (trace && next != 0 && next != fn) { /* KHDAYS_TRACE_UPDATES: every change of update */
         fprintf(stderr, "update %s -> ", symbol_name((const void *)fn));
-        fprintf(stderr, "%s\n", next == -1 ? "idle" : next == -2 ? "destroy"
-                                                  : symbol_name((const void *)next));
+        fprintf(stderr, "%s\n", next == -1 ? "idle" : next == -2 ? "destroy" : symbol_name((const void *)next));
     }
     if (next == 0 || next == -1 || next == -2) {
         return;
@@ -658,8 +666,10 @@ static void check_update(intptr_t fn, intptr_t next)
     if ((const u8 *)next >= base && (const u8 *)next < base + nt->OptionalHeader.SizeOfImage) {
         return;
     }
-    fprintf(stderr, "khdays-native: the update %s returned 0x%08x as the object's next update, "
-                    "which is not code\n", symbol_name((const void *)fn), (u32)next);
+    fprintf(stderr,
+            "khdays-native: the update %s returned 0x%08x as the object's next update, "
+            "which is not code\n",
+            symbol_name((const void *)fn), (u32)next);
     fflush(stderr);
     exit(12);
 }

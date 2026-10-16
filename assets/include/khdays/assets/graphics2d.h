@@ -48,7 +48,9 @@ Tilemap decode_nscr(const std::uint8_t* data, std::size_t size);
 struct ResourceView final {
     const std::uint8_t* data = nullptr;
     std::size_t size = 0;
-    explicit operator bool() const { return data != nullptr; }
+    explicit operator bool() const {
+        return data != nullptr;
+    }
 };
 
 // A parsed D2KP pack, the game's UI containers (the sub-files of UI/mlt/res.p2): typed sections of
@@ -78,10 +80,7 @@ struct SlotContainer final {
 SlotContainer parse_slot_container(const std::uint8_t* data, std::size_t size);
 
 // pass false for an opaque background (e.g. a full-screen logo).
-DecodedTexture compose_background(
-    const Tilemap& map,
-    const TileGraphics& tiles,
-    const Palette2D& palette,
-    bool color_zero_transparent = true);
+DecodedTexture compose_background(const Tilemap& map, const TileGraphics& tiles, const Palette2D& palette,
+                                  bool color_zero_transparent = true);
 
 }  // namespace khdays::assets

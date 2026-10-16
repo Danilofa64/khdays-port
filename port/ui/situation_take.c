@@ -15,7 +15,7 @@ int khdays_language_wanted(void);  /* runtime/core/language.c */
 #include "../runtime/menus/newgame.h"
 #include "../runtime/menus/camp.h"
 #include "../runtime/movies/movie_hd.h"
-extern int GetLanguage(void);     /* the game's: gLangPath's language */
+extern int GetLanguage(void); /* the game's: gLangPath's language */
 /* ov000's states in which the title's menu shows (the decomp's Ov000_TickMenuLoop: what each
  * choice goes on to; seen in KHDAYS_TRACE_UPDATES: the way back from each screen after it) */
 extern void Ov000_MenuFadeInState(void);
@@ -98,9 +98,18 @@ void khdays_situation_update_ran(uintptr_t update)
     }
 }
 
-static uint8_t u8_at(u32 address) { return *(const volatile uint8_t *)KHDAYS_W(address); }
-static uint16_t u16_at(u32 address) { return *(const volatile uint16_t *)KHDAYS_W(address); }
-static uint32_t u32_at(u32 address) { return *(const volatile uint32_t *)KHDAYS_W(address); }
+static uint8_t u8_at(u32 address)
+{
+    return *(const volatile uint8_t *)KHDAYS_W(address);
+}
+static uint16_t u16_at(u32 address)
+{
+    return *(const volatile uint16_t *)KHDAYS_W(address);
+}
+static uint32_t u32_at(u32 address)
+{
+    return *(const volatile uint32_t *)KHDAYS_W(address);
+}
 
 static int tracing = -1;
 static KhdaysSituationInputs traced;
@@ -109,11 +118,11 @@ static KhdaysSituationInputs traced;
 static uint8_t title_logo(u32 object)
 {
     const khdays_function_pointer update = khdays_function_lookup((KhdaysRef)u32_at(object + OBJECT_UPDATE));
-    return update == NULL                    ? 0
-           : update == Ov000_LogoFadeState   ? 1
-           : update == Ov000_LogoFadeState2  ? 2
+    return update == NULL                                                   ? 0
+           : update == Ov000_LogoFadeState                                  ? 1
+           : update == Ov000_LogoFadeState2                                 ? 2
            : update == Ov000_LogoFadeState3 || update == Ov000_HandoffState ? 3
-                                             : 0;
+                                                                            : 0;
 }
 
 /* The title's way out into NEW GAME's dialogs (1) or back from a screen after it (2), by the scene
@@ -121,19 +130,23 @@ static uint8_t title_logo(u32 object)
 static uint8_t title_passing(u32 object)
 {
     const khdays_function_pointer update = khdays_function_lookup((KhdaysRef)u32_at(object + OBJECT_UPDATE));
-    return update == NULL                      ? 0
-           : update == Ov000_TickFadeOutToScene ? 1
+    return update == NULL                                                   ? 0
+           : update == Ov000_TickFadeOutToScene                             ? 1
            : update == Ov000_ReentryState || update == Ov000_TickBootFadeIn ? 2
-                                                : 0;
+                                                                            : 0;
 }
 
 /* Whether the title's menu shows (KHDAYS_TITLE_*), by the scene object's update. */
 static uint8_t title_shown(u32 object, u32 context)
 {
-    static const khdays_function_pointer menu[] = {
-        Ov000_TickMenuLoop,         Ov000_TickMenuLevelChange,        Ov000_TickFadeOutToScene,
-        Ov000_BootFadeAndSubScreenSetup, Ov000_TickFadeThenPublishContext, Ov000_FadeOutAndStartMovie,
-        Ov000_ReentryState,         Ov000_TickBootFadeIn};
+    static const khdays_function_pointer menu[] = {Ov000_TickMenuLoop,
+                                                   Ov000_TickMenuLevelChange,
+                                                   Ov000_TickFadeOutToScene,
+                                                   Ov000_BootFadeAndSubScreenSetup,
+                                                   Ov000_TickFadeThenPublishContext,
+                                                   Ov000_FadeOutAndStartMovie,
+                                                   Ov000_ReentryState,
+                                                   Ov000_TickBootFadeIn};
     const khdays_function_pointer update = khdays_function_lookup((KhdaysRef)u32_at(object + OBJECT_UPDATE));
     if (update == NULL) {
         return KHDAYS_TITLE_HIDDEN;
@@ -190,7 +203,7 @@ void khdays_situation_take(KhdaysSituationInputs *in, uint32_t frame)
         if (in->scene == TITLE_SCENE) {
             const u32 object = u32_at(KHDAYS_DS_gSceneCtl + SCENE_OBJECT);
             const u32 context = object != 0u ? u32_at(object + OBJECT_HEAP) : 0u;
-            if (khdays_game_ram(context)) {  /* main RAM or the game's heaps */
+            if (khdays_game_ram(context)) { /* main RAM or the game's heaps */
                 const int8_t page = (int8_t)u8_at(context + TITLE_PAGE);
                 in->title_valid = page >= 0 && page <= 2;
                 in->title_page = page;
@@ -253,23 +266,23 @@ void khdays_situation_take(KhdaysSituationInputs *in, uint32_t frame)
         trace_change("master_b", traced.master[1], in->master[1], frame);
         trace_change("pause_mode", traced.pause_mode, in->pause_mode, frame);
         trace_change("tutorial", traced.tutorial, in->tutorial, frame);
-        trace_change("event_status", (uint64_t)(uint32_t)traced.event_status, (uint64_t)(uint32_t)in->event_status, frame);
+        trace_change("event_status", (uint64_t)(uint32_t)traced.event_status, (uint64_t)(uint32_t)in->event_status,
+                     frame);
         trace_change("movie", traced.movie, in->movie, frame);
         trace_change("mission_flags", traced.mission_flags, in->mission_flags, frame);
-        trace_change("mission_start", (uint64_t)(uint32_t)traced.mission_start, (uint64_t)(uint32_t)in->mission_start, frame);
+        trace_change("mission_start", (uint64_t)(uint32_t)traced.mission_start, (uint64_t)(uint32_t)in->mission_start,
+                     frame);
         trace_change("camp_screen", (uint64_t)(uint8_t)traced.camp_screen, (uint64_t)(uint8_t)in->camp_screen, frame);
         trace_change("party", traced.party, in->party, frame);
         trace_change("title",
                      (uint64_t)traced.title_newgame << 56 | (uint64_t)traced.title_newgame_button << 52 |
                          (uint64_t)traced.title_logo << 48 | (uint64_t)traced.title_shown << 44 |
-                         (uint64_t)traced.title_valid << 40 |
-                         (uint64_t)(uint8_t)traced.title_page << 32 |
+                         (uint64_t)traced.title_valid << 40 | (uint64_t)(uint8_t)traced.title_page << 32 |
                          (uint64_t)(uint8_t)traced.title_row << 24 | (uint64_t)traced.title_alt << 16 |
                          (uint64_t)traced.title_load << 8 | traced.title_extra,
                      (uint64_t)in->title_newgame << 56 | (uint64_t)in->title_newgame_button << 52 |
                          (uint64_t)in->title_logo << 48 | (uint64_t)in->title_shown << 44 |
-                         (uint64_t)in->title_valid << 40 |
-                         (uint64_t)(uint8_t)in->title_page << 32 |
+                         (uint64_t)in->title_valid << 40 | (uint64_t)(uint8_t)in->title_page << 32 |
                          (uint64_t)(uint8_t)in->title_row << 24 | (uint64_t)in->title_alt << 16 |
                          (uint64_t)in->title_load << 8 | in->title_extra,
                      frame);

@@ -17,13 +17,11 @@ namespace khdays::assets {
 struct ImportedJoint final {
     std::uint32_t palette_index = 0U;
     std::string name;
-    std::array<float, 16> inverse_bind{
-        1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    std::array<float, 16> inverse_bind{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     // The joint's global transform as the file places it (its rest),
     // column-major, and its parent: the nearest ancestor that is a joint of
     // the same skin, as an index into ImportedModel::joints, or -1.
-    std::array<float, 16> world{
-        1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    std::array<float, 16> world{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     int parent = -1;
 };
 

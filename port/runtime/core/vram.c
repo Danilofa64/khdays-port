@@ -11,7 +11,7 @@
 #include <string.h>
 
 static u8 store[KHDAYS_VRAM_TOTAL];
-static u8 current[KHDAYS_VRAM_BANKS];  /* the VRAMCNT values in effect */
+static u8 current[KHDAYS_VRAM_BANKS]; /* the VRAMCNT values in effect */
 static KhdaysBankPlace place[KHDAYS_VRAM_BANKS];
 static KhdaysVramPages pages;
 
@@ -71,8 +71,10 @@ void khdays_vram_control_written(void)
     for (int bank = 0; bank < KHDAYS_VRAM_BANKS; ++bank) {
         current[bank] = next[bank];
         if (!khdays_vram_place(bank, next[bank], &place[bank])) {
-            fprintf(stderr, "vram: bank %c control 0x%02x is not a mapping GBATEK lists; "
-                            "the bank is left unmapped\n", 'A' + bank, next[bank]);
+            fprintf(stderr,
+                    "vram: bank %c control 0x%02x is not a mapping GBATEK lists; "
+                    "the bank is left unmapped\n",
+                    'A' + bank, next[bank]);
         }
     }
     for (int bank = 0; bank < KHDAYS_VRAM_BANKS; ++bank) {

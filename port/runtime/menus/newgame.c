@@ -35,8 +35,8 @@ int khdays_language_wanted(void);  /* language.c */
 #define BUTTON 0x24u
 enum { MODE_DIFFICULTY = 2, MODE_REVIEW = 3, MODE_START = 5 };
 
-static volatile LONG subtitles = 1;  /* any thread */
-static volatile LONG answered;       /* 1 + the answer, for the window's thread */
+static volatile LONG subtitles = 1; /* any thread */
+static volatile LONG answered;      /* 1 + the answer, for the window's thread */
 static int asking, cursor, last_mode = -1, held;
 /* the buttons held when the question was answered: the game's pad would take a button it gets
  * back as a new press (an A on the review's no), so they stay the port's until let go */
@@ -75,7 +75,7 @@ static khdays_function_pointer title_update(void)
         return NULL;
     }
     object = rd32(KHDAYS_DS_gSceneCtl + SCENE_OBJECT);
-    if (!khdays_game_ram(object)) {  /* main RAM or the game's heaps */
+    if (!khdays_game_ram(object)) { /* main RAM or the game's heaps */
         return NULL;
     }
     return khdays_function_lookup((KhdaysRef)rd32(object + OBJECT_UPDATE));

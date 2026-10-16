@@ -13,8 +13,8 @@
 #include <string.h>
 
 typedef struct Overlay {
-    u32 start, end;  /* RAM range, BSS included */
-    u32 loaded;      /* load order, 0 = not loaded */
+    u32 start, end; /* RAM range, BSS included */
+    u32 loaded;     /* load order, 0 = not loaded */
 } Overlay;
 
 static Overlay *overlays; /* by id, as many as the ROM's table has */
@@ -64,13 +64,13 @@ void khdays_overlay_started(int id)
         }
     }
     overlays[id].loaded = ++loads;
-    khdays_function_references_moved();  /* its functions' DS addresses are its now (window.c) */
+    khdays_function_references_moved(); /* its functions' DS addresses are its now (window.c) */
     khdays_log("overlay %d started", id);
     if (getenv("KHDAYS_TRACE_OVERLAYS") != NULL) {
         /* the scene controller's current and pending ids (runtime.c) */
         const volatile u32 *scene = (const volatile u32 *)KHDAYS_W(0x0204bda8);
-        fprintf(stderr, "overlay: %d started at 0x%08x (frame %u, scene %u, pending %u)\n", id,
-                overlays[id].start, khdays_events_vblank_count(), scene[2], scene[3]);
+        fprintf(stderr, "overlay: %d started at 0x%08x (frame %u, scene %u, pending %u)\n", id, overlays[id].start,
+                khdays_events_vblank_count(), scene[2], scene[3]);
     }
 }
 
@@ -111,8 +111,8 @@ int khdays_overlay_at(u32 address)
  * elsewhere. */
 typedef struct {
     unsigned address;
-    int module;     /* -1: the main module; -2: the ITCM */
-    unsigned size;  /* the function's bytes (the ITCM's are compared) */
+    int module;    /* -1: the main module; -2: the ITCM */
+    unsigned size; /* the function's bytes (the ITCM's are compared) */
     void (*native)(void);
 } KhdaysDsFunction;
 extern const KhdaysDsFunction khdays_ds_functions[];
@@ -141,7 +141,7 @@ static int itcm_is_the_games(const KhdaysDsFunction *f)
 void *khdays_native_at(u32 address)
 {
     unsigned lo = 0, hi = khdays_ds_function_count;
-    address &= ~1u;  /* a Thumb function's address carries bit 0 */
+    address &= ~1u; /* a Thumb function's address carries bit 0 */
     while (lo < hi) {
         const unsigned mid = (lo + hi) / 2;
         if (khdays_ds_functions[mid].address < address) {
@@ -159,4 +159,3 @@ void *khdays_native_at(u32 address)
     }
     return NULL;
 }
-

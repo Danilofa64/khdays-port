@@ -26,17 +26,17 @@ u32 khdays_events_vblank_count(void);
 
 #define FIELD_SCENE 2u
 #define SCENE_CURRENT 0x8u
-#define MISSION_MODE 0x4u   /* data_0204c240's first byte: a Mission Mode mission */
-#define PAUSE_SESSION 0x2u  /* the pause's kind: Mission Mode's three entries */
-#define CTX_COUNT 0xd0u     /* the pause context's entries: 3 its first page, 2 "Are you sure?" */
+#define MISSION_MODE 0x4u  /* data_0204c240's first byte: a Mission Mode mission */
+#define PAUSE_SESSION 0x2u /* the pause's kind: Mission Mode's three entries */
+#define CTX_COUNT 0xd0u    /* the pause context's entries: 3 its first page, 2 "Are you sure?" */
 #define CTX_CURSOR 0xd4u
-#define SETUP_PLAYERS 0x4u  /* the session's setup (Session_GetSetup): the players */
-#define PAUSE_LAYER 2       /* engine A's BG2 */
-#define LINE_X 10           /* the lines' first cell */
+#define SETUP_PLAYERS 0x4u /* the session's setup (Session_GetSetup): the players */
+#define PAUSE_LAYER 2      /* engine A's BG2 */
+#define LINE_X 10          /* the lines' first cell */
 #define CONTINUE_ROW 11
 #define GIVE_UP_ROW 13
-#define QUIT_FLAG 0x2087    /* set by Ov002_RetireSubFlow on giving up */
-#define GIVE_UP 2           /* the game's entry */
+#define QUIT_FLAG 0x2087 /* set by Ov002_RetireSubFlow on giving up */
+#define GIVE_UP 2        /* the game's entry */
 
 static struct {
     int shown;     /* the port's lines were up at the last latch */
@@ -66,7 +66,7 @@ static u8 rd8(u32 address)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 static int tracing(void)
@@ -141,9 +141,12 @@ static int pause_page(u32 *ctx_out)
 
 static int strip_key(u32 x, u32 y)
 {
-    static const struct { u32 x, y; int key; } strips[] = {
+    static const struct {
+        u32 x, y;
+        int key;
+    } strips[] = {
         {0, 0, KHDAYS_PAUSE_CONTINUE}, {11, 0, KHDAYS_PAUSE_SKIP}, {0, 6, KHDAYS_PAUSE_WITHDRAW},
-        {11, 6, KHDAYS_PAUSE_YES}, {22, 6, KHDAYS_PAUSE_NO},
+        {11, 6, KHDAYS_PAUSE_YES},     {22, 6, KHDAYS_PAUSE_NO},
     };
     for (size_t i = 0; i < sizeof(strips) / sizeof(strips[0]); ++i) {
         if (strips[i].x == x && strips[i].y == y) {
@@ -157,9 +160,9 @@ static int strip_key(u32 x, u32 y)
 static int piece_of(u32 ctx, int slot, KhdaysPausePiece *p)
 {
     const u32 e = ctx + ENTRY(slot);
-    p->key = slot == TITLE_SLOT ? KHDAYS_PAUSE_TITLE
-                                : slot == QUESTION_SLOT ? KHDAYS_PAUSE_QUESTION
-                                                        : strip_key(rd32(e + ENTRY_SRC_X), rd32(e + ENTRY_SRC_Y));
+    p->key = slot == TITLE_SLOT      ? KHDAYS_PAUSE_TITLE
+             : slot == QUESTION_SLOT ? KHDAYS_PAUSE_QUESTION
+                                     : strip_key(rd32(e + ENTRY_SRC_X), rd32(e + ENTRY_SRC_Y));
     p->x = (int)rd32(e + ENTRY_DST_X);
     p->y = (int)rd32(e + ENTRY_DST_Y);
     p->w = (int)rd32(e + ENTRY_W);

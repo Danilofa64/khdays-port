@@ -16,8 +16,8 @@ extern "C" {
  * compressed one, format 5, its 4x4 data), with the palette that starts at
  * `pltt_offset` into `pltt_file`'s (`pltt_file` NULL: no palette, or none
  * known), named into `out`. 0 if no texture starts there. */
-int khdays_names_texture(const char *file, u32 offset, int format, const char *pltt_file, u32 pltt_offset,
-                         char *out, int size);
+int khdays_names_texture(const char *file, u32 offset, int format, const char *pltt_file, u32 pltt_offset, char *out,
+                         int size);
 
 /* A 2D tile sheet: an NCGR's `tiles` of `tile_bytes` (32 or 64) from `tiles_at` into its file's data,
  * `columns` to a row of its image (the NCGR's width when it holds them all, else 16 or fewer); `data`

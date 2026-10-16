@@ -29,9 +29,7 @@ static void fuzz_setup(unsigned int role)
     memset(net.id, 7, ID_SIZE);
     net.role = NONE;
     switch (role & 3) {
-    case 0:
-        khdays_net_host(0x800356u, info, sizeof(info), 3);
-        break;
+    case 0: khdays_net_host(0x800356u, info, sizeof(info), 3); break;
     case 1:
     case 2: {
         /* joining a group the local network (1) or the server (2) listed */
@@ -50,9 +48,7 @@ static void fuzz_setup(unsigned int role)
         khdays_net_join(group_id, "ssid", 4);
         break;
     }
-    default:
-        khdays_net_scan(0x800356u, 1);
-        break;
+    default: khdays_net_scan(0x800356u, 1); break;
     }
 }
 

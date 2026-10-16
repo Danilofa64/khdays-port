@@ -63,8 +63,7 @@ DecodedTexture read_image(const std::uint8_t* bytes, std::size_t size, const std
     texture.format_name = "image";
     texture.width = width;
     texture.height = height;
-    texture.rgba.assign(pixels,
-                        pixels + static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
+    texture.rgba.assign(pixels, pixels + static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
     stbi_image_free(pixels);
     return texture;
 }

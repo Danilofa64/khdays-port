@@ -18,7 +18,8 @@
 #define LOOK_EVERY 8    /* VBlanks between looks at what is shown */
 #define WRITE_EVERY 300 /* VBlanks between writes of what changed */
 #define TILE_SETS 4     /* the colour sets a tile is counted with: the one most seen is written */
-#define FIRST_EXTRA 17  /* the first row written for a set of colours that is not its row's most seen
+#define FIRST_EXTRA                                                                                                    \
+    17 /* the first row written for a set of colours that is not its row's most seen
                            (16 is the studio's greys for the tiles never seen) */
 
 /* The colours of one palette row as the game had them -- 16, or 256 for 8-bit
@@ -35,10 +36,10 @@ static int nsets, cap_sets;
 typedef struct Sheet {
     char name[160];
     u32 tiles;
-    int per;               /* colours a row: 16, or 256 for a sheet of 8-bit tiles */
-    int32_t *tile_set;     /* tiles x TILE_SETS: the colour sets each tile was drawn with, -1 none */
-    uint16_t *tile_votes;  /* tiles x TILE_SETS: how often */
-    int32_t *best;         /* each tile's set most often seen, -1 never seen */
+    int per;              /* colours a row: 16, or 256 for a sheet of 8-bit tiles */
+    int32_t *tile_set;    /* tiles x TILE_SETS: the colour sets each tile was drawn with, -1 none */
+    uint16_t *tile_votes; /* tiles x TILE_SETS: how often */
+    int32_t *best;        /* each tile's set most often seen, -1 never seen */
     int changed;
 } Sheet;
 
@@ -90,12 +91,14 @@ static struct {
 static Sheet *sheet_named(const char *name, u32 tiles, int per)
 {
     for (int i = 0; i < nsheets; ++i) {
-        if (strcmp(sheets[i].name, name) == 0) return sheets[i].per == per ? &sheets[i] : NULL;
+        if (strcmp(sheets[i].name, name) == 0)
+            return sheets[i].per == per ? &sheets[i] : NULL;
     }
     if (nsheets == cap_sheets) {
         const int grown_cap = cap_sheets ? cap_sheets * 2 : 64;
         Sheet *grown = (Sheet *)realloc(sheets, sizeof(Sheet) * (size_t)grown_cap);
-        if (grown == NULL) return NULL;
+        if (grown == NULL)
+            return NULL;
         sheets = grown;
         cap_sheets = grown_cap;
     }
@@ -123,17 +126,20 @@ static Sheet *sheet_named(const char *name, u32 tiles, int per)
 static int colour_set(int per, int row, const uint16_t *colours)
 {
     for (int i = 0; i < nsets; ++i) {
-        if (sets[i].per == per && sets[i].row == row && memcmp(sets[i].colours, colours, (size_t)per * 2u) == 0) return i;
+        if (sets[i].per == per && sets[i].row == row && memcmp(sets[i].colours, colours, (size_t)per * 2u) == 0)
+            return i;
     }
     if (nsets == cap_sets) {
         const int grown_cap = cap_sets ? cap_sets * 2 : 64;
         ColourSet *grown = (ColourSet *)realloc(sets, sizeof(ColourSet) * (size_t)grown_cap);
-        if (grown == NULL) return -1;
+        if (grown == NULL)
+            return -1;
         sets = grown;
         cap_sets = grown_cap;
     }
     sets[nsets].colours = (uint16_t *)malloc((size_t)per * 2u);
-    if (sets[nsets].colours == NULL) return -1;
+    if (sets[nsets].colours == NULL)
+        return -1;
     memcpy(sets[nsets].colours, colours, (size_t)per * 2u);
     sets[nsets].per = per;
     sets[nsets].row = row;
@@ -195,7 +201,8 @@ static int tile_of(const u8 *at, u32 bytes, Named *slot, u32 *tile, int engine, 
                 traced[engine][where].files[k].file = f;
                 traced[engine][where].files[k].reason = slot->reason;
             }
-            if (strcmp(traced[engine][where].files[k].file, f) == 0 && traced[engine][where].files[k].reason == slot->reason) {
+            if (strcmp(traced[engine][where].files[k].file, f) == 0 &&
+                traced[engine][where].files[k].reason == slot->reason) {
                 ++traced[engine][where].files[k].count;
                 break;
             }
@@ -208,7 +215,8 @@ static int tile_of(const u8 *at, u32 bytes, Named *slot, u32 *tile, int engine, 
 static int blank(const u8 *at, u32 bytes)
 {
     for (u32 k = 0; k < bytes; ++k) {
-        if (at[k] != 0) return 0;
+        if (at[k] != 0)
+            return 0;
     }
     return 1;
 }
@@ -217,7 +225,8 @@ static int blank(const u8 *at, u32 bytes)
 static int votes_for(const Sheet *s, u32 tile, int set)
 {
     for (int k = 0; k < TILE_SETS; ++k) {
-        if (s->tile_set[(size_t)tile * TILE_SETS + (size_t)k] == set) return s->tile_votes[(size_t)tile * TILE_SETS + (size_t)k];
+        if (s->tile_set[(size_t)tile * TILE_SETS + (size_t)k] == set)
+            return s->tile_votes[(size_t)tile * TILE_SETS + (size_t)k];
     }
     return 0;
 }
@@ -229,17 +238,21 @@ static void seen(int index, u32 tile, int set)
     int32_t *ids = &s->tile_set[(size_t)tile * TILE_SETS];
     uint16_t *votes = &s->tile_votes[(size_t)tile * TILE_SETS];
     int found = -1, least = 0;
-    if (set < 0) return;
+    if (set < 0)
+        return;
     for (int k = 0; k < TILE_SETS; ++k) {
-        if (ids[k] == set) found = k;
-        if (votes[k] < votes[least]) least = k;
+        if (ids[k] == set)
+            found = k;
+        if (votes[k] < votes[least])
+            least = k;
     }
     if (found < 0) {
         found = least;
         ids[found] = set;
         votes[found] = 0;
     }
-    if (votes[found] < 0xffffu) ++votes[found];
+    if (votes[found] < 0xffffu)
+        ++votes[found];
     if (s->best[tile] != set && (s->best[tile] < 0 || votes[found] > votes_for(s, tile, s->best[tile]))) {
         s->best[tile] = set;
         s->changed = 1;
@@ -259,14 +272,17 @@ static int set_for(const u16 *from, int per, int row)
 {
     uint16_t colours[256];
     for (int i = 0; i < ncached; ++i) {
-        if (cached[i].from == from && cached[i].per == per && cached[i].row == row) return cached[i].set;
+        if (cached[i].from == from && cached[i].per == per && cached[i].row == row)
+            return cached[i].set;
     }
-    for (int k = 0; k < per; ++k) colours[k] = from != NULL ? (uint16_t)(from[k] & 0x7fffu) : 0;
+    for (int k = 0; k < per; ++k)
+        colours[k] = from != NULL ? (uint16_t)(from[k] & 0x7fffu) : 0;
     const int set = colour_set(per, row, colours);
     if (ncached == cap_cached) {
         const int grown_cap = cap_cached ? cap_cached * 2 : 64;
         CachedSet *grown = (CachedSet *)realloc(cached, sizeof(CachedSet) * (size_t)grown_cap);
-        if (grown == NULL) return set;
+        if (grown == NULL)
+            return set;
         cached = grown;
         cap_cached = grown_cap;
     }
@@ -283,7 +299,8 @@ static void look_at_layer(int engine, int bg)
 {
     KhdaysBgLayer l;
     const uint32_t dispcnt = IO32(engine ? 0x1000u : 0u);
-    if (!khdays_bg_text_layer(engine, bg, &l)) return;
+    if (!khdays_bg_text_layer(engine, bg, &l))
+        return;
     const u32 bytes = l.colors256 ? 64u : 32u;
     /* 8-bit cells: the extended palettes' slot of this layer (BG0 and BG1 may take 2 and 3) */
     const u32 cnt = IO16((engine ? 0x1000u : 0u) + 0x08u + 2u * (u32)bg);
@@ -297,14 +314,19 @@ static void look_at_layer(int engine, int bg)
             const u8 *at = khdays_bg_memory(engine, l.chars + character * bytes);
             u32 tile;
             int index, row = (int)(entry >> 12);
-            if (at == NULL || blank(at, bytes)) continue;
+            if (at == NULL || blank(at, bytes))
+                continue;
             index = tile_of(at, bytes, &named[character], &tile, engine, bg);
-            if (index < 0) continue;
+            if (index < 0)
+                continue;
             if (!l.colors256) {
-                seen(index, tile, set_for((const u16 *)KHDAYS_W((engine ? 0x05000400u : 0x05000000u) + (u32)row * 32u), 16, row));
+                seen(index, tile,
+                     set_for((const u16 *)KHDAYS_W((engine ? 0x05000400u : 0x05000000u) + (u32)row * 32u), 16, row));
             } else if (ext) {
                 seen(index, tile,
-                     set_for(extended(engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT, slot * 0x2000u + (u32)row * 0x200u), 256, row));
+                     set_for(
+                         extended(engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT, slot * 0x2000u + (u32)row * 0x200u),
+                         256, row));
             } else { /* the 256 colours of the layers' palette, row 0 */
                 seen(index, tile, set_for((const u16 *)KHDAYS_W(engine ? 0x05000400u : 0x05000000u), 256, 0));
             }
@@ -318,7 +340,7 @@ static void look_at_layer(int engine, int bg)
 static void look_at_affine(int engine, int bg)
 {
     static const int8_t family[8][4] = {
-        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {0, 0, 0, 2},
+        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},   {0, 0, 0, 2},
         {0, 0, 1, 2}, {0, 0, 2, 2}, {0, -1, 3, -1}, {-1, -1, -1, -1},
     };
     static uint8_t shown[128 * 128 / 8]; /* the cells shown, of a map up to 128 x 128 */
@@ -360,19 +382,24 @@ static void look_at_affine(int engine, int bg)
         const u8 *e, *at;
         u32 entry, character, tile;
         int index, row = 0;
-        if (!(shown[cell / 8] & (1u << (cell % 8)))) continue;
+        if (!(shown[cell / 8] & (1u << (cell % 8))))
+            continue;
         e = khdays_bg_memory(engine, map + cell * (ext ? 2u : 1u));
-        if (e == NULL) continue;
+        if (e == NULL)
+            continue;
         entry = ext ? (u32)(e[0] | e[1] << 8) : e[0];
         character = entry & 0x3ffu;
         at = khdays_bg_memory(engine, chars + character * 64u);
-        if (at == NULL || blank(at, 64u)) continue;
+        if (at == NULL || blank(at, 64u))
+            continue;
         index = tile_of(at, 64u, &named[character], &tile, engine, bg);
-        if (index < 0) continue;
+        if (index < 0)
+            continue;
         if (ext && (dispcnt & 0x40000000u)) {
             row = (int)(entry >> 12);
             seen(index, tile,
-                 set_for(extended(engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT, slot * 0x2000u + (u32)row * 0x200u), 256, row));
+                 set_for(extended(engine ? KHDAYS_AREA_BBGEXT : KHDAYS_AREA_ABGEXT, slot * 0x2000u + (u32)row * 0x200u),
+                         256, row));
         } else {
             seen(index, tile, set_for((const u16 *)KHDAYS_W(engine ? 0x05000400u : 0x05000000u), 256, 0));
         }
@@ -396,7 +423,8 @@ static void look_at_sprites(int engine)
     const int one_d = (dispcnt & 0x10u) != 0;
     const u32 boundary = 32u << ((dispcnt >> 20) & 3u);
     const u32 palette = engine ? 0x05000600u : 0x05000200u;
-    if (!(dispcnt & 0x1000u)) return;
+    if (!(dispcnt & 0x1000u))
+        return;
     ++look;
     for (int i = 0; i < 128; ++i) {
         const u16 a0 = oam[i * 4], a1 = oam[i * 4 + 1], a2 = oam[i * 4 + 2];
@@ -409,9 +437,11 @@ static void look_at_sprites(int engine)
         w = sizes[shape][size][0];
         h = sizes[shape][size][1];
         x = a1 & 0x1ff;
-        if (x >= 256) x -= 512;
+        if (x >= 256)
+            x -= 512;
         y = a0 & 0xff;
-        if (x >= 256 || x + w * 8 <= 0 || (y >= 192 && y + h * 8 <= 256)) continue; /* off the screen */
+        if (x >= 256 || x + w * 8 <= 0 || (y >= 192 && y + h * 8 <= 256))
+            continue; /* off the screen */
         if (!wide) {
             set = set_for((const u16 *)KHDAYS_W(palette + (u32)row * 32u), 16, row);
         } else if (dispcnt & 0x80000000u) { /* the sprites' extended palettes */
@@ -422,17 +452,21 @@ static void look_at_sprites(int engine)
         for (int ty = 0; ty < h; ++ty) {
             for (int tx = 0; tx < w; ++tx) {
                 /* 1D: the sprite's tiles one after the other; 2D: in a sheet 32 units (of 32 bytes) wide */
-                const u32 address = one_d ? (u32)(a2 & 0x3ffu) * boundary + (u32)(ty * w + tx) * bytes
-                                          : (((u32)(a2 & 0x3ffu) + (u32)ty * 32u + (u32)tx * (bytes / 32u)) & 0x3ffu) * 32u;
+                const u32 address =
+                    one_d ? (u32)(a2 & 0x3ffu) * boundary + (u32)(ty * w + tx) * bytes
+                          : (((u32)(a2 & 0x3ffu) + (u32)ty * 32u + (u32)tx * (bytes / 32u)) & 0x3ffu) * 32u;
                 const u8 *page = pages->page[area][(address / KHDAYS_VRAM_PAGE) % area_pages];
                 const u8 *at;
                 u32 tile;
                 int index;
-                if (page == NULL || address / 32u >= sizeof(named) / sizeof(named[0])) continue;
+                if (page == NULL || address / 32u >= sizeof(named) / sizeof(named[0]))
+                    continue;
                 at = page + address % KHDAYS_VRAM_PAGE;
-                if (blank(at, bytes)) continue;
+                if (blank(at, bytes))
+                    continue;
                 index = tile_of(at, bytes, &named[address / 32u], &tile, engine, 4);
-                if (index >= 0) seen(index, tile, set);
+                if (index >= 0)
+                    seen(index, tile, set);
             }
         }
     }
@@ -458,7 +492,8 @@ static void take_written(const char *path, Sheet *s)
     static char line[256 * 5 + 64];
     int *of_row = NULL, nrows = 0; /* the set each row of the file is, -1 none */
     FILE *f = fopen(path, "r");
-    if (f == NULL) return;
+    if (f == NULL)
+        return;
     while (fgets(line, sizeof(line), f) != NULL) {
         unsigned first, last;
         int r, n = 0;
@@ -468,20 +503,25 @@ static void take_written(const char *path, Sheet *s)
             int k = 0;
             for (; k < s->per; ++k, at = end) {
                 const unsigned long v = strtoul(at, &end, 16);
-                if (end == at) break;
+                if (end == at)
+                    break;
                 c[k] = (uint16_t)(v & 0x7fffu);
             }
-            if (k != s->per) continue; /* another depth's colours: not this sheet's record */
+            if (k != s->per)
+                continue; /* another depth's colours: not this sheet's record */
             if (r >= nrows) {
                 int *grown = (int *)realloc(of_row, sizeof(int) * (size_t)(r + 1));
-                if (grown == NULL) break;
+                if (grown == NULL)
+                    break;
                 of_row = grown;
-                while (nrows <= r) of_row[nrows++] = -1;
+                while (nrows <= r)
+                    of_row[nrows++] = -1;
             }
             of_row[r] = colour_set(s->per, r < 16 ? r : -1, c);
         } else if (sscanf(line, "%u-%u %d", &first, &last, &r) == 3 && r >= 0 && r < nrows && of_row[r] >= 0) {
             for (u32 t = first; t <= last && t < s->tiles; ++t) {
-                if (s->best[t] >= 0) continue;
+                if (s->best[t] >= 0)
+                    continue;
                 s->best[t] = of_row[r];
                 s->tile_set[(size_t)t * TILE_SETS] = of_row[r];
                 s->tile_votes[(size_t)t * TILE_SETS] = 1;
@@ -505,13 +545,17 @@ static void write_sheet(const char *dump, Sheet *s)
     take_written(path, s);
     for (u32 t = 0; t < s->tiles; ++t) {
         int i = 0;
-        if (s->best[t] < 0) continue;
-        while (i < nused && used[i] != s->best[t]) ++i;
+        if (s->best[t] < 0)
+            continue;
+        while (i < nused && used[i] != s->best[t])
+            ++i;
         if (i == nused) {
             int *u = (int *)realloc(used, sizeof(int) * (size_t)(nused + 1));
             int *c = u != NULL ? (int *)realloc(count, sizeof(int) * (size_t)(nused + 1)) : NULL;
-            if (u != NULL) used = u;
-            if (c == NULL) goto done;
+            if (u != NULL)
+                used = u;
+            if (c == NULL)
+                goto done;
             count = c;
             used[nused] = s->best[t];
             count[nused++] = 0;
@@ -519,27 +563,35 @@ static void write_sheet(const char *dump, Sheet *s)
         ++count[i];
     }
     number = (int *)malloc(sizeof(int) * (size_t)(nused > 0 ? nused : 1));
-    if (number == NULL) goto done;
-    for (int i = 0; i < nused; ++i) number[i] = -1;
+    if (number == NULL)
+        goto done;
+    for (int i = 0; i < nused; ++i)
+        number[i] = -1;
     for (int r = 0; r < 16; ++r) {
         int top = -1;
         for (int i = 0; i < nused; ++i) {
-            if (sets[used[i]].row == r && (top < 0 || count[i] > count[top])) top = i;
+            if (sets[used[i]].row == r && (top < 0 || count[i] > count[top]))
+                top = i;
         }
-        if (top >= 0) number[top] = r;
+        if (top >= 0)
+            number[top] = r;
     }
     for (int i = 0; i < nused; ++i) {
-        if (number[i] < 0) number[i] = next++;
+        if (number[i] < 0)
+            number[i] = next++;
     }
     f = fopen(path, "w");
-    if (f == NULL) goto done;
+    if (f == NULL)
+        goto done;
     s->changed = 0;
     fprintf(f, "# the palette rows the game drew this sheet's tiles with, and their colours (BGR555)\n");
     for (int want = 0; want < next; ++want) {
         for (int i = 0; i < nused; ++i) {
-            if (number[i] != want) continue;
+            if (number[i] != want)
+                continue;
             fprintf(f, "row %d", want);
-            for (int k = 0; k < s->per; ++k) fprintf(f, " %04x", sets[used[i]].colours[k]);
+            for (int k = 0; k < s->per; ++k)
+                fprintf(f, " %04x", sets[used[i]].colours[k]);
             fprintf(f, "\n");
         }
     }
@@ -550,9 +602,12 @@ static void write_sheet(const char *dump, Sheet *s)
             ++t;
             continue;
         }
-        while (i < nused && used[i] != s->best[t]) ++i; /* every tile's set is among them (above) */
-        while (last + 1 < s->tiles && s->best[last + 1] == s->best[t]) ++last;
-        if (i < nused) fprintf(f, "%u-%u %d\n", t, last, number[i]);
+        while (i < nused && used[i] != s->best[t])
+            ++i; /* every tile's set is among them (above) */
+        while (last + 1 < s->tiles && s->best[last + 1] == s->best[t])
+            ++last;
+        if (i < nused)
+            fprintf(f, "%u-%u %d\n", t, last, number[i]);
         t = last + 1;
     }
     fclose(f);
@@ -568,11 +623,14 @@ static void report(void)
     for (int e = 0; e < 2; ++e) {
         for (int w = 0; w < 5; ++w) {
             u32 all = 0;
-            for (int r = 0; r < REASONS; ++r) all += traced[e][w].reasons[r];
-            if (all == 0) continue;
+            for (int r = 0; r < REASONS; ++r)
+                all += traced[e][w].reasons[r];
+            if (all == 0)
+                continue;
             fprintf(stderr, "sheet colours: %c %s: %u tiles shown", e ? 'B' : 'A', where[w], all);
             for (int r = 0; r < REASONS; ++r) {
-                if (traced[e][w].reasons[r] > 0) fprintf(stderr, ", %u %s", traced[e][w].reasons[r], reason_names[r]);
+                if (traced[e][w].reasons[r] > 0)
+                    fprintf(stderr, ", %u %s", traced[e][w].reasons[r], reason_names[r]);
             }
             for (int k = 0; k < TRACE_FILES && traced[e][w].files[k].file != NULL; ++k) {
                 fprintf(stderr, "%s%s (%s) x%u", k == 0 ? "; not traced: " : ", ", traced[e][w].files[k].file,
@@ -587,22 +645,27 @@ static void report(void)
 void khdays_sheet_colours_frame(void)
 {
     const char *dump = khdays_textures_dump_dir();
-    if (dump[0] == '\0' || ++frames % LOOK_EVERY != 0) return;
+    if (dump[0] == '\0' || ++frames % LOOK_EVERY != 0)
+        return;
     ncached = 0; /* the palettes may have changed since the last look */
     if (trace < 0) {
         const char *v = getenv("KHDAYS_TRACE_SHEET_COLOURS");
         trace = v != NULL && *v != '\0' && *v != '0';
     }
     for (int engine = 0; engine < 2; ++engine) {
-        for (int bg = 0; bg < 4; ++bg) look_at_layer(engine, bg);
+        for (int bg = 0; bg < 4; ++bg)
+            look_at_layer(engine, bg);
         look_at_affine(engine, 2);
         look_at_affine(engine, 3);
         look_at_sprites(engine);
     }
-    if (frames - written_at < WRITE_EVERY) return;
+    if (frames - written_at < WRITE_EVERY)
+        return;
     written_at = frames;
-    if (trace) report();
+    if (trace)
+        report();
     for (int i = 0; i < nsheets; ++i) {
-        if (sheets[i].changed) write_sheet(dump, &sheets[i]);
+        if (sheets[i].changed)
+            write_sheet(dump, &sheets[i]);
     }
 }

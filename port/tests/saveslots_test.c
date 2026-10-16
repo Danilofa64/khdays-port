@@ -20,12 +20,12 @@ void khdays_log(const char *format, ...)
 }
 
 static int failures;
-#define CHECK(c)                                                                \
-    do {                                                                        \
-        if (!(c)) {                                                             \
-            fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #c); \
-            ++failures;                                                         \
-        }                                                                       \
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #c);                                      \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 /* GameState_SetField's way: `bits` bits from bit `bit` of the state's +0x10 array. */
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
     khdays_slots_show(49);
     CHECK(khdays_slots_shown() == 49);
     game_read(slot_at(0, 0), back, 32);
-    CHECK(back[0] == 0);   /* never written: blank */
+    CHECK(back[0] == 0); /* never written: blank */
     make_copy(copy, 50, 12);
     game_write(slot_at(0, 0), copy, KHDAYS_SLOT_COPY);
     game_write(slot_at(0, 1), copy, KHDAYS_SLOT_COPY);

@@ -4,6 +4,7 @@ with one file, each slot copy signed and whether its digest still matches; with 
 same save (exit 0) but for the digests and the play-time word (docs/BUILD.md, "The tools").
     python port/tools/save_file.py A.sav [B.sav]
 """
+
 import hashlib
 import struct
 import sys
@@ -23,7 +24,10 @@ def copies(data: bytes):
             if base + 0x18 + SIGNED > len(data):
                 continue
             signed = struct.unpack_from("<I", data, base)[0] == MAGIC
-            ok = signed and data[base + 4:base + 0x18] == hashlib.sha1(data[base + 0x18:base + 0x18 + SIGNED]).digest()
+            ok = (
+                signed
+                and data[base + 4 : base + 0x18] == hashlib.sha1(data[base + 0x18 : base + 0x18 + SIGNED]).digest()
+            )
             yield base, signed, ok
 
 
@@ -43,8 +47,9 @@ def same_save(a: bytes, b: bytes) -> list[int]:
         ignored.update(range(base + 4, base + 0x18))
         ignored.update(range(base + VARYING_WORD, base + VARYING_WORD + 4))
     size = max(len(a), len(b))
-    return [i for i in range(size)
-            if i not in ignored and (a[i] if i < len(a) else None) != (b[i] if i < len(b) else None)]
+    return [
+        i for i in range(size) if i not in ignored and (a[i] if i < len(a) else None) != (b[i] if i < len(b) else None)
+    ]
 
 
 def main() -> int:

@@ -26,9 +26,9 @@ typedef struct Subtitles {
 } Subtitles;
 
 static SRWLOCK lock = SRWLOCK_INIT;
-static Subtitles loaded;  /* the video's, given to the host's thread */
-static int fresh;         /* loaded holds what the texture does not show yet */
-static Subtitles shown;   /* the host's thread's */
+static Subtitles loaded; /* the video's, given to the host's thread */
+static int fresh;        /* loaded holds what the texture does not show yet */
+static Subtitles shown;  /* the host's thread's */
 static SDL_Texture *texture;
 
 static void drop(Subtitles *s)
@@ -57,8 +57,8 @@ static int read_file(const char *path, Subtitles *s)
     s->rate = 30;
     while (fgets(line, sizeof(line), f) != NULL) {
         Line l;
-        if (sscanf(line, "picture %d %d", &s->picture_w, &s->picture_h) == 2 || sscanf(line, "rate %d", &s->rate) == 1 ||
-            sscanf(line, "atlas %255s", atlas) == 1) {
+        if (sscanf(line, "picture %d %d", &s->picture_w, &s->picture_h) == 2 ||
+            sscanf(line, "rate %d", &s->rate) == 1 || sscanf(line, "atlas %255s", atlas) == 1) {
             continue;
         }
         if (sscanf(line, "line %d %d %d %d %d %d %d %d", &l.first, &l.end, &l.x, &l.y, &l.u, &l.v, &l.w, &l.h) == 8) {
@@ -79,8 +79,7 @@ static int read_file(const char *path, Subtitles *s)
     if (strrchr(path, '\\') > slash) {
         slash = strrchr(path, '\\');
     }
-    snprintf(folder, sizeof(folder), "%.*s%s", slash != NULL ? (int)(slash - path) : 0, path,
-             slash != NULL ? "/" : "");
+    snprintf(folder, sizeof(folder), "%.*s%s", slash != NULL ? (int)(slash - path) : 0, path, slash != NULL ? "/" : "");
     if (s->count > 0 && atlas[0] != '\0' && s->picture_w > 0 && s->picture_h > 0 && s->rate > 0) {
         char file[1300];
         snprintf(file, sizeof(file), "%s%s", folder, atlas);

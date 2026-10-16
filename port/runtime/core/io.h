@@ -6,9 +6,9 @@
 
 #include "../../hal/hal.h"
 
-#define KHDAYS_IO_BASE  0x04000000u
-#define KHDAYS_IO_SIZE  0x10000u
-#define KHDAYS_IO2_BASE 0x04100000u  /* IPCFIFORECV, card data */
+#define KHDAYS_IO_BASE 0x04000000u
+#define KHDAYS_IO_SIZE 0x10000u
+#define KHDAYS_IO2_BASE 0x04100000u /* IPCFIFORECV, card data */
 #define KHDAYS_IO2_SIZE 0x10000u
 
 /* The two regions' own memory, in the window (memory.c); at the DS's
@@ -16,7 +16,7 @@
 extern u8 *khdays_io_host;
 extern u8 *khdays_io2_host;
 
-#define IO8(offset)  (*(volatile u8 *)(khdays_io_host + (offset)))
+#define IO8(offset) (*(volatile u8 *)(khdays_io_host + (offset)))
 #define IO16(offset) (*(volatile u16 *)(khdays_io_host + (offset)))
 #define IO32(offset) (*(volatile u32 *)(khdays_io_host + (offset)))
 

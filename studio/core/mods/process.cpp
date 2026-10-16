@@ -13,7 +13,8 @@ Job::Job(std::vector<std::string> args, fs::path working_directory)
 
 Job::~Job() {
     stop();
-    if (thread_.joinable()) thread_.join();
+    if (thread_.joinable())
+        thread_.join();
 }
 
 std::string Job::error() const {
@@ -37,7 +38,8 @@ void Job::stop() {
 
 void Job::run() {
     std::vector<const char*> argv;
-    for (const auto& a : args_) argv.push_back(a.c_str());
+    for (const auto& a : args_)
+        argv.push_back(a.c_str());
     argv.push_back(nullptr);
     const std::string cwd = native_u8(working_directory_);
 
@@ -71,7 +73,8 @@ void Job::run() {
             std::size_t at;
             while ((at = partial.find('\n')) != std::string::npos) {
                 std::string line = partial.substr(0, at);
-                if (!line.empty() && line.back() == '\r') line.pop_back();
+                if (!line.empty() && line.back() == '\r')
+                    line.pop_back();
                 partial.erase(0, at + 1);
                 std::lock_guard lock(mutex_);
                 lines_.push_back(std::move(line));
@@ -82,7 +85,8 @@ void Job::run() {
             // drain what is left
             while (out != nullptr) {
                 const size_t m = SDL_ReadIO(out, buffer, sizeof(buffer));
-                if (m == 0) break;
+                if (m == 0)
+                    break;
                 partial.append(buffer, m);
             }
             break;
@@ -99,9 +103,12 @@ void Job::run() {
         while (start < partial.size()) {
             const auto at = partial.find('\n', start);
             std::string line = partial.substr(start, at == std::string::npos ? std::string::npos : at - start);
-            if (!line.empty() && line.back() == '\r') line.pop_back();
-            if (!line.empty()) lines_.push_back(std::move(line));
-            if (at == std::string::npos) break;
+            if (!line.empty() && line.back() == '\r')
+                line.pop_back();
+            if (!line.empty())
+                lines_.push_back(std::move(line));
+            if (at == std::string::npos)
+                break;
             start = at + 1;
         }
     }
@@ -112,8 +119,8 @@ void Job::run() {
 
 std::unique_ptr<Job> start_port_dump(const fs::path& port_exe, const fs::path& root, const std::string& kind,
                                      const fs::path& directory) {
-    return std::make_unique<Job>(
-        std::vector<std::string>{native_u8(port_exe), "--dump-" + kind, native_u8(directory)}, root);
+    return std::make_unique<Job>(std::vector<std::string>{native_u8(port_exe), "--dump-" + kind, native_u8(directory)},
+                                 root);
 }
 
 }  // namespace studio

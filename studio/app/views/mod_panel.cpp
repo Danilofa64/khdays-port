@@ -19,7 +19,8 @@ namespace {
 // The settings written; when they cannot be, the person is told why.
 void save_settings_told(App& app) {
     std::string why;
-    if (!save_settings(app.settings, &why)) app.tell(fmt(app.language, S::save_failed, {why}), false);
+    if (!save_settings(app.settings, &why))
+        app.tell(fmt(app.language, S::save_failed, {why}), false);
 }
 
 struct ModFile {
@@ -45,20 +46,24 @@ bool mod_files_stale = true;
 void gather(App& app) {
     mod_files.clear();
     const Mod* m = app.current_mod();
-    if (m == nullptr) return;
+    if (m == nullptr)
+        return;
     const auto named = used_companions(m->dir);
     std::error_code ec;
     for (fs::recursive_directory_iterator it(m->dir, ec), end; !ec && it != end; it.increment(ec)) {
         std::error_code type_ec;
-        if (!it->is_regular_file(type_ec)) continue;
+        if (!it->is_regular_file(type_ec))
+            continue;
         ModFile f;
         f.rel = u8(it->path().lexically_relative(m->dir));
-        if (f.rel.rfind("studio/", 0) == 0) continue;  // the tool's own
+        if (f.rel.rfind("studio/", 0) == 0)
+            continue;  // the tool's own
         std::string key = f.rel;
         if (key.rfind("files/", 0) != 0) {
             const auto dot = key.find_last_of('.');
             const auto slash = key.find_last_of('/');
-            if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) key = key.substr(0, dot);
+            if (dot != std::string::npos && (slash == std::string::npos || dot > slash))
+                key = key.substr(0, dot);
         }
         const auto found = app.by_path.find(key);
         if (found != app.by_path.end()) {
@@ -121,15 +126,20 @@ void draw_mod_bar(App& app) {
     if (ImGui::BeginPopupModal((std::string(tr(app.language, S::mod_new)) + "###newmod").c_str(), nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::SetNextItemWidth(320.0f * ImGui::GetStyle().FontScaleDpi);
-        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-        const bool enter = ImGui::InputText(tr(app.language, S::mod_name), &new_name, ImGuiInputTextFlags_EnterReturnsTrue);
-        if (!new_error.empty()) ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", new_error.c_str());
+        if (ImGui::IsWindowAppearing())
+            ImGui::SetKeyboardFocusHere();
+        const bool enter =
+            ImGui::InputText(tr(app.language, S::mod_name), &new_name, ImGuiInputTextFlags_EnterReturnsTrue);
+        if (!new_error.empty())
+            ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", new_error.c_str());
         if (ImGui::Button(tr(app.language, S::create)) || enter) {
             std::string why;
             if (create_mod(app.mods_root, new_name, &why)) {
                 app.settings.mod = new_name;
                 save_settings_told(app);
-                app.tell(fmt(app.language, S::mod_created, {new_name, u8(app.mods_root.lexically_relative(app.settings.root) / path_u8(new_name))}), true);
+                app.tell(fmt(app.language, S::mod_created,
+                             {new_name, u8(app.mods_root.lexically_relative(app.settings.root) / path_u8(new_name))}),
+                         true);
                 app.mod = -1;
                 app.refresh_mods();
                 mod_files_stale = true;
@@ -139,10 +149,12 @@ void draw_mod_bar(App& app) {
             }
         }
         same_line_if_room(button_width(tr(app.language, S::cancel)));
-        if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr(app.language, S::cancel)))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
-    if (show_files) draw_replacements(app, &show_files);
+    if (show_files)
+        draw_replacements(app, &show_files);
 }
 
 void draw_replacements(App& app, bool* open) {
@@ -153,8 +165,9 @@ void draw_replacements(App& app, bool* open) {
     }
     ImGui::SetNextWindowSize(ImVec2(760, 420), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(1.0f);
-    if (!ImGui::Begin(fmt(app.language, S::replacements_title, {std::to_string(mod_files.size())}).append("###files").c_str(),
-                      open)) {
+    if (!ImGui::Begin(
+            fmt(app.language, S::replacements_title, {std::to_string(mod_files.size())}).append("###files").c_str(),
+            open)) {
         ImGui::End();
         return;
     }
@@ -171,12 +184,14 @@ void draw_replacements(App& app, bool* open) {
         }
         if (ImGui::BeginPopupModal((std::string(tr(app.language, S::remove)) + "###remove_left").c_str(), nullptr,
                                    ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextUnformatted(fmt(app.language, S::remove_left_over_confirm, {std::to_string(left), m->name}).c_str());
+            ImGui::TextUnformatted(
+                fmt(app.language, S::remove_left_over_confirm, {std::to_string(left), m->name}).c_str());
             if (ImGui::Button(tr(app.language, S::remove))) {
                 std::size_t removed = 0;
                 std::string why;
                 for (const auto& f : mod_files) {
-                    if (f.left_over && remove_mod_file(m->dir, m->dir / path_u8(f.rel), &why)) ++removed;
+                    if (f.left_over && remove_mod_file(m->dir, m->dir / path_u8(f.rel), &why))
+                        ++removed;
                 }
                 if (removed == left) {
                     app.tell(fmt(app.language, S::left_over_removed, {std::to_string(removed), m->name}), true);
@@ -187,7 +202,8 @@ void draw_replacements(App& app, bool* open) {
                 ImGui::CloseCurrentPopup();
             }
             same_line_if_room(button_width(tr(app.language, S::cancel)));
-            if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
+            if (ImGui::Button(tr(app.language, S::cancel)))
+                ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
         ImGui::Separator();
@@ -209,8 +225,8 @@ void draw_replacements(App& app, bool* open) {
                 ImGui::TextDisabled("%s", tr(app.language, S::whole_game_file));
             } else {
                 const auto h = holders(app.mods_root, whole_file_item(f.rel));
-                ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.35f, 1),
-                                   "%s", fmt(app.language, S::in_game_now, {h.empty() ? "?" : h.front().mod}).c_str());
+                ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.35f, 1), "%s",
+                                   fmt(app.language, S::in_game_now, {h.empty() ? "?" : h.front().mod}).c_str());
             }
         } else if (f.item >= 0) {
             if (ImGui::SmallButton(tr(app.language, S::remove))) {
@@ -228,8 +244,8 @@ void draw_replacements(App& app, bool* open) {
             if (!f.used) {
                 const auto h = holders(app.mods_root, app.catalog.items[static_cast<std::size_t>(f.item)]);
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.35f, 1),
-                                   "%s", fmt(app.language, S::in_game_now, {h.empty() ? "?" : h.front().mod}).c_str());
+                ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.35f, 1), "%s",
+                                   fmt(app.language, S::in_game_now, {h.empty() ? "?" : h.front().mod}).c_str());
             }
         } else if (f.left_over) {
             if (ImGui::SmallButton(tr(app.language, S::remove))) {
@@ -251,7 +267,8 @@ void draw_replacements(App& app, bool* open) {
         }
         ImGui::PopID();
     }
-    if (ask_remove) ImGui::OpenPopup("###remove");
+    if (ask_remove)
+        ImGui::OpenPopup("###remove");
     if (ImGui::BeginPopupModal((std::string(tr(app.language, S::remove)) + "###remove").c_str(), nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted(fmt(app.language, S::remove_confirm, {remove_rel, m->name}).c_str());
@@ -262,8 +279,8 @@ void draw_replacements(App& app, bool* open) {
             if (remove_item < 0 && !remove_whole) {
                 ok = remove_mod_file(m->dir, m->dir / path_u8(remove_rel), &why);  // a file left over: it alone
             } else {
-                const Item item =
-                    remove_whole ? whole_file_item(remove_rel) : app.catalog.items[static_cast<std::size_t>(remove_item)];
+                const Item item = remove_whole ? whole_file_item(remove_rel)
+                                               : app.catalog.items[static_cast<std::size_t>(remove_item)];
                 ok = remove_replacement(m->dir, item, &why);
             }
             if (!ok) {
@@ -275,7 +292,8 @@ void draw_replacements(App& app, bool* open) {
             ImGui::CloseCurrentPopup();
         }
         same_line_if_room(button_width(tr(app.language, S::cancel)));
-        if (ImGui::Button(tr(app.language, S::cancel))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr(app.language, S::cancel)))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
     ImGui::End();
@@ -307,7 +325,8 @@ void draw_themes(App& app, bool* open) {
                 apply_theme(app.settings.theme);
                 save_settings_told(app);
             }
-            if (i == current) ImGui::SetItemDefaultFocus();
+            if (i == current)
+                ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
     }
@@ -321,8 +340,9 @@ void draw_settings(App& app, bool* open) {
         return;
     }
     bool changed = false;
-    const char* current = app.settings.language.empty() ? tr(app.language, S::language_system)
-                                                         : language_name(language_from_code(app.settings.language, Language::en));
+    const char* current = app.settings.language.empty()
+                              ? tr(app.language, S::language_system)
+                              : language_name(language_from_code(app.settings.language, Language::en));
     if (ImGui::BeginCombo(tr(app.language, S::language), current)) {
         if (ImGui::Selectable(tr(app.language, S::language_system), app.settings.language.empty())) {
             app.settings.language.clear();
@@ -345,14 +365,18 @@ void draw_settings(App& app, bool* open) {
     paths |= ImGui::InputText(tr(app.language, S::sounds_dump), &app.settings.sounds_dump);
     changed |= ImGui::InputText(tr(app.language, S::ffmpeg), &app.settings.ffmpeg);
     if (ImGui::InputInt(tr(app.language, S::cache), &app.settings.cache_mb)) {
-        if (app.settings.cache_mb < 1) app.settings.cache_mb = 1;
+        if (app.settings.cache_mb < 1)
+            app.settings.cache_mb = 1;
         app.images->set_budget(static_cast<std::size_t>(app.settings.cache_mb) << 20);
         changed = true;
     }
-    if (changed || paths) save_settings_told(app);
-    if (ImGui::Button(tr(app.language, S::reload))) app.start_catalog();
+    if (changed || paths)
+        save_settings_told(app);
+    if (ImGui::Button(tr(app.language, S::reload)))
+        app.start_catalog();
     same_line_if_room(button_width(tr(app.language, S::close)));
-    if (ImGui::Button(tr(app.language, S::close))) *open = false;
+    if (ImGui::Button(tr(app.language, S::close)))
+        *open = false;
     ImGui::End();
 }
 

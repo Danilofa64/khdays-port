@@ -15,7 +15,8 @@ void same_line_if_room(float width) {
     // after an item the cursor is at the next line's start: from there, what is
     // left of the line is the window's whole visible width
     const float right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
-    if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + width <= right) ImGui::SameLine();
+    if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + width <= right)
+        ImGui::SameLine();
 }
 
 float button_width(const char* label) {
@@ -47,7 +48,8 @@ void App::start_catalog() {
 }
 
 void App::take_catalog() {
-    if (!catalog_ready || !catalog_thread.joinable()) return;
+    if (!catalog_ready || !catalog_thread.joinable())
+        return;
     catalog_thread.join();
     catalog = std::move(catalog_next);
     catalog_next = Catalog{};
@@ -75,7 +77,8 @@ void App::refresh_mods() {
     mods = list_mods(mods_root);
     mod = -1;
     for (int i = 0; i < static_cast<int>(mods.size()); ++i) {
-        if (mods[static_cast<std::size_t>(i)].name == keep) mod = i;
+        if (mods[static_cast<std::size_t>(i)].name == keep)
+            mod = i;
     }
 }
 
@@ -90,9 +93,11 @@ void App::clear_candidate() {
         fs::remove(candidate.staged, ec);
         // the staging folder goes when empty
         const fs::path staging = candidate.staged.parent_path();
-        if (fs::is_empty(staging, ec) && !ec) fs::remove(staging, ec);
+        if (fs::is_empty(staging, ec) && !ec)
+            fs::remove(staging, ec);
         const fs::path studio_dir = staging.parent_path();
-        if (fs::is_empty(studio_dir, ec) && !ec) fs::remove(studio_dir, ec);
+        if (fs::is_empty(studio_dir, ec) && !ec)
+            fs::remove(studio_dir, ec);
     }
     candidate = Candidate{};
     candidate_error.clear();
@@ -100,14 +105,16 @@ void App::clear_candidate() {
 
 void App::offer(const fs::path& file) {
     clear_candidate();
-    if (selected < 0 || selected >= static_cast<int>(catalog.items.size())) return;
+    if (selected < 0 || selected >= static_cast<int>(catalog.items.size()))
+        return;
     const Mod* m = current_mod();
     if (m == nullptr) {
         candidate_error = tr(language, S::choose_mod_first);
         return;
     }
     const Item& item = catalog.items[static_cast<std::size_t>(selected)];
-    if (item.kind == Kind::sheet && sheet_offer(*this, file)) return;  // an edited assembled picture
+    if (item.kind == Kind::sheet && sheet_offer(*this, file))
+        return;  // an edited assembled picture
     if (item.kind == Kind::model) {
         model_offer(*this, item, file);
         return;
@@ -120,7 +127,8 @@ void App::offer(const fs::path& file) {
         movie_offer(*this, item, file);
         return;
     }
-    if (item.kind == Kind::text_file) return;  // texts are edited in their view
+    if (item.kind == Kind::text_file)
+        return;  // texts are edited in their view
     candidate.item = selected;
     candidate.source = file;
     candidate.any_palette = false;
@@ -132,7 +140,8 @@ void App::offer(const fs::path& file) {
     fs::create_directories(staging, ec);
     std::string ext = lower(u8(file.extension()));
     const bool picture = item.kind == Kind::texture || item.kind == Kind::sheet;
-    if (picture) ext = ".png";
+    if (picture)
+        ext = ".png";
     candidate.staged = staging / ("candidate" + ext);
 
     if (picture && !is_png(file)) {
@@ -161,21 +170,24 @@ void App::offer(const fs::path& file) {
     } else if (item.kind == Kind::sound) {
         r = check_sound(candidate.staged);
     }
-    for (auto& f : r.findings) candidate.check.findings.push_back(f);
-    if (r.verdict == Verdict::refused) candidate.check.verdict = Verdict::refused;
+    for (auto& f : r.findings)
+        candidate.check.findings.push_back(f);
+    if (r.verdict == Verdict::refused)
+        candidate.check.verdict = Verdict::refused;
     else if (r.verdict == Verdict::warned && candidate.check.verdict == Verdict::accepted)
         candidate.check.verdict = Verdict::warned;
 }
 
 std::string finding_text(const App& app, const Finding& f) {
     static const S words[] = {
-        S::note_not_image,      S::note_not_png,           S::note_converted_to_png, S::note_texture_stretched,
-        S::note_texture_scale,  S::note_sheet_size,        S::note_sheet_scale,      S::note_sheet_indexed,
-        S::note_sheet_true_colour, S::note_sound_unreadable, S::note_sound_decoded,  S::note_sound_looped,
+        S::note_not_image,         S::note_not_png,          S::note_converted_to_png, S::note_texture_stretched,
+        S::note_texture_scale,     S::note_sheet_size,       S::note_sheet_scale,      S::note_sheet_indexed,
+        S::note_sheet_true_colour, S::note_sound_unreadable, S::note_sound_decoded,    S::note_sound_looped,
         S::note_sound_plays_once,
     };
     const auto i = static_cast<std::size_t>(f.note);
-    if (i >= sizeof(words) / sizeof(words[0])) return {};
+    if (i >= sizeof(words) / sizeof(words[0]))
+        return {};
     auto arg = [&](std::size_t n) { return n < f.args.size() ? std::string_view(f.args[n]) : std::string_view(); };
     return fmt(app.language, words[i], {arg(0), arg(1), arg(2), arg(3)});
 }

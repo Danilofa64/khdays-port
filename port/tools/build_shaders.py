@@ -3,6 +3,7 @@ port/shaders/<name>.hlsl to DXIL, SPIR-V and MSL, as C arrays in port/host/rende
 the build never runs this). Needs the Vulkan SDK; the resource layout: docs/BUILD.md, "The tools".
     python port/tools/build_shaders.py [name ...]
 """
+
 import os
 import re
 import shutil
@@ -36,17 +37,18 @@ def run(args: list[str]) -> None:
 
 
 def version(exe: str) -> str:
-    result = subprocess.run([exe, "--version"], capture_output=True, text=True, encoding="utf-8",
-                            errors="replace")
+    result = subprocess.run([exe, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace")
     line = (result.stdout or result.stderr).strip().splitlines()
     return line[0] if line else "unknown"
 
 
 def c_array(name: str, data: bytes) -> str:
-    rows = [", ".join(f"0x{b:02x}" for b in data[i:i + 16]) for i in range(0, len(data), 16)]
+    rows = [", ".join(f"0x{b:02x}" for b in data[i : i + 16]) for i in range(0, len(data), 16)]
     body = ",\n    ".join(rows)
-    return (f"static const unsigned char {name}[] = {{\n    {body}\n}};\n"
-            f"static const unsigned int {name}_size = {len(data)}u;\n")
+    return (
+        f"static const unsigned char {name}[] = {{\n    {body}\n}};\n"
+        f"static const unsigned int {name}_size = {len(data)}u;\n"
+    )
 
 
 def build(source: Path, dxc: str, cross: str, versions: str, work: Path) -> None:
@@ -61,8 +63,22 @@ def build(source: Path, dxc: str, cross: str, versions: str, work: Path) -> None
         spirv = work / f"{base}.spv"
         msl = work / f"{base}.metal"
         run([dxc, "-nologo", "-T", profile, "-E", entry, "-O3", "-Fo", str(dxil), str(source)])
-        run([dxc, "-nologo", "-spirv", "-fspv-target-env=vulkan1.1", "-T", profile, "-E", entry, "-O3",
-             "-Fo", str(spirv), str(source)])
+        run(
+            [
+                dxc,
+                "-nologo",
+                "-spirv",
+                "-fspv-target-env=vulkan1.1",
+                "-T",
+                profile,
+                "-E",
+                entry,
+                "-O3",
+                "-Fo",
+                str(spirv),
+                str(source),
+            ]
+        )
         run([cross, str(spirv), "--msl", "--msl-version", "20100", "--output", str(msl)])
         header = OUT / f"{base}.h"
         header.write_text(
@@ -71,10 +87,14 @@ def build(source: Path, dxc: str, cross: str, versions: str, work: Path) -> None
             + c_array(f"{base}_dxil", dxil.read_bytes())
             + c_array(f"{base}_spirv", spirv.read_bytes())
             + c_array(f"{base}_msl", msl.read_bytes() + b"\0")
-            + f"#define {base.upper()}_ENTRY \"{entry}\"\n",
-            encoding="utf-8", newline="\n")
-        print(f"{header.relative_to(ROOT)}: DXIL {dxil.stat().st_size} B, SPIR-V {spirv.stat().st_size} B, "
-              f"MSL {msl.stat().st_size} B")
+            + f'#define {base.upper()}_ENTRY "{entry}"\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(
+            f"{header.relative_to(ROOT)}: DXIL {dxil.stat().st_size} B, SPIR-V {spirv.stat().st_size} B, "
+            f"MSL {msl.stat().st_size} B"
+        )
 
 
 def main() -> int:

@@ -3,7 +3,6 @@
  * swaps and signed comparisons as the routine's (docs/PLATFORM.md, "The HAL's translations"). */
 #include "hal.h"
 
-
 typedef s32 (*KhdaysQsortCompare)(void *a, void *b);
 
 static u32 bits(u32 v)

@@ -62,7 +62,7 @@ static uint32_t window_columns(uint32_t winh)
 static int layer_family(uint32_t dispcnt, int engine, int bg)
 {
     static const int8_t table[8][4] = {
-        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {0, 0, 0, 2},
+        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},   {0, 0, 0, 2},
         {0, 0, 1, 2}, {0, 0, 2, 2}, {0, -1, 3, -1}, {-1, -1, -1, -1},
     };
     const uint32_t mode = dispcnt & 7;

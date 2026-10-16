@@ -38,7 +38,9 @@ public:
     const GpuImage& pixels(const std::string& name, std::uint64_t version, const std::vector<std::uint8_t>& rgba,
                            int width, int height);
 
-    void set_budget(std::size_t bytes) { budget_ = bytes; }
+    void set_budget(std::size_t bytes) {
+        budget_ = bytes;
+    }
 
     // Releases the pictures dropped during the last frame: called at the
     // start of a frame, once the last frame's drawing (which may still name

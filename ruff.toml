@@ -1,0 +1,8 @@
+# Python: `ruff format` and `ruff check` from the root (pip install ruff).
+line-length = 120
+target-version = "py311"
+extend-exclude = ["external"]
+
+[lint]
+# pyflakes (unused imports and names, undefined names) and syntax errors
+select = ["F", "E9"]

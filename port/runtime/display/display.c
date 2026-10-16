@@ -38,7 +38,7 @@
 
 static void ui_report(void); /* the check's counts at exit */
 
-static uint32_t layer3d[PIXELS];     /* what the 3D engine drew at the last VBlank */
+static uint32_t layer3d[PIXELS]; /* what the 3D engine drew at the last VBlank */
 static KhdaysGpu2dState states[2];
 
 /* `local` is the package filled when there is no window (with a window the
@@ -92,8 +92,8 @@ static void polygon_caller(const KhdaysG3dPolygon *p, const KhdaysG3dVertex *v)
     khdays_diag_callers(chain, sizeof(chain), 2); /* not this hook, not emit_polygon */
     if (v[0].w == 4096.0f) {
         /* a quad drawn in screen space (an orthographic projection: w 1) */
-        fprintf(stderr, "display: screen-space polygon x %.1f-%.1f y %.1f-%.1f attr %08x from %s\n",
-                v[0].x, v[p->count > 2 ? 2 : 0].x, p->ymin, p->ymax, p->attr, chain);
+        fprintf(stderr, "display: screen-space polygon x %.1f-%.1f y %.1f-%.1f attr %08x from %s\n", v[0].x,
+                v[p->count > 2 ? 2 : 0].x, p->ymin, p->ymax, p->attr, chain);
     }
     for (int i = 0; i < chain_count; ++i) {
         if (strcmp(chains[i].chain, chain) == 0) {
@@ -124,9 +124,9 @@ static struct {
     u32 layer3d_version;
     u32 alike; /* VBlanks since then that showed the same */
 } last_drawn;
-static u32 layer3d_version; /* counts the changes of layer3d */
+static u32 layer3d_version;    /* counts the changes of layer3d */
 static u32 layer3d_list = ~0u; /* the list layer3d holds (list3d_serial) */
-static int software_3d_off; /* the window draws the 3D itself, so layer3d is left empty */
+static int software_3d_off;    /* the window draws the 3D itself, so layer3d is left empty */
 
 /* Whether this VBlank shows the last frame drawn again: nothing the display
  * reads has changed since (and no new 3D list is swapped in now). When
@@ -199,7 +199,7 @@ static int trace_situation; /* KHDAYS_TRACE_SITUATION: the one-screen inputs tak
 static int profile;
 
 #define GATE_PAGE 2048u
-static u8 *gate_copy;          /* the banks, the palettes and OAM as last seen */
+static u8 *gate_copy; /* the banks, the palettes and OAM as last seen */
 static u32 gate_bytes;
 
 /* Counts the pages that changed since the last call: [0] VRAM, [1] palettes, [2] OAM. */
@@ -240,8 +240,8 @@ static void gate_pages(u32 changed[3])
 static u32 *shots;
 static int shot_count;
 static const char *shot_dir;
-static int engine_upper;            /* engine A on the upper screen at the VBlank before */
-static u32 engine_swaps;            /* the VBlanks in a row engine A changed screens (the situation's input) */
+static int engine_upper; /* engine A on the upper screen at the VBlank before */
+static u32 engine_swaps; /* the VBlanks in a row engine A changed screens (the situation's input) */
 
 /* KHDAYS_HEADLESS: only the frames a shot saves are drawn, with the two before them (they settle the
  * windows' vertical latch). The game reads nothing from the drawing, so it runs the same. */
@@ -372,7 +372,7 @@ static int write_bmp(const char *path, const uint32_t *upper, const uint32_t *lo
     put32(f, 2835);
     put32(f, 0);
     put32(f, 0);
-    for (int y = (int)h - 1; y >= 0; --y) {  /* bottom-up */
+    for (int y = (int)h - 1; y >= 0; --y) { /* bottom-up */
         const uint32_t *row = y < KHDAYS_SCREEN_H ? upper + y * w : lower + (y - KHDAYS_SCREEN_H) * w;
         for (unsigned x = 0; x < w; ++x) {
             fputc((int)(row[x] & 0xff), f);
@@ -392,8 +392,9 @@ static void save_shot(u32 frame, const uint32_t *upper, const uint32_t *lower)
     if (!write_bmp(path, upper, lower)) {
         return;
     }
-    fprintf(stderr, "display: frame %u saved to %s (DISPCNT A %08x B %08x, MASTER_BRIGHT A %04x B %04x, "
-                    "POWCNT1 %04x)\n",
+    fprintf(stderr,
+            "display: frame %u saved to %s (DISPCNT A %08x B %08x, MASTER_BRIGHT A %04x B %04x, "
+            "POWCNT1 %04x)\n",
             frame, path, IO32(0x000), IO32(0x1000), IO16(0x06c), IO16(0x106c), IO16(0x304));
 }
 
@@ -414,8 +415,8 @@ static void save_mark(u32 frame, const uint32_t *upper, const uint32_t *lower)
                "BLDCNT %04x BLDALPHA %04x BLDY %04x, WININ %04x WINOUT %04x; engine B DISPCNT %08x",
                mark_count, IO32(0x000), IO16(0x008), IO16(0x00a), IO16(0x00c), IO16(0x00e), IO16(0x010) & 0x1ffu,
                IO16(0x012) & 0x1ffu, IO16(0x014) & 0x1ffu, IO16(0x016) & 0x1ffu, IO16(0x018) & 0x1ffu,
-               IO16(0x01a) & 0x1ffu, IO16(0x01c) & 0x1ffu, IO16(0x01e) & 0x1ffu, IO16(0x050), IO16(0x052),
-               IO16(0x054), IO16(0x048), IO16(0x04a), IO32(0x1000));
+               IO16(0x01a) & 0x1ffu, IO16(0x01c) & 0x1ffu, IO16(0x01e) & 0x1ffu, IO16(0x050), IO16(0x052), IO16(0x054),
+               IO16(0x048), IO16(0x04a), IO32(0x1000));
     if (khdays_pause_view(&pv)) {
         for (int i = 0; i < pv.count; ++i) {
             khdays_log("mark %u: the pause in BG%d, piece %d key %d at cells %d,%d size %dx%d lit %d", mark_count,
@@ -452,9 +453,9 @@ static int listed(const char *list, u32 frame)
     return 0;
 }
 
-static u32 list3d_serial;   /* moves on with each new list shown */
-static u64 list3d_time;     /* the VBlank the list was first shown at */
-static int list3d_cut;      /* a cut: nothing to draw between it and the list before */
+static u32 list3d_serial; /* moves on with each new list shown */
+static u64 list3d_time;   /* the VBlank the list was first shown at */
+static int list3d_cut;    /* a cut: nothing to draw between it and the list before */
 static u32 list3d_scene = ~0u;
 
 u32 khdays_display_3d_serial(void)
@@ -499,8 +500,7 @@ static KhdaysFramePackage *package(void)
 /* Copies one area's pages, as the 3D engine reads them, into `seen`, counting
  * each page whose bytes changed; then copies into `out` the pages it holds an
  * older count of. */
-static void track_pages(int area, uint8_t *seen, uint32_t *version, int pages, uint8_t *out,
-                        uint32_t *out_version)
+static void track_pages(int area, uint8_t *seen, uint32_t *version, int pages, uint8_t *out, uint32_t *out_version)
 {
     static const uint8_t zero[KHDAYS_FRAME_VRAM_PAGE] = {0};
     const KhdaysVramPages *vram = khdays_vram_pages();
@@ -545,10 +545,10 @@ static void capture_2d(KhdaysFramePackage *p, const KhdaysGpuInput *in)
     static const struct {
         int area, first, pages;
     } areas[] = {
-        {KHDAYS_AREA_ABG, KHDAYS_2D_ABG, 32},       {KHDAYS_AREA_AOBJ, KHDAYS_2D_AOBJ, 16},
-        {KHDAYS_AREA_BBG, KHDAYS_2D_BBG, 8},        {KHDAYS_AREA_BOBJ, KHDAYS_2D_BOBJ, 8},
-        {KHDAYS_AREA_ABGEXT, KHDAYS_2D_ABGEXT, 2},  {KHDAYS_AREA_AOBJEXT, KHDAYS_2D_AOBJEXT, 1},
-        {KHDAYS_AREA_BBGEXT, KHDAYS_2D_BBGEXT, 2},  {KHDAYS_AREA_BOBJEXT, KHDAYS_2D_BOBJEXT, 1},
+        {KHDAYS_AREA_ABG, KHDAYS_2D_ABG, 32},      {KHDAYS_AREA_AOBJ, KHDAYS_2D_AOBJ, 16},
+        {KHDAYS_AREA_BBG, KHDAYS_2D_BBG, 8},       {KHDAYS_AREA_BOBJ, KHDAYS_2D_BOBJ, 8},
+        {KHDAYS_AREA_ABGEXT, KHDAYS_2D_ABGEXT, 2}, {KHDAYS_AREA_AOBJEXT, KHDAYS_2D_AOBJEXT, 1},
+        {KHDAYS_AREA_BBGEXT, KHDAYS_2D_BBGEXT, 2}, {KHDAYS_AREA_BOBJEXT, KHDAYS_2D_BOBJEXT, 1},
     };
     for (int e = 0; e < 2; ++e) {
         khdays_gfx_describe(in->io, in->palette, in->oam, e, &latch2d[e], p->desc2d[e]);
@@ -572,8 +572,8 @@ static void capture_2d(KhdaysFramePackage *p, const KhdaysGpuInput *in)
     memcpy(p->palette2d, in->palette, sizeof(p->palette2d));
     for (size_t i = 0; i < sizeof(areas) / sizeof(areas[0]); ++i) {
         const size_t at = (size_t)areas[i].first * KHDAYS_FRAME_VRAM_PAGE;
-        track_pages(areas[i].area, mem2d_seen + at, mem2d_version + areas[i].first, areas[i].pages,
-                    p->mem2d + at, p->mem2d_version + areas[i].first);
+        track_pages(areas[i].area, mem2d_seen + at, mem2d_version + areas[i].first, areas[i].pages, p->mem2d + at,
+                    p->mem2d_version + areas[i].first);
     }
     {
         const size_t at = (size_t)KHDAYS_2D_VRAM * KHDAYS_FRAME_VRAM_PAGE;
@@ -663,8 +663,9 @@ static void check_records(const KhdaysFramePackage *p)
     ++frames;
     if (bad) {
         ++bad_frames;
-        fprintf(stderr, "display: frame %u: %d pixels of engine A differ when composed again (first at %d,%d: "
-                        "%06x, record role %u effect %u)\n",
+        fprintf(stderr,
+                "display: frame %u: %d pixels of engine A differ when composed again (first at %d,%d: "
+                "%06x, record role %u effect %u)\n",
                 p->frame, bad, first % KHDAYS_SCREEN_W, first / KHDAYS_SCREEN_W, p->screens[0][first],
                 p->composition[first].role, p->composition[first].effect);
     }
@@ -843,8 +844,9 @@ static void ui_check(const KhdaysFramePackage *p, const KhdaysGpuInput *in, int 
                             w[KE_SLOT], fx, fy, fw, fh, w[KE_IMAGE], w[KE_IW], w[KE_IH]);
                 }
             }
-            fprintf(stderr, "ui check: frame %u, engine %c, %s: pixel %d,%d is %06x drawn by the game, %06x by the "
-                            "port\n",
+            fprintf(stderr,
+                    "ui check: frame %u, engine %c, %s: pixel %d,%d is %06x drawn by the game, %06x by the "
+                    "port\n",
                     frame, e ? 'B' : 'A', id != NULL ? id : "no element there", x, y, ui_game[first] & 0xffffff,
                     ui_port[first] & 0xffffff);
             khdays_log("ui check: frame %u, engine %c, %s: pixel %d,%d is %06x drawn by the game, %06x by the port",
@@ -883,10 +885,14 @@ static void ui_frame(KhdaysFramePackage *p, const KhdaysGpuInput *in, int refere
         {
             const uint8_t *bg = khdays_ui_left_out_cell_bits(e, 0), *obj = khdays_ui_left_out_obj_bits(e, 0);
             p->desc2d[e][KD_LEFT_OUT] = bg != NULL || obj != NULL;
-            if (bg != NULL) memcpy(p->left_out_cells[e], bg, sizeof(p->left_out_cells[e]));
-            else memset(p->left_out_cells[e], 0, sizeof(p->left_out_cells[e]));
-            if (obj != NULL) memcpy(p->left_out_obj[e], obj, sizeof(p->left_out_obj[e]));
-            else memset(p->left_out_obj[e], 0, sizeof(p->left_out_obj[e]));
+            if (bg != NULL)
+                memcpy(p->left_out_cells[e], bg, sizeof(p->left_out_cells[e]));
+            else
+                memset(p->left_out_cells[e], 0, sizeof(p->left_out_cells[e]));
+            if (obj != NULL)
+                memcpy(p->left_out_obj[e], obj, sizeof(p->left_out_obj[e]));
+            else
+                memset(p->left_out_obj[e], 0, sizeof(p->left_out_obj[e]));
         }
         if (reference && (n > 0 || p->desc2d[e][KD_LEFT_OUT])) {
             KhdaysGfxMemory m;
@@ -927,7 +933,8 @@ static void record_package(const KhdaysFramePackage *p)
     /* the elements' records (version 12), then each image they draw once:
      * its KE_IMAGE, width, height and texels */
     {
-        uint32_t *ids = (uint32_t *)malloc(((size_t)p->elements[0].count + p->elements[1].count + 1) * sizeof(uint32_t));
+        uint32_t *ids =
+            (uint32_t *)malloc(((size_t)p->elements[0].count + p->elements[1].count + 1) * sizeof(uint32_t));
         uint32_t nids = 0;
         for (int e = 0; e < 2; ++e) {
             fwrite(p->elements[e].records, sizeof(uint32_t) * KE_WORDS, p->elements[e].count, f);
@@ -936,8 +943,10 @@ static void record_package(const KhdaysFramePackage *p)
             for (uint32_t i = 0; i < p->elements[e].count; ++i) {
                 const uint32_t id = p->elements[e].records[i * KE_WORDS + KE_IMAGE];
                 uint32_t k = 0;
-                while (k < nids && ids[k] != id) ++k;
-                if (k == nids) ids[nids++] = id;
+                while (k < nids && ids[k] != id)
+                    ++k;
+                if (k == nids)
+                    ids[nids++] = id;
             }
         }
         fwrite(&nids, sizeof(nids), 1, f);
@@ -1036,7 +1045,7 @@ static void skip_2d_frame(KhdaysGpuInput *in)
 static void begin_package(KhdaysFramePackage *p, u32 frame, int want, int capture)
 {
     if (p != prepared) {
-        p->wants = 0;  /* no 3D captured for it */
+        p->wants = 0; /* no 3D captured for it */
     }
     p->frame = frame;
     p->time = khdays_events_vblank_time();
@@ -1223,8 +1232,8 @@ static void profile_frame(LARGE_INTEGER t0, LARGE_INTEGER ta, LARGE_INTEGER t1, 
     ms_a += (double)(ta.QuadPart - t0.QuadPart) * 1000.0 / (double)hz.QuadPart;
     ms3d += (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / (double)hz.QuadPart;
     if (++frames == 300) {
-        fprintf(stderr, "display: %.2f ms 2D (engine A %.2f, with its records), %.2f ms 3D per frame\n",
-                ms2d / frames, ms_a / frames, ms3d / frames);
+        fprintf(stderr, "display: %.2f ms 2D (engine A %.2f, with its records), %.2f ms 3D per frame\n", ms2d / frames,
+                ms_a / frames, ms3d / frames);
         fprintf(stderr,
                 "display: per frame drawn, pages of 2 KB changed: VRAM %.1f (at most %u), palettes %.2f, "
                 "OAM %.2f\n",
@@ -1243,10 +1252,10 @@ static void profile_frame(LARGE_INTEGER t0, LARGE_INTEGER ta, LARGE_INTEGER t1, 
  * EVB -- into a VRAM bank, and clears the enable. The game shows such banks (the VRAM display mode,
  * engine B's bitmaps) for its screen blends, its motion blur and the 3D on both screens. Taken here at
  * the VBlank of that frame, after it is drawn: a bank shown and written at once shows the frame before. */
-static int capture_used;            /* the game has armed a capture (the host's p->capture) */
-static uint16_t capture_a[PIXELS];  /* source A, BGR555 with its alpha bit */
+static int capture_used;               /* the game has armed a capture (the host's p->capture) */
+static uint16_t capture_a[PIXELS];     /* source A, BGR555 with its alpha bit */
 static uint32_t capture_layer[PIXELS]; /* the frame's 3D, when layer3d does not hold it */
-static u32 *capture_kinds;          /* the kinds logged: DISPCAPCNT without its enable, EVA and EVB */
+static u32 *capture_kinds;             /* the kinds logged: DISPCAPCNT without its enable, EVA and EVB */
 static int capture_kind_count, capture_kind_room;
 
 /* Each kind of capture once in the session log. */
@@ -1354,7 +1363,9 @@ static void display_capture(const KhdaysGpuInput *in, const KhdaysGpu2dState *wi
             const u32 n = (u32)(y * w + x) * 2u; /* both banks read and written in order */
             const uint16_t a = capture_a[y * KHDAYS_SCREEN_W + x];
             const uint16_t b = from_memory ? 0 : *(const uint16_t *)(source_b + ((read_at + n) & 0x1ffffu));
-            *(uint16_t *)(to + ((write_at + n) & 0x1ffffu)) = mode == 0 ? a : mode == 1 ? b : capture_blend(a, b, eva, evb);
+            *(uint16_t *)(to + ((write_at + n) & 0x1ffffu)) = mode == 0   ? a
+                                                              : mode == 1 ? b
+                                                                          : capture_blend(a, b, eva, evb);
         }
     }
     if (!bank_shown(dest) && last_drawn.valid) {

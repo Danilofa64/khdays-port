@@ -3,6 +3,7 @@ other games in it parses and serialises back byte for byte; adding the port keep
 is idempotent, and removing it restores the original bytes; a file it cannot reproduce is left
 untouched; and the Proton mapping in a config.vdf is added and removed without disturbing the rest.
 No real Steam is touched (the collection's own files are never in the repository)."""
+
 import sys
 import tempfile
 import unittest
@@ -37,8 +38,10 @@ class BinaryVdf(unittest.TestCase):
     def test_round_trip_with_other_games_and_tail(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "shortcuts.vdf"
-            raw = shortcuts_bytes([other_game(0, "Celeste", "C:\\Games\\celeste.exe"),
-                                   other_game(1, "Hades", "C:\\Games\\hades.exe")], tail=b"\x08")
+            raw = shortcuts_bytes(
+                [other_game(0, "Celeste", "C:\\Games\\celeste.exe"), other_game(1, "Hades", "C:\\Games\\hades.exe")],
+                tail=b"\x08",
+            )
             path.write_bytes(raw)
             entries, tail = ss.read_shortcuts(path)  # raises if it does not round-trip
             self.assertEqual(len(entries), 2)
@@ -105,7 +108,8 @@ CONFIG = (
     '\t\t\t\t"CompatToolMapping"\n\t\t\t\t{\n'
     '\t\t\t\t\t"2552430"\n\t\t\t\t\t{\n\t\t\t\t\t\t"name"\t\t"proton_9"\n'
     '\t\t\t\t\t\t"config"\t\t""\n\t\t\t\t\t\t"priority"\t\t"250"\n\t\t\t\t\t}\n'
-    '\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n')
+    "\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n"
+)
 
 
 class CompatMapping(unittest.TestCase):
@@ -124,7 +128,9 @@ class CompatMapping(unittest.TestCase):
     def test_into_empty_block_and_back(self):
         empty = CONFIG.replace(
             '\t\t\t\t\t"2552430"\n\t\t\t\t\t{\n\t\t\t\t\t\t"name"\t\t"proton_9"\n'
-            '\t\t\t\t\t\t"config"\t\t""\n\t\t\t\t\t\t"priority"\t\t"250"\n\t\t\t\t\t}\n', '')
+            '\t\t\t\t\t\t"config"\t\t""\n\t\t\t\t\t\t"priority"\t\t"250"\n\t\t\t\t\t}\n',
+            "",
+        )
         added = ss.set_compat_tool(empty, self.APP, "proton_9")
         self.assertEqual(ss.read_compat_tool(added, self.APP), "proton_9")
         self.assertEqual(ss.remove_compat_tool(added, self.APP), empty)
@@ -152,6 +158,7 @@ class Commands(unittest.TestCase):
         import argparse
         import steam_library
         import setup_steps
+
         self.dir = tempfile.TemporaryDirectory()
         root = Path(self.dir.name)
         self.steam = root / "steam"
@@ -173,8 +180,9 @@ class Commands(unittest.TestCase):
         self.dir.cleanup()
 
     def run_command(self, name):
-        args = self.argparse.Namespace(install=self.install, language="en", result=None,
-                                       proton=None, proton_from_collection=True)
+        args = self.argparse.Namespace(
+            install=self.install, language="en", result=None, proton=None, proton_from_collection=True
+        )
         return self.steps.COMMANDS[name][0](args)
 
     def test_add_then_remove(self):

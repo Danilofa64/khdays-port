@@ -29,10 +29,8 @@ std::uint32_t read_u32(const ByteVector& d, const std::size_t off) {
     if (off + 4U > d.size()) {
         throw std::runtime_error("P2: truncated u32 read");
     }
-    return static_cast<std::uint32_t>(d[off])
-        | (static_cast<std::uint32_t>(d[off + 1U]) << 8U)
-        | (static_cast<std::uint32_t>(d[off + 2U]) << 16U)
-        | (static_cast<std::uint32_t>(d[off + 3U]) << 24U);
+    return static_cast<std::uint32_t>(d[off]) | (static_cast<std::uint32_t>(d[off + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(d[off + 2U]) << 16U) | (static_cast<std::uint32_t>(d[off + 3U]) << 24U);
 }
 
 }  // namespace
@@ -47,9 +45,8 @@ std::vector<std::uint8_t> lz_decompress(const ByteVector& input) {
     }
 
     std::size_t pos = 4U;
-    std::size_t out_size = static_cast<std::size_t>(input[1])
-        | (static_cast<std::size_t>(input[2]) << 8U)
-        | (static_cast<std::size_t>(input[3]) << 16U);
+    std::size_t out_size = static_cast<std::size_t>(input[1]) | (static_cast<std::size_t>(input[2]) << 8U) |
+                           (static_cast<std::size_t>(input[3]) << 16U);
     if (out_size == 0U) {  // extended 32-bit size
         out_size = read_u32(input, 4U);
         pos = 8U;
@@ -87,8 +84,7 @@ std::vector<std::uint8_t> lz_decompress(const ByteVector& input) {
                     const auto b1 = byte_at(pos + 1U);
                     const auto b2 = byte_at(pos + 2U);
                     const auto b3 = byte_at(pos + 3U);
-                    length = (((b0 & 0x0FU) << 12U) | (b1 << 4U) | (b2 >> 4U))
-                        + 0x111U;
+                    length = (((b0 & 0x0FU) << 12U) | (b1 << 4U) | (b2 >> 4U)) + 0x111U;
                     disp = (((b2 & 0x0FU) << 8U) | b3) + 1U;
                     pos += 4U;
                 } else {
@@ -121,8 +117,8 @@ std::string message_to_utf8(const std::u16string& text) {
     for (std::size_t i = 0U; i < text.size(); ++i) {
         char32_t cp = text[i];
         // Combine a UTF-16 surrogate pair, if present.
-        if (cp >= 0xD800U && cp <= 0xDBFFU && i + 1U < text.size()
-            && text[i + 1U] >= 0xDC00U && text[i + 1U] <= 0xDFFFU) {
+        if (cp >= 0xD800U && cp <= 0xDBFFU && i + 1U < text.size() && text[i + 1U] >= 0xDC00U &&
+            text[i + 1U] <= 0xDFFFU) {
             cp = 0x10000U + ((cp - 0xD800U) << 10U) + (text[i + 1U] - 0xDC00U);
             ++i;
         }
@@ -162,9 +158,12 @@ std::u16string message_from_utf8(const std::string& text) {
         }
     };
     const auto hex = [](char c) -> int {
-        if (c >= '0' && c <= '9') return c - '0';
-        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        if (c >= '0' && c <= '9')
+            return c - '0';
+        if (c >= 'a' && c <= 'f')
+            return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F')
+            return c - 'A' + 10;
         return -1;
     };
 
@@ -173,9 +172,21 @@ std::u16string message_from_utf8(const std::string& text) {
         const auto c = static_cast<unsigned char>(text[i]);
         if (c == '\\' && i + 1U < text.size()) {
             const char e = text[i + 1U];
-            if (e == 'n') { emit(u'\n'); i += 2U; continue; }
-            if (e == 't') { emit(u'\t'); i += 2U; continue; }
-            if (e == '\\') { emit(u'\\'); i += 2U; continue; }
+            if (e == 'n') {
+                emit(u'\n');
+                i += 2U;
+                continue;
+            }
+            if (e == 't') {
+                emit(u'\t');
+                i += 2U;
+                continue;
+            }
+            if (e == '\\') {
+                emit(u'\\');
+                i += 2U;
+                continue;
+            }
             if (e == 'x' && i + 3U < text.size()) {
                 const int h1 = hex(text[i + 2U]);
                 const int h2 = hex(text[i + 3U]);
@@ -191,8 +202,7 @@ std::u16string message_from_utf8(const std::string& text) {
                 const int h3 = hex(text[i + 4U]);
                 const int h4 = hex(text[i + 5U]);
                 if (h1 >= 0 && h2 >= 0 && h3 >= 0 && h4 >= 0) {
-                    emit(static_cast<char32_t>(
-                        (h1 << 12) | (h2 << 8) | (h3 << 4) | h4));
+                    emit(static_cast<char32_t>((h1 << 12) | (h2 << 8) | (h3 << 4) | h4));
                     i += 6U;
                     continue;
                 }

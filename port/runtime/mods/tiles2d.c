@@ -60,12 +60,14 @@ static int sheet_met(const char *name, const char *file, u32 offset, const Khday
     uint32_t *texels;
     Sheet *s = NULL;
     for (int i = 0; i < nsheets && s == NULL; ++i) {
-        if (strcmp(sheets[i].name, name) == 0) s = &sheets[i];
+        if (strcmp(sheets[i].name, name) == 0)
+            s = &sheets[i];
     }
     if (s == NULL) {
         if (nsheets == cap_sheets) {
             Sheet *grown = (Sheet *)realloc(sheets, sizeof(Sheet) * (size_t)(cap_sheets ? cap_sheets * 2 : 64));
-            if (grown == NULL) return -1;
+            if (grown == NULL)
+                return -1;
             sheets = grown;
             cap_sheets = cap_sheets ? cap_sheets * 2 : 64;
         }
@@ -145,7 +147,8 @@ static int bank_at(const u8 *at, u32 *offset)
 static void map_page(const u8 *at, int bank, u32 bank_offset, int hd, int by_sheet, uint32_t *out)
 {
     memset(out, 0, KHDAYS_TILES2D_PAGE_WORDS * 4u);
-    if (bank < 0) return;
+    if (bank < 0)
+        return;
     for (u32 u = 0; u < KHDAYS_TILES2D_PAGE_WORDS;) {
         const char *file;
         u32 offset, run, units, entry;
@@ -168,9 +171,12 @@ static void map_page(const u8 *at, int bank, u32 bank_offset, int hd, int by_she
             const u32 at_sheet = offset + k * 32u - sheet.tiles_at;
             const u32 tile = at_sheet / sheet.tile_bytes;
             u32 length = sheet.tile_bytes;
-            if (offset + k * 32u < sheet.tiles_at || tile >= sheet.tiles) break;
-            if (id < 0 || at_sheet % sheet.tile_bytes != 0) continue;
-            if (length > (KHDAYS_TILES2D_PAGE_WORDS - u) * 32u) length = (KHDAYS_TILES2D_PAGE_WORDS - u) * 32u;
+            if (offset + k * 32u < sheet.tiles_at || tile >= sheet.tiles)
+                break;
+            if (id < 0 || at_sheet % sheet.tile_bytes != 0)
+                continue;
+            if (length > (KHDAYS_TILES2D_PAGE_WORDS - u) * 32u)
+                length = (KHDAYS_TILES2D_PAGE_WORDS - u) * 32u;
             if (memcmp(at + u * 32u, sheet.data + (size_t)tile * sheet.tile_bytes, length) != 0) {
                 continue; /* the game drew over it: its own */
             }
@@ -196,7 +202,8 @@ void khdays_tiles2d_map(const KhdaysVramPages *pages, const uint32_t *memory_ver
             u32 bank_offset = 0, changes = 0;
             const int bank = at != NULL ? bank_at(at, &bank_offset) : -1;
             uint32_t fresh[KHDAYS_TILES2D_PAGE_WORDS];
-            if (bank >= 0) changes = khdays_origin_bank_changes(bank);
+            if (bank >= 0)
+                changes = khdays_origin_bank_changes(bank);
             if (!(seen[n].valid && seen[n].at == at && seen[n].changes == changes &&
                   seen[n].version == memory_version[n] && seen[n].hd == (hd | dump << 1 | movies << 2))) {
                 seen[n].valid = 1;

@@ -120,8 +120,8 @@ static void reach(unsigned short port, int router, KhdaysPortmap *map)
         say("the router did not say its internet address: players write that address (a 'what is my IP' page "
             "shows it) as the server");
     } else if (khdays_ip_private(map->external)) {
-        say_ip("but the router itself is behind another network (its internet address is ", map->external,
-               DEFAULT_PORT, "):");
+        say_ip("but the router itself is behind another network (its internet address is ", map->external, DEFAULT_PORT,
+               "):");
         say("the provider shares one address among many (carrier-grade NAT) and nothing can be opened from here -- "
             "run the server on a machine with an address of its own on the internet");
     } else {
@@ -142,8 +142,9 @@ static void status(KhdaysServerCounts *last)
         return;
     }
     say("%llu group%s open, %llu session%s through the server, %llu KB of %llu held; the busiest second of a "
-        "relayed session one way: %llu datagrams", now.groups, now.groups == 1 ? "" : "s", now.relayed_pairs,
-        now.relayed_pairs == 1 ? "" : "s", now.bytes >> 10, now.budget >> 10, now.relay_busiest);
+        "relayed session one way: %llu datagrams",
+        now.groups, now.groups == 1 ? "" : "s", now.relayed_pairs, now.relayed_pairs == 1 ? "" : "s", now.bytes >> 10,
+        now.budget >> 10, now.relay_busiest);
     say("  since the last: %llu groups opened, %llu datagrams relayed, %llu evicted (the budget reached), "
         "%llu relayed datagrams dropped (past a session's rate), %llu introductions held back",
         now.groups_opened - last->groups_opened, now.relayed - last->relayed, now.evicted - last->evicted,

@@ -25,21 +25,21 @@ extern int GetEntryField20ByIndex(int index);
  * pressed and held before at +0x84, +0x86 and +0x88 + slot * 6. */
 enum { CONTROL = 12, SLOTS = 8 };
 
-static int enabled = -1;                /* -1 until KHDAYS_NET_PREDICT is read */
-static int open_now, paused;            /* the window (the own character's update) is open / paused */
+static int enabled = -1;     /* -1 until KHDAYS_NET_PREDICT is read */
+static int open_now, paused; /* the window (the own character's update) is open / paused */
 static unsigned short held_before[SLOTS];
 /* counts for the session log (every 150 ticks) */
 static unsigned int ticks, kept, followed, reactions, report_at = 150u;
-static unsigned int moved;              /* host records off the path (the character was moved) */
-static unsigned int unmatched;          /* host records with an animation the path never showed */
-static unsigned int turned;             /* host records with another heading (the character was turned) */
-static unsigned int dropped[32];        /* messages left to the host, by gate */
-static int shift[3];                    /* the move khdays_mp_predict_shift applies */
+static unsigned int moved;       /* host records off the path (the character was moved) */
+static unsigned int unmatched;   /* host records with an animation the path never showed */
+static unsigned int turned;      /* host records with another heading (the character was turned) */
+static unsigned int dropped[32]; /* messages left to the host, by gate */
+static int shift[3];             /* the move khdays_mp_predict_shift applies */
 /* following: the host decided a reaction (a hit), so the host's version of
  * the character is shown, as the game shows a guest's. restarting: the
  * reaction is over, the prediction restarts from the idle state. */
 static int following, restarting;
-static unsigned int diverged;           /* times the host ran something the prediction did not */
+static unsigned int diverged; /* times the host ran something the prediction did not */
 /* The idle state (func_ov022_020a37d0: state 0 of Ov022_EnterActorState, the
  * one Ov022_ActorSetState falls back to), as the actor's state word holds it,
  * and the animations (+0x6bc) the own character shows while idle (standing,
@@ -57,8 +57,8 @@ static unsigned int unmatched_run, lead_at_match;
 enum { STEP = 6 };
 static int *path;
 static unsigned int path_count, path_room;
-static int farthest;                    /* the farthest a host record was off the path, fx32 */
-static int current;                     /* the own character's actor, while the window is open */
+static int farthest; /* the farthest a host record was off the path, fx32 */
+static int current;  /* the own character's actor, while the window is open */
 
 /* The own character's shots applied at once (gate 9, Ov022_RunShotCommand's commands), each with its
  * tick, kept until the host's copy comes or the host's records pass that tick without it. */
@@ -70,13 +70,13 @@ typedef struct OwnShot {
 static OwnShot *shots;
 static unsigned int shot_count, shot_room;
 static unsigned int shots_made, shots_matched, shots_differed, shots_expired, shots_refunded;
-static unsigned int host_tick;          /* the path tick the host's record matched last */
+static unsigned int host_tick; /* the path tick the host's record matched last */
 /* Host copies of the own character's shots that arrived before the prediction made them (the host can
  * run a press a tick before the guest's own prediction does): applied as they come, the prediction's
  * own copy then skipped. */
 static OwnShot *ahead;
 static unsigned int ahead_count, ahead_room, shots_late;
-static int own_owner = -1;              /* the own character's party index (+0x9): the owner of its shots */
+static int own_owner = -1; /* the own character's party index (+0x9): the owner of its shots */
 static unsigned int leave_out_own(unsigned char *d, unsigned int size);
 
 /* Whether `animation` is one the own character shows while idle (until any is
@@ -170,8 +170,8 @@ static void report(void)
                    "made (%u of their spends given back), %u whose host's copy came first; its other messages left "
                    "to the host by gate (gate:count)%s",
                    kept, followed, reactions, diverged, moved, farthest / 4096.0, turned, unmatched, shots_made,
-                   shots_matched,
-                   shots_differed, shots_expired, shots_refunded, shots_late, used != 0 ? gates : " none");
+                   shots_matched, shots_differed, shots_expired, shots_refunded, shots_late,
+                   used != 0 ? gates : " none");
     }
     kept = followed = reactions = diverged = moved = turned = unmatched = 0;
     shots_made = shots_matched = shots_differed = shots_expired = shots_refunded = shots_late = 0;
@@ -214,8 +214,8 @@ static void trace_actor(int actor)
         memcpy(step, now + 40, 12);
         khdays_log("predict: actor pressed %04x held %04x pending %u command %d state %08x flags %016llx flags2 "
                    "%016llx at %d,%d,%d step %d,%d,%d budget %u",
-                   now[0] | now[1] << 8, now[2] | now[3] << 8, now[4] | now[5] << 8, (signed char)now[6], state,
-                   flags, flags2, pos[0], pos[1], pos[2], step[0], step[1], step[2], now[52]);
+                   now[0] | now[1] << 8, now[2] | now[3] << 8, now[4] | now[5] << 8, (signed char)now[6], state, flags,
+                   flags2, pos[0], pos[1], pos[2], step[0], step[1], step[2], now[52]);
         memcpy(last, now, sizeof(last));
     }
 }
@@ -243,8 +243,8 @@ static void trace_record(const unsigned char *r)
         memcpy(&step, r + 0x22, 2);
         memcpy(&word26, r + 0x26, 2);
         memcpy(&packed, r + 0x28, 4);
-        khdays_log("predict: host's record state %016llx animation %d hp %u step %d stance %u packed %08x",
-                   state, reaction, hp, step, word26 >> 12, packed);
+        khdays_log("predict: host's record state %016llx animation %d hp %u step %d stance %u packed %08x", state,
+                   reaction, hp, step, word26 >> 12, packed);
         memcpy(last, now, sizeof(last));
     }
 }

@@ -60,8 +60,8 @@ char *khdays_https_get(const char *url, const char *agent, int timeout_ms)
     if (host == NULL || path == NULL) {
         goto done;
     }
-    session = WinHttpOpen(wagent, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS,
-                          0);
+    session =
+        WinHttpOpen(wagent, WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (session == NULL) {
         goto done;
     }

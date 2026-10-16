@@ -21,7 +21,7 @@ uint32_t khdays_bg_chars_base(int engine, int bg)
 int khdays_bg_text_layer(int engine, int bg, KhdaysBgLayer *l)
 {
     static const int8_t family[8][4] = {
-        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1}, {0, 0, 0, 2},
+        {0, 0, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},   {0, 0, 0, 2},
         {0, 0, 1, 2}, {0, 0, 2, 2}, {0, -1, 3, -1}, {-1, -1, -1, -1},
     };
     const uint32_t io = engine ? 0x1000u : 0u;

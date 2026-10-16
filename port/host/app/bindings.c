@@ -93,14 +93,10 @@ static double stick_degrees(int x, int y)
 
 /* The D-pad bits of each of the eight directions, counterclockwise from right. */
 static const uint16_t sector_bits[8] = {
-    DS_BIT(KHDAYS_ACT_RIGHT),
-    DS_BIT(KHDAYS_ACT_RIGHT) | DS_BIT(KHDAYS_ACT_UP),
-    DS_BIT(KHDAYS_ACT_UP),
-    DS_BIT(KHDAYS_ACT_UP) | DS_BIT(KHDAYS_ACT_LEFT),
-    DS_BIT(KHDAYS_ACT_LEFT),
-    DS_BIT(KHDAYS_ACT_LEFT) | DS_BIT(KHDAYS_ACT_DOWN),
-    DS_BIT(KHDAYS_ACT_DOWN),
-    DS_BIT(KHDAYS_ACT_DOWN) | DS_BIT(KHDAYS_ACT_RIGHT),
+    DS_BIT(KHDAYS_ACT_RIGHT), DS_BIT(KHDAYS_ACT_RIGHT) | DS_BIT(KHDAYS_ACT_UP),
+    DS_BIT(KHDAYS_ACT_UP),    DS_BIT(KHDAYS_ACT_UP) | DS_BIT(KHDAYS_ACT_LEFT),
+    DS_BIT(KHDAYS_ACT_LEFT),  DS_BIT(KHDAYS_ACT_LEFT) | DS_BIT(KHDAYS_ACT_DOWN),
+    DS_BIT(KHDAYS_ACT_DOWN),  DS_BIT(KHDAYS_ACT_DOWN) | DS_BIT(KHDAYS_ACT_RIGHT),
 };
 
 uint16_t khdays_stick_dpad(int x, int y, const KhdaysStick *stick, int *active, int *sector)

@@ -43,7 +43,7 @@ float pose_difference(const AnimationPose& pose, const khdays::assets::SkeletalA
 std::vector<std::string> nodes_not_plain(const GameModel& g);
 
 struct AnimationReplacement {
-    std::filesystem::path written;        // the mod's file
+    std::filesystem::path written;  // the mod's file
     std::string clip_name;
     std::vector<std::string> animated;    // the game's nodes the clip moves
     std::vector<std::string> left_alone;  // keeping the original's motion

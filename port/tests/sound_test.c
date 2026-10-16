@@ -13,12 +13,12 @@
 
 static int failures;
 
-#define CHECK(condition)                                                     \
-    do {                                                                     \
-        if (!(condition)) {                                                  \
-            fprintf(stderr, "%s:%d: failed: %s\n", __FILE__, __LINE__, #condition); \
-            ++failures;                                                      \
-        }                                                                    \
+#define CHECK(condition)                                                                                               \
+    do {                                                                                                               \
+        if (!(condition)) {                                                                                            \
+            fprintf(stderr, "%s:%d: failed: %s\n", __FILE__, __LINE__, #condition);                                    \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 /* --- The channels and the DS's mixer ------------------------------------------------ */
@@ -46,8 +46,14 @@ static void golden_fill(uint8_t *data)
         data[i] = (uint8_t)(x >> 24);
     }
     /* the ADPCM sounds' headers: pcm, index */
-    data[0x2000] = 0x00; data[0x2001] = 0x00; data[0x2002] = 0x00; data[0x2003] = 0x00;
-    data[0x3000] = 0x34; data[0x3001] = 0x12; data[0x3002] = 0x20; data[0x3003] = 0x00;
+    data[0x2000] = 0x00;
+    data[0x2001] = 0x00;
+    data[0x2002] = 0x00;
+    data[0x2003] = 0x00;
+    data[0x3000] = 0x34;
+    data[0x3001] = 0x12;
+    data[0x3002] = 0x20;
+    data[0x3003] = 0x00;
 }
 
 static const uint8_t *golden_memory(uint32_t address, int channel)
@@ -76,47 +82,46 @@ static void golden_channel(int n, uint32_t cnt, uint32_t sad, uint16_t tmr, uint
 
 /* CNT: volume 0-6, divider 8-9, hold 15, pan 16-22, duty 24-26, repeat
  * 27-28 (1 loop, 2 one-shot), format 29-30 (PCM8, PCM16, ADPCM, PSG), start 31. */
-#define CNT(vol, div, hold, pan, duty, rep, fmt) \
-    (0x80000000u | (uint32_t)(vol) | (uint32_t)(div) << 8 | (uint32_t)(hold) << 15 | \
-     (uint32_t)(pan) << 16 | (uint32_t)(duty) << 24 | (uint32_t)(rep) << 27 | (uint32_t)(fmt) << 29)
+#define CNT(vol, div, hold, pan, duty, rep, fmt)                                                                       \
+    (0x80000000u | (uint32_t)(vol) | (uint32_t)(div) << 8 | (uint32_t)(hold) << 15 | (uint32_t)(pan) << 16 |           \
+     (uint32_t)(duty) << 24 | (uint32_t)(rep) << 27 | (uint32_t)(fmt) << 29)
 
 /* The writes due at output sample `s`. */
 static void golden_step(int s)
 {
     switch (s) {
     case 0:
-        golden_write(0x100, 2, 0x807f);                                                 /* master on, 127 */
-        golden_channel(0, CNT(100, 0, 0, 64, 0, 2, 0), 0x02000000, 0xfe00, 0, 64);      /* PCM8 one-shot */
-        golden_channel(1, CNT(127, 1, 0, 0, 0, 1, 1), 0x02001000, 0xfd00, 8, 56);       /* PCM16 loop */
-        golden_channel(2, CNT(90, 0, 0, 100, 0, 1, 2), 0x02002000, 0xfc80, 4, 60);      /* ADPCM loop */
-        golden_channel(8, CNT(64, 2, 0, 30, 3, 0, 3), 0, 0xff00, 0, 0);                  /* PSG */
-        golden_channel(14, CNT(40, 0, 0, 90, 0, 0, 3), 0, 0xfff0, 0, 0);                 /* noise */
+        golden_write(0x100, 2, 0x807f);                                            /* master on, 127 */
+        golden_channel(0, CNT(100, 0, 0, 64, 0, 2, 0), 0x02000000, 0xfe00, 0, 64); /* PCM8 one-shot */
+        golden_channel(1, CNT(127, 1, 0, 0, 0, 1, 1), 0x02001000, 0xfd00, 8, 56);  /* PCM16 loop */
+        golden_channel(2, CNT(90, 0, 0, 100, 0, 1, 2), 0x02002000, 0xfc80, 4, 60); /* ADPCM loop */
+        golden_channel(8, CNT(64, 2, 0, 30, 3, 0, 3), 0, 0xff00, 0, 0);            /* PSG */
+        golden_channel(14, CNT(40, 0, 0, 90, 0, 0, 3), 0, 0xfff0, 0, 0);           /* noise */
         break;
     case 3000:
-        golden_channel(3, CNT(127, 0, 1, 127, 0, 2, 2), 0x02003000, 0xfb00, 0, 40);     /* ADPCM one-shot, hold */
+        golden_channel(3, CNT(127, 0, 1, 127, 0, 2, 2), 0x02003000, 0xfb00, 0, 40); /* ADPCM one-shot, hold */
         break;
     case 9000:
-        golden_write(0x100, 2, 0x8040);                                                 /* master 64 */
+        golden_write(0x100, 2, 0x8040); /* master 64 */
         break;
     case 12000:
-        golden_write(0x10, 4, CNT(127, 1, 0, 0, 0, 1, 1) & 0x7fffffffu);                /* ch1 stopped */
-        golden_channel(0, CNT(127, 3, 0, 0, 0, 1, 0), 0x02000100, 0xf800, 16, 48);      /* PCM8 loop again */
+        golden_write(0x10, 4, CNT(127, 1, 0, 0, 0, 1, 1) & 0x7fffffffu);           /* ch1 stopped */
+        golden_channel(0, CNT(127, 3, 0, 0, 0, 1, 0), 0x02000100, 0xf800, 16, 48); /* PCM8 loop again */
         break;
     case 20000:
-        golden_write(0x100, 2, 0xb17f);  /* ch1 and ch3 off the mixer; L = ch1, R = the mixer */
+        golden_write(0x100, 2, 0xb17f); /* ch1 and ch3 off the mixer; L = ch1, R = the mixer */
         golden_channel(1, CNT(127, 0, 0, 20, 0, 1, 1), 0x02001800, 0xfe80, 4, 60);
         break;
     case 26000:
-        golden_write(0x100, 2, 0xa77f);  /* L = ch3, R = ch1 + ch3; ch3 off the mixer */
-        golden_write(0x30, 4, 0x00000000);                                              /* ch3 stopped, hold cleared */
+        golden_write(0x100, 2, 0xa77f);    /* L = ch3, R = ch1 + ch3; ch3 off the mixer */
+        golden_write(0x30, 4, 0x00000000); /* ch3 stopped, hold cleared */
         golden_channel(3, CNT(127, 0, 0, 64, 0, 2, 0), 0x02000800, 0xfa00, 0, 200);
         break;
     case 32000:
-        golden_write(0x104, 2, 0x180);                                                  /* bias */
-        golden_write(0x80, 4, 0);                                                       /* the PSG stopped */
+        golden_write(0x104, 2, 0x180); /* bias */
+        golden_write(0x80, 4, 0);      /* the PSG stopped */
         break;
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -142,7 +147,7 @@ static void test_channels_golden(void)
     int compared = 0;
     golden_fill(golden_data);
     khdays_sound_hw_reset(&golden_hw, golden_memory);
-    golden_write(0x104, 2, 0x200);  /* the bias the SoundBias call leaves */
+    golden_write(0x104, 2, 0x200); /* the bias the SoundBias call leaves */
     for (int s = 0; s < GOLDEN_SAMPLES; ++s) {
         const int32_t bias = (int32_t)(khdays_sound_hw_read(&golden_hw, 0x104, 2) & 0x3ff);
         float pc[2];
@@ -151,10 +156,10 @@ static void test_channels_golden(void)
         khdays_sound_mix_ds(&golden_hw, NULL, 1.0f, out[s]);
         khdays_sound_mix_pc(&golden_hw, NULL, 1.0f, NULL, pc);
         for (int side = 0; side < 2; ++side) {
-            const int32_t ds10 = out[s][side] / 64 + bias;  /* the DS's 10 bits */
+            const int32_t ds10 = out[s][side] / 64 + bias; /* the DS's 10 bits */
             float steps;
             if (ds10 <= 0 || ds10 >= 0x3ff) {
-                continue;  /* the DS clipped */
+                continue; /* the DS clipped */
             }
             steps = pc[side] * 32768.0f / 64.0f - (float)(ds10 - bias);
             steps = steps < 0 ? -steps : steps;
@@ -190,23 +195,36 @@ static void test_channels_golden(void)
 #include <stdlib.h>
 
 static uint64_t test_now;
-static uint64_t driver_reached;  /* the furthest cycle the driver was advanced to */
-static int driver_went_past;     /* advanced beyond the clock's now */
+static uint64_t driver_reached; /* the furthest cycle the driver was advanced to */
+static int driver_went_past;    /* advanced beyond the clock's now */
 static const KhdaysSnd7Host *driver_host;
 static uint32_t fifo[20000];
 static int fifo_count;
 
-uint64_t khdays_clock_cycles(void) { return test_now; }
-unsigned char *khdays_window;  /* the game's memory (runtime/core/window.h): its DS addresses, here */
+uint64_t khdays_clock_cycles(void)
+{
+    return test_now;
+}
+unsigned char *khdays_window; /* the game's memory (runtime/core/window.h): its DS addresses, here */
 void khdays_clock_wake(void) {}
-uint32_t khdays_events_vblank_count(void) { return 0; }
-const uint8_t *khdays_rom_header(void) { static uint8_t header[0x200]; return header; }
+uint32_t khdays_events_vblank_count(void)
+{
+    return 0;
+}
+const uint8_t *khdays_rom_header(void)
+{
+    static uint8_t header[0x200];
+    return header;
+}
 void khdays_rom_read(uint32_t offset, uint8_t *destination, uint32_t size)
 {
     (void)offset;
     memset(destination, 0, size);
 }
-const char *khdays_sound_data_path(void) { return "/snd/sound_data.sdat"; }
+const char *khdays_sound_data_path(void)
+{
+    return "/snd/sound_data.sdat";
+}
 int khdays_rom_find(const char *path, uint32_t *offset, uint32_t *size)
 {
     (void)path;
@@ -221,8 +239,14 @@ int khdays_mods_find(const char *relative, char *path, int size)
     (void)size;
     return 0;
 }
-struct KhdaysRomReader { int unused; };
-struct KhdaysRomReader *khdays_rom_reader_new(void) { static struct KhdaysRomReader reader; return &reader; }
+struct KhdaysRomReader {
+    int unused;
+};
+struct KhdaysRomReader *khdays_rom_reader_new(void)
+{
+    static struct KhdaysRomReader reader;
+    return &reader;
+}
 void khdays_rom_reader_read(struct KhdaysRomReader *reader, uint32_t offset, uint8_t *destination, uint32_t size)
 {
     (void)reader;
@@ -249,8 +273,16 @@ void khdays_arm7_reply(uint32_t tag, uint32_t data, uint32_t err)
     }
     ++fifo_count;
 }
-void khdays_host_audio(const int16_t *frames, int count) { (void)frames; (void)count; }
-void khdays_host_audio_float(const float *frames, int count) { (void)frames; (void)count; }
+void khdays_host_audio(const int16_t *frames, int count)
+{
+    (void)frames;
+    (void)count;
+}
+void khdays_host_audio_float(const float *frames, int count)
+{
+    (void)frames;
+    (void)count;
+}
 void khdays_host_sound_start(void) {}
 const uint8_t *khdays_sound_ds_memory(uint32_t address, int channel)
 {
@@ -287,8 +319,11 @@ static void fake_advance(uint64_t cycle)
     driver_host->run(driver_host->context, cycle);
 }
 
-static uint64_t fake_alarm = ~(uint64_t)0;  /* the driver's next alarm */
-static uint64_t fake_next_event(void) { return fake_alarm; }
+static uint64_t fake_alarm = ~(uint64_t)0; /* the driver's next alarm */
+static uint64_t fake_next_event(void)
+{
+    return fake_alarm;
+}
 
 static const KhdaysSnd7Driver fake_driver = {"test", fake_start, fake_word, fake_advance, fake_next_event};
 
@@ -330,7 +365,7 @@ static void test_bridge(void)
 
 /* The DS's memory it reaches: 64 KB from 0x02000000. */
 #define NATIVE_RAM 0x02000000u
-static uint8_t native_ram[0x50000];  /* up to past the ARM9's volume table (render) */
+static uint8_t native_ram[0x50000]; /* up to past the ARM9's volume table (render) */
 static uint8_t native_segment[KHDAYS_SND7_SEGMENT_SIZE];
 static KhdaysSoundHw native_hw;
 static uint32_t native_replies[16];
@@ -403,8 +438,13 @@ static int load_arm7(const char *path)
     return got == sizeof(native_segment) && hash == KHDAYS_SND7_SEGMENT_FNV1A;
 }
 
-enum { SND_LOCK_CHANNEL = 26, SND_SETUP_CHANNEL_PCM = 14, SND_SETUP_ALARM = 18, SND_START_TIMER = 12,
-       SND_SHARED_WORK = 29 };
+enum {
+    SND_LOCK_CHANNEL = 26,
+    SND_SETUP_CHANNEL_PCM = 14,
+    SND_SETUP_ALARM = 18,
+    SND_START_TIMER = 12,
+    SND_SHARED_WORK = 29
+};
 
 static void test_native_driver(const char *arm7)
 {
@@ -601,21 +641,30 @@ static const uint8_t *part_of(const TestStream *t, int c, uint32_t block)
     return t->bytes + 0x40 + block * t->block_size * (uint32_t)t->channels + (uint32_t)c * size;
 }
 
-typedef struct { int sample, index; } TestAdpcm;
+typedef struct {
+    int sample, index;
+} TestAdpcm;
 
 static int test_adpcm_step(TestAdpcm *s, int code)
 {
     const int step = test_step_table[s->index];
     int d = step >> 3;
-    if (code & 4) d += step;
-    if (code & 2) d += step >> 1;
-    if (code & 1) d += step >> 2;
+    if (code & 4)
+        d += step;
+    if (code & 2)
+        d += step >> 1;
+    if (code & 1)
+        d += step >> 2;
     s->sample += code & 8 ? -d : d;
-    if (s->sample < -32768) s->sample = -32768;
-    if (s->sample > 32767) s->sample = 32767;
+    if (s->sample < -32768)
+        s->sample = -32768;
+    if (s->sample > 32767)
+        s->sample = 32767;
     s->index += test_index_table[code];
-    if (s->index < 0) s->index = 0;
-    if (s->index > 88) s->index = 88;
+    if (s->index < 0)
+        s->index = 0;
+    if (s->index > 88)
+        s->index = 88;
     return s->sample;
 }
 
@@ -673,10 +722,10 @@ static uint8_t fill_pcm(int c, uint32_t b, uint32_t i)
 static uint8_t fill_adpcm(int c, uint32_t b, uint32_t i)
 {
     if (i == 0) {
-        return (uint8_t)(b * 91u + (uint32_t)c * 17u);  /* the state's sample, low */
+        return (uint8_t)(b * 91u + (uint32_t)c * 17u); /* the state's sample, low */
     }
     if (i == 1) {
-        return (uint8_t)(b * 13u + 0x10u);              /* its high byte */
+        return (uint8_t)(b * 13u + 0x10u); /* its high byte */
     }
     if (i == 2) {
         return (uint8_t)((b * 7u + (uint32_t)c) % 89u); /* its index */
@@ -729,7 +778,8 @@ static void test_stream_case(const char *what, int format, int loop, int file_ch
     CHECK(khdays_streams_bind(test_streams, 6, p.ring + 4, 512, format == 0 ? 0 : 1) < 0);
     for (int k = 0; k < COUNT + 300 && handle[0] >= 0 && handle[1] >= 0; ++k) {
         int32_t got;
-        if (k < COUNT && (!khdays_streams_sample(test_streams, handle[0], (uint64_t)k, &got) || got != expected[0][k])) {
+        if (k < COUNT &&
+            (!khdays_streams_sample(test_streams, handle[0], (uint64_t)k, &got) || got != expected[0][k])) {
             if (wrong++ == 0) {
                 fprintf(stderr, "stream %s: channel 0 sample %d: %d, expected %d\n", what, k, got, expected[0][k]);
             }
@@ -756,11 +806,12 @@ static void test_stream_reader(void)
     /* the IMA-ADPCM step table: 7 * 1.1^n, as IMA defines it (the test's
      * own; the reader is given the game's) */
     static const int16_t steps[89] = {
-        7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80,
-        88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544,
-        598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749,
-        3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635,
-        13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767};
+        7,    8,     9,     10,    11,    12,    13,    14,    16,    17,    19,    21,    23,    25,   28,
+        31,   34,    37,    41,    45,    50,    55,    60,    66,    73,    80,    88,    97,    107,  118,
+        130,  143,   157,   173,   190,   209,   230,   253,   279,   307,   337,   371,   408,   449,  494,
+        544,  598,   658,   724,   796,   876,   963,   1060,  1166,  1282,  1411,  1552,  1707,  1878, 2066,
+        2272, 2499,  2749,  3024,  3327,  3660,  4026,  4428,  4871,  5358,  5894,  6484,  7132,  7845, 8630,
+        9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767};
     memcpy(test_step_table, steps, sizeof(steps));
     test_streams = khdays_streams_new(test_index_table, test_step_table);
     CHECK(test_streams != NULL);
@@ -830,9 +881,9 @@ static int write_flac(const char *path, const int16_t *samples, uint32_t frames,
         return 0;
     }
     fwrite("fLaC", 1, 4, f);
-    info[3] = 34;  /* STREAMINFO, not the last */
-    info[4] = 1, info[5] = 0, info[6] = 1, info[7] = 0;  /* blocks of 256 */
-    packed = (uint64_t)rate << 44 | (uint64_t)15 << 36 | frames;  /* mono, 16 bits */
+    info[3] = 34;                                                /* STREAMINFO, not the last */
+    info[4] = 1, info[5] = 0, info[6] = 1, info[7] = 0;          /* blocks of 256 */
+    packed = (uint64_t)rate << 44 | (uint64_t)15 << 36 | frames; /* mono, 16 bits */
     for (int i = 0; i < 8; ++i) {
         info[4 + 10 + i] = (uint8_t)(packed >> (56 - 8 * i));
     }
@@ -844,7 +895,7 @@ static int write_flac(const char *path, const int16_t *samples, uint32_t frames,
         const uint8_t header[4] = {0x84, (uint8_t)(length >> 16), (uint8_t)(length >> 8), (uint8_t)length};
         const uint8_t vendor[8] = {4, 0, 0, 0, 't', 'e', 's', 't'};
         const uint8_t how_many[4] = {(uint8_t)count, 0, 0, 0};
-        fwrite(header, 1, 4, f);  /* VORBIS_COMMENT, the last */
+        fwrite(header, 1, 4, f); /* VORBIS_COMMENT, the last */
         fwrite(vendor, 1, 8, f);
         fwrite(how_many, 1, 4, f);
         for (int i = 0; i < count; ++i) {
@@ -857,12 +908,12 @@ static int write_flac(const char *path, const int16_t *samples, uint32_t frames,
     for (uint32_t b = 0; b < frames / 256; ++b) {
         uint16_t crc;
         frame[0] = 0xff;
-        frame[1] = 0xf8;  /* sync, fixed blocks */
-        frame[2] = 0x80;  /* 256 samples; the rate STREAMINFO's */
-        frame[3] = 0x08;  /* mono, 16 bits */
-        frame[4] = (uint8_t)b;  /* the frame's number, one byte of UTF-8 below 128 */
+        frame[1] = 0xf8;       /* sync, fixed blocks */
+        frame[2] = 0x80;       /* 256 samples; the rate STREAMINFO's */
+        frame[3] = 0x08;       /* mono, 16 bits */
+        frame[4] = (uint8_t)b; /* the frame's number, one byte of UTF-8 below 128 */
         frame[5] = flac_crc8(frame, 5);
-        frame[6] = 0x02;  /* VERBATIM */
+        frame[6] = 0x02; /* VERBATIM */
         for (int i = 0; i < 256; ++i) {
             frame[7 + 2 * i] = (uint8_t)((uint16_t)samples[b * 256 + (uint32_t)i] >> 8);
             frame[8 + 2 * i] = (uint8_t)samples[b * 256 + (uint32_t)i];
@@ -938,7 +989,7 @@ static const uint8_t *trip_memory(uint32_t address, int channel)
 {
     (void)channel;
     return address >= TRIP_ADDRESS && address < TRIP_ADDRESS + sizeof(trip_data) ? trip_data + (address - TRIP_ADDRESS)
-                                                                                  : NULL;
+                                                                                 : NULL;
 }
 
 static int trip_bind(void *context, int channel, uint32_t sad, uint32_t len, int format)
@@ -974,7 +1025,7 @@ static void test_round_trip(void)
             trip_data[i] = (uint8_t)(state >> 16);
         }
         if (format == 2) {
-            trip_data[0] = 0, trip_data[1] = 0, trip_data[2] = 20, trip_data[3] = 0;  /* ADPCM: sample 0, index 20 */
+            trip_data[0] = 0, trip_data[1] = 0, trip_data[2] = 20, trip_data[3] = 0; /* ADPCM: sample 0, index 20 */
         }
         frames = khdays_sound_decode(trip_data, words, format, decoded);
         CHECK(frames == words * per_word - header);
@@ -990,7 +1041,7 @@ static void test_round_trip(void)
             khdays_sound_hw_write(hw, 8, 2, timer);
             khdays_sound_hw_write(hw, 0xa, 2, loop_words);
             khdays_sound_hw_write(hw, 0xc, 4, words - loop_words);
-            khdays_sound_hw_write(hw, 0, 4, 127u | 1u << 27 | (uint32_t)format << 29 | 1u << 31);  /* looped */
+            khdays_sound_hw_write(hw, 0, 4, 127u | 1u << 27 | (uint32_t)format << 29 | 1u << 31); /* looped */
         }
         for (uint32_t n = 0; n < 3 * frames + 16; ++n) {
             khdays_sound_hw_step(&original, 2 * (0x10000 - timer));
@@ -1019,8 +1070,7 @@ static void put_word(uint32_t address, uint32_t value)
 
 static void test_render(const char *arm7)
 {
-    const uint32_t work = 0x02010000u, swar = 0x02011000u, bank = 0x02012000u, once = 0x02013000u,
-                   looped = 0x02013100u;
+    const uint32_t work = 0x02010000u, swar = 0x02011000u, bank = 0x02012000u, once = 0x02013000u, looped = 0x02013100u;
     /* a note of 48 ticks (key 60, velocity 127); then the end, or a jump back */
     static const uint8_t note_once[] = {0x3c, 0x7f, 0x30, 0xff};
     static const uint8_t note_looped[] = {0x3c, 0x7f, 0x30, 0x94, 0x00, 0x00, 0x00};
@@ -1052,7 +1102,7 @@ static void test_render(const char *arm7)
     }
     put_word(bank + 0x18, swar);
     put_word(bank + 0x38, 1);
-    put_word(bank + 0x3c, 1u | 0x40u << 8);  /* program 0: a wave (type 1), its settings at +0x40 */
+    put_word(bank + 0x3c, 1u | 0x40u << 8); /* program 0: a wave (type 1), its settings at +0x40 */
     put_bytes(bank + 0x40, settings, sizeof(settings));
     put_bytes(once, note_once, sizeof(note_once));
     put_bytes(looped, note_looped, sizeof(note_looped));

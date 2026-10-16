@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TILE 8 /* a tile's side, in DS pixels */
+#define TILE 8                           /* a tile's side, in DS pixels */
 #define MAX_COLUMNS (3 * KHDAYS_FRAME_W) /* the widest picture (see gpu_present.c) */
 #define MAX_TILES_X (MAX_COLUMNS / TILE)
 #define TILES_Y (KHDAYS_FRAME_H / TILE)
@@ -50,8 +50,8 @@ static SDL_GPUDevice *device;
 static SDL_GPUComputePipeline *raster, *compose;
 static SDL_GPUBuffer *polys, *verts, *tiles, *vram, *records;
 static uint32_t polys_capacity, verts_capacity; /* entries in `polys` and `verts`: the most any list has had */
-static int fine; /* draw the 3D in 8 bits per channel (khdays_raster3d_set_fine) */
-static uint32_t tiles_capacity; /* entries in `tiles` */
+static int fine;                                /* draw the 3D in 8 bits per channel (khdays_raster3d_set_fine) */
+static uint32_t tiles_capacity;                 /* entries in `tiles` */
 static SDL_GPUTransferBuffer *upload;
 static uint32_t upload_size;
 static uint32_t vram_version[VRAM_PAGES]; /* the change counts of the card's copy */
@@ -79,10 +79,14 @@ static int scratch_for(const KhdaysG3dList *list)
         int *b = a != NULL ? (int *)SDL_realloc(hud_group, sizeof(int) * (size_t)n) : NULL;
         float *c = b != NULL ? (float *)SDL_realloc(hud_x0, sizeof(float) * (size_t)n * 4) : NULL;
         uint8_t(*d)[4] = c != NULL ? (uint8_t(*)[4])SDL_realloc(box, sizeof(box[0]) * (size_t)n) : NULL;
-        if (a != NULL) hud_index = a;
-        if (b != NULL) hud_group = b;
-        if (c != NULL) hud_x0 = c;
-        if (d != NULL) box = d;
+        if (a != NULL)
+            hud_index = a;
+        if (b != NULL)
+            hud_group = b;
+        if (c != NULL)
+            hud_x0 = c;
+        if (d != NULL)
+            box = d;
         if (d == NULL) {
             return 0;
         }
@@ -103,10 +107,10 @@ static int scratch_for(const KhdaysG3dList *list)
     return 1;
 }
 
-static SDL_GPUComputePipeline *make_pipeline(const unsigned char *dxil, unsigned dxil_size,
-                                             const unsigned char *spirv, unsigned spirv_size,
-                                             const unsigned char *msl, unsigned msl_size, const char *entry,
-                                             Uint32 ro_textures, Uint32 ro_buffers, Uint32 rw_textures)
+static SDL_GPUComputePipeline *make_pipeline(const unsigned char *dxil, unsigned dxil_size, const unsigned char *spirv,
+                                             unsigned spirv_size, const unsigned char *msl, unsigned msl_size,
+                                             const char *entry, Uint32 ro_textures, Uint32 ro_buffers,
+                                             Uint32 rw_textures)
 {
     SDL_GPUComputePipelineCreateInfo info;
     const SDL_GPUShaderFormat formats = SDL_GetGPUShaderFormats(device);
@@ -186,9 +190,12 @@ static void drop_targets(void)
         wrapped = NULL;
     }
     wrapped_for = NULL;
-    if (color3d != NULL) SDL_ReleaseGPUTexture(device, color3d);
-    if (attr3d != NULL) SDL_ReleaseGPUTexture(device, attr3d);
-    if (screen != NULL) SDL_ReleaseGPUTexture(device, screen);
+    if (color3d != NULL)
+        SDL_ReleaseGPUTexture(device, color3d);
+    if (attr3d != NULL)
+        SDL_ReleaseGPUTexture(device, attr3d);
+    if (screen != NULL)
+        SDL_ReleaseGPUTexture(device, screen);
     color3d = attr3d = screen = NULL;
     target_scale = target_columns = 0;
 }
@@ -199,15 +206,23 @@ void khdays_raster3d_close(void)
         return;
     }
     drop_targets();
-    if (raster != NULL) SDL_ReleaseGPUComputePipeline(device, raster);
-    if (compose != NULL) SDL_ReleaseGPUComputePipeline(device, compose);
-    if (polys != NULL) SDL_ReleaseGPUBuffer(device, polys);
-    if (verts != NULL) SDL_ReleaseGPUBuffer(device, verts);
+    if (raster != NULL)
+        SDL_ReleaseGPUComputePipeline(device, raster);
+    if (compose != NULL)
+        SDL_ReleaseGPUComputePipeline(device, compose);
+    if (polys != NULL)
+        SDL_ReleaseGPUBuffer(device, polys);
+    if (verts != NULL)
+        SDL_ReleaseGPUBuffer(device, verts);
     khdays_gpu_hd_close();
-    if (tiles != NULL) SDL_ReleaseGPUBuffer(device, tiles);
-    if (vram != NULL) SDL_ReleaseGPUBuffer(device, vram);
-    if (records != NULL) SDL_ReleaseGPUBuffer(device, records);
-    if (upload != NULL) SDL_ReleaseGPUTransferBuffer(device, upload);
+    if (tiles != NULL)
+        SDL_ReleaseGPUBuffer(device, tiles);
+    if (vram != NULL)
+        SDL_ReleaseGPUBuffer(device, vram);
+    if (records != NULL)
+        SDL_ReleaseGPUBuffer(device, records);
+    if (upload != NULL)
+        SDL_ReleaseGPUTransferBuffer(device, upload);
     raster = compose = NULL;
     polys = verts = tiles = vram = records = NULL;
     upload = NULL;
@@ -629,7 +644,8 @@ static int place_all(const KhdaysG3dList *list, int origin_x)
             }
             for (int k = 0; k < p->count; ++k) {
                 const int v = p->first + k;
-#pragma warning(suppress: 6385) /* v is below list->nverts (checked above) and the flags are as many: grown at the top */
+#pragma warning(                                                                                                       \
+    suppress : 6385) /* v is below list->nverts (checked above) and the flags are as many: grown at the top */
                 if (!vertex_moved[v]) {
                     moved[v].x = (list->verts[v].x - h->src_x) * h->scale + h->x + (float)origin_x;
                     moved[v].y = (list->verts[v].y - h->src_y) * h->scale + h->y;
@@ -689,7 +705,8 @@ static int place_hud(const KhdaysG3dList *list, int origin_x, KhdaysG3dList *pla
         }
         for (int s = 0; s < hud_shape_count && h == NULL; ++s) {
             const KhdaysShape3d *c = &hud_shapes[s];
-            if (c->group == KHDAYS_SHAPE3D_HUD && gx0 >= c->src_x && gx1 <= c->src_x + c->src_w && gy0 >= c->src_y && gy1 <= c->src_y + c->src_h) {
+            if (c->group == KHDAYS_SHAPE3D_HUD && gx0 >= c->src_x && gx1 <= c->src_x + c->src_w && gy0 >= c->src_y &&
+                gy1 <= c->src_y + c->src_h) {
                 h = c;
             }
         }
@@ -808,8 +825,7 @@ static int draw(const KhdaysFramePackage *p, int scale, int texture_smoothing, i
         }
     }
     vram_valid = 1;
-    size = poly_bytes + vert_bytes + tile_bytes + record_bytes +
-           (uint32_t)nchanged * KHDAYS_FRAME_VRAM_PAGE;
+    size = poly_bytes + vert_bytes + tile_bytes + record_bytes + (uint32_t)nchanged * KHDAYS_FRAME_VRAM_PAGE;
     if (size > upload_size) {
         SDL_GPUTransferBufferCreateInfo info;
         if (upload != NULL) {
@@ -866,15 +882,15 @@ static int draw(const KhdaysFramePackage *p, int scale, int texture_smoothing, i
         SDL_GPUBufferRegion dst;
         src.transfer_buffer = upload;
         at = 0;
-#define UPLOAD(target, bytes, cycle)                                   \
-        if ((bytes) > 0) {                                             \
-            src.offset = at;                                           \
-            dst.buffer = (target);                                     \
-            dst.offset = 0;                                            \
-            dst.size = (bytes);                                        \
-            SDL_UploadToGPUBuffer(copy, &src, &dst, (cycle));          \
-            at += (bytes);                                             \
-        }
+#define UPLOAD(target, bytes, cycle)                                                                                   \
+    if ((bytes) > 0) {                                                                                                 \
+        src.offset = at;                                                                                               \
+        dst.buffer = (target);                                                                                         \
+        dst.offset = 0;                                                                                                \
+        dst.size = (bytes);                                                                                            \
+        SDL_UploadToGPUBuffer(copy, &src, &dst, (cycle));                                                              \
+        at += (bytes);                                                                                                 \
+    }
         UPLOAD(polys, poly_bytes, true)
         UPLOAD(verts, vert_bytes, true)
         UPLOAD(tiles, tile_bytes, true)
@@ -1056,7 +1072,8 @@ uint32_t *khdays_raster3d_read(int *width, int *height)
     download = SDL_CreateGPUTransferBuffer(device, &info);
     cmd = download != NULL ? SDL_AcquireGPUCommandBuffer(device) : NULL;
     if (cmd == NULL) {
-        if (download != NULL) SDL_ReleaseGPUTransferBuffer(device, download);
+        if (download != NULL)
+            SDL_ReleaseGPUTransferBuffer(device, download);
         return NULL;
     }
     {

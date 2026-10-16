@@ -7,21 +7,22 @@
 
 #define KE_WORDS 8
 
-#define KE_SLOT 0             /* KES_* */
-#define KES_NUMBER_MASK 0x3u  /* the BG layer (0-3), or the sprites' priority */
-#define KES_SPRITES     0x4u  /* in the sprites' slot of that priority, else the BG layer's */
-#define KES_DIRECT      0x8u  /* texels are colours (RGBA: in a layer's slot their alpha shows, over the
+#define KE_SLOT 0            /* KES_* */
+#define KES_NUMBER_MASK 0x3u /* the BG layer (0-3), or the sprites' priority */
+#define KES_SPRITES 0x4u     /* in the sprites' slot of that priority, else the BG layer's */
+#define KES_DIRECT                                                                                                     \
+    0x8u                 /* texels are colours (RGBA: in a layer's slot their alpha shows, over the
                                * elements and the picture under them -- gfx/compose.h kd_element_layer;
                                * in the sprites' from half their alpha), else palette indices */
-#define KES_SEMI_SHIFT  4     /* sprites: 1 drawn as a semi-transparent sprite (the DS's mode 1) */
+#define KES_SEMI_SHIFT 4 /* sprites: 1 drawn as a semi-transparent sprite (the DS's mode 1) */
 
-#define KE_X     1 /* float bits: its left edge, DS pixels (fractions allowed) */
-#define KE_Y     2 /* its top */
-#define KE_W     3 /* float bits: its drawn width, DS pixels */
-#define KE_H     4 /* its drawn height */
+#define KE_X 1     /* float bits: its left edge, DS pixels (fractions allowed) */
+#define KE_Y 2     /* its top */
+#define KE_W 3     /* float bits: its drawn width, DS pixels */
+#define KE_H 4     /* its drawn height */
 #define KE_IMAGE 5 /* its image: the replacement (runtime/mods/textures.h) holding its texels */
-#define KE_IW    6 /* the image's width and height in texels */
-#define KE_IH    7
+#define KE_IW 6    /* the image's width and height in texels */
+#define KE_IH 7
 
 /* An image's texels: 0 transparent; indexed, KET_OPAQUE | the palette index (with KET_EXTENDED an
  * 8-bit character's index in the extended palette bits 12-15 name); direct colour, RGBA with red in

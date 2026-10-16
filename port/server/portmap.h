@@ -9,11 +9,11 @@
 enum { KHDAYS_PORTMAP_NONE, KHDAYS_PORTMAP_NATPMP, KHDAYS_PORTMAP_UPNP };
 
 typedef struct KhdaysPortmap {
-    int method;               /* KHDAYS_PORTMAP_* */
-    unsigned int external;    /* the router's internet address, 0 if not known */
-    unsigned short port;      /* the port the internet reaches, UDP */
+    int method;            /* KHDAYS_PORTMAP_* */
+    unsigned int external; /* the router's internet address, 0 if not known */
+    unsigned short port;   /* the port the internet reaches, UDP */
     unsigned short internal_port;
-    unsigned int lifetime;    /* seconds the router keeps it (0: until removed) */
+    unsigned int lifetime; /* seconds the router keeps it (0: until removed) */
     /* NAT-PMP: the gateway. UPnP: the router's control URL and service. */
     KhdaysNetAddress gateway;
     KhdaysNetAddress control;

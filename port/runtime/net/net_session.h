@@ -146,12 +146,12 @@ void khdays_net_join_password(const char *password);
 void khdays_net_scan_only(const unsigned char *id);
 
 typedef struct KhdaysNetRoomView {
-    unsigned char id[8];   /* its network id (6 bytes used) */
-    int open;              /* it takes guests now */
-    int local;             /* seen on the local network */
-    int locked;            /* it asks for a password */
-    int players, most;     /* in it now, the host too; the most it takes (0: not said) */
-    int ping_ms;           /* the round trip a session with it would take: on the local network
+    unsigned char id[8];     /* its network id (6 bytes used) */
+    int open;                /* it takes guests now */
+    int local;               /* seen on the local network */
+    int locked;              /* it asks for a password */
+    int players, most;       /* in it now, the host too; the most it takes (0: not said) */
+    int ping_ms;             /* the round trip a session with it would take: on the local network
                             * straight to the host, online through the server; -1 not known */
     unsigned short host[16]; /* the host's name as the game shows it (UTF-16, ended) */
 } KhdaysNetRoomView;

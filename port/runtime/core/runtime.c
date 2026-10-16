@@ -90,7 +90,7 @@ int khdays_rom_r9(const char *reader)
 
 static int in_game_ram(u32 p)
 {
-    return khdays_game_ram(p);  /* main RAM or the game's heaps */
+    return khdays_game_ram(p); /* main RAM or the game's heaps */
 }
 
 /* KHDAYS_TRACE_PLAYER: the local player's position every 30 frames. The players' actors: the table at
@@ -112,8 +112,8 @@ static void trace_player(u32 frame)
         actor = in_game_ram(entry) ? *(const volatile u32 *)KHDAYS_W(entry + 0x20) : 0;
         if (in_game_ram(actor)) {
             const volatile s32 *pos = (const volatile s32 *)KHDAYS_W(actor + 0x48c);
-            fprintf(stderr, "player: frame %u, entry %u, actor %08x at (%.2f, %.2f, %.2f)\n", frame, i,
-                    actor, pos[0] / 4096.0, pos[1] / 4096.0, pos[2] / 4096.0);
+            fprintf(stderr, "player: frame %u, entry %u, actor %08x at (%.2f, %.2f, %.2f)\n", frame, i, actor,
+                    pos[0] / 4096.0, pos[1] / 4096.0, pos[2] / 4096.0);
         }
     }
 }
@@ -142,10 +142,9 @@ static void trace_heap(u32 frame)
         if (!khdays_game_heap_figures(*(const volatile u32 *)KHDAYS_W(heaps[k].handle), &f)) {
             continue;
         }
-        fprintf(stderr,
-                "heap: frame %u, %s%s, %08x..%08x, %u bytes, %u used, %u free in %u blocks, the largest %u\n",
-                frame, heaps[k].name, current == heaps[k].handle ? ", current" : "", f.start, f.end,
-                f.end - f.start, f.end - f.start - f.free, f.free, f.blocks, f.largest);
+        fprintf(stderr, "heap: frame %u, %s%s, %08x..%08x, %u bytes, %u used, %u free in %u blocks, the largest %u\n",
+                frame, heaps[k].name, current == heaps[k].handle ? ", current" : "", f.start, f.end, f.end - f.start,
+                f.end - f.start - f.free, f.free, f.blocks, f.largest);
     }
     if (!khdays_game_heap_ds_memory()) {
         fprintf(stderr, "memory: frame %u, %llu bytes of the game's heaps committed\n", frame,
@@ -200,8 +199,8 @@ static void trace_chests_and_time(u32 frame)
         return;
     }
     last_chests = claimed;
-    fprintf(stderr, "mission: frame %u, chests' class %08x (module slot %d), %u of %u placed\n", frame, cls, id, claimed,
-            count);
+    fprintf(stderr, "mission: frame %u, chests' class %08x (module slot %d), %u of %u placed\n", frame, cls, id,
+            claimed, count);
     for (u32 i = 0; i < count && claimed > 0; ++i) {
         const u32 piece = base + i * stride;
         const volatile s32 *pos = (const volatile s32 *)KHDAYS_W(piece + 0x1c);
@@ -284,8 +283,8 @@ void khdays_host_frame(void)
      * game spends away from this point (a movie), is seen all the same */
     if (frame % 60 == 0 || scene[2] != reported_scene) {
         reported_scene = scene[2];
-        fprintf(stderr, "khdays-native: frame %u, scene %u (object %08x, pending %u arg %u)\n", frame,
-                scene[2], scene[0], scene[3], scene[4]);
+        fprintf(stderr, "khdays-native: frame %u, scene %u (object %08x, pending %u arg %u)\n", frame, scene[2],
+                scene[0], scene[3], scene[4]);
         fflush(stderr);
     }
 }

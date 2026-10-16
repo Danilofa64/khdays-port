@@ -6,9 +6,9 @@
 
 #include <stdint.h>
 
-#define KHDAYS_VRAM_BANKS 9       /* A-I */
+#define KHDAYS_VRAM_BANKS 9        /* A-I */
 #define KHDAYS_VRAM_TOTAL 0xa4000u /* 656 KB, banks in LCDC order */
-#define KHDAYS_VRAM_PAGE  0x4000u  /* 16 KB: the smallest bank */
+#define KHDAYS_VRAM_PAGE 0x4000u   /* 16 KB: the smallest bank */
 
 /* The spaces the banks can be placed in, as the display hardware sees them. */
 enum {
@@ -20,8 +20,8 @@ enum {
     KHDAYS_AREA_AOBJEXT, /* engine A OBJ extended palette, 8 KB */
     KHDAYS_AREA_BBGEXT,
     KHDAYS_AREA_BOBJEXT,
-    KHDAYS_AREA_TEX,     /* 3D texture image slots 0-3 of 128 KB */
-    KHDAYS_AREA_TEXPAL,  /* 3D texture palette slots 0-5 of 16 KB */
+    KHDAYS_AREA_TEX,    /* 3D texture image slots 0-3 of 128 KB */
+    KHDAYS_AREA_TEXPAL, /* 3D texture palette slots 0-5 of 16 KB */
     KHDAYS_AREA_COUNT
 };
 
@@ -53,8 +53,7 @@ int khdays_vram_place(int bank, uint8_t cnt, KhdaysBankPlace *place);
 /* Builds the page tables. `memory[b]` holds bank b's contents. Returns the
  * number of pages two banks were mapped to at once (the hardware would OR
  * their reads; here the later bank wins). */
-int khdays_vram_build_pages(const uint8_t cnt[KHDAYS_VRAM_BANKS],
-                            uint8_t *const memory[KHDAYS_VRAM_BANKS],
+int khdays_vram_build_pages(const uint8_t cnt[KHDAYS_VRAM_BANKS], uint8_t *const memory[KHDAYS_VRAM_BANKS],
                             KhdaysVramPages *pages);
 
 /* The VRAMCNT register offsets (from 0x04000000) of banks A-I. */

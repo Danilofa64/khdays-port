@@ -78,8 +78,8 @@ void khdays_sound_sequence_requested(void);
 void khdays_sound_stream_requested(int stream_number);
 
 void khdays_sound_stream_prepared(int player, int stream_number, int channels, const u8 *channel, u32 ring,
-                                  u32 ring_bytes, const void *header, u32 file_at, int in_memory, u32 top,
-                                  u32 bottom, u32 start_sample, int mono);
+                                  u32 ring_bytes, const void *header, u32 file_at, int in_memory, u32 top, u32 bottom,
+                                  u32 start_sample, int mono);
 
 /* The game's thread, from StartSeq and StartSeqArc (prepare.py HOOKS): a sequence or a sequence
  * archive's entry starts on ARM7 player `arm7_player`, prepared by the command list `command_tag`
@@ -98,6 +98,6 @@ const KhdaysSoundArchive *khdays_sound_bridge_archive(void);
 const char *khdays_sound_data_path(void);
 int khdays_sound_bridge_native_segment(void);
 #define KHDAYS_NNS_ADPCM_INDEX_TABLE 0x02041b04u
-#define KHDAYS_NNS_ADPCM_STEP_TABLE  0x02041b14u
+#define KHDAYS_NNS_ADPCM_STEP_TABLE 0x02041b14u
 
 #endif

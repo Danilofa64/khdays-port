@@ -34,9 +34,7 @@ int snd7_bank_read_instrument(uint32_t bank, int program, int key, Snd7Instrumen
     case 2:
     case 3:
     case 4:
-    case 5:
-        read_settings(at, instrument);
-        return 1;
+    case 5: read_settings(at, instrument); return 1;
     case 16: {
         const int lowest = snd7_rd8(at), highest = snd7_rd8(at + 1);
         if (key < lowest || key > highest) {
@@ -55,8 +53,7 @@ int snd7_bank_read_instrument(uint32_t bank, int program, int key, Snd7Instrumen
         at += 8 + 12u * range;
         break;
     }
-    default:
-        return 0;
+    default: return 0;
     }
     instrument->type = snd7_rd8(at);
     read_settings(at + 2, instrument);
@@ -107,14 +104,9 @@ int snd7_bank_note_on(Snd7Channel *channel, int key, int velocity, int32_t lengt
         started = snd7_channel_start_pcm(channel, wave, wave + 0xc, length);
         break;
     }
-    case 2:
-        started = snd7_channel_start_psg(channel, instrument->wave, length);
-        break;
-    case 3:
-        started = snd7_channel_start_noise(channel, length);
-        break;
-    default:
-        return 0;
+    case 2: started = snd7_channel_start_psg(channel, instrument->wave, length); break;
+    case 3: started = snd7_channel_start_noise(channel, length); break;
+    default: return 0;
     }
     if (!started) {
         return 0;

@@ -110,8 +110,8 @@ static void measure(Distance *d, const uint32_t *gpu, int width, const KhdaysFra
             }
             if (p->composition[i].role != KHDAYS_2D_3D_HIDDEN) {
                 const unsigned area = (unsigned)(n * n);
-                const uint32_t average = (sum[0] + area / 2) / area | ((sum[1] + area / 2) / area) << 8 |
-                                         ((sum[2] + area / 2) / area) << 16;
+                const uint32_t average =
+                    (sum[0] + area / 2) / area | ((sum[1] + area / 2) / area) << 8 | ((sum[2] + area / 2) / area) << 16;
                 const int worst = channel_difference(average, software, &d->channel_sum);
                 d->pixels++;
                 d->differing += worst != 0;
@@ -183,9 +183,11 @@ int main(int argc, char **argv)
     SDL_qsort(names, (size_t)name_count, sizeof(names[0]), by_name);
     recorded = (KhdaysFramePackage *)SDL_calloc(1, sizeof(*recorded));
 
-    device = !SDL_Init(SDL_INIT_VIDEO) ? NULL :
-             SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL,
-                                 SDL_getenv("KHDAYS_GPU_DEBUG") != NULL, NULL);
+    device =
+        !SDL_Init(SDL_INIT_VIDEO)
+            ? NULL
+            : SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL,
+                                  SDL_getenv("KHDAYS_GPU_DEBUG") != NULL, NULL);
     if (device != NULL && khdays_raster3d_open(device)) {
         gpu = 1;
         printf("graphics card: %s\n", SDL_GetGPUDeviceDriver(device));
@@ -235,7 +237,8 @@ int main(int argc, char **argv)
             q->list3d.verts = (KhdaysG3dVertex *)(after + sizeof(KhdaysG3dPolygon) * (size_t)q->list3d.npolys);
             q->list3d.poly_capacity = q->list3d.npolys;
             q->list3d.vert_capacity = q->list3d.nverts;
-            after += sizeof(KhdaysG3dPolygon) * (size_t)q->list3d.npolys + sizeof(KhdaysG3dVertex) * (size_t)q->list3d.nverts;
+            after += sizeof(KhdaysG3dPolygon) * (size_t)q->list3d.npolys +
+                     sizeof(KhdaysG3dVertex) * (size_t)q->list3d.nverts;
             q->list3d.pre = (KhdaysG3dPolygon *)after;
             after += sizeof(KhdaysG3dPolygon) * (size_t)q->list3d.npre;
             q->list3d.pre_info = (KhdaysG3dPreInfo *)after;
@@ -287,9 +290,10 @@ int main(int argc, char **argv)
             KhdaysG3dList between;
             SDL_memset(&between, 0, sizeof(between));
             khdays_g3d_interpolate(&interp, &before, &p->list3d, 0.5f, &between);
-            printf("%s: between it and frame %u, %d of %d polygons matched, %d of them moved over a quarter of the view "
-                   "(%d a mod's model's)\n",
-                   names[f], before_frame, interp.matched, interp.polygons, interp.jumped, interp.jumped_mod);
+            printf(
+                "%s: between it and frame %u, %d of %d polygons matched, %d of them moved over a quarter of the view "
+                "(%d a mod's model's)\n",
+                names[f], before_frame, interp.matched, interp.polygons, interp.jumped, interp.jumped_mod);
             for (int d = 0; d < 4 && interp.jumped_in[d].count > 0; ++d) {
                 int32_t in_draw = 0;
                 for (int32_t i = 0; i < p->list3d.npre; ++i) {
@@ -309,18 +313,22 @@ int main(int argc, char **argv)
             /* kept for the next: its polygons before clipping */
             KhdaysG3dPolygon *pre =
                 (KhdaysG3dPolygon *)SDL_realloc(before.pre, sizeof(KhdaysG3dPolygon) * (size_t)(p->list3d.npre + 1));
-            KhdaysG3dPreInfo *info =
-                (KhdaysG3dPreInfo *)SDL_realloc(before.pre_info, sizeof(KhdaysG3dPreInfo) * (size_t)(p->list3d.npre + 1));
+            KhdaysG3dPreInfo *info = (KhdaysG3dPreInfo *)SDL_realloc(before.pre_info, sizeof(KhdaysG3dPreInfo) *
+                                                                                          (size_t)(p->list3d.npre + 1));
             KhdaysG3dPreVertex *verts = (KhdaysG3dPreVertex *)SDL_realloc(
                 before.pre_verts, sizeof(KhdaysG3dPreVertex) * (size_t)(p->list3d.npre_verts + 1));
-            if (pre != NULL) before.pre = pre;
-            if (info != NULL) before.pre_info = info;
-            if (verts != NULL) before.pre_verts = verts;
+            if (pre != NULL)
+                before.pre = pre;
+            if (info != NULL)
+                before.pre_info = info;
+            if (verts != NULL)
+                before.pre_verts = verts;
             have_before = pre != NULL && info != NULL && verts != NULL;
             if (have_before) {
                 SDL_memcpy(before.pre, p->list3d.pre, sizeof(KhdaysG3dPolygon) * (size_t)p->list3d.npre);
                 SDL_memcpy(before.pre_info, p->list3d.pre_info, sizeof(KhdaysG3dPreInfo) * (size_t)p->list3d.npre);
-                SDL_memcpy(before.pre_verts, p->list3d.pre_verts, sizeof(KhdaysG3dPreVertex) * (size_t)p->list3d.npre_verts);
+                SDL_memcpy(before.pre_verts, p->list3d.pre_verts,
+                           sizeof(KhdaysG3dPreVertex) * (size_t)p->list3d.npre_verts);
                 before.npre = before.pre_capacity = p->list3d.npre;
                 before.npre_verts = before.pre_vert_capacity = p->list3d.npre_verts;
                 before_frame = p->frame;
@@ -382,8 +390,9 @@ int main(int argc, char **argv)
            "from their polygons before clipping\n",
            packages, composed, failures, finished_lists, finished_polygons);
     if (pairs > 0) {
-        printf("between lists, %d pairs: %lld of %lld polygons matched, %lld of them moved over a quarter of the view\n",
-               pairs, pair_matched, pair_polygons, pair_jumped);
+        printf(
+            "between lists, %d pairs: %lld of %lld polygons matched, %lld of them moved over a quarter of the view\n",
+            pairs, pair_matched, pair_polygons, pair_jumped);
     }
     SDL_free(before.pre);
     SDL_free(before.pre_info);

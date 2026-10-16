@@ -7,35 +7,35 @@
 
 #define KO_WORDS 20
 
-#define KO_FLAGS 0 /* KOF_* */
-#define KOF_LOWER        0x1u    /* taken from the lower screen, else the upper one's 2D apart from its 3D */
-#define KOF_MIRROR_X     0x4u    /* its source turned over left to right */
-#define KOF_MIRROR_Y     0x8u    /* top to bottom */
-#define KOF_REPEAT_X     0x40u   /* its source repeated along its rows, across every column */
-#define KOF_REPEAT_Y     0x80u   /* the same down its columns, across every row */
-#define KOF_FORCE        0x100u  /* its texels used where they are invisible too */
-#define KOF_ROUND        0x400u  /* KO_ROUND: its corners rounded */
-#define KOF_WEIGHT       0x800u  /* KO_OPACITY and KO_FADE weigh it against what is under it */
-#define KOF_SEE_THROUGH  0x2000u /* KO_SEE_THROUGH: the texels of one colour drawn at an opacity */
-#define KOF_DIM          0x4000u /* `dim`: its colours times KO_OPACITY's factor, toward black (not a weight) */
-#define KOF_3D           0x8000u /* `3d`: the 3D at the texel (the backdrop where none is), not its source */
+#define KO_FLAGS 0              /* KOF_* */
+#define KOF_LOWER 0x1u          /* taken from the lower screen, else the upper one's 2D apart from its 3D */
+#define KOF_MIRROR_X 0x4u       /* its source turned over left to right */
+#define KOF_MIRROR_Y 0x8u       /* top to bottom */
+#define KOF_REPEAT_X 0x40u      /* its source repeated along its rows, across every column */
+#define KOF_REPEAT_Y 0x80u      /* the same down its columns, across every row */
+#define KOF_FORCE 0x100u        /* its texels used where they are invisible too */
+#define KOF_ROUND 0x400u        /* KO_ROUND: its corners rounded */
+#define KOF_WEIGHT 0x800u       /* KO_OPACITY and KO_FADE weigh it against what is under it */
+#define KOF_SEE_THROUGH 0x2000u /* KO_SEE_THROUGH: the texels of one colour drawn at an opacity */
+#define KOF_DIM 0x4000u         /* `dim`: its colours times KO_OPACITY's factor, toward black (not a weight) */
+#define KOF_3D 0x8000u          /* `3d`: the 3D at the texel (the backdrop where none is), not its source */
 
-#define KO_SRC_X  1 /* float: the source rectangle, DS dots of its screen */
-#define KO_SRC_Y  2
-#define KO_SRC_W  3
-#define KO_SRC_H  4
+#define KO_SRC_X 1 /* float: the source rectangle, DS dots of its screen */
+#define KO_SRC_Y 2
+#define KO_SRC_W 3
+#define KO_SRC_H 4
 #define KO_DST_X1 5 /* float: the destination, DS dots of the one picture */
 #define KO_DST_Y1 6
 #define KO_DST_X2 7
 #define KO_DST_Y2 8
-#define KO_FADE   9  /* float x4: left, top, right, bottom, destination dots */
+#define KO_FADE 9     /* float x4: left, top, right, bottom, destination dots */
 #define KO_OPACITY 13 /* float */
-#define KO_KEYS    14 /* the first of its colours made transparent in the keys' buffer */
+#define KO_KEYS 14    /* the first of its colours made transparent in the keys' buffer */
 #define KO_KEY_COUNT 15
 #define KO_SCALE_X 16 /* float: destination dots per source dot (the sampling's) */
 #define KO_SCALE_Y 17
 #define KO_SEE_THROUGH 18 /* a colour (BGR555, bits 0-14) its texels drawn at an opacity (bits 16-23, of 255) */
-#define KO_ROUND 19 /* float: the corners' radius, source dots */
+#define KO_ROUND 19       /* float: the corners' radius, source dots */
 
 /* The pass's constants: the picture's width C in DS dots, the internal
  * resolution, the shapes' count, the frame (KOS_*), the brightness rule
@@ -44,10 +44,10 @@
 #define KOS_LOWER 1u /* C x 192: the same, the lower screen's backdrop */
 
 #define KOB_DEFAULT 0u /* the upper screen's, the lower's while it fades to black */
-#define KOB_UPPER   1u
-#define KOB_LOWER   2u
-#define KOB_HALVES  3u /* each half of the picture its screen's */
-#define KOB_OWN     4u /* each shape its own screen's */
+#define KOB_UPPER 1u
+#define KOB_LOWER 2u
+#define KOB_HALVES 3u /* each half of the picture its screen's */
+#define KOB_OWN 4u    /* each shape its own screen's */
 
 #endif /* KHDAYS_GFX_ONESCREEN_H */
 
@@ -136,8 +136,8 @@ KO_FN uint ko_taps(float scale)
  * shrinking shape averages its source's texels (a box filter); a 3D shown over all the 2D (bit 25,
  * alpha in 26-30) blends over the shape. `masters`: both screens' MASTER_BRIGHT; `backdrop`: the
  * frame's own; `half`: the middle column. The effects: docs/RENDERING.md, "One screen". */
-KO_FN uint ko_pixel(float px, float py, float texel, uint x3d, uint shape_count, uint rule, uint masters,
-                    uint backdrop, float half, uint a_upper)
+KO_FN uint ko_pixel(float px, float py, float texel, uint x3d, uint shape_count, uint rule, uint masters, uint backdrop,
+                    float half, uint a_upper)
 {
     const uint upper_master = masters & 0xffffu, lower_master = masters >> 16;
     uint i;

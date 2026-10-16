@@ -7,8 +7,10 @@
 
 void MTX_Identity22_(fx32 *m)
 {
-    m[0] = FX32_ONE; m[1] = 0;
-    m[2] = 0;        m[3] = FX32_ONE;
+    m[0] = FX32_ONE;
+    m[1] = 0;
+    m[2] = 0;
+    m[3] = FX32_ONE;
 }
 
 void MTX_Identity33_(fx32 *m)
@@ -57,30 +59,58 @@ void MTX_Copy44To43_(const fx32 *src, fx32 *dst)
 
 void MTX_RotY33_(fx32 *m, fx32 s, fx32 c)
 {
-    m[0] = c; m[1] = 0;        m[2] = -s;
-    m[3] = 0; m[4] = FX32_ONE; m[5] = 0;
-    m[6] = s; m[7] = 0;        m[8] = c;
+    m[0] = c;
+    m[1] = 0;
+    m[2] = -s;
+    m[3] = 0;
+    m[4] = FX32_ONE;
+    m[5] = 0;
+    m[6] = s;
+    m[7] = 0;
+    m[8] = c;
 }
 
 void MTX_RotZ33_(fx32 *m, fx32 s, fx32 c)
 {
-    m[0] = c;  m[1] = s; m[2] = 0;
-    m[3] = -s; m[4] = c; m[5] = 0;
-    m[6] = 0;  m[7] = 0; m[8] = FX32_ONE;
+    m[0] = c;
+    m[1] = s;
+    m[2] = 0;
+    m[3] = -s;
+    m[4] = c;
+    m[5] = 0;
+    m[6] = 0;
+    m[7] = 0;
+    m[8] = FX32_ONE;
 }
 
 void MTX_RotX43_(fx32 *m, fx32 s, fx32 c)
 {
-    m[0] = FX32_ONE; m[1] = 0;  m[2] = 0;
-    m[3] = 0;        m[4] = c;  m[5] = s;
-    m[6] = 0;        m[7] = -s; m[8] = c;
-    m[9] = 0;        m[10] = 0; m[11] = 0;
+    m[0] = FX32_ONE;
+    m[1] = 0;
+    m[2] = 0;
+    m[3] = 0;
+    m[4] = c;
+    m[5] = s;
+    m[6] = 0;
+    m[7] = -s;
+    m[8] = c;
+    m[9] = 0;
+    m[10] = 0;
+    m[11] = 0;
 }
 
 void MTX_RotY43_(fx32 *m, fx32 s, fx32 c)
 {
-    m[0] = c; m[1] = 0;        m[2] = -s;
-    m[3] = 0; m[4] = FX32_ONE; m[5] = 0;
-    m[6] = s; m[7] = 0;        m[8] = c;
-    m[9] = 0; m[10] = 0;       m[11] = 0;
+    m[0] = c;
+    m[1] = 0;
+    m[2] = -s;
+    m[3] = 0;
+    m[4] = FX32_ONE;
+    m[5] = 0;
+    m[6] = s;
+    m[7] = 0;
+    m[8] = c;
+    m[9] = 0;
+    m[10] = 0;
+    m[11] = 0;
 }

@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static int slot;          /* 0 until a slot is taken */
-static char folder[64];   /* "saves" or "saves/player<N>" */
+static int slot;        /* 0 until a slot is taken */
+static char folder[64]; /* "saves" or "saves/player<N>" */
 
 /* Tries to take slot `number`. Returns 1 if it is ours now (its lock stays
  * open), or 0 if another copy holds it. If the system cannot make the lock at

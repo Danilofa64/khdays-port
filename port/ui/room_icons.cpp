@@ -23,40 +23,33 @@ extern "C" {
 
 namespace {
 
-constexpr int kFirstLevelCell = 12;  // link level 0's cell, the others after it
+constexpr int kFirstLevelCell = 12; // link level 0's cell, the others after it
 constexpr int kLevels = 4;
 constexpr int kIcon = 16;
 constexpr int kPlates = 4;
-constexpr int kPlateRight = 192, kPlateY = 32, kPlatePitch = 24;  // measured (R4)
-constexpr int kIconGap = 2;                // dots between a plate and its icon
-constexpr int kLockRight = 166;            // the lock's right edge: before the players (right-aligned at 184)
+constexpr int kPlateRight = 192, kPlateY = 32, kPlatePitch = 24; // measured (R4)
+constexpr int kIconGap = 2;                                      // dots between a plate and its icon
+constexpr int kLockRight = 166; // the lock's right edge: before the players (right-aligned at 184)
 constexpr int kLockW = 8, kLockH = 9;
 
 // The lock's shape: 1 its outline, 2 its fill.
-constexpr const char* kLock[kLockH] = {
-    "..1111..",
-    ".1....1.",
-    ".1....1.",
-    "11111111",
-    "12222221",
-    "12211221",
-    "12211221",
-    "12222221",
-    "11111111",
+constexpr const char *kLock[kLockH] = {
+    "..1111..", ".1....1.", ".1....1.", "11111111", "12222221", "12211221", "12211221", "12222221", "11111111",
 };
 
 struct Icons {
     bool tried = false, ok = false;
-    std::array<std::array<std::uint8_t, kIcon * kIcon>, kLevels> level{};  // the OBJ palette's indices
+    std::array<std::array<std::uint8_t, kIcon * kIcon>, kLevels> level{}; // the OBJ palette's indices
     std::uint8_t outline = 0, fill = 0;
     std::array<int, kLevels> image{-1, -1, -1, -1};
     int lock_image = -1, scale = 0;
 };
 Icons icons;
-KhdaysRomReader* reader;  // its own: this runs at VBlank, maybe inside the game's own reading
+KhdaysRomReader *reader; // its own: this runs at VBlank, maybe inside the game's own reading
 
-bool read_icons() {
-    std::uint8_t* data = nullptr;
+bool read_icons()
+{
+    std::uint8_t *data = nullptr;
     std::uint32_t size = 0;
     if (reader == nullptr) {
         reader = khdays_rom_reader_new();
@@ -73,9 +66,9 @@ bool read_icons() {
             const auto bank = khdays::assets::decode_ncer(pack.cells[0].data, pack.cells[0].size);
             ok = static_cast<int>(bank.cells.size()) >= kFirstLevelCell + kLevels;
             for (int l = 0; ok && l < kLevels; ++l) {
-                auto& out = icons.level[static_cast<std::size_t>(l)];
+                auto &out = icons.level[static_cast<std::size_t>(l)];
                 out.fill(0);
-                for (const auto& piece : bank.cells[static_cast<std::size_t>(kFirstLevelCell + l)].pieces) {
+                for (const auto &piece : bank.cells[static_cast<std::size_t>(kFirstLevelCell + l)].pieces) {
                     // each 8x8 character of the piece, in the sheet's 1D order from its tile
                     const int units = bank.tile_boundary / (tiles.bpp == 8 ? 64 : 32);
                     const int first = piece.tile * (units > 0 ? units : 1);
@@ -106,7 +99,7 @@ bool read_icons() {
                     }
                 }
                 int best = -1, second = -1;
-                for (const auto& [v, n] : count) {
+                for (const auto &[v, n] : count) {
                     if (best < 0 || n > count[best]) {
                         second = best;
                         best = v;
@@ -119,7 +112,7 @@ bool read_icons() {
                 icons.fill = static_cast<std::uint8_t>(second > 0 ? second : 0);
             }
         }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::fprintf(stderr, "ui: the rooms' signal could not be read from UI/mlt/res.p2 (%s)\n", e.what());
         ok = false;
     }
@@ -130,8 +123,9 @@ bool read_icons() {
     return ok;
 }
 
-void forget_images() {
-    for (int& im : icons.image) {
+void forget_images()
+{
+    for (int &im : icons.image) {
         khdays_ui_image_put(im);
         im = -1;
     }
@@ -139,13 +133,14 @@ void forget_images() {
     icons.lock_image = -1;
 }
 
-int image_of(const std::uint8_t* indices, int w, int h, int* slot) {
+int image_of(const std::uint8_t *indices, int w, int h, int *slot)
+{
     if (*slot >= 0) {
         return *slot;
     }
     const int scale = icons.scale;
     *slot = khdays_ui_image_get(w * scale, h * scale);
-    std::uint32_t* texels = *slot >= 0 ? khdays_ui_image_begin(*slot) : nullptr;
+    std::uint32_t *texels = *slot >= 0 ? khdays_ui_image_begin(*slot) : nullptr;
     if (texels == nullptr) {
         return -1;
     }
@@ -160,12 +155,14 @@ int image_of(const std::uint8_t* indices, int w, int h, int* slot) {
     return *slot;
 }
 
-int level_image(int level) {
+int level_image(int level)
+{
     return image_of(icons.level[static_cast<std::size_t>(level)].data(), kIcon, kIcon,
                     &icons.image[static_cast<std::size_t>(level)]);
 }
 
-int lock_image() {
+int lock_image()
+{
     std::array<std::uint8_t, kLockW * kLockH> shape{};
     for (int y = 0; y < kLockH; ++y) {
         for (int x = 0; x < kLockW; ++x) {
@@ -176,14 +173,15 @@ int lock_image() {
     return image_of(shape.data(), kLockW, kLockH, &icons.lock_image);
 }
 
-void emit(const char* id, int image, int x, int y, int w, int h) {
+void emit(const char *id, int image, int x, int y, int w, int h)
+{
     if (image < 0) {
         return;
     }
     KhdaysUiElement e;
     e.id = id;
-    e.screen = 1;                // engine B's: the game's list is on its sprites
-    e.slot = KES_SPRITES | 0u;   // over the plates (theirs are priority 1)
+    e.screen = 1;              // engine B's: the game's list is on its sprites
+    e.slot = KES_SPRITES | 0u; // over the plates (theirs are priority 1)
     e.x = static_cast<float>(x);
     e.y = static_cast<float>(y);
     e.w = static_cast<float>(w);
@@ -192,13 +190,14 @@ void emit(const char* id, int image, int x, int y, int w, int h) {
     khdays_ui_emit(KHDAYS_UI_HUD, &e);
 }
 
-}  // namespace
+} // namespace
 
-extern "C" void khdays_ui_room_icons_emit(void) {
+extern "C" void khdays_ui_room_icons_emit(void)
+{
     if (khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON) {
         return;
     }
-    const KhdaysRoomView* v = khdays_roomlist_hold();
+    const KhdaysRoomView *v = khdays_roomlist_hold();
     if (v != nullptr && v->look_game && v->screen == KHDAYS_ROOMS_LIST) {
         if (!icons.tried) {
             icons.tried = true;
@@ -214,7 +213,7 @@ extern "C" void khdays_ui_room_icons_emit(void) {
                 if (r >= v->row_count - 1 || v->rows[r].kind != KHDAYS_ROOMROW_ROOM) {
                     continue;
                 }
-                const KhdaysNetRoomView& room = v->rows[r].room;
+                const KhdaysNetRoomView &room = v->rows[r].room;
                 const int y = kPlateY + plate * kPlatePitch;
                 if (room.ping_ms >= 0) {
                     const int level = room.ping_ms < 100 ? 3 : room.ping_ms < 200 ? 2 : 1;

@@ -118,8 +118,7 @@ static uint8_t *read_file(const char *path, size_t *size)
 /* RIFF WAVE: PCM of 8, 16, 24 or 32 bits, or 32-bit float (plain or
  * WAVE_FORMAT_EXTENSIBLE); the first loop of `smpl` (its end the loop's
  * last sample). */
-static int load_wav(KhdaysReplacement *r, const char *path, const KhdaysOriginalLoop *original, char *why,
-                    int why_size)
+static int load_wav(KhdaysReplacement *r, const char *path, const KhdaysOriginalLoop *original, char *why, int why_size)
 {
     size_t size;
     uint8_t *data = read_file(path, &size);
@@ -163,7 +162,7 @@ static int load_wav(KhdaysReplacement *r, const char *path, const KhdaysOriginal
     r->rate = le32(fmt + 4);
     bits = le16(fmt + 14);
     if (format == 0xfffe && le16(fmt + 16) >= 22) {
-        format = le16(fmt + 24);  /* the subformat GUID's first word */
+        format = le16(fmt + 24); /* the subformat GUID's first word */
     }
     if ((format != 1 && format != 3) || (format == 3 && bits != 32) ||
         (format == 1 && bits != 8 && bits != 16 && bits != 24 && bits != 32)) {
@@ -255,8 +254,7 @@ static int load_flac(KhdaysReplacement *r, const char *path, const KhdaysOrigina
 
 /* --- Ogg Vorbis ---------------------------------------------------------------------- */
 
-static int load_ogg(KhdaysReplacement *r, const char *path, const KhdaysOriginalLoop *original, char *why,
-                    int why_size)
+static int load_ogg(KhdaysReplacement *r, const char *path, const KhdaysOriginalLoop *original, char *why, int why_size)
 {
     int error = 0;
     stb_vorbis *ogg = stb_vorbis_open_filename(path, &error, NULL);
@@ -382,8 +380,8 @@ static void put32(uint8_t *p, uint32_t v)
     put16(p + 2, v >> 16);
 }
 
-int khdays_replacement_write_wav(const char *path, uint32_t rate, int channels, const int16_t *samples,
-                                 uint64_t frames, int looped, uint64_t loop_start, uint64_t loop_end)
+int khdays_replacement_write_wav(const char *path, uint32_t rate, int channels, const int16_t *samples, uint64_t frames,
+                                 int looped, uint64_t loop_start, uint64_t loop_end)
 {
     const uint64_t data_size = frames * (uint64_t)channels * 2;
     const uint32_t smpl_size = looped ? 36 + 24 : 0;

@@ -30,18 +30,18 @@ typedef struct KhdaysSaveRow {
 
 /* The list as the game's thread last left it. */
 typedef struct KhdaysSaveView {
-    int screen;     /* KHDAYS_SAVELIST_* */
-    int words;      /* KHDAYS_WORDS_*: the strings ask[] names */
-    int language;   /* the game's, 1-5 (English, French, German, Italian, Spanish) */
-    int guest;      /* the guest's row after the files (Mission Mode's list) */
-    int cursor;     /* the row selected: a file, or KHDAYS_SLOT_COUNT the guest's */
-    int chosen;     /* the file under the game's slot 1 */
-    int help;       /* the list's help shown (the title's list's states 1 and 2, the save screen's slots) */
-    int ask[2];     /* the game's words in the prompt: records of its strings (`words`), -1 none */
-    int ask_file;   /* the file their %d names (1 on) */
-    int buttons;    /* the prompt's buttons: 0 none, 2 yes and no */
-    int yes;        /* the button selected: 1 yes, 0 no */
-    int16_t master; /* the lower screen's master brightness (the game's fades): -16 black to 16 white */
+    int screen;            /* KHDAYS_SAVELIST_* */
+    int words;             /* KHDAYS_WORDS_*: the strings ask[] names */
+    int language;          /* the game's, 1-5 (English, French, German, Italian, Spanish) */
+    int guest;             /* the guest's row after the files (Mission Mode's list) */
+    int cursor;            /* the row selected: a file, or KHDAYS_SLOT_COUNT the guest's */
+    int chosen;            /* the file under the game's slot 1 */
+    int help;              /* the list's help shown (the title's list's states 1 and 2, the save screen's slots) */
+    int ask[2];            /* the game's words in the prompt: records of its strings (`words`), -1 none */
+    int ask_file;          /* the file their %d names (1 on) */
+    int buttons;           /* the prompt's buttons: 0 none, 2 yes and no */
+    int yes;               /* the button selected: 1 yes, 0 no */
+    int16_t master;        /* the lower screen's master brightness (the game's fades): -16 black to 16 white */
     uint32_t rows_changed; /* counts each time the rows are made again */
     KhdaysSaveRow rows[KHDAYS_SLOT_COUNT];
 } KhdaysSaveView;

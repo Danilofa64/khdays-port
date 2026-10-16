@@ -36,8 +36,8 @@ static void unimplemented(const char *what, u32 value)
 
 static void complete(void)
 {
-    IO32(0x1a4) &= ~(0x80000000u | 0x00800000u);  /* not busy, no word ready */
-    if (IO16(0x1a0) & 0x4000) {                    /* AUXSPICNT: IRQ on completion */
+    IO32(0x1a4) &= ~(0x80000000u | 0x00800000u); /* not busy, no word ready */
+    if (IO16(0x1a0) & 0x4000) {                  /* AUXSPICNT: IRQ on completion */
         khdays_io_request_irq(1u << 19);
     }
 }
@@ -61,9 +61,8 @@ void khdays_card_start(void)
                 (u32)IO8(0x1a9) << 24 | (u32)IO8(0x1aa) << 16 | (u32)IO8(0x1ab) << 8 | IO8(0x1ac));
     }
     switch (command) {
-    case 0xb7: {  /* read: address in bytes 1-4, big-endian */
-        u32 address = (u32)IO8(0x1a9) << 24 | (u32)IO8(0x1aa) << 16 |
-                      (u32)IO8(0x1ab) << 8 | IO8(0x1ac);
+    case 0xb7: { /* read: address in bytes 1-4, big-endian */
+        u32 address = (u32)IO8(0x1a9) << 24 | (u32)IO8(0x1aa) << 16 | (u32)IO8(0x1ab) << 8 | IO8(0x1ac);
         if (address < 0x8000) {
             /* the secure area cannot be read in main data mode */
             address = 0x8000 + (address & 0x1ff);
@@ -81,19 +80,18 @@ void khdays_card_start(void)
         }
         break;
     }
-    case 0xb8:  /* chip ID: the value the firmware recorded at boot (boot.c) */
+    case 0xb8: /* chip ID: the value the firmware recorded at boot (boot.c) */
         for (u32 i = 0; i < length; ++i) {
             buffer[i] = (u8)(KHDAYS_CARD_CHIP_ID >> (8 * (i & 3)));
         }
         break;
-    default:
-        unimplemented("card command", command);
+    default: unimplemented("card command", command);
     }
     if (length == 0) {
         complete();
         return;
     }
-    IO32(0x1a4) |= 0x00800000u;  /* a word is ready */
+    IO32(0x1a4) |= 0x00800000u; /* a word is ready */
     for (;;) {
         const int channel = khdays_dma_card_channel();
         if (channel < 0 || position >= length) {
@@ -110,8 +108,7 @@ u32 khdays_card_read_word(void)
     if (position >= length) {
         unimplemented("reading the card data port with no transfer", position);
     }
-    word = buffer[position] | buffer[position + 1] << 8 | buffer[position + 2] << 16 |
-           (u32)buffer[position + 3] << 24;
+    word = buffer[position] | buffer[position + 1] << 8 | buffer[position + 2] << 16 | (u32)buffer[position + 3] << 24;
     position += 4;
     if (position >= length) {
         complete();

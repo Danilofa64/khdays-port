@@ -208,7 +208,7 @@ static void info_lower(KhdaysSituation *s)
 /* The port's own state "info-new": on the DS the lower screen's INFORMATION line keeps its last
  * message; on one screen it shows only for a while after its text changes (the text row's pixels are
  * summed every frame; a new sum is a new message, shown for INFO_FRAMES). */
-#define INFO_FRAMES 300 /* 5 seconds */
+#define INFO_FRAMES 300       /* 5 seconds */
 #define INFO_SETTLE_FRAMES 30 /* a line unchanged so long stands still */
 
 static void info_new(const KhdaysFramePackage *p, KhdaysSituation *s)
@@ -288,10 +288,10 @@ static void title_menu(const KhdaysSituationInputs *in, KhdaysSituation *s)
     if (in->title_newgame != KHDAYS_NEWGAME_NONE) { /* the new game's dialogs (runtime/menus/newgame.h) */
         s->title_menu = in->title_load ? KHDAYS_TITLE_NEWGAME_LOAD : KHDAYS_TITLE_NEWGAME;
         s->title_count = in->title_newgame;
-        s->title_row = in->title_newgame == KHDAYS_NEWGAME_REVIEW
-                           ? in->title_newgame_difficulty * 4 + (in->title_newgame_subtitles ? 0 : 2) +
-                                 in->title_newgame_button
-                           : in->title_newgame_button;
+        s->title_row =
+            in->title_newgame == KHDAYS_NEWGAME_REVIEW
+                ? in->title_newgame_difficulty * 4 + (in->title_newgame_subtitles ? 0 : 2) + in->title_newgame_button
+                : in->title_newgame_button;
         s->states |= 1u << KHDAYS_ST_TITLE_LIT;
         from_newgame = 1;
         return;
@@ -365,11 +365,11 @@ static void settings_prompt(void)
     if (pad != NULL && khdays_devices_pad_in_use()) {
         const KhdaysProfile *profile = khdays_devices_profile();
         const SDL_GamepadType type = SDL_GetGamepadType(pad);
-        const char *family = type == SDL_GAMEPAD_TYPE_XBOX360 || type == SDL_GAMEPAD_TYPE_XBOXONE ? "xbox"
-                             : type == SDL_GAMEPAD_TYPE_PS3 || type == SDL_GAMEPAD_TYPE_PS4 ||
-                                     type == SDL_GAMEPAD_TYPE_PS5
-                                 ? "playstation"
-                                 : "pad";
+        const char *family =
+            type == SDL_GAMEPAD_TYPE_XBOX360 || type == SDL_GAMEPAD_TYPE_XBOXONE ? "xbox"
+            : type == SDL_GAMEPAD_TYPE_PS3 || type == SDL_GAMEPAD_TYPE_PS4 || type == SDL_GAMEPAD_TYPE_PS5
+                ? "playstation"
+                : "pad";
         for (int s = 0; s < KHDAYS_INPUTS_PER_ACTION; ++s) {
             const int input = profile->input[KHDAYS_DEVICE_GAMEPAD][KHDAYS_LAYER_BASE][KHDAYS_ACT_OPEN_SETTINGS][s];
             const char *name = input != KHDAYS_NO_INPUT ? khdays_pad_input_name(input) : NULL;
@@ -391,8 +391,8 @@ static void tell(uint32_t frame)
     states[0] = '\0';
     for (int s = 0; s < KHDAYS_STATES; ++s) {
         if (situation.states & (1u << s)) {
-            const int n = snprintf(states + at, sizeof(states) - at, "%s%s", at != 0 ? " " : "",
-                                   khdays_situation_state_name(s));
+            const int n =
+                snprintf(states + at, sizeof(states) - at, "%s%s", at != 0 ? " " : "", khdays_situation_state_name(s));
             at += n > 0 && (size_t)n < sizeof(states) - at ? (size_t)n : 0;
         }
     }
@@ -505,7 +505,8 @@ void khdays_onescreen_prepare(const KhdaysFramePackage *p, int columns, KhdaysCo
             situation.content = now.content;
         }
     }
-    situation.frame = khdays_events_vblank_count(); /* an animated backdrop's clock: it moves when the frames are alike */
+    situation.frame =
+        khdays_events_vblank_count(); /* an animated backdrop's clock: it moves when the frames are alike */
     settings_prompt();
     khdays_composition_for(&situation, columns, composition);
     model_window(p, columns, composition);

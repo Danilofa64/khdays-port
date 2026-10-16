@@ -8,12 +8,12 @@
 #include <string.h>
 
 #define LIST_FILE "UI/cm/cm.p2"
-#define LIST_CHARACTERS 17   /* its entries */
+#define LIST_CHARACTERS 17 /* its entries */
 #define LIST_PALETTE 20
-#define CHESTS_FILE "mi/mi/trbox"  /* the ROM's name; the game asks for "mi/mi/trBox" (the DS ignores case) */
-#define CHEST_FLAG_BASE 9    /* Ov025_CountGroupFlagsSet: the entry's number + 9 */
+#define CHESTS_FILE "mi/mi/trbox" /* the ROM's name; the game asks for "mi/mi/trBox" (the DS ignores case) */
+#define CHEST_FLAG_BASE 9         /* Ov025_CountGroupFlagsSet: the entry's number + 9 */
 
-static KhdaysRomReader *reader;  /* its own: this runs at VBlank, maybe inside the game's own reading */
+static KhdaysRomReader *reader; /* its own: this runs at VBlank, maybe inside the game's own reading */
 
 static uint32_t le16(const uint8_t *p)
 {
@@ -27,16 +27,17 @@ static uint32_t le32(const uint8_t *p)
 
 static int read_file(const char *path, int entry, uint8_t **data, uint32_t *size)
 {
-    if (reader == NULL) reader = khdays_rom_reader_new();
+    if (reader == NULL)
+        reader = khdays_rom_reader_new();
     return khdays_rom_file_data(reader, path, entry, data, size);
 }
 
 /* --- The sheet ------------------------------------------------------------------------ */
 
-static uint8_t *characters;    /* its characters, 64 bytes each */
+static uint8_t *characters; /* its characters, 64 bytes each */
 static uint32_t character_count;
-static uint32_t colours[256];  /* the palette, as the picture's colours (RGBA) */
-static int sheet;              /* 0: not read yet, 1: read, -1: not there */
+static uint32_t colours[256]; /* the palette, as the picture's colours (RGBA) */
+static int sheet;             /* 0: not read yet, 1: read, -1: not there */
 
 /* The colour the composition makes of a DS colour (elements.c rgb_of). */
 static uint32_t rgba_of(uint32_t bgr555)
@@ -54,15 +55,19 @@ static uint32_t rgba_of(uint32_t bgr555)
 static int read_characters(const uint8_t *d, uint32_t size)
 {
     uint32_t block, depth, bytes, at;
-    if (size < 0x10 || memcmp(d, "RGCN", 4) != 0) return 0;
+    if (size < 0x10 || memcmp(d, "RGCN", 4) != 0)
+        return 0;
     block = le16(d + 0xc);
-    if (block + 0x20 > size || memcmp(d + block, "RAHC", 4) != 0) return 0;
+    if (block + 0x20 > size || memcmp(d + block, "RAHC", 4) != 0)
+        return 0;
     depth = le32(d + block + 0xc);
     bytes = le32(d + block + 0x18);
     at = block + 8 + le32(d + block + 0x1c);
-    if (depth != 4 || at > size || bytes > size - at || bytes < 64u) return 0; /* 4: 8 bits a pixel */
+    if (depth != 4 || at > size || bytes > size - at || bytes < 64u)
+        return 0; /* 4: 8 bits a pixel */
     characters = (uint8_t *)malloc(bytes);
-    if (characters == NULL) return 0;
+    if (characters == NULL)
+        return 0;
     memcpy(characters, d + at, bytes);
     character_count = bytes / 64u;
     return 1;
@@ -74,17 +79,23 @@ static int read_characters(const uint8_t *d, uint32_t size)
 static int read_palette(const uint8_t *d, uint32_t size)
 {
     uint32_t table, nclr, block, bytes, at;
-    if (size < 0x10 || memcmp(d, "D2KP", 4) != 0) return 0;
+    if (size < 0x10 || memcmp(d, "D2KP", 4) != 0)
+        return 0;
     table = le32(d + 8);
-    if (table > size - 8) return 0;
+    if (table > size - 8)
+        return 0;
     nclr = le32(d + table + 4);
-    if (nclr > size - 0x10 || memcmp(d + nclr, "RLCN", 4) != 0) return 0;
+    if (nclr > size - 0x10 || memcmp(d + nclr, "RLCN", 4) != 0)
+        return 0;
     block = nclr + le16(d + nclr + 0xc);
-    if (block > size - 0x18 || memcmp(d + block, "TTLP", 4) != 0) return 0;
+    if (block > size - 0x18 || memcmp(d + block, "TTLP", 4) != 0)
+        return 0;
     bytes = le32(d + block + 0x10);
     at = block + 8 + le32(d + block + 0x14);
-    if (at > size || bytes > size - at || bytes < 512) return 0;
-    for (int i = 0; i < 256; ++i) colours[i] = i == 0 ? 0u : rgba_of(le16(d + at + 2 * i) & 0x7fffu);
+    if (at > size || bytes > size - at || bytes < 512)
+        return 0;
+    for (int i = 0; i < 256; ++i)
+        colours[i] = i == 0 ? 0u : rgba_of(le16(d + at + 2 * i) & 0x7fffu);
     return 1;
 }
 
@@ -98,22 +109,26 @@ static int read_sheet(void)
          read_palette(set, set_size);
     free(chars);
     free(set);
-    if (!ok) fprintf(stderr, "ui: the mission list's sheet is not in %s (entries %d and %d)\n", LIST_FILE,
-                     LIST_CHARACTERS, LIST_PALETTE);
+    if (!ok)
+        fprintf(stderr, "ui: the mission list's sheet is not in %s (entries %d and %d)\n", LIST_FILE, LIST_CHARACTERS,
+                LIST_PALETTE);
     return ok;
 }
 
 int khdays_mission_list_character(unsigned c, uint8_t out[64])
 {
-    if (sheet == 0) sheet = read_sheet() ? 1 : -1;
-    if (sheet < 0 || c >= character_count) return 0;
+    if (sheet == 0)
+        sheet = read_sheet() ? 1 : -1;
+    if (sheet < 0 || c >= character_count)
+        return 0;
     memcpy(out, characters + (size_t)c * 64u, 64);
     return 1;
 }
 
 const uint32_t *khdays_mission_list_colours(void)
 {
-    if (sheet == 0) sheet = read_sheet() ? 1 : -1;
+    if (sheet == 0)
+        sheet = read_sheet() ? 1 : -1;
     return sheet > 0 ? colours : NULL;
 }
 
@@ -132,7 +147,8 @@ static void read_records(int language)
     uint8_t *d = NULL;
     uint32_t size = 0, at = 2, count;
     record_count = 0;
-    if (language < 1 || language > 5) return;
+    if (language < 1 || language > 5)
+        return;
     snprintf(path, sizeof(path), "UI/cm/msl_%s.msi.z", codes[language]);
     if (!read_file(path, -1, &d, &size) || size < 2) {
         free(d);
@@ -144,7 +160,8 @@ static void read_records(int language)
     for (uint32_t i = 0; records != NULL && i < count; ++i) {
         const uint32_t length = at + 2 <= size ? le16(d + at) : 0;
         KhdaysMissionRecord *r = &records[record_count];
-        if (length < 0x24 || length > size - at) break;
+        if (length < 0x24 || length > size - at)
+            break;
         r->room = (uint16_t)le16(d + at + 2);
         r->mission = (uint16_t)le16(d + at + 4);
         r->first_day = (uint16_t)le16(d + at + 6);
@@ -175,9 +192,12 @@ unsigned khdays_mission_badges(int language, uint16_t room, uint16_t mission)
     int listed = 0;
     for (int i = 0; i < n; ++i) {
         const KhdaysMissionRecord *r = &all[i];
-        if (r->room != room || !r->counted) continue;
-        if (r->kind == 0) listed |= r->mission == mission;
-        else if (r->kind <= 8) kinds |= 1u << (r->kind - 1);
+        if (r->room != room || !r->counted)
+            continue;
+        if (r->kind == 0)
+            listed |= r->mission == mission;
+        else if (r->kind <= 8)
+            kinds |= 1u << (r->kind - 1);
     }
     return listed ? kinds : 0u;
 }
@@ -192,7 +212,7 @@ typedef struct Room {
 static Room *rooms;
 static int room_count;
 static int *flags;
-static int chests;    /* 0: not read yet, 1: read, -1: not there */
+static int chests; /* 0: not read yet, 1: read, -1: not there */
 
 /* The groups (Ov025_RelocateOffsetTable2, Ov025_CountGroupFlagsSet): their count in the first
  * byte, each one's offset from the file's start at +4 + 4 x its number; a group's room (u16), its
@@ -209,12 +229,15 @@ static int read_chests(void)
         return 0;
     }
     groups = d[0];
-    if (4u + 4u * groups > size) ok = 0;
+    if (4u + 4u * groups > size)
+        ok = 0;
     for (uint32_t g = 0; ok && g < groups; ++g) {
         const uint32_t at = le32(d + 4 + 4 * g);
         const int n = at + 8u <= size ? (int)(int8_t)d[at + 2] : -1;
-        if (n < 0 || (n > 0 && at + 8u + (uint32_t)(n - 1) * 0x14u + 2u > size)) ok = 0;
-        else total += (uint32_t)n;
+        if (n < 0 || (n > 0 && at + 8u + (uint32_t)(n - 1) * 0x14u + 2u > size))
+            ok = 0;
+        else
+            total += (uint32_t)n;
     }
     room = total; /* the flags' room */
     rooms = ok ? (Room *)malloc((size_t)(groups ? groups : 1) * sizeof(*rooms)) : NULL;
@@ -245,7 +268,8 @@ static int read_chests(void)
 
 const int *khdays_mission_chests(uint16_t room, int *count)
 {
-    if (chests == 0) chests = read_chests() ? 1 : -1;
+    if (chests == 0)
+        chests = read_chests() ? 1 : -1;
     for (int i = 0; chests > 0 && i < room_count; ++i) {
         if (rooms[i].room == room) {
             *count = rooms[i].count;

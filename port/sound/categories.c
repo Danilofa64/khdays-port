@@ -7,19 +7,15 @@
 #include <string.h>
 
 static const struct {
-    int stream;          /* 0 a sequence player, 1 a stream player */
-    const char *prefix;  /* the name starts with it */
+    int stream;         /* 0 a sequence player, 1 a stream player */
+    const char *prefix; /* the name starts with it */
     int category;
 } rules[] = {
-    {0, "PLAYER_BGM", KHDAYS_SOUND_MUSIC},
-    {0, "PLAYER_SE", KHDAYS_SOUND_EFFECTS},
-    {0, "PLAYER_MAGIC", KHDAYS_SOUND_EFFECTS},
-    {0, "PLAYER_WEAPON", KHDAYS_SOUND_EFFECTS},
-    {0, "PLAYER_GIMMICK", KHDAYS_SOUND_EFFECTS},
-    {0, "PLAYER_VO", KHDAYS_SOUND_VOICES},
-    {1, "PLAYER_STRM_V", KHDAYS_SOUND_VOICES},  /* before PLAYER_STRM, which it starts with */
-    {1, "PLAYER_STRM_BGM", KHDAYS_SOUND_MUSIC},
-    {1, "PLAYER_STRM", KHDAYS_SOUND_MUSIC},
+    {0, "PLAYER_BGM", KHDAYS_SOUND_MUSIC},       {0, "PLAYER_SE", KHDAYS_SOUND_EFFECTS},
+    {0, "PLAYER_MAGIC", KHDAYS_SOUND_EFFECTS},   {0, "PLAYER_WEAPON", KHDAYS_SOUND_EFFECTS},
+    {0, "PLAYER_GIMMICK", KHDAYS_SOUND_EFFECTS}, {0, "PLAYER_VO", KHDAYS_SOUND_VOICES},
+    {1, "PLAYER_STRM_V", KHDAYS_SOUND_VOICES}, /* before PLAYER_STRM, which it starts with */
+    {1, "PLAYER_STRM_BGM", KHDAYS_SOUND_MUSIC},  {1, "PLAYER_STRM", KHDAYS_SOUND_MUSIC},
 };
 
 int khdays_sound_category(const char *player_name, int stream)

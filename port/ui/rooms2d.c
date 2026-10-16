@@ -12,10 +12,10 @@
 #include <string.h>
 
 #define PLATES 4
-#define NAME_UNITS 10      /* a room's name on a plate: the DS's nickname's, what the plates were made for */
-#define FIELD_UNITS 16     /* a field's text on a plate: its last ones while it is longer */
-#define NOTE_LINE 28       /* the upper note's lines, as long as the game's own */
-#define ELLIPSIS 0x2026u   /* in the game's font (text/font_eu_10.nftr) */
+#define NAME_UNITS 10    /* a room's name on a plate: the DS's nickname's, what the plates were made for */
+#define FIELD_UNITS 16   /* a field's text on a plate: its last ones while it is longer */
+#define NOTE_LINE 28     /* the upper note's lines, as long as the game's own */
+#define ELLIPSIS 0x2026u /* in the game's font (text/font_eu_10.nftr) */
 
 /* A growing UTF-16 string, ended by 0. */
 typedef struct Wide {
@@ -197,7 +197,8 @@ void *khdays_rooms2d_label(int plate, void *game, void *empty, void *out_buffer,
                 from_utf8(w, word(field_name(r->which), v->language)); /* whole: the words fit */
             } else {
                 if (r->which == KHDAYS_ROOMFIELD_PASSWORD) {
-                    for (const unsigned char *p = (const unsigned char *)(r->text != NULL ? r->text : ""); *p != 0; ++p) {
+                    for (const unsigned char *p = (const unsigned char *)(r->text != NULL ? r->text : ""); *p != 0;
+                         ++p) {
                         if ((*p & 0xc0) != 0x80) {
                             put(w, '*'); /* one a character */
                         }
@@ -272,9 +273,9 @@ void *khdays_rooms2d_text(int id, void *game, void *out_buffer, int units)
     if (v != NULL && id == 0x3d) {
         /* the note: why the last join failed, else what the step asks */
         const int said = v->screen == KHDAYS_ROOMS_LIST && v->wrong_password ? TXT_ROOM_WRONG_PASSWORD
-                         : v->screen == KHDAYS_ROOMS_CREATE                    ? TXT_ROOM_PASSWORD_NOTE
-                         : v->screen == KHDAYS_ROOMS_PASSWORD                  ? TXT_ROOM_PASSWORD_ASK
-                                                                               : -1;
+                         : v->screen == KHDAYS_ROOMS_CREATE                  ? TXT_ROOM_PASSWORD_NOTE
+                         : v->screen == KHDAYS_ROOMS_PASSWORD                ? TXT_ROOM_PASSWORD_ASK
+                                                                             : -1;
         if (said >= 0) {
             clear(&built);
             wrapped(&built, word(said, v->language));

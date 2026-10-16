@@ -13,8 +13,8 @@ const char* current = "";
 
 std::filesystem::path root() {
     static const std::filesystem::path dir =
-        std::filesystem::temp_directory_path() / ("khdays-studio-tests-" +
-                                                        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::temp_directory_path() /
+        ("khdays-studio-tests-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     return dir;
 }
 

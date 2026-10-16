@@ -30,16 +30,20 @@ void add16(Bytes& d, std::uint32_t v) {
     d.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
 }
 void add32(Bytes& d, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
+    for (int i = 0; i < 4; ++i)
+        d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
 }
 void put32(Bytes& d, std::size_t at, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+    for (int i = 0; i < 4; ++i)
+        d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
 }
 std::uint32_t get32(const Bytes& d, std::size_t at) {
-    return static_cast<std::uint32_t>(d[at] | d[at + 1] << 8 | d[at + 2] << 16 | static_cast<std::uint32_t>(d[at + 3]) << 24);
+    return static_cast<std::uint32_t>(d[at] | d[at + 1] << 8 | d[at + 2] << 16 |
+                                      static_cast<std::uint32_t>(d[at + 3]) << 24);
 }
 void pad(Bytes& d, std::size_t a) {
-    while (d.size() % a) d.push_back(0);
+    while (d.size() % a)
+        d.push_back(0);
 }
 
 Bytes pattern(std::size_t n, std::uint32_t seed) {
@@ -62,7 +66,8 @@ Bytes plain_j0ac(int frames, int nodes) {
     add32(j, 0);
     add32(j, 0);
     const std::size_t table = j.size();
-    for (int n = 0; n < nodes; ++n) add16(j, 0);
+    for (int n = 0; n < nodes; ++n)
+        add16(j, 0);
     pad(j, 4);
     for (int n = 0; n < nodes; ++n) {
         j[table + 2 * static_cast<std::size_t>(n)] = static_cast<std::uint8_t>(j.size());
@@ -87,11 +92,13 @@ Bytes bca0(const std::vector<std::string>& names, int frames, int nodes) {
     add16(jnt, 0);
     add16(jnt, 8);
     add16(jnt, static_cast<std::uint32_t>(8 + 4 * (count + 1)));
-    for (std::size_t i = 0; i <= count; ++i) add32(jnt, 0x7F000000u + static_cast<std::uint32_t>(i));  // its tree
+    for (std::size_t i = 0; i <= count; ++i)
+        add32(jnt, 0x7F000000u + static_cast<std::uint32_t>(i));  // its tree
     const std::size_t entries = jnt.size();
     add16(jnt, 4);
     add16(jnt, static_cast<std::uint32_t>(4 + 4 * count));
-    for (std::size_t i = 0; i < count; ++i) add32(jnt, 0);
+    for (std::size_t i = 0; i < count; ++i)
+        add32(jnt, 0);
     for (const auto& n : names) {
         char name[16] = {};
         std::memcpy(name, n.data(), std::min<std::size_t>(n.size(), 16));
@@ -122,11 +129,13 @@ Bytes kaph(const std::vector<Bytes>& animations) {
     const std::size_t n = animations.size();
     Bytes k = {'K', 'A', 'P', 'H'};
     add32(k, 0);
-    for (int s = 0; s < 8; ++s) add32(k, 0xFFFFFFFFu);
+    for (int s = 0; s < 8; ++s)
+        add32(k, 0xFFFFFFFFu);
     const std::size_t section0 = k.size();
     put32(k, 8, static_cast<std::uint32_t>(section0));
     add32(k, static_cast<std::uint32_t>(n));
-    for (std::size_t i = 0; i < 2 * n; ++i) add32(k, 0);
+    for (std::size_t i = 0; i < 2 * n; ++i)
+        add32(k, 0);
     const std::size_t section7 = k.size();
     put32(k, 8 + 4 * 7, static_cast<std::uint32_t>(section7));
     add32(k, 1);
@@ -157,14 +166,16 @@ Bytes p2(const std::vector<std::pair<bool, Bytes>>& entries, std::uint8_t lz = 0
     add32(f, 0);
     add32(f, 0x200);
     const std::size_t sizes = f.size();
-    for (std::size_t i = 0; i < (n + 1) / 2 * 2; ++i) add16(f, 0);
+    for (std::size_t i = 0; i < (n + 1) / 2 * 2; ++i)
+        add16(f, 0);
     const std::size_t desc = f.size();
-    for (std::size_t i = 0; i < n; ++i) add32(f, 0);
+    for (std::size_t i = 0; i < n; ++i)
+        add32(f, 0);
     f.insert(f.end(), {'d', 'i', 'r'});  // other bytes before the data, kept
     f.resize(0x200, 0);
     for (std::size_t i = 0; i < n; ++i) {
-        const Bytes stored = entries[i].first && !entries[i].second.empty() ? lz_compress(lz, entries[i].second)
-                                                                            : entries[i].second;
+        const Bytes stored =
+            entries[i].first && !entries[i].second.empty() ? lz_compress(lz, entries[i].second) : entries[i].second;
         f[sizes + 2 * i] = static_cast<std::uint8_t>((f.size() - 0x200) >> 9);
         put32(f, desc + 4 * i, static_cast<std::uint32_t>(stored.size()) | (entries[i].first ? 0x80000000u : 0));
         f.insert(f.end(), stored.begin(), stored.end());
@@ -180,7 +191,8 @@ Mat trs(float tx, float ty, float tz, float angle, float sx, float sy, float sz)
 
 bool close(const Mat& a, const Mat& b, float tolerance) {
     for (std::size_t i = 0; i < 16; ++i) {
-        if (std::fabs(a[i] - b[i]) > tolerance) return false;
+        if (std::fabs(a[i] - b[i]) > tolerance)
+            return false;
     }
     return true;
 }
@@ -188,8 +200,8 @@ bool close(const Mat& a, const Mat& b, float tolerance) {
 }  // namespace
 
 TEST(lz11_reads_back_through_the_ports_decoder) {
-    for (const std::size_t n : {std::size_t{0}, std::size_t{1}, std::size_t{3}, std::size_t{17}, std::size_t{4096},
-                                std::size_t{70000}}) {
+    for (const std::size_t n :
+         {std::size_t{0}, std::size_t{1}, std::size_t{3}, std::size_t{17}, std::size_t{4096}, std::size_t{70000}}) {
         const Bytes data = pattern(n, static_cast<std::uint32_t>(n));
         const Bytes packed = lz11_compress(data);
         CHECK(!packed.empty() && packed[0] == 0x11);
@@ -283,7 +295,7 @@ TEST(bca0_replaced_animation_reads_back_within_its_precision) {
     // the other animation and the dictionary as they were
     const std::size_t entries = 0x14 + 8 + 8 + 4 * 3;
     CHECK(std::memcmp(out.data(), original.data(), 8) == 0);
-    CHECK(std::memcmp(out.data() + 0x10, original.data() + 0x10, 8) == 0);  // JNT0's place and magic
+    CHECK(std::memcmp(out.data() + 0x10, original.data() + 0x10, 8) == 0);                   // JNT0's place and magic
     CHECK(std::memcmp(out.data() + 0x1C, original.data() + 0x1C, entries + 4 - 0x1C) == 0);  // its dictionary
     CHECK(get32(out, entries + 8) != get32(original, entries + 8));
     const std::size_t stand = 0x14 + get32(original, entries + 4);
@@ -296,7 +308,8 @@ TEST(bca0_replaced_animation_reads_back_within_its_precision) {
     const std::vector<Mat> rest(3, Mat{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
     for (int f = 0; f < 5; ++f) {
         const auto m = assets::sample_animation(read, static_cast<float>(f), rest);
-        for (std::size_t n = 0; n < 3; ++n) CHECK(close(m[n], pose[static_cast<std::size_t>(f)][n], 2e-3f));
+        for (std::size_t n = 0; n < 3; ++n)
+            CHECK(close(m[n], pose[static_cast<std::size_t>(f)][n], 2e-3f));
     }
     // its kept bytes as the original's
     const std::size_t walk = 0x14 + get32(out, entries + 8);
@@ -321,7 +334,8 @@ TEST(animation_replaced_inside_kaph_p2_and_lz_files) {
     const Bytes animation = bca0({"idle"}, 3, 2);
     const Bytes model = kaph({animation});
     AnimationPose pose;
-    for (int f = 0; f < 3; ++f) pose.push_back({trs(0, 0, 0, 0.4f * static_cast<float>(f), 1, 1, 1), trs(0, 1, 0, 0, 1, 1, 1)});
+    for (int f = 0; f < 3; ++f)
+        pose.push_back({trs(0, 0, 0, 0.4f * static_cast<float>(f), 1, 1, 1), trs(0, 1, 0, 0, 1, 1, 1)});
     struct Case {
         std::string label;
         Bytes file;
@@ -340,14 +354,16 @@ TEST(animation_replaced_inside_kaph_p2_and_lz_files) {
         CHECK(at == 0x40);
         assets::SkeletalAnimation read;
         CHECK(read_animation(out, c.label, at, 0, &read, &why));
-        if (c.label.size() > 2 && c.label.substr(c.label.size() - 2) == ".z") CHECK(out[0] == c.file[0]);  // its LZ type
+        if (c.label.size() > 2 && c.label.substr(c.label.size() - 2) == ".z")
+            CHECK(out[0] == c.file[0]);  // its LZ type
         const std::vector<Mat> rest(2, Mat{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
         const auto m = assets::sample_animation(read, 2, rest);
         CHECK(close(m[0], pose[2][0], 2e-3f) && close(m[1], pose[2][1], 2e-3f));
     }
     // the P2's other entries as they were
     Bytes out;
-    CHECK(rebuild_with_animation(cases[3].file, cases[3].file, cases[3].label, 0x40, 0, pose, {}, &out, nullptr, nullptr));
+    CHECK(rebuild_with_animation(cases[3].file, cases[3].file, cases[3].label, 0x40, 0, pose, {}, &out, nullptr,
+                                 nullptr));
     P2File parsed;
     CHECK(parse_p2(out, &parsed, nullptr));
     CHECK(parsed.entries[0].data == pattern(64, 1) && parsed.entries[2].data == pattern(64, 2));
@@ -380,7 +396,8 @@ TEST(second_replacement_finds_its_block_after_an_earlier_one_grew) {
     CHECK(pose_difference(pose(3, 0.5f), a) < 2e-3f);
     CHECK(pose_difference(pose(4, -0.25f), b) < 2e-3f);
     // a copy laid out otherwise is refused, not guessed at
-    CHECK(!rebuild_with_animation(kaph({bca0({"a"}, 3, 2)}), original, "m.p", second, 0, pose(4, 0), {}, &twice, &at, &why));
+    CHECK(!rebuild_with_animation(kaph({bca0({"a"}, 3, 2)}), original, "m.p", second, 0, pose(4, 0), {}, &twice, &at,
+                                  &why));
 }
 
 TEST(kept_nodes_keep_the_games_curves) {
@@ -444,12 +461,14 @@ TEST(gltf_clip_sampled_onto_the_games_nodes) {
     addf(0);
     addf(1);
     const float h = std::sqrt(0.5f);
-    for (const float v : {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, h, h}) addf(v);
+    for (const float v : {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, h, h})
+        addf(v);
     static const char* digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string b64;
     for (std::size_t i = 0; i < buffer.size(); i += 3) {
-        const std::uint32_t v = static_cast<std::uint32_t>(buffer[i] << 16 | (i + 1 < buffer.size() ? buffer[i + 1] << 8 : 0) |
-                                                           (i + 2 < buffer.size() ? buffer[i + 2] : 0));
+        const std::uint32_t v =
+            static_cast<std::uint32_t>(buffer[i] << 16 | (i + 1 < buffer.size() ? buffer[i + 1] << 8 : 0) |
+                                       (i + 2 < buffer.size() ? buffer[i + 2] : 0));
         b64 += digits[(v >> 18) & 63];
         b64 += digits[(v >> 12) & 63];
         b64 += i + 1 < buffer.size() ? digits[(v >> 6) & 63] : '=';

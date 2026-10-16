@@ -26,10 +26,12 @@ void add16(Bytes& d, std::uint32_t v) {
     d.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
 }
 void add32(Bytes& d, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
+    for (int i = 0; i < 4; ++i)
+        d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
 }
 void put32(Bytes& d, std::size_t at, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+    for (int i = 0; i < 4; ++i)
+        d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
 }
 
 // A Nitro file: magic, byte order mark, version, size, header size, one block.
@@ -43,7 +45,8 @@ Bytes nitro(const char* magic, const char* block, const Bytes& body) {
     d.insert(d.end(), block, block + 4);
     add32(d, static_cast<std::uint32_t>(body.size() + 8));
     d.insert(d.end(), body.begin(), body.end());
-    while (d.size() % 4) d.push_back(0);
+    while (d.size() % 4)
+        d.push_back(0);
     put32(d, 8, static_cast<std::uint32_t>(d.size()));
     return d;
 }
@@ -76,7 +79,8 @@ Bytes nscr() {
     add16(b, 0);  // 16 colours
     add16(b, 0);  // text
     add32(b, 6 * 2);
-    for (const std::uint32_t e : {0u, 1u, 1u, 2u | 0x400u, 0u | 0x1000u, 1u | 0x1000u}) add16(b, e);
+    for (const std::uint32_t e : {0u, 1u, 1u, 2u | 0x400u, 0u | 0x1000u, 1u | 0x1000u})
+        add16(b, e);
     return nitro("RCSN", "NRCS", b);
 }
 
@@ -99,10 +103,10 @@ Bytes nclr() {
 // One cell: a 16 x 8 piece (tiles 0-1) flipped across at (0, 0), then an 8 x 8 piece (tile 3) at (4, 0).
 Bytes ncer() {
     Bytes b;
-    add16(b, 1);  // cells
-    add16(b, 0);  // type
-    add32(b, 0x10);      // cell records from the block's data (its +8) + this
-    add32(b, 0);  // mapping mode 0: 32-byte boundary
+    add16(b, 1);     // cells
+    add16(b, 0);     // type
+    add32(b, 0x10);  // cell records from the block's data (its +8) + this
+    add32(b, 0);     // mapping mode 0: 32-byte boundary
     add32(b, 0);
     // the record: 2 pieces, attributes, their place from the pieces' base
     add16(b, 2);
@@ -121,7 +125,8 @@ Bytes ncer() {
 
 Bytes data() {
     Bytes d;
-    for (const Bytes& r : {ncgr(), nscr(), nclr(), ncer()}) d.insert(d.end(), r.begin(), r.end());
+    for (const Bytes& r : {ncgr(), nscr(), nclr(), ncer()})
+        d.insert(d.end(), r.begin(), r.end());
     return d;
 }
 
@@ -134,16 +139,19 @@ SheetSource source() {
 
 std::uint32_t pixel(const std::vector<std::uint8_t>& rgba, int w, int x, int y) {
     std::uint32_t v = 0;
-    std::memcpy(&v, &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4], 4);
+    std::memcpy(
+        &v, &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4], 4);
     return v;
 }
 void set(std::vector<std::uint8_t>& rgba, int w, int x, int y, std::uint8_t r, std::uint8_t g, std::uint8_t b,
          std::uint8_t a = 255) {
-    std::uint8_t* p = &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4];
+    std::uint8_t* p =
+        &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4];
     p[0] = r, p[1] = g, p[2] = b, p[3] = a;
 }
 std::uint32_t rgba(std::uint8_t r, std::uint8_t g, std::uint8_t b) {
-    return static_cast<std::uint32_t>(r) | static_cast<std::uint32_t>(g) << 8 | static_cast<std::uint32_t>(b) << 16 | 0xFF000000u;
+    return static_cast<std::uint32_t>(r) | static_cast<std::uint32_t>(g) << 8 | static_cast<std::uint32_t>(b) << 16 |
+           0xFF000000u;
 }
 // the 5-bit palette value i * 2 shown at 8 bits
 std::uint8_t level(int i) {
@@ -152,7 +160,8 @@ std::uint8_t level(int i) {
 }
 bool contains(const std::vector<int>& v, int x) {
     for (const int e : v) {
-        if (e == x) return true;
+        if (e == x)
+            return true;
     }
     return false;
 }
@@ -205,7 +214,8 @@ TEST(an_edit_in_the_game_palette_stays_indexed) {
     CHECK(t.sheet.px[static_cast<std::size_t>(9) * 16 + 7] == 9);
     CHECK(contains(t.flipped, 2) && t.conflicts.empty());
     for (std::size_t i = 0; i < game.px.size(); ++i) {
-        if (i != static_cast<std::size_t>(9) * 16 + 7) CHECK(t.sheet.px[i] == game.px[i]);
+        if (i != static_cast<std::size_t>(9) * 16 + 7)
+            CHECK(t.sheet.px[i] == game.px[i]);
     }
     // a pixel made transparent is index 0
     auto clear = render_assembly(s, a, game, pal);
@@ -253,7 +263,8 @@ TEST(new_colours_make_the_sheet_its_own_or_fit_the_palette) {
     CHECK(own.sheet.px[1] == rgba(level(2), 0, 0));
     TakeBack fit;
     CHECK(take_back(s, a, game, pal, pic, 24, 16, Colours::fit, false, &fit, nullptr));
-    CHECK(fit.sheet.indexed && fit.sheet.px[static_cast<std::size_t>(9) * 16 + 7] == 12);  // nearest red: 200 ~ index 12
+    CHECK(fit.sheet.indexed &&
+          fit.sheet.px[static_cast<std::size_t>(9) * 16 + 7] == 12);  // nearest red: 200 ~ index 12
 }
 
 TEST(an_edit_at_twice_the_size) {
@@ -300,7 +311,8 @@ TEST(sheet_png_written_and_read_as_the_port_reads_it) {
     CHECK(back.indexed && back.scale == 3 && back.px == game.px);
     SheetPixels own = game;
     own.indexed = false;
-    for (auto& v : own.px) v = rgba(static_cast<std::uint8_t>(v * 10), 7, 9);
+    for (auto& v : own.px)
+        v = rgba(static_cast<std::uint8_t>(v * 10), 7, 9);
     CHECK(write_sheet_png(dir / "own.png", own, display).empty());
     CHECK(read_sheet_png(dir / "own.png", s, &back, &why));
     CHECK(!back.indexed && back.px == own.px);
@@ -389,7 +401,8 @@ Bytes screen_of(int w, int h, const std::vector<std::uint32_t>& entries) {
     add16(b, 0);
     add16(b, 0);
     add32(b, static_cast<std::uint32_t>(entries.size() * 2));
-    for (const std::uint32_t e : entries) add16(b, e);
+    for (const std::uint32_t e : entries)
+        add16(b, e);
     return nitro("RCSN", "NRCS", b);
 }
 
@@ -403,7 +416,8 @@ Bytes ramp_nscr() {
 TEST(data_in_threes_pairs_by_number) {
     // two sheets, two screens, two palettes: sheet 1 takes palette 1 and screen 1 first
     Bytes d;
-    for (const Bytes& r : {ramp_ncgr(), ramp_ncgr(), ramp_nscr(), ramp_nscr(), nclr(), nclr()}) d.insert(d.end(), r.begin(), r.end());
+    for (const Bytes& r : {ramp_ncgr(), ramp_ncgr(), ramp_nscr(), ramp_nscr(), nclr(), nclr()})
+        d.insert(d.end(), r.begin(), r.end());
     SheetSource s;
     std::string why;
     CHECK(sheet_source(d, "x.p2#0", 1, &s, &why));
@@ -428,7 +442,8 @@ TEST(border_jump_tells_joined_tiles_from_scattered_ones) {
             std::uint8_t* p = &ramp[(static_cast<std::size_t>(y) * w + static_cast<std::size_t>(x)) * 4];
             p[0] = static_cast<std::uint8_t>(x * 8), p[1] = 0, p[2] = 0, p[3] = 255;
             const int tile = x / 8, swapped = (tile + 2) % 4;  // tiles moved two places on
-            std::uint8_t* q = &shuffled[(static_cast<std::size_t>(y) * w + static_cast<std::size_t>(swapped * 8 + x % 8)) * 4];
+            std::uint8_t* q =
+                &shuffled[(static_cast<std::size_t>(y) * w + static_cast<std::size_t>(swapped * 8 + x % 8)) * 4];
             std::memcpy(q, p, 4);
         }
     }
@@ -445,10 +460,13 @@ TEST(the_sheet_as_it_is_starts_at_its_liveliest_row) {
     add32(b, 0);
     add32(b, 64);
     add32(b, 0x10);
-    for (int i = 0; i < 16; ++i) add16(b, 0);
-    for (int i = 0; i < 16; ++i) add16(b, static_cast<std::uint32_t>(i * 2));
+    for (int i = 0; i < 16; ++i)
+        add16(b, 0);
+    for (int i = 0; i < 16; ++i)
+        add16(b, static_cast<std::uint32_t>(i * 2));
     Bytes d;
-    for (const Bytes& r : {ncgr(), nitro("RLCN", "TTLP", b)}) d.insert(d.end(), r.begin(), r.end());
+    for (const Bytes& r : {ncgr(), nitro("RLCN", "TTLP", b)})
+        d.insert(d.end(), r.begin(), r.end());
     SheetSource s;
     CHECK(sheet_source(d, "x.p2#0", 0, &s, nullptr));
     const auto fits = fitting_arrangements(s);
@@ -461,7 +479,8 @@ TEST(a_screen_wider_than_32_tiles_is_read_in_strips) {
     std::vector<std::uint32_t> entries(66, 0);
     entries[64] = 1;
     Bytes d;
-    for (const Bytes& r : {ramp_ncgr(), screen_of(33, 2, entries), nclr()}) d.insert(d.end(), r.begin(), r.end());
+    for (const Bytes& r : {ramp_ncgr(), screen_of(33, 2, entries), nclr()})
+        d.insert(d.end(), r.begin(), r.end());
     SheetSource s;
     CHECK(sheet_source(d, "x.p2#0", 0, &s, nullptr));
     Arrangement screen;
@@ -469,14 +488,15 @@ TEST(a_screen_wider_than_32_tiles_is_read_in_strips) {
     Assembly a;
     CHECK(assemble(s, screen, &a, nullptr));
     CHECK(a.width == 33 * 8 && a.height == 16);
-    CHECK(a.places[32 * 8].tile == 1);                                       // (32, 0)
+    CHECK(a.places[32 * 8].tile == 1);                                          // (32, 0)
     CHECK(a.places[static_cast<std::size_t>(8) * a.width + 31 * 8].tile == 0);  // (31, 1), row by row's place
 }
 
 TEST(a_screen_laying_the_tiles_as_the_sheet_does_stands_for_the_sheet) {
     // the ramp's 2 columns, a screen 2 wide holding tiles 0 and 1 in order: the sheet as it is first, alone
     Bytes d;
-    for (const Bytes& r : {ramp_ncgr(), screen_of(2, 1, {0u, 1u}), nclr()}) d.insert(d.end(), r.begin(), r.end());
+    for (const Bytes& r : {ramp_ncgr(), screen_of(2, 1, {0u, 1u}), nclr()})
+        d.insert(d.end(), r.begin(), r.end());
     SheetSource s;
     CHECK(sheet_source(d, "x.p2#0", 0, &s, nullptr));
     const auto fits = fitting_arrangements(s);
@@ -489,7 +509,8 @@ TEST(a_screen_laying_the_tiles_as_the_sheet_does_stands_for_the_sheet) {
 TEST(screens_sharing_out_a_sheet_are_shown_together) {
     // screens 0 and 1 join up from tiles 0-1 and 2-3; screen 2 draws tiles 0-1 again
     Bytes d;
-    for (const Bytes& r : {ramp_ncgr(), ramp_nscr(), screen_of(2, 1, {3u | 0x400u, 2u | 0x400u}), ramp_nscr(), nclr()}) {
+    for (const Bytes& r :
+         {ramp_ncgr(), ramp_nscr(), screen_of(2, 1, {3u | 0x400u, 2u | 0x400u}), ramp_nscr(), nclr()}) {
         d.insert(d.end(), r.begin(), r.end());
     }
     SheetSource s;
@@ -504,7 +525,8 @@ TEST(a_sheet_with_no_screens_borrows_its_twins_or_its_folders) {
     const auto nitrofs = studio_test::scratch("sheets_borrow");
     auto put = [&](const std::string& path, std::initializer_list<Bytes> parts) {
         Bytes d;
-        for (const Bytes& r : parts) d.insert(d.end(), r.begin(), r.end());
+        for (const Bytes& r : parts)
+            d.insert(d.end(), r.begin(), r.end());
         studio_test::write(nitrofs / path, std::string(d.begin(), d.end()));
     };
     // x/res_de.bin: the ramp's tiles alone; x/res.bin: the same tiles with a screen and a palette
@@ -521,7 +543,8 @@ TEST(a_sheet_with_no_screens_borrows_its_twins_or_its_folders) {
     CHECK(assemble(s, fits[0], &a, nullptr) && a.width == 16 && a.uses[0] == 1 && a.uses[1] == 1);
     // a sheet of the same size sharing none of its drawn tiles is no twin
     Bytes other = ramp_ncgr();
-    for (std::size_t i = 0x30; i < other.size(); ++i) other[i] = static_cast<std::uint8_t>(other[i] ^ 0x11);
+    for (std::size_t i = 0x30; i < other.size(); ++i)
+        other[i] = static_cast<std::uint8_t>(other[i] ^ 0x11);
     put("y/res_de.bin", {other});
     put("y/res.bin", {ramp_ncgr(), ramp_nscr(), nclr()});
     SheetSource lone;
@@ -567,8 +590,9 @@ TEST(tile_rows_kept_in_the_mod) {
     CHECK(std::filesystem::is_regular_file(mod / "studio" / "rows" / "UI" / "x.p2#1" / "chr" / "0.txt"));
     CHECK((read_tile_rows(mod, key, 6) == std::vector<int>{-1, 2, 2, 2, -1, 13}));
     CHECK((read_tile_rows(mod, key, 4) == std::vector<int>{-1, 2, 2, 2}));  // past the sheet: left out
-    CHECK(write_tile_rows(mod, key, {-1, -1}).empty());                    // none: the file goes
-    CHECK(read_tile_rows(mod, key, 6).empty() && !std::filesystem::exists(mod / "studio" / "rows" / "UI" / "x.p2#1" / "chr" / "0.txt"));
+    CHECK(write_tile_rows(mod, key, {-1, -1}).empty());                     // none: the file goes
+    CHECK(read_tile_rows(mod, key, 6).empty() &&
+          !std::filesystem::exists(mod / "studio" / "rows" / "UI" / "x.p2#1" / "chr" / "0.txt"));
 }
 
 TEST(the_sheet_as_it_is_takes_the_rows_of_the_screen_standing_for_it) {
@@ -580,10 +604,12 @@ TEST(the_sheet_as_it_is_takes_the_rows_of_the_screen_standing_for_it) {
     add32(b, 64);
     add32(b, 0x10);
     for (int row = 0; row < 2; ++row) {
-        for (int i = 0; i < 16; ++i) add16(b, static_cast<std::uint32_t>(i * 2 + row));
+        for (int i = 0; i < 16; ++i)
+            add16(b, static_cast<std::uint32_t>(i * 2 + row));
     }
     Bytes d;
-    for (const Bytes& r : {ramp_ncgr(), screen_of(2, 2, {0u, 1u | 0x1000u, 2u, 3u | 0x1000u}), nitro("RLCN", "TTLP", b)}) {
+    for (const Bytes& r :
+         {ramp_ncgr(), screen_of(2, 2, {0u, 1u | 0x1000u, 2u, 3u | 0x1000u}), nitro("RLCN", "TTLP", b)}) {
         d.insert(d.end(), r.begin(), r.end());
     }
     SheetSource s;
@@ -621,13 +647,14 @@ TEST(the_colours_seen_in_play_colour_the_sheet) {
     const std::string key = "x.bin/chr/0";
     SheetSource s;
     CHECK(sheet_source(ncgr(), "x.bin", 0, &s, nullptr));  // no screen, no cells, no palette
-    CHECK(!take_seen_colours(dump, key, &s));                // none seen yet
+    CHECK(!take_seen_colours(dump, key, &s));              // none seen yet
     write_seen(dump, key);
     CHECK(take_seen_colours(dump, key, &s));
     CHECK(s.seen_palette == 0 && palette_count(s) == 1);
     CHECK((s.seen_rows == std::vector<int>{3, 3, 0, -1}) && s.seen_row == kUnseenRow && s.unseen_tiles == 1);
     const auto fits = fitting_arrangements(s);
-    CHECK(fits.size() == 1 && fits[0].whole && fits[0].palette == 0 && fits[0].row == kUnseenRow && fits[0].rows == s.seen_rows);
+    CHECK(fits.size() == 1 && fits[0].whole && fits[0].palette == 0 && fits[0].row == kUnseenRow &&
+          fits[0].rows == s.seen_rows);
     std::vector<std::uint8_t> pic;
     int w = 0, h = 0;
     std::string why;
@@ -651,8 +678,10 @@ TEST(the_colours_seen_of_an_8_bit_sheet) {
     add32(b, 0);
     add32(b, 2 * 64);
     add32(b, 0x18);
-    for (int i = 0; i < 64; ++i) b.push_back(static_cast<std::uint8_t>(i + 1));
-    for (int i = 0; i < 64; ++i) b.push_back(7);
+    for (int i = 0; i < 64; ++i)
+        b.push_back(static_cast<std::uint8_t>(i + 1));
+    for (int i = 0; i < 64; ++i)
+        b.push_back(7);
     SheetSource s;
     CHECK(sheet_source(nitro("RGCN", "RAHC", b), "y.bin", 0, &s, nullptr));
     CHECK(s.bpp() == 8 && s.tiles == 2);
@@ -723,10 +752,14 @@ TEST(every_sheet_exported_coloured) {
     }
     write_seen(dump, "x.bin/chr/0");
     std::vector<std::string> written, failed;
-    const int n = export_sheets(nitrofs, dump, {}, out, [&](std::size_t, std::size_t, const std::string& key) {
-        if (!key.empty()) written.push_back(key);
-        return true;
-    }, &failed);
+    const int n = export_sheets(
+        nitrofs, dump, {}, out,
+        [&](std::size_t, std::size_t, const std::string& key) {
+            if (!key.empty())
+                written.push_back(key);
+            return true;
+        },
+        &failed);
     CHECK(n == 1 && failed.empty() && (written == std::vector<std::string>{"x.bin/chr/0"}));
     int w = 0, h = 0;
     const char* error = nullptr;

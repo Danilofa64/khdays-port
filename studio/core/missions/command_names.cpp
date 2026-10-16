@@ -212,7 +212,8 @@ const CommandName kNames[] = {
 
 const CommandName* command_name(int group, int command) {
     for (const auto& n : kNames) {
-        if (n.group == group && n.command == command) return &n;
+        if (n.group == group && n.command == command)
+            return &n;
     }
     return nullptr;
 }

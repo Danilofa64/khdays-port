@@ -59,8 +59,9 @@ void khdays_ui_parts_init(void)
             mode = mode_named(eq + 1, n - pn - 1);
         }
         if (part == -2 || mode < 0) {
-            fprintf(stderr, "ui: KHDAYS_UI: \"%.*s\" is not <part>=<off|check|on> (parts: text, hud, pause, camp, "
-                            "save, mission, shop, all)\n",
+            fprintf(stderr,
+                    "ui: KHDAYS_UI: \"%.*s\" is not <part>=<off|check|on> (parts: text, hud, pause, camp, "
+                    "save, mission, shop, all)\n",
                     (int)n, s);
         } else if (part == -1) {
             for (int p = 0; p < KHDAYS_UI_PARTS; ++p) {

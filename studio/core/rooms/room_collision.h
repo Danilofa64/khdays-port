@@ -21,8 +21,8 @@ std::string check_tree(const RoomCollision& c);
 // eight faces and is larger than `smallest`; the root and smallest size set in
 // the header. Every face's flags keep their 0x4000 (skipped) bit. `order`,
 // when given, receives per list each face's index before.
-void build_tree(RoomCollision* c, std::int32_t centre_x, std::int32_t centre_z, std::int32_t size, std::int32_t smallest,
-                std::array<std::vector<std::size_t>, 3>* order = nullptr);
+void build_tree(RoomCollision* c, std::int32_t centre_x, std::int32_t centre_z, std::int32_t size,
+                std::int32_t smallest, std::array<std::vector<std::size_t>, 3>* order = nullptr);
 
 // The deepest the game's walk goes: `CollCast_TestModel` keeps eight frames
 // (`data_027e06e4`), one per level from the root's; a ninth would be written

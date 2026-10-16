@@ -16,12 +16,12 @@
 
 #define LEAD_MS 30 /* how much sound the stream keeps ahead of the device */
 
-static void *audio;         /* the SDL_AudioStream (SDL_GetAtomicPointer, SDL_SetAtomicPointer) */
-static SDL_AtomicInt paused;      /* the settings menu paused the device */
-static SDL_AtomicInt muted;       /* an HD video plays (khdays_sound_output_mute) */
-static SDL_AtomicInt needs_lead;  /* the next samples go in after LEAD_MS of silence */
-static SDL_AtomicInt dry;         /* times the stream ran dry since the last report */
-static int device_rate;           /* the device's own rate, for the PC's mixer */
+static void *audio;              /* the SDL_AudioStream (SDL_GetAtomicPointer, SDL_SetAtomicPointer) */
+static SDL_AtomicInt paused;     /* the settings menu paused the device */
+static SDL_AtomicInt muted;      /* an HD video plays (khdays_sound_output_mute) */
+static SDL_AtomicInt needs_lead; /* the next samples go in after LEAD_MS of silence */
+static SDL_AtomicInt dry;        /* times the stream ran dry since the last report */
+static int device_rate;          /* the device's own rate, for the PC's mixer */
 
 /* The format the stream takes now. It is changed by the sound thread, or by
  * the game's thread when it catches the sound up; either way under the
@@ -37,7 +37,7 @@ static int frame_bytes(void)
 /* Puts LEAD_MS of silence into the stream. */
 static void put_lead(SDL_AudioStream *stream)
 {
-    static const float silence[2 * 48000 * LEAD_MS / 1000] = {0};  /* zeros in either format */
+    static const float silence[2 * 48000 * LEAD_MS / 1000] = {0}; /* zeros in either format */
     int bytes = input.freq * LEAD_MS / 1000 * frame_bytes();
     while (bytes > 0) { /* in pieces, at whatever rate the device has */
         const int piece = bytes < (int)sizeof(silence) ? bytes : (int)sizeof(silence);
@@ -68,7 +68,7 @@ static void put(const void *frames, int count, SDL_AudioFormat format, int rate)
         SDL_AddAtomicInt(&dry, 1);
         put_lead(stream);
     } else if (queued > input.freq * frame_bytes() / 10) {
-        return;  /* more than a tenth of a second is already waiting: drop this */
+        return; /* more than a tenth of a second is already waiting: drop this */
     }
     SDL_PutAudioStreamData(stream, frames, count * frame_bytes());
 }
@@ -91,9 +91,8 @@ void khdays_sound_output_open(void)
         fprintf(stderr, "host: no sound: %s\n", SDL_GetError());
         return;
     }
-    device_rate = SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(stream), &device, NULL) && device.freq > 0
-                      ? device.freq
-                      : 0;
+    device_rate =
+        SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(stream), &device, NULL) && device.freq > 0 ? device.freq : 0;
     SDL_SetAtomicInt(&needs_lead, 1);
     SDL_SetAudioStreamGain(stream, SDL_GetAtomicInt(&muted) ? 0.0f : 1.0f);
     SDL_ResumeAudioStreamDevice(stream);
@@ -156,8 +155,9 @@ static int sound_thread(void *unused)
         if (profile && SDL_GetTicks() >= report_at) {
             SDL_AudioStream *stream = (SDL_AudioStream *)SDL_GetAtomicPointer(&audio);
             const int queued = stream != NULL ? SDL_GetAudioStreamQueued(stream) : 0;
-            fprintf(stderr, "sound: %d times ran dry, %d ms queued, %.2f ms catching the driver up "
-                            "on the game's thread, %.2f ms in the driver, in the last second\n",
+            fprintf(stderr,
+                    "sound: %d times ran dry, %d ms queued, %.2f ms catching the driver up "
+                    "on the game's thread, %.2f ms in the driver, in the last second\n",
                     SDL_SetAtomicInt(&dry, 0), queued * 1000 / (input.freq * frame_bytes()),
                     khdays_sound_bridge_take_catchup_ms(), khdays_sound_bridge_take_driver_ms());
             report_at += 1000;

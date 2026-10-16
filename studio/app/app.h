@@ -33,7 +33,7 @@ struct Candidate {
     std::filesystem::path source;  // as the modder gave it
     std::filesystem::path staged;  // the copy the checks read (a PNG for pictures)
     CheckResult check;
-    bool any_palette = false;      // a texture: for all its palettes
+    bool any_palette = false;  // a texture: for all its palettes
 };
 
 struct App {
@@ -59,7 +59,9 @@ struct App {
     std::vector<Mod> mods;
     int mod = -1;  // index into mods, -1: none chosen
     void refresh_mods();
-    const Mod* current_mod() const { return mod >= 0 && mod < static_cast<int>(mods.size()) ? &mods[static_cast<std::size_t>(mod)] : nullptr; }
+    const Mod* current_mod() const {
+        return mod >= 0 && mod < static_cast<int>(mods.size()) ? &mods[static_cast<std::size_t>(mod)] : nullptr;
+    }
 
     // the browser
     std::string search;
@@ -87,12 +89,13 @@ struct App {
         std::atomic<std::size_t> files_done{0}, files{0};
         std::atomic<int> written{0};
         std::mutex mutex;
-        std::string current;               // the sheet last written
-        std::vector<std::string> failed;   // once done: those not written, with why
+        std::string current;              // the sheet last written
+        std::vector<std::string> failed;  // once done: those not written, with why
         bool told = false;
         ~SheetsExport() {
             stop = true;
-            if (thread.joinable()) thread.join();
+            if (thread.joinable())
+                thread.join();
         }
     };
     std::unique_ptr<SheetsExport> sheets_export;
@@ -100,8 +103,8 @@ struct App {
     // files chosen in a dialog arrive on another thread
     std::mutex dialog_mutex;
     std::vector<std::string> dialog_files;
-    std::vector<std::string> dialog_clips;  // animation clips
-    std::vector<std::string> dialog_exports;  // where an assembled sheet is exported
+    std::vector<std::string> dialog_clips;          // animation clips
+    std::vector<std::string> dialog_exports;        // where an assembled sheet is exported
     std::vector<std::string> dialog_room_exports;   // where a room is exported
     std::vector<std::string> dialog_model_exports;  // where a game model is exported
     std::vector<std::string> dialog_sheet_folders;  // where every 2D sheet is exported
@@ -148,7 +151,7 @@ void draw_mission_view(App& app, const Item& item);
 // over that room when it is shown.
 struct MissionPoint {
     enum Kind { spawner, start, chest, emblem };  // green, blue, gold, pink
-    std::array<std::int32_t, 3> at{};  // 20.12
+    std::array<std::int32_t, 3> at{};             // 20.12
     std::string label;
     Kind kind = spawner;
 };
@@ -180,7 +183,7 @@ void choose_export(App& app);
 // Lets go of the model view's pictures before the graphics device goes.
 void model_view_shutdown();
 void draw_dump_panel(App& app);
-void draw_sheets_export(App& app);                          // its progress, in the browser (sheet_view.cpp)
+void draw_sheets_export(App& app);  // its progress, in the browser (sheet_view.cpp)
 void sheets_export_to(App& app, const std::filesystem::path& folder);
 void draw_candidate_controls(App& app, const Item& item);
 void draw_replacements(App& app, bool* open);

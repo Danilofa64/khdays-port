@@ -84,22 +84,21 @@ int main(int argc, char **argv)
     }
     for (int engine = 0; engine < 2; ++engine) {
         for (int screen = 0; screen < 2; ++screen) {
-            diff[engine][screen] = differences(c555[engine], fb + screen * FB_PIXELS, &first[engine][screen],
-                                                &far[engine][screen]);
+            diff[engine][screen] =
+                differences(c555[engine], fb + screen * FB_PIXELS, &first[engine][screen], &far[engine][screen]);
         }
     }
     top = diff[0][0] + diff[1][1] <= diff[1][0] + diff[0][1] ? 0 : 1;
-    printf("VRAMCNT %02x %02x %02x %02x %02x %02x %02x %02x %02x%s\n", cnt[0], cnt[1], cnt[2], cnt[3],
-           cnt[4], cnt[5], cnt[6], cnt[7], cnt[8], overlaps ? " (banks overlap)" : "");
+    printf("VRAMCNT %02x %02x %02x %02x %02x %02x %02x %02x %02x%s\n", cnt[0], cnt[1], cnt[2], cnt[3], cnt[4], cnt[5],
+           cnt[6], cnt[7], cnt[8], overlaps ? " (banks overlap)" : "");
     for (int screen = 0; screen < 2; ++screen) {
         const int engine = screen == 0 ? top : !top;
         const int i = first[engine][screen];
-        printf("%s screen = engine %c: %d of %d pixels differ, %d by more than 1",
-               screen == 0 ? "upper" : "lower", 'A' + engine, diff[engine][screen], FB_PIXELS,
-               far[engine][screen]);
+        printf("%s screen = engine %c: %d of %d pixels differ, %d by more than 1", screen == 0 ? "upper" : "lower",
+               'A' + engine, diff[engine][screen], FB_PIXELS, far[engine][screen]);
         if (i >= 0) {
-            printf(" (first at %d,%d: rendered %04x, DeSmuME %04x)", i % KHDAYS_SCREEN_W,
-                   i / KHDAYS_SCREEN_W, c555[engine][i], fb[screen * FB_PIXELS + i] & 0x7fff);
+            printf(" (first at %d,%d: rendered %04x, DeSmuME %04x)", i % KHDAYS_SCREEN_W, i / KHDAYS_SCREEN_W,
+                   c555[engine][i], fb[screen * FB_PIXELS + i] & 0x7fff);
         }
         printf("\n");
     }

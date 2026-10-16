@@ -14,12 +14,12 @@ static int failures;
 static int outside_pieces, inside_pieces; /* test_inside's */
 static int overlaps;                      /* test_apart's */
 
-#define CHECK(c)                                                                 \
-    do {                                                                         \
-        if (!(c)) {                                                              \
-            fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c);              \
-            ++failures;                                                          \
-        }                                                                        \
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c);                                                    \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 /* --- What composition.c needs of the runtime, stood in for -------------------------- */
@@ -148,15 +148,17 @@ static void test_places(void)
                 continue;
             }
             check_place(&comp.shapes[0], 4.0f * f, 6.0f * f, 100.0f * f, 50.0f * f, f);
-            check_place(&comp.shapes[1], c - 50.0f * f - 5.0f * f, 192.0f - 25.0f * f - 7.0f * f, 50.0f * f,
-                        25.0f * f, 0.5f * f);
+            check_place(&comp.shapes[1], c - 50.0f * f - 5.0f * f, 192.0f - 25.0f * f - 7.0f * f, 50.0f * f, 25.0f * f,
+                        0.5f * f);
             check_place(&comp.shapes[2], (c - 128.0f) / 2.0f, 64.0f, 128.0f, 64.0f, 2.0f);
             check_place(&comp.shapes[3], (c - 40.0f * (f + 0.5f)) / 2.0f, 2.0f * f + 3.0f, 40.0f * (f + 0.5f),
                         20.0f * (f + 0.5f), f + 0.5f);
             check_place(&comp.shapes[4], -4.0f, (192.0f - 192.0f * c / 256.0f) / 2.0f, c, 192.0f * c / 256.0f,
                         c / 256.0f);
-            CHECK((comp.shapes[2].words[KO_FLAGS] & KOF_LOWER) != 0u && (comp.shapes[0].words[KO_FLAGS] & KOF_LOWER) == 0u);
-            CHECK(word_float(comp.shapes[2].words, KO_SRC_X) == 10.0f && word_float(comp.shapes[2].words, KO_SRC_H) == 32.0f);
+            CHECK((comp.shapes[2].words[KO_FLAGS] & KOF_LOWER) != 0u &&
+                  (comp.shapes[0].words[KO_FLAGS] & KOF_LOWER) == 0u);
+            CHECK(word_float(comp.shapes[2].words, KO_SRC_X) == 10.0f &&
+                  word_float(comp.shapes[2].words, KO_SRC_H) == 32.0f);
             CHECK(comp.shapes3d[0].group == KHDAYS_SHAPE3D_HUD && fabsf(comp.shapes3d[0].scale - 0.5f * f) < 0.0001f);
             CHECK(fabsf(comp.shapes3d[0].x - 3.0f * f) < 0.001f && fabsf(comp.shapes3d[0].y - 2.0f * f) < 0.001f);
             CHECK(comp.shapes3d[1].group == KHDAYS_SHAPE3D_ALL && comp.shapes3d[1].scale == 1.0f);
@@ -184,7 +186,7 @@ static void test_places(void)
                 CHECK(comp.screens == KHDAYS_SCREENS_LOWER && comp.shape_count == 1);
             }
             khdays_composition_for(&title, columns[n], &comp);
-            CHECK(comp.screens == (columns[n] == 342 ? KHDAYS_SCREENS_SIDE_BY_SIDE
+            CHECK(comp.screens == (columns[n] == 342   ? KHDAYS_SCREENS_SIDE_BY_SIDE
                                    : columns[n] == 256 ? KHDAYS_SCREENS_STACKED
                                                        : KHDAYS_SCREENS_LOWER));
         }
@@ -255,7 +257,8 @@ static void test_real_file(void)
             KhdaysComposition comp;
             khdays_composition_for(&field, 342, &comp);
             for (int s = 0; s < comp.shape_count; ++s) {
-                if (word_float(comp.shapes[s].words, KO_SRC_X) == 93.0f && word_float(comp.shapes[s].words, KO_SRC_W) == 70.0f) {
+                if (word_float(comp.shapes[s].words, KO_SRC_X) == 93.0f &&
+                    word_float(comp.shapes[s].words, KO_SRC_W) == 70.0f) {
                     *(pass == 0 ? &with : &without) = word_float(comp.shapes[s].words, KO_DST_Y1);
                 }
             }
@@ -333,8 +336,9 @@ static uint64_t field_hud_digest(void)
     };
     static const int scenes[] = {KHDAYS_SIT_FIELD, KHDAYS_SIT_FIELD_3D_BOTH};
     /* a shape's lengths: its source, its place, its fades, its opacity and its scale */
-    static const int lengths[] = {KO_SRC_X,  KO_SRC_Y,  KO_SRC_W, KO_SRC_H,    KO_DST_X1,   KO_DST_Y1,   KO_DST_X2, KO_DST_Y2,
-                                  KO_FADE,   KO_FADE + 1, KO_FADE + 2, KO_FADE + 3, KO_OPACITY, KO_SCALE_X, KO_SCALE_Y};
+    static const int lengths[] = {KO_SRC_X,    KO_SRC_Y,    KO_SRC_W,   KO_SRC_H,   KO_DST_X1,
+                                  KO_DST_Y1,   KO_DST_X2,   KO_DST_Y2,  KO_FADE,    KO_FADE + 1,
+                                  KO_FADE + 2, KO_FADE + 3, KO_OPACITY, KO_SCALE_X, KO_SCALE_Y};
     uint64_t d = 1469598103934665603ull;
     khdays_composition_set_hud_size(4);
     for (size_t c = 0; c < sizeof(columns) / sizeof(columns[0]); ++c) {
@@ -349,13 +353,14 @@ static uint64_t field_hud_digest(void)
                 for (int i = 0; i < comp.shape_count; ++i) {
                     const uint32_t *w = comp.shapes[i].words;
                     if (getenv("KHDAYS_PRINT_SHAPES") != NULL) {
-                        printf("c%d s%d st%x #%d fl%x see%x keys%u src %g %g %g %g dst %g %g %g %g sc %g %g fade %g %g %g %g\n", columns[c],
-                               scenes[n], states[s], i, w[KO_FLAGS], w[KO_SEE_THROUGH], w[KO_KEY_COUNT],
-                               word_float(w, KO_SRC_X), word_float(w, KO_SRC_Y),
-                               word_float(w, KO_SRC_W), word_float(w, KO_SRC_H), word_float(w, KO_DST_X1),
-                               word_float(w, KO_DST_Y1), word_float(w, KO_DST_X2), word_float(w, KO_DST_Y2),
-                               word_float(w, KO_SCALE_X), word_float(w, KO_SCALE_Y), word_float(w, KO_FADE),
-                               word_float(w, KO_FADE + 1), word_float(w, KO_FADE + 2), word_float(w, KO_FADE + 3));
+                        printf(
+                            "c%d s%d st%x #%d fl%x see%x keys%u src %g %g %g %g dst %g %g %g %g sc %g %g fade %g %g %g %g\n",
+                            columns[c], scenes[n], states[s], i, w[KO_FLAGS], w[KO_SEE_THROUGH], w[KO_KEY_COUNT],
+                            word_float(w, KO_SRC_X), word_float(w, KO_SRC_Y), word_float(w, KO_SRC_W),
+                            word_float(w, KO_SRC_H), word_float(w, KO_DST_X1), word_float(w, KO_DST_Y1),
+                            word_float(w, KO_DST_X2), word_float(w, KO_DST_Y2), word_float(w, KO_SCALE_X),
+                            word_float(w, KO_SCALE_Y), word_float(w, KO_FADE), word_float(w, KO_FADE + 1),
+                            word_float(w, KO_FADE + 2), word_float(w, KO_FADE + 3));
                     }
                     d = digest_word(d, w[KO_FLAGS]);
                     for (size_t k = 0; k < sizeof(lengths) / sizeof(lengths[0]); ++k) {
@@ -371,8 +376,9 @@ static uint64_t field_hud_digest(void)
                 for (int i = 0; i < comp.shape3d_count; ++i) {
                     const KhdaysShape3d *t = &comp.shapes3d[i];
                     if (getenv("KHDAYS_PRINT_SHAPES") != NULL) {
-                        printf("c%d s%d st%x 3d#%d g%d h%d w%d %g %g %g src %g %g %g %g\n", columns[c], scenes[n], states[s], i,
-                               t->group, t->hide, t->whole, t->x, t->y, t->scale, t->src_x, t->src_y, t->src_w, t->src_h);
+                        printf("c%d s%d st%x 3d#%d g%d h%d w%d %g %g %g src %g %g %g %g\n", columns[c], scenes[n],
+                               states[s], i, t->group, t->hide, t->whole, t->x, t->y, t->scale, t->src_x, t->src_y,
+                               t->src_w, t->src_h);
                     }
                     d = digest_word(d, (uint32_t)t->group);
                     d = digest_word(d, (uint32_t)t->hide);
@@ -455,8 +461,8 @@ typedef struct HudPiece {
 } HudPiece;
 
 static const HudPiece hud_pieces[] = {
-    {"panel", 1, 4, 152, 248, 40},   {"map", 1, 112, 64, 104, 64},   {"health", 0, 163, 0, 93, 22},
-    {"countdown", 0, 93, 0, 70, 20}, {"hearts", 0, 0, 0, 108, 86},   {"sigils", 0, 163, 25, 93, 30},
+    {"panel", 1, 4, 152, 248, 40},   {"map", 1, 112, 64, 104, 64},    {"health", 0, 163, 0, 93, 22},
+    {"countdown", 0, 93, 0, 70, 20}, {"hearts", 0, 0, 0, 108, 86},    {"sigils", 0, 163, 25, 93, 30},
     {"deck", 0, 0, 84, 112, 108},    {"party", 0, 128, 84, 128, 107},
 };
 #define HUD_PIECES ((int)(sizeof(hud_pieces) / sizeof(hud_pieces[0])))
@@ -490,7 +496,8 @@ static void test_apart(void)
                         const HudPiece *h = &hud_pieces[k];
                         const float sy = word_float(w, KO_SRC_Y), sh = word_float(w, KO_SRC_H);
                         if (((w[KO_FLAGS] & KOF_LOWER) != 0u) == (h->lower != 0) && word_float(w, KO_SRC_X) == h->x &&
-                            sy <= h->y && sy + sh >= h->y + h->h - 20.0f && word_float(w, KO_SRC_W) == h->w && !found[k]) {
+                            sy <= h->y && sy + sh >= h->y + h->h - 20.0f && word_float(w, KO_SRC_W) == h->w &&
+                            !found[k]) {
                             found[k] = 1;
                             r[k][0] = word_float(w, KO_DST_X1);
                             r[k][1] = word_float(w, KO_DST_Y1);
@@ -507,9 +514,10 @@ static void test_apart(void)
                 }
                 for (size_t q = 0; q < sizeof(apart) / sizeof(apart[0]); ++q) {
                     const int a = apart[q][0], b = apart[q][1];
-                    if (size <= (columns[c] == 256 ? 2 : 4) && found[a] && found[b] && r[a][0] < r[b][2] - 0.01f && r[b][0] < r[a][2] - 0.01f &&
-                        r[a][1] < r[b][3] - 0.01f && r[b][1] < r[a][3] - 0.01f) {
-                        fprintf(stderr, "  HUD %d, %d columns, states %x: %s %.1f,%.1f-%.1f,%.1f over %s %.1f,%.1f-%.1f,%.1f\n",
+                    if (size <= (columns[c] == 256 ? 2 : 4) && found[a] && found[b] && r[a][0] < r[b][2] - 0.01f &&
+                        r[b][0] < r[a][2] - 0.01f && r[a][1] < r[b][3] - 0.01f && r[b][1] < r[a][3] - 0.01f) {
+                        fprintf(stderr,
+                                "  HUD %d, %d columns, states %x: %s %.1f,%.1f-%.1f,%.1f over %s %.1f,%.1f-%.1f,%.1f\n",
                                 size, columns[c], states[s], hud_pieces[a].name, r[a][0], r[a][1], r[a][2], r[a][3],
                                 hud_pieces[b].name, r[b][0], r[b][1], r[b][2], r[b][3]);
                         ++overlaps;
@@ -641,7 +649,8 @@ static void test_title_backdrop(void)
     /* a plain picture */
     remove(backdrop_file);
     remove(root_file);
-    mods_file = test_file("plain.txt", "units port\n[title]\nbackdrop title/{lang}/plain.png at top-left\nscreens upper\n");
+    mods_file =
+        test_file("plain.txt", "units port\n[title]\nbackdrop title/{lang}/plain.png at top-left\nscreens upper\n");
     khdays_composition_load();
     khdays_composition_for(&title, 342, &comp);
     CHECK(comp.backdrop != NULL && comp.backdrop[0] == 255 && comp.backdrop[1] == 0 && comp.backdrop[3] == 255);
@@ -650,8 +659,9 @@ static void test_title_backdrop(void)
 
     /* a picture read ahead: shown later, the thread's */
     remove(mods_file);
-    mods_file = test_file("preload.txt", "units port\n[title]\nbackdrop title/{lang}/{menu}.png\npreload title/{lang}/root.png\n"
-                                         "screens upper\n");
+    mods_file = test_file("preload.txt",
+                          "units port\n[title]\nbackdrop title/{lang}/{menu}.png\npreload title/{lang}/root.png\n"
+                          "screens upper\n");
     khdays_composition_load();
     read_ahead_lines = 0;
     khdays_composition_for(&title, 342, &comp);
@@ -789,10 +799,10 @@ static void test_steps(void)
     CHECK(ko_pixel(110.5f, 110.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == 0x000000ffu);
     CHECK(ko_pixel(111.5f, 110.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1) == (x3d & 0xffffffu));
     /* a 3D the DS shows over its 2D (the game over's orb): over the piece, with its alpha */
-    CHECK(ko_pixel(110.5f, 110.5f, 1.0f, x3d | 0x2000000u | (31u << 26), 1, KOB_DEFAULT, masters, 0, 171.0f,
-                   1) == (x3d & 0xffffffu));
-    CHECK(ko_pixel(110.5f, 110.5f, 1.0f, x3d | 0x2000000u | (0u << 26), 1, KOB_DEFAULT, masters, 0, 171.0f,
-                   1) == 0x000000ffu);
+    CHECK(ko_pixel(110.5f, 110.5f, 1.0f, x3d | 0x2000000u | (31u << 26), 1, KOB_DEFAULT, masters, 0, 171.0f, 1) ==
+          (x3d & 0xffffffu));
+    CHECK(ko_pixel(110.5f, 110.5f, 1.0f, x3d | 0x2000000u | (0u << 26), 1, KOB_DEFAULT, masters, 0, 171.0f, 1) ==
+          0x000000ffu);
     {
         /* K + F x X at the destination: green 0x80 + half the 3D */
         const uint32_t c = ko_pixel(120.5f, 120.5f, 1.0f, x3d, 1, KOB_DEFAULT, masters, 0, 171.0f, 1);
@@ -922,10 +932,10 @@ static void test_split(void)
     KhdaysGfxMemory m;
     /* engine A: BG0 the 3D, BG1 a red tile at (2, 3) above it blended at EVA 10, EVB 6 */
     put32(io, 0x00010000u | 0x8u | 0x100u | 0x200u);
-    put16(io + 0x08, 1u);                               /* BG0CNT: priority 1 (the 3D's), under BG1 */
-    put16(io + 0x0a, 0u | (1u << 2) | (31u << 8));      /* BG1CNT: priority 0, chars 0x4000, map 0xf800 */
-    put16(io + 0x50, 0x2u | (1u << 6) | (0x1u << 8));   /* BLDCNT: BG1 over BG0, alpha */
-    put16(io + 0x52, 10u | (6u << 8));                  /* BLDALPHA */
+    put16(io + 0x08, 1u);                             /* BG0CNT: priority 1 (the 3D's), under BG1 */
+    put16(io + 0x0a, 0u | (1u << 2) | (31u << 8));    /* BG1CNT: priority 0, chars 0x4000, map 0xf800 */
+    put16(io + 0x50, 0x2u | (1u << 6) | (0x1u << 8)); /* BLDCNT: BG1 over BG0, alpha */
+    put16(io + 0x52, 10u | (6u << 8));                /* BLDALPHA */
     put16(palette + 2, 0x001f);
     memset(bg_a + 0x4000 + 32, 0x11, 32);
     put16(bg_a + 0xf800 + (3 * 32 + 2) * 2, 1);
@@ -969,14 +979,14 @@ static void test_split_under_3d(void)
     KhdaysGfxLatch latch;
     KhdaysGfxMemory m;
     put32(io, 0x00010000u | 0x8u | 0x100u | 0x200u);
-    put16(io + 0x08, 0u);                               /* BG0CNT: priority 0, over BG1 */
-    put16(io + 0x0a, 2u | (1u << 2) | (31u << 8));      /* BG1CNT: priority 2, the red tile at (2, 3) */
+    put16(io + 0x08, 0u);                          /* BG0CNT: priority 0, over BG1 */
+    put16(io + 0x0a, 2u | (1u << 2) | (31u << 8)); /* BG1CNT: priority 2, the red tile at (2, 3) */
     put16(io + 0x50, 0u);
     put16(io + 0x52, 0u);
     for (int i = 0; i < 256 * 192; ++i) {
         layer3d[i] = 20u | (40u << 8) | (60u << 16) | (31u << 24); /* opaque */
     }
-    layer3d[28 * 256 + 20] = 0u;                        /* transparent where the tile is */
+    layer3d[28 * 256 + 20] = 0u; /* transparent where the tile is */
     memset(&latch, 0, sizeof(latch));
     khdays_gfx_describe(io, palette, oam, 0, &latch, desc);
     memset(&m, 0, sizeof(m));
@@ -987,8 +997,8 @@ static void test_split_under_3d(void)
     split[KD_FLAGS] |= KDF_SPLIT | KDF_FINE;
     {
         const uint32_t shown = khdays_gfx_pixel_cpu(split, &m, 20, 28);
-        CHECK((shown >> 24) == 1u);                     /* shown, nothing of the 3D */
-        CHECK((shown & 0xffffffu) == 0xffu);            /* the tile's red */
+        CHECK((shown >> 24) == 1u);                                   /* shown, nothing of the 3D */
+        CHECK((shown & 0xffffffu) == 0xffu);                          /* the tile's red */
         CHECK((khdays_gfx_pixel_cpu(split, &m, 21, 28) >> 24) == 0u); /* the tile under the opaque 3D */
         m.layer3d = NULL;
         CHECK((khdays_gfx_pixel_cpu(split, &m, 20, 28) >> 24) == 0u); /* no 3D given: as an opaque one */

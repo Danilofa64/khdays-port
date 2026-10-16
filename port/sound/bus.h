@@ -9,8 +9,8 @@
 #include "categories.h"
 
 typedef struct KhdaysSoundBus {
-    float volume;                             /* everything, 0-1 */
-    float category[KHDAYS_SOUND_CATEGORIES];  /* 0-1 */
+    float volume;                            /* everything, 0-1 */
+    float category[KHDAYS_SOUND_CATEGORIES]; /* 0-1 */
 } KhdaysSoundBus;
 
 /* From the settings' 0-100 (linear in amplitude). */

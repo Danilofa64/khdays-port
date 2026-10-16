@@ -19,8 +19,8 @@ static LONGLONG ticks; /* QueryPerformanceCounter's, spent reading */
 static SRWLOCK gathered_lock = SRWLOCK_INIT;
 static struct Gathered {
     char name[160];
-    u32 start;       /* the file's (or part's) place in the image: the key */
-    u32 first;       /* where in it the first read began */
+    u32 start; /* the file's (or part's) place in the image: the key */
+    u32 first; /* where in it the first read began */
     u32 reads, bytes;
     LONGLONG ticks;
 } gathered[48];
@@ -131,8 +131,8 @@ void khdays_files_second(void)
         return;
     }
     QueryPerformanceFrequency(&f);
-    fprintf(stderr, "files: %u reads, %u bytes, %.1f ms; card: %u commands, %u bytes, in the last second\n", reads, bytes,
-            (double)ticks * 1000.0 / (double)f.QuadPart, card_commands, card_bytes);
+    fprintf(stderr, "files: %u reads, %u bytes, %.1f ms; card: %u commands, %u bytes, in the last second\n", reads,
+            bytes, (double)ticks * 1000.0 / (double)f.QuadPart, card_commands, card_bytes);
     reads = bytes = 0;
     ticks = 0;
 }

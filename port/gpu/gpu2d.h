@@ -13,11 +13,11 @@
 #define KHDAYS_SCREEN_H 192
 
 typedef struct KhdaysGpuInput {
-    const uint8_t *io;       /* the ARM9 I/O registers from 0x04000000 (engine B's at +0x1000) */
-    const uint8_t *palette;  /* 0x05000000, 2 KB */
-    const uint8_t *oam;      /* 0x07000000, 2 KB */
+    const uint8_t *io;      /* the ARM9 I/O registers from 0x04000000 (engine B's at +0x1000) */
+    const uint8_t *palette; /* 0x05000000, 2 KB */
+    const uint8_t *oam;     /* 0x07000000, 2 KB */
     const KhdaysVramPages *vram;
-    const uint8_t *bank[4];  /* banks A-D, for the VRAM display mode */
+    const uint8_t *bank[4]; /* banks A-D, for the VRAM display mode */
     /* The 3D engine's output for BG0: 256x192, per pixel RGB 6-bit each in
      * bits 0-5/8-13/16-21 and the alpha (0-31) in bits 24-28; alpha 0 is
      * transparent. NULL: no 3D image (the layer is transparent). */
@@ -26,7 +26,7 @@ typedef struct KhdaysGpuInput {
 
 /* What an engine keeps from one frame to the next. */
 typedef struct KhdaysGpu2dState {
-    uint8_t win_y[2];  /* WIN0/WIN1 vertically active (GBATEK: "DS Window Glitches") */
+    uint8_t win_y[2]; /* WIN0/WIN1 vertically active (GBATEK: "DS Window Glitches") */
 } KhdaysGpu2dState;
 
 /* How a pixel of engine A would come out with the 3D (BG0) opaque there,
@@ -87,15 +87,14 @@ typedef struct KhdaysGpu2dWide {
     KhdaysGpu2dComposition *records; /* columns x 192 */
     int pieces;                      /* what it found, for KHDAYS_TRACE_2D */
     KhdaysGpu2dPiece piece[KHDAYS_GPU2D_MAX_PIECES];
-    int check;                       /* also make each record the long way ... */
-    int mismatches;                  /* ... and count those the shortcuts got otherwise */
+    int check;      /* also make each record the long way ... */
+    int mismatches; /* ... and count those the shortcuts got otherwise */
 } KhdaysGpu2dWide;
 
 /* Renders one engine's frame (0 = A, 1 = B) into `out` as 0x00RRGGBB; if
  * `out555` is not NULL, also as BGR555 (the 6-bit result halved) -- what the
  * savestate test compares with DeSmuME's framebuffer. */
-void khdays_gpu2d_frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
-                        uint32_t *out, uint16_t *out555);
+void khdays_gpu2d_frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine, uint32_t *out, uint16_t *out555);
 
 /* The same, and when `records` (256x192) is not NULL engine A's
  * composition records where it shows the 3D, when `wide` is not NULL its

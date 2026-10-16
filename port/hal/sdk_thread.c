@@ -15,12 +15,12 @@ void OS_InitContext(OSContext *context, u32 newpc, u32 newsp)
     newpc += 4;
     context->pc_plus4 = newpc;
     context->sp_svc = newsp;
-    newsp -= 0x40;  /* HW_SVC_STACK_SIZE */
+    newsp -= 0x40; /* HW_SVC_STACK_SIZE */
     if (newsp & 4) {
         newsp -= 4;
     }
     context->sp = newsp;
-    context->cpsr = (newpc & 1) ? 0x3f : 0x1f;  /* SYS mode, Thumb or ARM */
+    context->cpsr = (newpc & 1) ? 0x3f : 0x1f; /* SYS mode, Thumb or ARM */
     for (int i = 0; i < 13; ++i) {
         context->r[i] = 0;
     }

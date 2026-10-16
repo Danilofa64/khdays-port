@@ -21,12 +21,16 @@ public:
     Job(const Job&) = delete;
     Job& operator=(const Job&) = delete;
 
-    bool done() const { return done_.load(); }
-    int exit_code() const { return exit_code_.load(); }  // valid once done; -1 when it could not start
-    std::string error() const;                           // why it could not start
-    std::vector<std::string> lines() const;               // its output so far
-    std::string last_line() const;                         // the latest line of it
-    void stop();                                          // ends it (killed)
+    bool done() const {
+        return done_.load();
+    }
+    int exit_code() const {
+        return exit_code_.load();
+    }                                        // valid once done; -1 when it could not start
+    std::string error() const;               // why it could not start
+    std::vector<std::string> lines() const;  // its output so far
+    std::string last_line() const;           // the latest line of it
+    void stop();                             // ends it (killed)
 
 private:
     void run();

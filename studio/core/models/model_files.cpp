@@ -34,7 +34,8 @@ bool import_model(const fs::path& model, khdays::assets::ImportedModel* out, std
         *out = ext == ".fbx" || ext == ".obj" ? khdays::assets::import_fbx(model) : khdays::assets::import_gltf(model);
         return true;
     } catch (const std::exception& e) {
-        if (why != nullptr) *why = e.what();
+        if (why != nullptr)
+            *why = e.what();
         return false;
     }
 }
@@ -45,17 +46,20 @@ std::vector<Companion> model_companions(const fs::path& model, std::vector<std::
     const fs::path folder = model.parent_path();
     const std::string ext = lower(u8(model.extension()));
     auto add = [&](const fs::path& source, const std::string& relative) {
-        if (taken.insert(relative).second) out.push_back({source, relative});
+        if (taken.insert(relative).second)
+            out.push_back({source, relative});
     };
 
     if (ext == ".gltf" || ext == ".glb") {
         cgltf_options options{};
         cgltf_data* data = nullptr;
         const std::string path = u8(model);
-        if (cgltf_parse_file(&options, path.c_str(), &data) != cgltf_result_success) return out;
+        if (cgltf_parse_file(&options, path.c_str(), &data) != cgltf_result_success)
+            return out;
         const std::unique_ptr<cgltf_data, void (*)(cgltf_data*)> guard(data, cgltf_free);
         auto external = [&](const char* uri) {
-            if (uri == nullptr || std::strncmp(uri, "data:", 5) == 0) return;
+            if (uri == nullptr || std::strncmp(uri, "data:", 5) == 0)
+                return;
             std::string relative(uri);
             cgltf_decode_uri(relative.data());
             relative.resize(std::strlen(relative.c_str()));
@@ -67,8 +71,10 @@ std::vector<Companion> model_companions(const fs::path& model, std::vector<std::
                 not_found->push_back(relative);
             }
         };
-        for (cgltf_size i = 0; i < data->buffers_count; ++i) external(data->buffers[i].uri);
-        for (cgltf_size i = 0; i < data->images_count; ++i) external(data->images[i].uri);
+        for (cgltf_size i = 0; i < data->buffers_count; ++i)
+            external(data->buffers[i].uri);
+        for (cgltf_size i = 0; i < data->images_count; ++i)
+            external(data->images[i].uri);
         return out;
     }
 
@@ -77,15 +83,19 @@ std::vector<Companion> model_companions(const fs::path& model, std::vector<std::
         ufbx_error error{};
         const std::string path = u8(model);
         ufbx_scene* scene = ufbx_load_file_len(path.data(), path.size(), &options, &error);
-        if (scene == nullptr) return out;
+        if (scene == nullptr)
+            return out;
         const std::unique_ptr<ufbx_scene, void (*)(ufbx_scene*)> guard(scene, ufbx_free_scene);
         for (std::size_t i = 0; i < scene->textures.count; ++i) {
             const ufbx_texture* t = scene->textures.data[i];
-            if (t->content.size > 0) continue;  // inside the file
+            if (t->content.size > 0)
+                continue;  // inside the file
             // fbx.cpp's order: relative, absolute, the bare file name
             auto file = khdays::assets::find_texture(folder, text(t->relative_filename));
-            if (!file) file = khdays::assets::find_texture(folder, text(t->absolute_filename));
-            if (!file) file = khdays::assets::find_texture(folder, text(t->filename));
+            if (!file)
+                file = khdays::assets::find_texture(folder, text(t->absolute_filename));
+            if (!file)
+                file = khdays::assets::find_texture(folder, text(t->filename));
             if (file) {
                 add(*file, u8(file->filename()));  // beside the model: found there by its name
             } else if (not_found != nullptr && !text(t->filename).empty()) {

@@ -34,14 +34,14 @@ static void missing(unsigned what, const char *text)
 
 typedef struct Engine {
     const KhdaysGpuInput *in;
-    int id;                  /* 0 = A, 1 = B */
-    const uint8_t *io;       /* this engine's registers */
+    int id;            /* 0 = A, 1 = B */
+    const uint8_t *io; /* this engine's registers */
     const uint8_t *bg_pal;
     const uint8_t *obj_pal;
     const uint8_t *oam;
     int bg_area, obj_area, bg_ext_area, obj_ext_area;
     uint32_t dispcnt;
-    uint32_t char_base;      /* engine A's 64 KB steps from DISPCNT */
+    uint32_t char_base; /* engine A's 64 KB steps from DISPCNT */
     uint32_t screen_base;
 } Engine;
 
@@ -58,7 +58,7 @@ static uint32_t rd32(const uint8_t *p)
 static uint8_t vram8(const Engine *e, int area, uint32_t address)
 {
     const uint8_t *page;
-    address &= khdays_vram_area_size[area] - 1;  /* every 2D area is a power of two */
+    address &= khdays_vram_area_size[area] - 1; /* every 2D area is a power of two */
     page = e->in->vram->page[area][address / KHDAYS_VRAM_PAGE];
     return page != NULL ? page[address % KHDAYS_VRAM_PAGE] : 0;
 }
@@ -117,8 +117,7 @@ static void text_bg(const Engine *e, int bg, int line, uint16_t *out)
     const uint32_t wmask = (size & 1) ? 511 : 255;
     const uint32_t hmask = (size & 2) ? 511 : 255;
     const uint32_t y = ((uint32_t)line + vofs) & hmask;
-    const uint32_t screen = bg_screen_base(e, cnt) + (y >> 8) * ((size & 1) ? 2u : 1u) * 0x800u +
-                            ((y >> 3) & 31) * 64u;
+    const uint32_t screen = bg_screen_base(e, cnt) + (y >> 8) * ((size & 1) ? 2u : 1u) * 0x800u + ((y >> 3) & 31) * 64u;
     const uint32_t chars = bg_char_base(e, cnt);
     const int slot = (cnt & 0x80) ? ext_slot(e, bg, cnt) : -1;
     for (int x = 0; x < KHDAYS_SCREEN_W; ++x) {
@@ -131,8 +130,8 @@ static void text_bg(const Engine *e, int bg, int line, uint16_t *out)
         if (cnt & 0x80) {
             index = vram8(e, e->bg_area, chars + tile * 64u + py * 8u + px);
             if (index != 0) {
-                out[x] = (uint16_t)(OPAQUE | (slot >= 0 ? ext_color(e, slot, entry >> 12, index)
-                                                        : palette(e->bg_pal, index)));
+                out[x] = (uint16_t)(OPAQUE |
+                                    (slot >= 0 ? ext_color(e, slot, entry >> 12, index) : palette(e->bg_pal, index)));
             }
         } else {
             const uint8_t pair = vram8(e, e->bg_area, chars + tile * 32u + py * 4u + px / 2);
@@ -161,7 +160,7 @@ static void affine_bg(const Engine *e, int bg, int kind, int32_t refx, int32_t r
     int32_t w, h;
     const uint32_t chars = bg_char_base(e, cnt);
     const uint32_t screen = bg_screen_base(e, cnt);
-    const uint32_t bitmap = ((cnt >> 8) & 31) * 0x4000u;  /* without DISPCNT's 64 KB steps */
+    const uint32_t bitmap = ((cnt >> 8) & 31) * 0x4000u; /* without DISPCNT's 64 KB steps */
     const int slot = kind == AFFINE_EXT ? ext_slot(e, bg, cnt) : -1;
     if (kind == AFFINE || kind == AFFINE_EXT) {
         w = h = 128 << size;
@@ -191,21 +190,19 @@ static void affine_bg(const Engine *e, int bg, int kind, int32_t refx, int32_t r
             break;
         }
         case AFFINE_EXT: {
-            const uint16_t entry = vram16(e, e->bg_area,
-                                          screen + (uint32_t)((py >> 3) * (w >> 3) + (px >> 3)) * 2u);
+            const uint16_t entry = vram16(e, e->bg_area, screen + (uint32_t)((py >> 3) * (w >> 3) + (px >> 3)) * 2u);
             const uint32_t tx = (entry & 0x400) ? 7 - (px & 7) : (px & 7);
             const uint32_t ty = (entry & 0x800) ? 7 - (py & 7) : (py & 7);
             const uint8_t index = vram8(e, e->bg_area, chars + (entry & 0x3ffu) * 64u + ty * 8u + tx);
             if (index != 0) {
-                out[x] = (uint16_t)(OPAQUE | (slot >= 0 ? ext_color(e, slot, entry >> 12, index)
-                                                        : palette(e->bg_pal, index)));
+                out[x] = (uint16_t)(OPAQUE |
+                                    (slot >= 0 ? ext_color(e, slot, entry >> 12, index) : palette(e->bg_pal, index)));
             }
             break;
         }
         case BITMAP256:
         case LARGE_BITMAP: {
-            const uint8_t index = vram8(e, e->bg_area,
-                                        (kind == BITMAP256 ? bitmap : 0) + (uint32_t)(py * w + px));
+            const uint8_t index = vram8(e, e->bg_area, (kind == BITMAP256 ? bitmap : 0) + (uint32_t)(py * w + px));
             if (index != 0) {
                 out[x] = (uint16_t)(OPAQUE | palette(e->bg_pal, index));
             }
@@ -213,7 +210,7 @@ static void affine_bg(const Engine *e, int bg, int kind, int32_t refx, int32_t r
         }
         default: {
             const uint16_t color = vram16(e, e->bg_area, bitmap + (uint32_t)(py * w + px) * 2u);
-            if (color & 0x8000) {  /* bit 15 is the alpha flag */
+            if (color & 0x8000) { /* bit 15 is the alpha flag */
                 out[x] = color;
             }
             break;
@@ -228,18 +225,15 @@ static int bg_kind(const Engine *e, int bg)
     const unsigned mode = e->dispcnt & 7;
     const uint16_t cnt = rd16(e->io + 0x08 + 2 * bg);
     static const int8_t table[8][4] = {
-        {0, 0, 0, 0},    /* 0: text x4 */
-        {0, 0, 0, 1},    /* 1: BG3 affine */
-        {0, 0, 1, 1},
-        {0, 0, 0, 2},    /* 3: BG3 extended */
-        {0, 0, 1, 2},
-        {0, 0, 2, 2},
-        {0, -1, 3, -1},  /* 6: BG2 large bitmap (engine A) */
+        {0, 0, 0, 0},                                   /* 0: text x4 */
+        {0, 0, 0, 1},                                   /* 1: BG3 affine */
+        {0, 0, 1, 1},     {0, 0, 0, 2},                 /* 3: BG3 extended */
+        {0, 0, 1, 2},     {0, 0, 2, 2}, {0, -1, 3, -1}, /* 6: BG2 large bitmap (engine A) */
         {-1, -1, -1, -1},
     };
     int kind = table[mode][bg];
     if (e->id == 1 && mode >= 6) {
-        return -1;  /* reserved on engine B */
+        return -1; /* reserved on engine B */
     }
     if (kind == 0) {
         return TEXT_BG;
@@ -259,16 +253,15 @@ static int bg_kind(const Engine *e, int bg)
     return -1;
 }
 
-
 /* --- Objects --------------------------------------------------------------- */
 
 enum { OBJ_NORMAL = 0, OBJ_SEMI = 1, OBJ_WINDOW = 2, OBJ_BITMAP = 3 };
 
 typedef struct ObjLine {
-    uint16_t color[KHDAYS_SCREEN_W];  /* OPAQUE | BGR555 */
+    uint16_t color[KHDAYS_SCREEN_W]; /* OPAQUE | BGR555 */
     uint8_t prio[KHDAYS_SCREEN_W];
     uint8_t mode[KHDAYS_SCREEN_W];
-    uint8_t alpha[KHDAYS_SCREEN_W];   /* bitmap OBJs: attribute 2 bits 12-15 */
+    uint8_t alpha[KHDAYS_SCREEN_W]; /* bitmap OBJs: attribute 2 bits 12-15 */
     uint8_t window[KHDAYS_SCREEN_W];
 } ObjLine;
 
@@ -283,7 +276,7 @@ static uint16_t obj_texel(const Engine *e, uint16_t a0, uint16_t a2, int w, int 
     if (mode == OBJ_BITMAP) {
         uint32_t address;
         uint16_t color;
-        if (e->dispcnt & 0x40) {  /* 1D; the 256-byte boundary is engine A's only */
+        if (e->dispcnt & 0x40) { /* 1D; the 256-byte boundary is engine A's only */
             const uint32_t boundary = (e->id == 0 && (e->dispcnt & (1u << 22))) ? 256 : 128;
             address = tile * boundary + (uint32_t)(ty * w + tx) * 2u;
         } else {
@@ -294,12 +287,11 @@ static uint16_t obj_texel(const Engine *e, uint16_t a0, uint16_t a2, int w, int 
         color = vram16(e, e->obj_area, address);
         return (color & 0x8000) ? color : 0;
     }
-    if (a0 & 0x2000) {  /* 256 colours */
+    if (a0 & 0x2000) { /* 256 colours */
         uint32_t address;
         uint8_t index;
         if (e->dispcnt & 0x10) {
-            address = tile * (32u << ((e->dispcnt >> 20) & 3)) +
-                      (uint32_t)((ty >> 3) * (w >> 3) + (tx >> 3)) * 64u;
+            address = tile * (32u << ((e->dispcnt >> 20) & 3)) + (uint32_t)((ty >> 3) * (w >> 3) + (tx >> 3)) * 64u;
         } else {
             address = (tile & ~1u) * 32u + (uint32_t)(ty >> 3) * 1024u + (uint32_t)(tx >> 3) * 64u;
         }
@@ -315,8 +307,7 @@ static uint16_t obj_texel(const Engine *e, uint16_t a0, uint16_t a2, int w, int 
         uint32_t address;
         uint8_t pair, index;
         if (e->dispcnt & 0x10) {
-            address = tile * (32u << ((e->dispcnt >> 20) & 3)) +
-                      (uint32_t)((ty >> 3) * (w >> 3) + (tx >> 3)) * 32u;
+            address = tile * (32u << ((e->dispcnt >> 20) & 3)) + (uint32_t)((ty >> 3) * (w >> 3) + (tx >> 3)) * 32u;
         } else {
             address = tile * 32u + (uint32_t)(ty >> 3) * 1024u + (uint32_t)(tx >> 3) * 32u;
         }
@@ -341,7 +332,7 @@ static void objects(const Engine *e, int line, ObjLine *out)
         int w, h, bw, bh, x, dy;
         int32_t pa = 256, pb = 0, pc = 0, pd = 256;
         if ((!affine && (a0 & 0x200)) || shape == 3) {
-            continue;  /* disabled, or the prohibited shape */
+            continue; /* disabled, or the prohibited shape */
         }
         w = obj_w[shape][size];
         h = obj_h[shape][size];
@@ -359,8 +350,7 @@ static void objects(const Engine *e, int line, ObjLine *out)
             missing(MISSING_OBJ_MOSAIC, "OBJ mosaic (drawn without it)");
         }
         if (mode == OBJ_BITMAP && (a2 >> 12) != 15) {
-            missing(MISSING_BITMAP_OBJ_ALPHA,
-                    "a bitmap OBJ's alpha (GBATEK does not give the formula; drawn opaque)");
+            missing(MISSING_BITMAP_OBJ_ALPHA, "a bitmap OBJ's alpha (GBATEK does not give the formula; drawn opaque)");
         }
         x = a1 & 0x1ff;
         if (x >= 256) {
@@ -413,8 +403,8 @@ static void objects(const Engine *e, int line, ObjLine *out)
 void khdays_gpu2d_describe(const KhdaysGpuInput *in, int engine, FILE *out)
 {
     /* the names of bg_kind's kinds, in its enum's order */
-    static const char *const kinds[] = {"affine", "extended affine", "256-colour bitmap", "direct bitmap",
-                                        "large bitmap", "text"};
+    static const char *const kinds[] = {"affine",        "extended affine", "256-colour bitmap",
+                                        "direct bitmap", "large bitmap",    "text"};
     static const char *const modes[] = {"normal", "semi", "window", "bitmap"};
     Engine e;
     memset(&e, 0, sizeof(e));
@@ -432,8 +422,11 @@ void khdays_gpu2d_describe(const KhdaysGpuInput *in, int engine, FILE *out)
         const int kind = bg_kind(&e, b);
         fprintf(out, "  BG%d %s %s priority %u, BGCNT %04x, scroll %u,%u\n", b,
                 (e.dispcnt & (0x100u << b)) ? "on " : "off",
-                b == 0 && engine == 0 && (e.dispcnt & 8) ? "3D" : kind >= 0 && kind <= TEXT_BG ? kinds[kind] : "-", cnt & 3u,
-                (unsigned)cnt, (unsigned)(rd16(e.io + 0x10 + 4 * b) & 0x1ff), (unsigned)(rd16(e.io + 0x12 + 4 * b) & 0x1ff));
+                b == 0 && engine == 0 && (e.dispcnt & 8) ? "3D"
+                : kind >= 0 && kind <= TEXT_BG           ? kinds[kind]
+                                                         : "-",
+                cnt & 3u, (unsigned)cnt, (unsigned)(rd16(e.io + 0x10 + 4 * b) & 0x1ff),
+                (unsigned)(rd16(e.io + 0x12 + 4 * b) & 0x1ff));
     }
     for (int i = 0; i < 128; ++i) {
         const uint8_t *entry = e.oam + 8 * i;
@@ -455,8 +448,8 @@ void khdays_gpu2d_describe(const KhdaysGpuInput *in, int engine, FILE *out)
             }
         }
         fprintf(out, "  OBJ %3d at %4d,%3u %2ux%-2u tile %4u palette %2u priority %u %s%s%s%s\n", i, x, a0 & 0xffu,
-                obj_w[shape][size], obj_h[shape][size], a2 & 0x3ffu, (unsigned)(a2 >> 12), (a2 >> 10) & 3u, modes[(a0 >> 10) & 3],
-                (a0 & 0x2000) ? " 256-colour" : "", affine ? " affine" : "",
+                obj_w[shape][size], obj_h[shape][size], a2 & 0x3ffu, (unsigned)(a2 >> 12), (a2 >> 10) & 3u,
+                modes[(a0 >> 10) & 3], (a0 & 0x2000) ? " 256-colour" : "", affine ? " affine" : "",
                 !affine && (a1 & 0x3000) ? " flipped" : "");
     }
 }
@@ -476,8 +469,7 @@ static int window_x(uint16_t winh, int x)
         x2 = 256;
     }
     if (x1 > x2) {
-        missing(MISSING_WINDOW_X1_AFTER_X2,
-                "a window with X1 > X2 (not documented for the DS; wrapped around)");
+        missing(MISSING_WINDOW_X1_AFTER_X2, "a window with X1 > X2 (not documented for the DS; wrapped around)");
         return x >= x1 || x < x2;
     }
     return x >= x1 && x < x2;
@@ -614,9 +606,8 @@ static uint16_t effects(const Blend *bl, const ObjLine *obj, int x, unsigned mas
 /* How this pixel would come out with the 3D opaque, and with it transparent
  * (gpu2d.h KhdaysGpu2dComposition): the same picks and effects as
  * compose_line, with BG0 taken each way. */
-static void record(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const ObjLine *obj,
-                   const unsigned bg_prio[4], const Blend *bl, int x, unsigned mask, uint16_t backdrop,
-                   KhdaysGpu2dComposition *rec)
+static void record(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const ObjLine *obj, const unsigned bg_prio[4],
+                   const Blend *bl, int x, unsigned mask, uint16_t backdrop, KhdaysGpu2dComposition *rec)
 {
     int layer[2];
     uint16_t color[2];
@@ -631,9 +622,9 @@ static void record(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const Ob
         if ((mask & 0x20) && (bl->bldcnt & 1u)) {
             const int second = (bl->bldcnt >> 8) & (1u << layer[1]);
             rec->effect = bl->effect == 1 && second ? KHDAYS_2D_EFFECT_BLEND
-                        : bl->effect == 2          ? KHDAYS_2D_EFFECT_BRIGHTEN
-                        : bl->effect == 3          ? KHDAYS_2D_EFFECT_DARKEN
-                                                   : KHDAYS_2D_EFFECT_NONE;
+                          : bl->effect == 2         ? KHDAYS_2D_EFFECT_BRIGHTEN
+                          : bl->effect == 3         ? KHDAYS_2D_EFFECT_DARKEN
+                                                    : KHDAYS_2D_EFFECT_NONE;
         }
     } else if (layer[1] == 0) {
         /* the 3D under the top layer: blended with it, or the top layer's
@@ -647,9 +638,9 @@ static void record(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const Ob
                 rec->effect = KHDAYS_2D_EFFECT_BLEND;
             } else if (bl->bldcnt & (1u << layer[0])) {
                 rec->effect = bl->effect == 1 && second ? KHDAYS_2D_EFFECT_BLEND
-                            : bl->effect == 2          ? KHDAYS_2D_EFFECT_BRIGHTEN
-                            : bl->effect == 3          ? KHDAYS_2D_EFFECT_DARKEN
-                                                       : KHDAYS_2D_EFFECT_NONE;
+                              : bl->effect == 2         ? KHDAYS_2D_EFFECT_BRIGHTEN
+                              : bl->effect == 3         ? KHDAYS_2D_EFFECT_DARKEN
+                                                        : KHDAYS_2D_EFFECT_NONE;
             }
         }
     }
@@ -659,9 +650,9 @@ static void record(uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const Ob
  * pixel (0-31). `rec`: when not NULL, gets each pixel's composition record.
  * `masks`: when not NULL, gets each pixel's window mask (the layers and
  * effects it lets show). */
-static void compose_line(const Engine *e, const KhdaysGpu2dState *state,
-                         uint16_t bg[4][KHDAYS_SCREEN_W], const int bg_on[4], const ObjLine *obj,
-                         const uint8_t *alpha3d, uint16_t *out, KhdaysGpu2dComposition *rec, uint8_t *masks)
+static void compose_line(const Engine *e, const KhdaysGpu2dState *state, uint16_t bg[4][KHDAYS_SCREEN_W],
+                         const int bg_on[4], const ObjLine *obj, const uint8_t *alpha3d, uint16_t *out,
+                         KhdaysGpu2dComposition *rec, uint8_t *masks)
 {
     Blend bl;
     const uint16_t winin = rd16(e->io + 0x48), winout = rd16(e->io + 0x4a);
@@ -853,9 +844,9 @@ static void wide_records(const Engine *e, KhdaysGpu2dWide *wide, const KhdaysGpu
             } else {
                 obj.color[0] = 0;
             }
-            mask = source >= 0 && source != x ? lines.mask[y][source]
-                 : x >= 0 && x < KHDAYS_SCREEN_W ? lines.mask[y][x]
-                                                 : outside;
+            mask = source >= 0 && source != x      ? lines.mask[y][source]
+                   : x >= 0 && x < KHDAYS_SCREEN_W ? lines.mask[y][x]
+                                                   : outside;
             if (!(obj.color[0] & OPAQUE) && !(bg[1][0] & OPAQUE) && !(bg[2][0] & OPAQUE) && !(bg[3][0] & OPAQUE) &&
                 !wide->check) {
                 if (!bare_made[mask & 63]) {
@@ -869,8 +860,8 @@ static void wide_records(const Engine *e, KhdaysGpu2dWide *wide, const KhdaysGpu
             if (wide->check) {
                 /* compare with what the shortcuts would have given */
                 KhdaysGpu2dComposition quick;
-                int bare_here = !(obj.color[0] & OPAQUE) && !(bg[1][0] & OPAQUE) && !(bg[2][0] & OPAQUE) &&
-                                !(bg[3][0] & OPAQUE);
+                int bare_here =
+                    !(obj.color[0] & OPAQUE) && !(bg[1][0] & OPAQUE) && !(bg[2][0] & OPAQUE) && !(bg[3][0] & OPAQUE);
                 if (source >= 0 && source == x && ds != NULL) {
                     quick = ds[y * KHDAYS_SCREEN_W + x];
                 } else if (bare_here) {
@@ -954,7 +945,7 @@ static uint16_t to_555(uint32_t c6)
 
 static int32_t reference(const uint8_t *p)
 {
-    return (int32_t)(rd32(p) << 4) >> 4;  /* 28-bit signed, 8 fractional bits */
+    return (int32_t)(rd32(p) << 4) >> 4; /* 28-bit signed, 8 fractional bits */
 }
 
 uint32_t khdays_gpu2d_finish(uint16_t color, const KhdaysGpu2dInfo *info)
@@ -962,8 +953,7 @@ uint32_t khdays_gpu2d_finish(uint16_t color, const KhdaysGpu2dInfo *info)
     return to_rgb888(bright(color, info->master_bright));
 }
 
-void khdays_gpu2d_frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
-                        uint32_t *out, uint16_t *out555)
+void khdays_gpu2d_frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine, uint32_t *out, uint16_t *out555)
 {
     khdays_gpu2d_frame_ex(in, state, engine, out, out555, NULL, NULL, NULL);
 }
@@ -1006,8 +996,8 @@ static void frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
         info->eva = (uint8_t)coefficient(bldalpha);
         info->evb = (uint8_t)coefficient(bldalpha >> 8);
         info->evy = (uint8_t)coefficient(rd16(e.io + 0x54));
-        info->is3d = (uint8_t)(engine == 0 && (e.dispcnt & 0x08) && (e.dispcnt & 0x100) && display == 1 &&
-                               !(e.dispcnt & 0x80));
+        info->is3d =
+            (uint8_t)(engine == 0 && (e.dispcnt & 0x08) && (e.dispcnt & 0x100) && display == 1 && !(e.dispcnt & 0x80));
         info->master_bright = master;
         info->bg0_hofs = (uint16_t)(rd16(e.io + 0x10) & 0x1ff);
         info->backdrop = palette(e.bg_pal, 0);
@@ -1016,8 +1006,7 @@ static void frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
     if (records != NULL) {
         memset(records, 0, sizeof(*records) * KHDAYS_SCREEN_W * KHDAYS_SCREEN_H);
     }
-    if (wide != NULL && (engine != 0 || wide->columns <= KHDAYS_SCREEN_W ||
-                         wide->columns > KHDAYS_GPU2D_MAX_COLUMNS)) {
+    if (wide != NULL && (engine != 0 || wide->columns <= KHDAYS_SCREEN_W || wide->columns > KHDAYS_GPU2D_MAX_COLUMNS)) {
         wide = NULL; /* only engine A shows the 3D, and only a wider picture has sides to fill */
     }
     if (wide != NULL) {
@@ -1034,8 +1023,10 @@ static void frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
         if (display == 0 || (display == 1 && (e.dispcnt & 0x80))) {
             /* display off, or forced blank: white */
             for (int x = 0; x < KHDAYS_SCREEN_W; ++x) {
-                if (out555) out555[line * KHDAYS_SCREEN_W + x] = 0x7fff;
-                if (out) out[line * KHDAYS_SCREEN_W + x] = 0xffffff;
+                if (out555)
+                    out555[line * KHDAYS_SCREEN_W + x] = 0x7fff;
+                if (out)
+                    out[line * KHDAYS_SCREEN_W + x] = 0xffffff;
             }
             continue;
         }
@@ -1073,7 +1064,8 @@ static void frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
                         for (int x = 0; x < KHDAYS_SCREEN_W; ++x) {
                             const uint32_t sx = ((uint32_t)x + hofs) & 511;
                             uint32_t p;
-                            if (sx >= 256) continue;
+                            if (sx >= 256)
+                                continue;
                             p = in->layer3d[line * KHDAYS_SCREEN_W + sx];
                             if ((p >> 24) & 31) {
                                 bg[0][x] = (uint16_t)(OPAQUE | ((p >> 1) & 31) | (((p >> 9) & 31) << 5) |
@@ -1113,8 +1105,10 @@ static void frame(const KhdaysGpuInput *in, KhdaysGpu2dState *state, int engine,
         }
         for (int x = 0; x < KHDAYS_SCREEN_W; ++x) {
             const uint32_t c6 = bright(color[x], master);
-            if (out555) out555[line * KHDAYS_SCREEN_W + x] = to_555(c6);
-            if (out) out[line * KHDAYS_SCREEN_W + x] = to_rgb888(c6);
+            if (out555)
+                out555[line * KHDAYS_SCREEN_W + x] = to_555(c6);
+            if (out)
+                out[line * KHDAYS_SCREEN_W + x] = to_rgb888(c6);
         }
     }
     /* run the rest of the frame's lines, for the windows' vertical flags */

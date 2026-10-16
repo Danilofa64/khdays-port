@@ -27,8 +27,8 @@ const char *khdays_sound_archive_stream_player_name(const KhdaysSoundArchive *ar
  * its number in decimal. 0 if it does not fit in `out`. */
 enum {
     KHDAYS_SOUND_SEQUENCE,
-    KHDAYS_SOUND_SEQUENCE_ARCHIVE_ENTRY,  /* number: the archive; entry: its entry */
-    KHDAYS_SOUND_WAVE,                    /* number: the wave archive; entry: the wave */
+    KHDAYS_SOUND_SEQUENCE_ARCHIVE_ENTRY, /* number: the archive; entry: its entry */
+    KHDAYS_SOUND_WAVE,                   /* number: the wave archive; entry: the wave */
     KHDAYS_SOUND_STREAM
 };
 int khdays_sound_archive_identifier(const KhdaysSoundArchive *archive, int kind, int number, int entry, char *out,

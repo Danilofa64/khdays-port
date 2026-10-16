@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#define NOTICES 4      /* how many of the newest notices are kept (all of them are in the log) */
+#define NOTICES 4 /* how many of the newest notices are kept (all of them are in the log) */
 
 static char notices[NOTICES][160];
 static int notice_count;

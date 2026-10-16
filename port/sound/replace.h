@@ -8,12 +8,12 @@
 
 typedef struct KhdaysReplacement {
     uint32_t rate;
-    int channels;             /* 1 or 2 */
+    int channels; /* 1 or 2 */
     uint64_t frames;
-    int16_t *samples;         /* interleaved */
+    int16_t *samples; /* interleaved */
     int looped;
-    uint64_t loop_start;      /* frames */
-    uint64_t loop_end;        /* frames, past the loop's last */
+    uint64_t loop_start; /* frames */
+    uint64_t loop_end;   /* frames, past the loop's last */
 } KhdaysReplacement;
 
 /* The original's loop, for a file that gives none: in the original's
@@ -39,7 +39,7 @@ float khdays_replacement_sample(const KhdaysReplacement *replacement, double pos
  * `rate`, and, when `looped`, its loop in a `smpl` chunk as the loader
  * reads it back: the originals written out (--dump-sounds), in the form a
  * replacement takes. 0 when it cannot be written. */
-int khdays_replacement_write_wav(const char *path, uint32_t rate, int channels, const int16_t *samples,
-                                 uint64_t frames, int looped, uint64_t loop_start, uint64_t loop_end);
+int khdays_replacement_write_wav(const char *path, uint32_t rate, int channels, const int16_t *samples, uint64_t frames,
+                                 int looped, uint64_t loop_start, uint64_t loop_end);
 
 #endif

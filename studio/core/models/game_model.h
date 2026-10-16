@@ -31,23 +31,23 @@ std::vector<GameData> game_file_data(const std::filesystem::path& nitrofs, const
 std::vector<std::uint8_t> game_label_data(const std::filesystem::path& nitrofs, const std::string& label);
 
 struct GameAnimation {
-    std::string label;      // the data holding the BCA0 (`ba/ch/ro/def.p.z`)
-    std::size_t offset = 0; // the BCA0 in that data
+    std::string label;       // the data holding the BCA0 (`ba/ch/ro/def.p.z`)
+    std::size_t offset = 0;  // the BCA0 in that data
     std::size_t size = 0;
     std::size_t index = 0;  // the animation in the BCA0
     std::string name;
     int frames = 0;
-    bool fits = true;       // made for this skeleton (fits_skeleton), not another with as many bones
+    bool fits = true;  // made for this skeleton (fits_skeleton), not another with as many bones
 };
 
 struct GameModel {
-    std::string label;                      // the data holding its BMD0
-    std::string name;                       // the model's name
+    std::string label;  // the data holding its BMD0
+    std::string name;   // the model's name
     khdays::assets::NeutralModel model;
-    std::vector<Mat> rest;                  // W_G per node (models.cpp lines 246-248)
-    std::vector<int> parents;               // per node, -1 a root
+    std::vector<Mat> rest;                                  // W_G per node (models.cpp lines 246-248)
+    std::vector<int> parents;                               // per node, -1 a root
     std::map<std::string, std::filesystem::path> textures;  // texture name -> its dumped PNG
-    std::vector<GameAnimation> animations;  // the animations with as many nodes: those that fit first
+    std::vector<GameAnimation> animations;                  // the animations with as many nodes: those that fit first
 };
 
 // Whether an animation was made for this model's skeleton: at its first

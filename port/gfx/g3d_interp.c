@@ -84,7 +84,8 @@ static int view_place(const KhdaysG3dPreVertex *v, int32_t flags, double *x, dou
             c[i] = (double)v->word[i];
         }
     }
-    if (c[3] <= 0.0) return 0;
+    if (c[3] <= 0.0)
+        return 0;
     *x = c[0] / c[3];
     *y = c[1] / c[3];
     return 1;
@@ -94,7 +95,8 @@ static int view_place(const KhdaysG3dPreVertex *v, int32_t flags, double *x, dou
 static int moved_far(const KhdaysG3dPreVertex *a, const KhdaysG3dPreVertex *b, int32_t flags)
 {
     double ax, ay, bx, by;
-    if (!view_place(a, flags, &ax, &ay) || !view_place(b, flags, &bx, &by)) return 0;
+    if (!view_place(a, flags, &ax, &ay) || !view_place(b, flags, &bx, &by))
+        return 0;
     return (ax - bx) * (ax - bx) + (ay - by) * (ay - by) > 0.5 * 0.5;
 }
 

@@ -33,8 +33,8 @@ void khdays_thread_trace(const char *what, unsigned int context)
 {
     const OSContext *image = (const OSContext *)KHDAYS_W(context);
     u32 t = word(0x02044338u);
-    fprintf(stderr, "thread: %s %08x (entry %08x, stack %08x, cpsr %02x)\n  list:", what, context,
-            image->pc_plus4 - 4, image->sp_svc, image->cpsr);
+    fprintf(stderr, "thread: %s %08x (entry %08x, stack %08x, cpsr %02x)\n  list:", what, context, image->pc_plus4 - 4,
+            image->sp_svc, image->cpsr);
     for (int n = 0; t != 0 && n < 32; ++n) {
         fprintf(stderr, " %08x(s%u,p%u)", t, word(t + 0x64), word(t + 0x70));
         t = word(t + 0x68);

@@ -34,7 +34,8 @@ fs::path indexed_png(const fs::path& dir, const char* name, int w, int h) {
 
 bool has(const CheckResult& r, Note n) {
     for (const auto& f : r.findings) {
-        if (f.note == n) return true;
+        if (f.note == n)
+            return true;
     }
     return false;
 }
@@ -67,14 +68,16 @@ TEST(sheets_as_the_port_takes_them) {
 TEST(sounds_as_the_port_takes_them) {
     const fs::path dir = studio_test::scratch("sounds");
     std::vector<std::int16_t> samples(2 * 4800);
-    for (std::size_t i = 0; i < samples.size(); ++i) samples[i] = static_cast<std::int16_t>((i * 37) % 2000 - 1000);
+    for (std::size_t i = 0; i < samples.size(); ++i)
+        samples[i] = static_cast<std::int16_t>((i * 37) % 2000 - 1000);
     const fs::path looped = dir / "looped.wav";
     CHECK(khdays_replacement_write_wav(u8(looped).c_str(), 48000, 2, samples.data(), 4800, 1, 100, 4000) != 0);
     const CheckResult r = check_sound(looped);
     CHECK(r.verdict == Verdict::accepted && has(r, Note::sound_looped));
     bool loop_args = false;
     for (const auto& f : r.findings) {
-        if (f.note == Note::sound_looped) loop_args = f.args.size() == 2 && f.args[0] == "100" && f.args[1] == "4000";
+        if (f.note == Note::sound_looped)
+            loop_args = f.args.size() == 2 && f.args[0] == "100" && f.args[1] == "4000";
     }
     CHECK(loop_args);
 
@@ -93,7 +96,8 @@ TEST(other_images_become_png) {
     // a 2x1 24-bit BMP: red, blue
     std::string bmp = "BM";
     auto le32 = [&](std::uint32_t v) {
-        for (int i = 0; i < 4; ++i) bmp += static_cast<char>((v >> (8 * i)) & 0xff);
+        for (int i = 0; i < 4; ++i)
+            bmp += static_cast<char>((v >> (8 * i)) & 0xff);
     };
     auto le16 = [&](std::uint16_t v) {
         bmp += static_cast<char>(v & 0xff);

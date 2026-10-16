@@ -31,9 +31,9 @@ void khdays_gfx_describe_skip(const uint8_t *io, int engine, KhdaysGfxLatch *lat
  * banks), for the CPU's composition. */
 typedef struct KhdaysGfxMemory {
     const KhdaysVramPages *vram;
-    const uint8_t *palette;   /* 0x05000000: both engines' */
-    const uint8_t *bank[4];   /* banks A-D, for a VRAM display */
-    const uint32_t *layer3d;  /* 256x192, or NULL: no 3D */
+    const uint8_t *palette;  /* 0x05000000: both engines' */
+    const uint8_t *bank[4];  /* banks A-D, for a VRAM display */
+    const uint32_t *layer3d; /* 256x192, or NULL: no 3D */
     /* The port's elements (gfx/elements.h), as many as the description's
      * KD_ELEMENTS says, and their images' texels by KE_IMAGE (NULL: none) */
     const uint32_t *elements;
@@ -53,8 +53,8 @@ void khdays_gfx_describe_wide(uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxM
 /* The screen `desc` describes, 256x192 as 0x00RRGGBB, composed on the CPU;
  * or only its pixels in [x0, x1) x [y0, y1) (the rest of `out` untouched). */
 void khdays_gfx_compose_cpu(const uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory, uint32_t *out);
-void khdays_gfx_compose_cpu_rect(const uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory,
-                                 uint32_t *out, int x0, int y0, int x1, int y1);
+void khdays_gfx_compose_cpu_rect(const uint32_t desc[KHDAYS_DESC_WORDS], const KhdaysGfxMemory *memory, uint32_t *out,
+                                 int x0, int y0, int x1, int y1);
 
 /* One pixel as kd_pixel gives it (compose.h): the screen's 6-bit channels,
  * 8-bit with KDF_FINE, or with KDF_SPLIT the 2D apart from the 3D (kd_split);

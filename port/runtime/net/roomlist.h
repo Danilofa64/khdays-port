@@ -22,24 +22,24 @@ enum { KHDAYS_ROOMFIELD_SEARCH, KHDAYS_ROOMFIELD_NAME, KHDAYS_ROOMFIELD_PASSWORD
 enum { KHDAYS_ROOMACTION_CREATE, KHDAYS_ROOMACTION_JOIN };
 
 typedef struct KhdaysRoomRow {
-    int kind;                /* KHDAYS_ROOMROW_* */
-    int which;               /* a field's (KHDAYS_ROOMFIELD_*), an action's (KHDAYS_ROOMACTION_*) or a
+    int kind;               /* KHDAYS_ROOMROW_* */
+    int which;              /* a field's (KHDAYS_ROOMFIELD_*), an action's (KHDAYS_ROOMACTION_*) or a
                               * member's place (0 the host) */
-    KhdaysNetRoomView room;  /* a room's; a member's: players 1 when there, its ping_ms */
-    const char *text;        /* a room's or member's name, or a field's text (UTF-8; in the view's own
+    KhdaysNetRoomView room; /* a room's; a member's: players 1 when there, its ping_ms */
+    const char *text;       /* a room's or member's name, or a field's text (UTF-8; in the view's own
                               * memory) */
 } KhdaysRoomRow;
 
 typedef struct KhdaysRoomView {
-    int screen;              /* KHDAYS_ROOMS_*: NONE when the game's list is not on */
-    int look_game;           /* without the HD pieces: the game's own screens draw it (ui/rooms2d.c),
+    int screen;         /* KHDAYS_ROOMS_*: NONE when the game's list is not on */
+    int look_game;      /* without the HD pieces: the game's own screens draw it (ui/rooms2d.c),
                               * the rows in the game's order, the last (an action) on its button */
-    int top;                 /* then the row on the game's first plate */
-    int language;            /* the game's (1-5) */
-    int cursor;              /* the row selected */
-    int editing;             /* the selected field takes what is typed */
-    int wrong_password;      /* the last join was refused for its password */
-    int16_t master;          /* the game's fade: its brightness, -16 black to 16 white */
+    int top;            /* then the row on the game's first plate */
+    int language;       /* the game's (1-5) */
+    int cursor;         /* the row selected */
+    int editing;        /* the selected field takes what is typed */
+    int wrong_password; /* the last join was refused for its password */
+    int16_t master;     /* the game's fade: its brightness, -16 black to 16 white */
     int row_count;
     KhdaysRoomRow *rows;
     /* the members' screen: the room's name (as this copy chose or joined it; empty when not

@@ -25,7 +25,8 @@ static char env_dump_dir[MAX_PATH];
  * or saves/dump/graphics with the video settings' "Dump graphics". */
 static const char *dump_dir(void)
 {
-    if (env_dump_dir[0] != '\0') return env_dump_dir;
+    if (env_dump_dir[0] != '\0')
+        return env_dump_dir;
     return (khdays_host_graphics_flags() & KHDAYS_HOST_DUMP_GRAPHICS) ? "saves/dump/graphics" : "";
 }
 
@@ -61,7 +62,7 @@ const char *khdays_textures_dump_dir(void)
 
 int khdays_textures_hd(void)
 {
-    khdays_textures_wanted();  /* reads the environment */
+    khdays_textures_wanted(); /* reads the environment */
     return hd_on();
 }
 
@@ -118,19 +119,20 @@ static int name_of(u32 param, u32 pltt, char *name, int size, int banks[2])
 /* --- Seen once ------------------------------------------------------------------ */
 
 typedef struct Seen {
-    u32 param, pltt;  /* the texture's place, size and format; its palette's place */
-    int named;        /* 1: named, 0: no name found */
-    int banks[2];     /* the banks it was looked up in (-1: none) */
-    u32 changes[2];   /* and their change counts then */
-    int hd;           /* whether replacements were looked for */
-    int replacement;  /* the texture drawn instead, or -1 */
+    u32 param, pltt; /* the texture's place, size and format; its palette's place */
+    int named;       /* 1: named, 0: no name found */
+    int banks[2];    /* the banks it was looked up in (-1: none) */
+    u32 changes[2];  /* and their change counts then */
+    int hd;          /* whether replacements were looked for */
+    int replacement; /* the texture drawn instead, or -1 */
 } Seen;
 
 /* Whether what `s` was looked up in has changed since. */
 static int stale(const Seen *s)
 {
     for (int k = 0; k < 2; ++k) {
-        if (s->banks[k] >= 0 && khdays_origin_bank_changes(s->banks[k]) != s->changes[k]) return 1;
+        if (s->banks[k] >= 0 && khdays_origin_bank_changes(s->banks[k]) != s->changes[k])
+            return 1;
     }
     return s->hd != hd_on();
 }
@@ -151,11 +153,14 @@ static unsigned slot_of(u32 param, u32 pltt)
 
 static Seen *seen_find(u32 param, u32 pltt)
 {
-    if (table == NULL) return NULL;
+    if (table == NULL)
+        return NULL;
     for (unsigned i = slot_of(param, pltt), n = 0; n < table_size; i = (i + 1) & (table_size - 1), ++n) {
         const int k = table[i];
-        if (k == 0) return NULL;
-        if (seen[k - 1].param == param && seen[k - 1].pltt == pltt) return &seen[k - 1];
+        if (k == 0)
+            return NULL;
+        if (seen[k - 1].param == param && seen[k - 1].pltt == pltt)
+            return &seen[k - 1];
     }
     return NULL;
 }
@@ -164,7 +169,8 @@ static Seen *seen_find(u32 param, u32 pltt)
 static void table_put(int k)
 {
     unsigned i = slot_of(seen[k - 1].param, seen[k - 1].pltt);
-    while (table[i] != 0) i = (i + 1) & (table_size - 1);
+    while (table[i] != 0)
+        i = (i + 1) & (table_size - 1);
     table[i] = k;
 }
 
@@ -173,11 +179,13 @@ static int table_grow(void)
 {
     const unsigned size = table_size ? table_size * 2 : 1024;
     int *grown = (int *)calloc(size, sizeof(int));
-    if (grown == NULL) return 0;
+    if (grown == NULL)
+        return 0;
     free(table);
     table = grown;
     table_size = size;
-    for (int k = 1; k <= nseen; ++k) table_put(k);
+    for (int k = 1; k <= nseen; ++k)
+        table_put(k);
     return 1;
 }
 
@@ -188,11 +196,13 @@ static Seen *seen_add(u32 param, u32 pltt)
     if (nseen == cap_seen) {
         const int n = cap_seen ? cap_seen * 2 : 256;
         Seen *grown = (Seen *)realloc(seen, sizeof(Seen) * (size_t)n);
-        if (grown == NULL) return NULL;
+        if (grown == NULL)
+            return NULL;
         seen = grown;
         cap_seen = n;
     }
-    if ((unsigned)(nseen + 1) * 2 > table_size && !table_grow()) return NULL;
+    if ((unsigned)(nseen + 1) * 2 > table_size && !table_grow())
+        return NULL;
     seen[nseen].param = param;
     seen[nseen].pltt = pltt;
     ++nseen;
@@ -239,7 +249,8 @@ static Replacement *new_entry(int n, const char *name)
     Replacement *e;
     if (blocks[k] == NULL) {
         Replacement *block = (Replacement *)calloc((size_t)BLOCK << k, sizeof(Replacement));
-        if (block == NULL) return NULL;
+        if (block == NULL)
+            return NULL;
         blocks[k] = block;
     }
     e = entry(n);
@@ -251,7 +262,8 @@ static Replacement *new_entry(int n, const char *name)
 static int find_entry(const char *name, int n)
 {
     for (int i = 0; i < n; ++i) {
-        if (strcmp(entry(i)->name, name) == 0) return i;
+        if (strcmp(entry(i)->name, name) == 0)
+            return i;
     }
     return -1;
 }
@@ -276,7 +288,8 @@ static int replacement_for(const char *name, u32 param)
     u8 *pixels;
     Replacement *e;
     const int known = find_entry(name, n);
-    if (known >= 0) return known;
+    if (known >= 0)
+        return known;
     snprintf(relative, sizeof(relative), "graphics/%s.png", name);
     if (!khdays_mods_find(relative, path, sizeof(path))) {
         /* one for the texture whatever its palette: <file>/tex/<texture>.png */
@@ -296,8 +309,8 @@ static int replacement_for(const char *name, u32 param)
     }
     khdays_tex_size(param, &ow, &oh);
     if (width % ow != 0 || height % oh != 0 || width / ow != height / oh) {
-        fprintf(stderr, "textures: %s is %dx%d, not a whole multiple of the original's %dx%d: stretched\n", path,
-                width, height, ow, oh);
+        fprintf(stderr, "textures: %s is %dx%d, not a whole multiple of the original's %dx%d: stretched\n", path, width,
+                height, ow, oh);
     }
     e = new_entry(n, name);
     if (e == NULL) {
@@ -328,7 +341,8 @@ static int add(const char *name, int width, int height, const uint32_t *texels, 
     const int n = (int)InterlockedCompareExchange(&nreplacements, 0, 0);
     const int known = find_entry(name, n);
     Replacement *e;
-    if (known >= 0) return entry(known)->texture.rgba != NULL ? known : -1;
+    if (known >= 0)
+        return entry(known)->texture.rgba != NULL ? known : -1;
     e = new_entry(n, name);
     if (e == NULL) {
         fprintf(stderr, "textures: no memory for %s: it is not drawn\n", name);
@@ -404,12 +418,14 @@ static int ndumped, cap_dumped;
 static int dumped_already(const char *name)
 {
     for (int i = 0; i < ndumped; ++i) {
-        if (strcmp(dumped[i], name) == 0) return 1;
+        if (strcmp(dumped[i], name) == 0)
+            return 1;
     }
     if (ndumped == cap_dumped) {
         const int n = cap_dumped ? cap_dumped * 2 : 256;
-        char (*grown)[160] = (char (*)[160])realloc(dumped, sizeof(dumped[0]) * (size_t)n);
-        if (grown == NULL) return 1;
+        char(*grown)[160] = (char(*)[160])realloc(dumped, sizeof(dumped[0]) * (size_t)n);
+        if (grown == NULL)
+            return 1;
         dumped = grown;
         cap_dumped = n;
     }
@@ -540,7 +556,7 @@ void khdays_textures_shown(const KhdaysG3dList *list)
         char name[160];
         Seen *s;
         if (format == 0 || (p->flags & KHDAYS_G3D_MOD)) {
-            continue;  /* untextured, or a mod model's own texture */
+            continue; /* untextured, or a mod model's own texture */
         }
         s = seen_find(param, pltt);
         if (s != NULL && !stale(s)) {
@@ -559,7 +575,8 @@ void khdays_textures_shown(const KhdaysG3dList *list)
                 const char *file = "no file";
                 u32 offset, file_offset = 0, run;
                 const int bank = bank_of(KHDAYS_AREA_TEX, (param & 0xffff) * 8u, &offset);
-                if (bank >= 0) khdays_origin_of_bank(bank, offset, &file, &file_offset, &run);
+                if (bank >= 0)
+                    khdays_origin_of_bank(bank, offset, &file, &file_offset, &run);
                 fprintf(stderr, "textures: no name for param %08x pltt %04x (bank %d, %s+0x%x)\n", param, pltt, bank,
                         file, file_offset);
             }
@@ -581,7 +598,7 @@ static void mark(KhdaysG3dPolygon *polys, int32_t n)
         const u32 format = (param >> 26) & 7;
         const Seen *s;
         if (p->flags & KHDAYS_G3D_MOD) {
-            continue;  /* a mod model's polygon: its texture is already chosen */
+            continue; /* a mod model's polygon: its texture is already chosen */
         }
         s = format == 0 || nseen == 0 ? NULL : seen_find(param, format == 7 ? 0 : p->pltt);
         p->replacement = s != NULL ? s->replacement : -1;

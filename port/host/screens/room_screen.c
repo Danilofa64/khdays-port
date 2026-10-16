@@ -17,14 +17,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { MLT_HEADING = 0x3c, MLT_CREATE = 0x3e, MLT_KEYS = 0x3f, MLT_SEEKING = 0x40, MLT_HOST_NOTE = 0x41,
-       MLT_GUEST_WAITS = 0x42, MLT_PROCEED = 0x43, MLT_HOST_KEYS = 0x45, MLT_GUEST_KEYS = 0x46 };
+enum {
+    MLT_HEADING = 0x3c,
+    MLT_CREATE = 0x3e,
+    MLT_KEYS = 0x3f,
+    MLT_SEEKING = 0x40,
+    MLT_HOST_NOTE = 0x41,
+    MLT_GUEST_WAITS = 0x42,
+    MLT_PROCEED = 0x43,
+    MLT_HOST_KEYS = 0x45,
+    MLT_GUEST_KEYS = 0x46
+};
 
 /* the port's look, as the mock-ups the maintainer chose */
 #define CARD_ALPHA 0.63f
 #define CARD_ROUND 24.0f
-#define NOBODY_ALPHA 0.25f   /* an empty place's figure */
-#define RING 3.0f            /* the white ring around a place's circle */
+#define NOBODY_ALPHA 0.25f /* an empty place's figure */
+#define RING 3.0f          /* the white ring around a place's circle */
 static const Uint8 BLACK[3] = {0, 0, 0}, WHITE[3] = {255, 255, 255}, NOBODY[3] = {90, 90, 90};
 
 static struct {
@@ -34,8 +43,8 @@ static struct {
     SDL_Texture *art;
     float fixed[2], rows[2], form[2], card_pitch, frame_there, frame_nobody, signal_pitch, signal_h[4];
     int rows_shown, signal_ms[3];
-    int top;              /* the first room shown */
-    int typing;           /* the system's text input is on */
+    int top;    /* the first room shown */
+    int typing; /* the system's text input is on */
     SDL_Window *window;
 } s;
 
@@ -210,7 +219,7 @@ static void row_pieces(const KhdaysLayoutFrame *fr, float y, int selected)
 /* Four bars, lit as the ping is short (none when it is not measured). */
 static void signal(const KhdaysLayoutFrame *fr, float x, float y, float tallest, int ping_ms)
 {
-    const int lit = ping_ms < 0 ? 0
+    const int lit = ping_ms < 0                ? 0
                     : ping_ms < s.signal_ms[0] ? 4
                     : ping_ms < s.signal_ms[1] ? 3
                     : ping_ms < s.signal_ms[2] ? 2
@@ -325,9 +334,7 @@ static void draw_row(const KhdaysLayoutFrame *fr, const KhdaysRoomView *v, int i
             text(fr, "single", khdays_text(TXT_ROOM_JOIN), 0, y, 1.0f);
         }
         break;
-    default:
-        text(fr, "placeholder", khdays_text(TXT_ROOM_NONE), 0, y, 1.0f);
-        break;
+    default: text(fr, "placeholder", khdays_text(TXT_ROOM_NONE), 0, y, 1.0f); break;
     }
 }
 
@@ -604,9 +611,7 @@ int khdays_room_screen_event(const SDL_Event *e)
         return 0;
     }
     switch (e->type) {
-    case SDL_EVENT_TEXT_INPUT:
-        khdays_roomlist_type(e->text.text);
-        return 1;
+    case SDL_EVENT_TEXT_INPUT: khdays_roomlist_type(e->text.text); return 1;
     case SDL_EVENT_KEY_DOWN:
         switch (e->key.scancode) {
         case SDL_SCANCODE_BACKSPACE: khdays_roomlist_edit(KHDAYS_EDIT_ERASE); break;
@@ -616,8 +621,7 @@ int khdays_room_screen_event(const SDL_Event *e)
         default: break;
         }
         return 1; /* the game's keys (and the settings') wait while a field takes the keyboard */
-    case SDL_EVENT_KEY_UP:
-        return 1;
+    case SDL_EVENT_KEY_UP: return 1;
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
         const SDL_GamepadButton b = (SDL_GamepadButton)e->gbutton.button;
         if (is_pad(b, KHDAYS_ACT_A)) {
@@ -632,8 +636,7 @@ int khdays_room_screen_event(const SDL_Event *e)
         }
         return 1;
     }
-    default:
-        return 0;
+    default: return 0;
     }
 }
 

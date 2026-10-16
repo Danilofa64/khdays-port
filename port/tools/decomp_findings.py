@@ -4,6 +4,7 @@ and `<!-- END generated:NAME -->`: revision, ambiguous, repairs, gaps, narrowpar
 port/tools/prepare.py's output, which must be run first.
   python port/tools/decomp_findings.py
 """
+
 from __future__ import annotations
 
 import collections
@@ -38,8 +39,11 @@ def ambiguous_rows() -> list[str]:
             if not r:
                 continue
             target = int(r[1], 16)
-            candidates = {(o, function_at[(o, target)]) for o in
-                          (int(x) for x in r[2].replace(" ", "").split(",")) if (o, target) in function_at}
+            candidates = {
+                (o, function_at[(o, target)])
+                for o in (int(x) for x in r[2].replace(" ", "").split(","))
+                if (o, target) in function_at
+            }
             if len(candidates) >= 2:
                 targets[(m.name, target)] |= candidates
     by_module = {m.name: m for m in modules}
@@ -58,17 +62,29 @@ def ambiguous_rows() -> list[str]:
                     users[n].add(src.stem)
         alternatives = ", ".join(f"ov{o:03d} `{n}`" for o, n in sorted(candidates))
         for name, files in sorted(users.items()):
-            rows.append(f"| `0x{target:08x}` | {module} | {', '.join(f'`{f}`' for f in sorted(files))} "
-                        f"| `{name}` | {alternatives} |")
-    return ["| Address | Referring module | Referring functions | The C names | All candidates |",
-            "|---|---|---|---|---|"] + rows
+            rows.append(
+                f"| `0x{target:08x}` | {module} | {', '.join(f'`{f}`' for f in sorted(files))} "
+                f"| `{name}` | {alternatives} |"
+            )
+    return [
+        "| Address | Referring module | Referring functions | The C names | All candidates |",
+        "|---|---|---|---|---|",
+    ] + rows
 
 
 def narrow_params() -> list[str]:
     """The functions some file declares with a parameter narrower than the
     definition takes it (abi_narrow_params.txt), and the files that do."""
-    spelled = {"unsigned char": "u8", "signed char": "s8", "char": "s8", "unsigned short": "u16",
-               "unsigned short int": "u16", "short": "s16", "signed short": "s16", "short int": "s16"}
+    spelled = {
+        "unsigned char": "u8",
+        "signed char": "s8",
+        "char": "s8",
+        "unsigned short": "u16",
+        "unsigned short int": "u16",
+        "short": "s16",
+        "signed short": "s16",
+        "short int": "s16",
+    }
     args: dict[str, set[str]] = collections.defaultdict(set)
     files: dict[str, set[str]] = collections.defaultdict(set)
     for line in (GEN / "abi_narrow_params.txt").read_text(encoding="utf-8").splitlines():
@@ -77,8 +93,10 @@ def narrow_params() -> list[str]:
             for a in re.finditer(r"argument (\d+) ([\w ]+?)(?:,|$)", m[3]):
                 args[m[1]].add(f"argument {a[1]} as {spelled.get(a[2].strip(), a[2].strip())}")
             files[m[1]].add(Path(m[2]).stem)
-    return [f"- `{name}` ({', '.join(sorted(args[name]))}): {', '.join(f'`{f}`' for f in sorted(fs))}"
-            for name, fs in sorted(files.items())]
+    return [
+        f"- `{name}` ({', '.join(sorted(args[name]))}): {', '.join(f'`{f}`' for f in sorted(fs))}"
+        for name, fs in sorted(files.items())
+    ]
 
 
 def entries(path: Path) -> list[str]:
@@ -94,8 +112,9 @@ def main() -> int:
     for f in ("abi_repairs.txt", "abi_gaps.txt"):
         if not (GEN / f).exists():
             raise SystemExit(f"{GEN / f} missing: run port/tools/prepare.py first")
-    decomp = subprocess.run(["git", "-C", str(P.DECOMP), "rev-parse", "--short=9", "HEAD"],
-                            capture_output=True, text=True).stdout.strip()
+    decomp = subprocess.run(
+        ["git", "-C", str(P.DECOMP), "rev-parse", "--short=9", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
     sections = {
         "revision": [f"Checked against khdays-decomp `{decomp}`."],
         "ambiguous": ambiguous_rows(),
@@ -115,8 +134,12 @@ def main() -> int:
         text = pattern.sub(lambda m: m[1] + "\n".join(lines) + "\n" + m[2], text)
         filled.append(name)
     DOC.write_text(text, encoding="utf-8", newline="\n")
-    counts = {"ambiguous": "ambiguous references", "repairs": "repairs", "gaps": "gaps",
-              "narrowparams": "narrowly declared parameters"}
+    counts = {
+        "ambiguous": "ambiguous references",
+        "repairs": "repairs",
+        "gaps": "gaps",
+        "narrowparams": "narrowly declared parameters",
+    }
     size = {n: len(sections[n]) - (2 if n == "ambiguous" else 0) for n in filled}  # its table's head
     size.update(repairs=len(entries(GEN / "abi_repairs.txt")), gaps=len(entries(GEN / "abi_gaps.txt")))
     print(f"{DOC}: " + ", ".join(f"{size[n]} {counts[n]}" for n in filled if n in counts))

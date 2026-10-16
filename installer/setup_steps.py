@@ -3,6 +3,7 @@ is one JSON object (exit 0 done, 1 a refusal the player can fix, 2 a failure); w
 whole or absent (`.partial`, setup/state.json) (installer/README.md, "How it works").
   python -I setup_steps.py <command> [arguments] --result <file.json> [--language es|en|fr|de|it]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -91,6 +92,7 @@ def progress(done: int, total: int, what: str) -> None:
 
 # ---- Where the tools are -----------------------------------------------------------------------
 
+
 def tool_folders() -> dict[str, Path]:
     """The repository's tools beside installer/: in the repository and in an install alike."""
     tools = HERE.parent / "tools"
@@ -98,6 +100,7 @@ def tool_folders() -> dict[str, Path]:
 
 
 # ---- Whole or absent ---------------------------------------------------------------------------
+
 
 def partial_name(final: Path) -> Path:
     return final.with_name(final.name + ".partial")
@@ -129,6 +132,7 @@ def making(final: Path) -> Iterator[Path]:
 
 
 # ---- The install's state -----------------------------------------------------------------------
+
 
 def state_path(install: Path) -> Path:
     return install / "setup" / "state.json"
@@ -171,12 +175,14 @@ def command(name: str, help_text: str, arguments: Callable[[argparse.ArgumentPar
     def register(fn: Command) -> Command:
         COMMANDS[name] = (fn, arguments, help_text)
         return fn
+
     return register
 
 
 def load_tool(folder: Path, name: str):
     """One of the repository's tools as a module (its functions, not its command line)."""
     import importlib.util
+
     spec = importlib.util.spec_from_file_location(name, folder / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
@@ -211,13 +217,18 @@ def verify_rom(args: argparse.Namespace) -> dict[str, Any]:
     return {"supported": True, **found, "message": words("rom-supported", args.language, name=found["name"])}
 
 
-@command("find-rom", "a supported ROM already on this computer where KH Melon Mix keeps a player's own",
-         lambda p: p.add_argument("folders", type=Path, nargs="*",
-                                  help="KINGDOM HEARTS HD 1.5+2.5 ReMIX folders (default: Steam's)"))
+@command(
+    "find-rom",
+    "a supported ROM already on this computer where KH Melon Mix keeps a player's own",
+    lambda p: p.add_argument(
+        "folders", type=Path, nargs="*", help="KINGDOM HEARTS HD 1.5+2.5 ReMIX folders (default: Steam's)"
+    ),
+)
 def find_rom(args: argparse.Namespace) -> dict[str, Any]:
     folders = list(args.folders)
     if not folders:
         import steam_library
+
         found = steam_library.app_folder(steam_library.APP_1525)
         folders = [found] if found is not None else []
     for folder in folders:
@@ -235,8 +246,11 @@ def extracted_root(install: Path) -> Path:
     return install / "data" / "extracted"
 
 
-@command("prepare-data", "the game's data prepared from the ROM (tools/extract_data.py)",
-         lambda p: (p.add_argument("rom", type=Path), p.add_argument("install", type=Path)))
+@command(
+    "prepare-data",
+    "the game's data prepared from the ROM (tools/extract_data.py)",
+    lambda p: (p.add_argument("rom", type=Path), p.add_argument("install", type=Path)),
+)
 def prepare_data(args: argparse.Namespace) -> dict[str, Any]:
     install = args.install.resolve()
     checked = rom_check(args.rom)
@@ -252,7 +266,13 @@ def prepare_data(args: argparse.Namespace) -> dict[str, Any]:
     extract = load_tool(folder, "extract_data")
     with making(final) as work:
         # the tool writes <root>/<name>: its root is the .partial folder, its output moved up after
-        out = extract.extract_rom(rom_path=args.rom, output_root=work, database_path=folder / "supported_roms.json", allow_unknown=False, force=True)
+        out = extract.extract_rom(
+            rom_path=args.rom,
+            output_root=work,
+            database_path=folder / "supported_roms.json",
+            allow_unknown=False,
+            force=True,
+        )
         inner = work.with_name(work.name + ".inner")
         remove(inner)
         os.replace(out, inner)
@@ -268,8 +288,11 @@ def prepare_data(args: argparse.Namespace) -> dict[str, Any]:
     return {"data": str(final), "bytes": size, "message": words("data-ready", args.language)}
 
 
-@command("remove-user-files", "the player's saves and settings moved to the Recycle Bin (on uninstall)",
-         lambda p: p.add_argument("install", type=Path))
+@command(
+    "remove-user-files",
+    "the player's saves and settings moved to the Recycle Bin (on uninstall)",
+    lambda p: p.add_argument("install", type=Path),
+)
 def remove_user_files(args: argparse.Namespace) -> dict[str, Any]:
     saves = args.install.resolve() / "saves"
     moved = []
@@ -285,13 +308,28 @@ def to_recycle_bin(path: Path) -> None:
     from ctypes import wintypes
 
     class SHFILEOPSTRUCTW(ctypes.Structure):
-        _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
-                    ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_ushort), ("fAnyOperationsAborted", wintypes.BOOL),
-                    ("hNameMappings", ctypes.c_void_p), ("lpszProgressTitle", wintypes.LPCWSTR)]
+        _fields_ = [
+            ("hwnd", wintypes.HWND),
+            ("wFunc", wintypes.UINT),
+            ("pFrom", wintypes.LPCWSTR),
+            ("pTo", wintypes.LPCWSTR),
+            ("fFlags", ctypes.c_ushort),
+            ("fAnyOperationsAborted", wintypes.BOOL),
+            ("hNameMappings", ctypes.c_void_p),
+            ("lpszProgressTitle", wintypes.LPCWSTR),
+        ]
 
     FO_DELETE, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_SILENT, FOF_NOERRORUI = 3, 0x40, 0x10, 0x4, 0x400
-    op = SHFILEOPSTRUCTW(None, FO_DELETE, str(path) + "\0", None,
-                         FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI, False, None, None)
+    op = SHFILEOPSTRUCTW(
+        None,
+        FO_DELETE,
+        str(path) + "\0",
+        None,
+        FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI,
+        False,
+        None,
+        None,
+    )
     if ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op)) != 0 or op.fAnyOperationsAborted:
         raise OSError(f"could not move {path} to the Recycle Bin")
 
@@ -345,42 +383,55 @@ def _inputs_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--ddd", type=Path, required=True, help="<2.8>/Image/dt/kh3d_first.hed_out")
     p.add_argument("--kh2", type=Path, required=True, help="<1.5+2.5>/Image/dt/kh2_first.hed_out")
     p.add_argument("--movies", type=Path, required=True, help="<1.5+2.5>/STEAM/Mare/MOVIE/Days/dt")
-    p.add_argument("--data", type=Path, default=HERE.parent / "data" / "extracted",
-                   help="the game's extracted data")
+    p.add_argument("--data", type=Path, default=HERE.parent / "data" / "extracted", help="the game's extracted data")
     p.add_argument("--out", type=Path, default=INPUTS_FILE)
 
 
-@command("trace-inputs", "developers: which collection files the HD tools read, traced into hd_inputs.txt",
-         _inputs_arguments)
+@command(
+    "trace-inputs", "developers: which collection files the HD tools read, traced into hd_inputs.txt", _inputs_arguments
+)
 def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
     import subprocess
     import tempfile
+
     repository = HERE.parent
     hand = args.kh2 / "remastered" / HAND / HAND_ASSET
     places = {"mare": args.mare, "settings": args.settings, "ddd": args.ddd, "hand": hand, "movies": args.movies}
     # the archives the sources are extractions of, and how a file there names its entry
-    sources = [("Mare", args.mare, "original"), ("SettingMenu", args.settings, "original"),
-               ("kh3d_first", args.ddd / "original", "original"), ("kh3d_first", args.ddd / "remastered", "remastered"),
-               ("kh2_first", args.kh2 / "original", "original"), ("kh2_first", args.kh2 / "remastered", "remastered"),
-               ("movies", args.movies, "plain")]
+    sources = [
+        ("Mare", args.mare, "original"),
+        ("SettingMenu", args.settings, "original"),
+        ("kh3d_first", args.ddd / "original", "original"),
+        ("kh3d_first", args.ddd / "remastered", "remastered"),
+        ("kh2_first", args.kh2 / "original", "original"),
+        ("kh2_first", args.kh2 / "remastered", "remastered"),
+        ("movies", args.movies, "plain"),
+    ]
     entries: dict[str, set[str]] = {}
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
         # the tools in the repository's layout, the game's data beside them (read only: a junction to
         # data/extracted alone, so nothing they write reaches the repository's data or mods)
-        for rel in [f"tools/hd/{t}" for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS] + \
-                   ["tools/decompress_data.py"]:
+        for rel in [f"tools/hd/{t}" for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS] + ["tools/decompress_data.py"]:
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(repository / rel, root / rel)
         (root / "data").mkdir()
-        subprocess.run(["cmd", "/c", "mklink", "/J", str(root / "data" / "extracted"), str(args.data.resolve())],
-                       check=True, capture_output=True)
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(root / "data" / "extracted"), str(args.data.resolve())],
+            check=True,
+            capture_output=True,
+        )
         log = root / "trace.log"
         try:
             for i, (tool, template) in enumerate(HD_MENU_TOOLS + HD_VIDEO_TOOLS):
                 progress(i, len(HD_MENU_TOOLS) + len(HD_VIDEO_TOOLS), tool)
-                command_line = [sys.executable, "-c", _TRACER, str(root / "tools" / "hd" / tool),
-                                *tool_arguments(template, places)]
+                command_line = [
+                    sys.executable,
+                    "-c",
+                    _TRACER,
+                    str(root / "tools" / "hd" / tool),
+                    *tool_arguments(template, places),
+                ]
                 if (tool, template) in HD_MENU_TOOLS:
                     command_line += ["--mod", "trace"]
                 subprocess.run(command_line, cwd=root, check=True, env={**os.environ, "KHDAYS_TRACE_LOG": str(log)})
@@ -391,7 +442,13 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
                     folder = folder.resolve()
                     if path != folder and folder not in path.parents:
                         continue
-                    files = [path] if kind == "open" else [p for p in path.rglob("*") if p.is_file()] if path.is_dir() else []
+                    files = (
+                        [path]
+                        if kind == "open"
+                        else [p for p in path.rglob("*") if p.is_file()]
+                        if path.is_dir()
+                        else []
+                    )
                     for f in files:
                         rel = f.relative_to(folder).as_posix()
                         if layout == "remastered":
@@ -404,11 +461,14 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
                     break
         finally:
             subprocess.run(["cmd", "/c", "rmdir", str(root / "data" / "extracted")], capture_output=True)
-    tools_digest = hashlib.sha256(b"".join((repository / "tools" / "hd" / t).read_bytes()
-                                           for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS)).hexdigest()
-    lines = ["# The collection files the HD tools read (installer/setup_steps.py trace-inputs):",
-             "# '<archive> <entry>' (its data and remastered assets) or 'movies <file>'.",
-             f"# tools {tools_digest}"]
+    tools_digest = hashlib.sha256(
+        b"".join((repository / "tools" / "hd" / t).read_bytes() for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS)
+    ).hexdigest()
+    lines = [
+        "# The collection files the HD tools read (installer/setup_steps.py trace-inputs):",
+        "# '<archive> <entry>' (its data and remastered assets) or 'movies <file>'.",
+        f"# tools {tools_digest}",
+    ]
     for archive in sorted(entries):
         lines += [f"{archive} {rel}" for rel in sorted(entries[archive])]
     args.out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
@@ -424,43 +484,45 @@ COLLECTION_ARCHIVES = {
 MOVIES = "STEAM/Mare/MOVIE/Days/dt"
 DATA_TOOLS = {"theater_mission.py", "theater_cine.py", "save_screen.py", "ddd_camp.py"}  # take --data
 
-MESSAGES.update({
-    "hd-missing": {
-        "en": "This folder lacks files the HD pieces need: {missing}",
-        "es": "A esta carpeta le faltan archivos que necesitan las piezas HD: {missing}",
-        "fr": "Il manque à ce dossier des fichiers dont les éléments HD ont besoin : {missing}",
-        "de": "In diesem Ordner fehlen Dateien, die die HD-Teile brauchen: {missing}",
-        "it": "In questa cartella mancano file che servono ai pezzi HD: {missing}",
-    },
-    "hd-needs-both": {
-        "en": "The HD menus and HUD need both collections.",
-        "es": "Los menús y el HUD HD necesitan las dos colecciones.",
-        "fr": "Les menus et l'interface HD ont besoin des deux collections.",
-        "de": "Die HD-Menüs und das HD-HUD brauchen beide Sammlungen.",
-        "it": "I menu e l'HUD HD richiedono entrambe le raccolte.",
-    },
-    "hd-needs-1525": {
-        "en": "The HD videos need KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
-        "es": "Los vídeos HD necesitan KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
-        "fr": "Les vidéos HD ont besoin de KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
-        "de": "Die HD-Videos brauchen KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
-        "it": "I video HD richiedono KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
-    },
-    "hd-making": {
-        "en": "Making the HD pieces: {what}",
-        "es": "Haciendo las piezas HD: {what}",
-        "fr": "Création des éléments HD : {what}",
-        "de": "Die HD-Teile werden erstellt: {what}",
-        "it": "Creazione dei pezzi HD: {what}",
-    },
-    "hd-ready": {
-        "en": "The HD pieces are ready.",
-        "es": "Las piezas HD están listas.",
-        "fr": "Les éléments HD sont prêts.",
-        "de": "Die HD-Teile sind fertig.",
-        "it": "I pezzi HD sono pronti.",
-    },
-})
+MESSAGES.update(
+    {
+        "hd-missing": {
+            "en": "This folder lacks files the HD pieces need: {missing}",
+            "es": "A esta carpeta le faltan archivos que necesitan las piezas HD: {missing}",
+            "fr": "Il manque à ce dossier des fichiers dont les éléments HD ont besoin : {missing}",
+            "de": "In diesem Ordner fehlen Dateien, die die HD-Teile brauchen: {missing}",
+            "it": "In questa cartella mancano file che servono ai pezzi HD: {missing}",
+        },
+        "hd-needs-both": {
+            "en": "The HD menus and HUD need both collections.",
+            "es": "Los menús y el HUD HD necesitan las dos colecciones.",
+            "fr": "Les menus et l'interface HD ont besoin des deux collections.",
+            "de": "Die HD-Menüs und das HD-HUD brauchen beide Sammlungen.",
+            "it": "I menu e l'HUD HD richiedono entrambe le raccolte.",
+        },
+        "hd-needs-1525": {
+            "en": "The HD videos need KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
+            "es": "Los vídeos HD necesitan KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
+            "fr": "Les vidéos HD ont besoin de KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
+            "de": "Die HD-Videos brauchen KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
+            "it": "I video HD richiedono KINGDOM HEARTS HD 1.5+2.5 ReMIX.",
+        },
+        "hd-making": {
+            "en": "Making the HD pieces: {what}",
+            "es": "Haciendo las piezas HD: {what}",
+            "fr": "Création des éléments HD : {what}",
+            "de": "Die HD-Teile werden erstellt: {what}",
+            "it": "Creazione dei pezzi HD: {what}",
+        },
+        "hd-ready": {
+            "en": "The HD pieces are ready.",
+            "es": "Las piezas HD están listas.",
+            "fr": "Les éléments HD sont prêts.",
+            "de": "Die HD-Teile sind fertig.",
+            "it": "I pezzi HD sono pronti.",
+        },
+    }
+)
 
 
 def hd_inputs() -> dict[str, list[str]]:
@@ -476,6 +538,7 @@ def hd_inputs() -> dict[str, list[str]]:
 def check_folder(kind: str, folder: Path) -> list[str]:
     """What `folder` lacks of what the HD pieces read from collection `kind` (empty: all there)."""
     import collection_archive
+
     inputs = hd_inputs()
     missing = []
     for archive, rel in COLLECTION_ARCHIVES[kind].items():
@@ -504,21 +567,31 @@ def check_folder(kind: str, folder: Path) -> list[str]:
 @command("find-collections", "the KINGDOM HEARTS collections Steam has on this computer, each checked", lambda p: None)
 def find_collections(args: argparse.Namespace) -> dict[str, Any]:
     import steam_library
+
     steam = steam_library.steam_folder()
     found = []
     for kind, app in (("1.5+2.5", steam_library.APP_1525), ("2.8", steam_library.APP_28)):
         folder = steam_library.app_folder(app, steam) if steam is not None else None
         missing = check_folder(kind, folder) if folder is not None else None
-        found.append({"kind": kind, "folder": str(folder) if folder else None,
-                      "valid": folder is not None and not missing, "missing": missing or []})
+        found.append(
+            {
+                "kind": kind,
+                "folder": str(folder) if folder else None,
+                "valid": folder is not None and not missing,
+                "missing": missing or [],
+            }
+        )
     flat = {}  # the same, one field each, for the installer's script
     for c, key in zip(found, ("1525", "28")):
         flat[f"folder_{key}"] = c["folder"] if c["valid"] else None
     return {"steam": str(steam) if steam else None, "collections": found, **flat}
 
 
-@command("check-collection", "whether a folder holds what the HD pieces read from that collection (exit 1 when not)",
-         lambda p: (p.add_argument("kind", choices=sorted(COLLECTION_ARCHIVES)), p.add_argument("folder", type=Path)))
+@command(
+    "check-collection",
+    "whether a folder holds what the HD pieces read from that collection (exit 1 when not)",
+    lambda p: (p.add_argument("kind", choices=sorted(COLLECTION_ARCHIVES)), p.add_argument("folder", type=Path)),
+)
 def check_collection(args: argparse.Namespace) -> dict[str, Any]:
     missing = check_folder(args.kind, args.folder)
     if missing:
@@ -565,6 +638,7 @@ def _build_arguments(p: argparse.ArgumentParser) -> None:
 def build_hd(args: argparse.Namespace) -> dict[str, Any]:
     import collection_archive
     import subprocess
+
     install = args.install.resolve()
     if args.menus and (args.c1525 is None or args.c28 is None):
         raise Refusal("hd-needs-both")
@@ -588,10 +662,13 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
             (root / "tools" / "hd").mkdir(parents=True, exist_ok=True)
             shutil.copy2(tools["hd"] / tool, root / "tools" / "hd" / tool)
         shutil.copy2(tools["rom"] / "decompress_data.py", root / "tools")
-        places = {"movies": args.c1525 / MOVIES if args.c1525 else Path(),
-                  "mare": src / "Mare.hed_out" / "original", "settings": src / "SettingMenu.hed_out" / "original",
-                  "ddd": src / "kh3d_first.hed_out",
-                  "hand": src / "kh2_first.hed_out" / "remastered" / HAND / HAND_ASSET}
+        places = {
+            "movies": args.c1525 / MOVIES if args.c1525 else Path(),
+            "mare": src / "Mare.hed_out" / "original",
+            "settings": src / "SettingMenu.hed_out" / "original",
+            "ddd": src / "kh3d_first.hed_out",
+            "hand": src / "kh2_first.hed_out" / "remastered" / HAND / HAND_ASSET,
+        }
         # the collections' files the tools read, made from their archives
         wanted = {"Mare": args.c1525} if args.videos else {}
         if args.menus:
@@ -613,7 +690,9 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
                 line += ["--data", str(data)]
             done = subprocess.run(line, cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
             if done.returncode != 0:
-                raise RuntimeError(f"{tool}: {done.stderr.strip().splitlines()[-1] if done.stderr.strip() else done.returncode}")
+                raise RuntimeError(
+                    f"{tool}: {done.stderr.strip().splitlines()[-1] if done.stderr.strip() else done.returncode}"
+                )
             pieces.append({"tool": tool, "made": True})
         # whole, into their places
         state = load_state(install)
@@ -630,10 +709,14 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
     return {"pieces": pieces, "message": words("hd-ready", args.language)}
 
 
-@command("compare-hd", "developers: two folders of HD pieces compared (pictures by their pixels, the rest by bytes)",
-         lambda p: (p.add_argument("made", type=Path), p.add_argument("reference", type=Path)))
+@command(
+    "compare-hd",
+    "developers: two folders of HD pieces compared (pictures by their pixels, the rest by bytes)",
+    lambda p: (p.add_argument("made", type=Path), p.add_argument("reference", type=Path)),
+)
 def compare_hd(args: argparse.Namespace) -> dict[str, Any]:
     from PIL import Image
+
     made = {p.relative_to(args.made).as_posix(): p for p in args.made.rglob("*") if p.is_file()}
     reference = {p.relative_to(args.reference).as_posix(): p for p in args.reference.rglob("*") if p.is_file()}
     differences = []
@@ -664,8 +747,11 @@ MESSAGES["settings-seeded"] = {
 }
 
 
-@command("seed-settings", "the install's starting settings.ini (the maintainer's, without a nickname), when it has none",
-         lambda p: p.add_argument("install", type=Path))
+@command(
+    "seed-settings",
+    "the install's starting settings.ini (the maintainer's, without a nickname), when it has none",
+    lambda p: p.add_argument("install", type=Path),
+)
 def seed_settings(args: argparse.Namespace) -> dict[str, Any]:
     target = args.install.resolve() / "saves" / "settings.ini"
     if target.exists():  # a player's own settings are kept (an update or a repair)
@@ -694,15 +780,15 @@ MESSAGES["steam-missing"] = {
 }
 MESSAGES["steam-wine"] = {
     "en": "This runs under Proton or Wine (a Steam Deck, Linux): the installer cannot reach this computer's "
-          "Steam from here. Add the game to Steam by hand, from Desktop Mode.",
+    "Steam from here. Add the game to Steam by hand, from Desktop Mode.",
     "es": "Se está ejecutando en Proton o Wine (Steam Deck, Linux): desde aquí el instalador no llega al Steam "
-          "de este equipo. Añade el juego a Steam a mano, desde el Modo Escritorio.",
+    "de este equipo. Añade el juego a Steam a mano, desde el Modo Escritorio.",
     "fr": "Ceci tourne sous Proton ou Wine (Steam Deck, Linux) : l'installateur ne peut pas atteindre le Steam "
-          "de cet ordinateur d'ici. Ajoutez le jeu à Steam à la main, depuis le mode Bureau.",
+    "de cet ordinateur d'ici. Ajoutez le jeu à Steam à la main, depuis le mode Bureau.",
     "de": "Dies läuft unter Proton oder Wine (Steam Deck, Linux): Von hier erreicht das Installationsprogramm "
-          "das Steam dieses Computers nicht. Füge das Spiel im Desktop-Modus von Hand zu Steam hinzu.",
+    "das Steam dieses Computers nicht. Füge das Spiel im Desktop-Modus von Hand zu Steam hinzu.",
     "it": "Questo gira sotto Proton o Wine (Steam Deck, Linux): da qui l'installazione non raggiunge lo Steam "
-          "di questo computer. Aggiungi il gioco a Steam a mano, dalla modalità Desktop.",
+    "di questo computer. Aggiungi il gioco a Steam a mano, dalla modalità Desktop.",
 }
 MESSAGES["steam-added"] = {
     "en": "Added the port to Steam.",
@@ -721,6 +807,7 @@ def _steam_setup(install: Path):
     """Steam, the installed port's executable, and the shortcut module; raises if Steam is absent."""
     import steam_library
     import steam_shortcut
+
     steam = steam_library.steam_folder()
     if steam is None:
         raise Refusal("steam-missing")
@@ -732,6 +819,7 @@ def _steam_setup(install: Path):
 def steam_status(args: argparse.Namespace) -> dict[str, Any]:
     import steam_library
     import steam_shortcut
+
     if steam_shortcut.under_wine():  # a Wine prefix's Steam is not the computer's: nothing to look at
         return {"steam": None, "wine": True, "running": False, "accounts": 0, "present": False}
     steam = steam_library.steam_folder()
@@ -746,17 +834,32 @@ def steam_status(args: argparse.Namespace) -> dict[str, Any]:
         except (OSError, ValueError):
             continue
         present = present or steam_shortcut.port_present(entries, exe)
-    return {"steam": str(steam), "steam_exe": str(steam / "steam.exe"), "wine": False,
-            "running": steam_shortcut.steam_running(), "accounts": len(configs), "present": present}
+    return {
+        "steam": str(steam),
+        "steam_exe": str(steam / "steam.exe"),
+        "wine": False,
+        "running": steam_shortcut.steam_running(),
+        "accounts": len(configs),
+        "present": present,
+    }
 
 
-@command("add-to-steam", "add the port to Steam as a non-Steam game (exit 1 if Steam is open)",
-         lambda p: (_steam_arguments(p),
-                    p.add_argument("--proton", help="the Proton tool to map (a Windows game on Linux/Deck)"),
-                    p.add_argument("--proton-from-collection", action="store_true",
-                                   help="map whatever Proton the 1.5+2.5 collection already uses")))
+@command(
+    "add-to-steam",
+    "add the port to Steam as a non-Steam game (exit 1 if Steam is open)",
+    lambda p: (
+        _steam_arguments(p),
+        p.add_argument("--proton", help="the Proton tool to map (a Windows game on Linux/Deck)"),
+        p.add_argument(
+            "--proton-from-collection",
+            action="store_true",
+            help="map whatever Proton the 1.5+2.5 collection already uses",
+        ),
+    ),
+)
 def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
     import steam_shortcut
+
     if steam_shortcut.under_wine():  # also for a silent /STEAM=yes: never write into a Wine prefix's Steam
         raise Refusal("steam-wine")
     steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
@@ -787,8 +890,13 @@ def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
             # an explicit --proton that has no mapping block to go in: the player sets it by hand
             proton, proton_note = None, bool(args.proton)
 
-    result = {"written": written, "appid": appid, "proton": proton, "proton_note": proton_note,
-              "message": words("steam-added", args.language)}
+    result = {
+        "written": written,
+        "appid": appid,
+        "proton": proton,
+        "proton_note": proton_note,
+        "message": words("steam-added", args.language),
+    }
     _record_steam(args.install, appid, written, proton)
     return result
 
@@ -796,6 +904,7 @@ def add_to_steam(args: argparse.Namespace) -> dict[str, Any]:
 @command("remove-from-steam", "take the port out of Steam (exit 1 if Steam is open)", _steam_arguments)
 def remove_from_steam(args: argparse.Namespace) -> dict[str, Any]:
     import steam_shortcut
+
     if steam_shortcut.under_wine():  # nothing was ever written there
         return {"removed": 0}
     steam, exe, steam_library, steam_shortcut = _steam_setup(args.install)
@@ -892,8 +1001,7 @@ def write_result(path: Path | None, result: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     # --result and --language before the command or after its arguments
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--result", type=Path, default=argparse.SUPPRESS,
-                        help="the JSON file the result is written to")
+    common.add_argument("--result", type=Path, default=argparse.SUPPRESS, help="the JSON file the result is written to")
     common.add_argument("--language", choices=LANGUAGES, default=argparse.SUPPRESS)
     # (the parent's actions are shared with the commands' parsers: their defaults stay unset)
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], parents=[common])
@@ -911,8 +1019,10 @@ def main(argv: list[str] | None = None) -> int:
         result = {"message": words(refusal.key, args.language, **refusal.values), "refused": refusal.key}
         code = REFUSED
     except Exception as error:  # a failure: said, and its trace kept for a report
-        result = {"message": words("failed", args.language, what=str(error) or type(error).__name__),
-                  "trace": traceback.format_exc()}
+        result = {
+            "message": words("failed", args.language, what=str(error) or type(error).__name__),
+            "trace": traceback.format_exc(),
+        }
         code = FAILED
     result.setdefault("ok", code == OK)
     write_result(args.result, result)

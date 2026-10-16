@@ -21,9 +21,9 @@ struct Font final {
 
     struct Glyph final {
         std::vector<std::uint8_t> alpha;  // cell_width * cell_height, 0..255
-        int left = 0;      // pixels to skip before drawing
-        int width = 0;     // drawn glyph width
-        int advance = 0;   // pen advance
+        int left = 0;                     // pixels to skip before drawing
+        int width = 0;                    // drawn glyph width
+        int advance = 0;                  // pen advance
     };
     std::vector<Glyph> glyphs;
     std::map<char16_t, int> char_to_glyph;

@@ -21,14 +21,15 @@ void khdays_sound_mix_ds(const KhdaysSoundHw *hw, const float gain[16], float vo
 
     for (int n = 0; n < 16; ++n) {
         const uint32_t cnt = khdays_sound_hw_control(hw, n);
-        const int32_t sample = gain == NULL || gain[n] == 1.0f ? khdays_sound_hw_sample(hw, n)
-                                                               : (int32_t)((float)khdays_sound_hw_sample(hw, n) * gain[n]);
-        int32_t v = (sample * 16) >> divider[(cnt >> 8) & 3];  /* 16.4 */
-        v *= factor(cnt & 0x7f);                                                        /* 16.11 */
-        left[n] = ((int64_t)v * (128 - factor((cnt >> 16) & 0x7f))) >> 10;             /* 16.18 -> 16.8 */
+        const int32_t sample = gain == NULL || gain[n] == 1.0f
+                                   ? khdays_sound_hw_sample(hw, n)
+                                   : (int32_t)((float)khdays_sound_hw_sample(hw, n) * gain[n]);
+        int32_t v = (sample * 16) >> divider[(cnt >> 8) & 3];              /* 16.4 */
+        v *= factor(cnt & 0x7f);                                           /* 16.11 */
+        left[n] = ((int64_t)v * (128 - factor((cnt >> 16) & 0x7f))) >> 10; /* 16.18 -> 16.8 */
         right[n] = ((int64_t)v * factor((cnt >> 16) & 0x7f)) >> 10;
         if ((n == 1 && (soundcnt & 0x1000)) || (n == 3 && (soundcnt & 0x2000))) {
-            continue;  /* not to the mixer */
+            continue; /* not to the mixer */
         }
         mix_left += left[n];
         mix_right += right[n];
@@ -47,10 +48,12 @@ void khdays_sound_mix_ds(const KhdaysSoundHw *hw, const float gain[16], float vo
     }
     for (int side = 0; side < 2; ++side) {
         int64_t v = side == 0 ? master_left : master_right;
-        v = (soundcnt & 0x8000) ? (v * factor(soundcnt & 0x7f)) >> 21 : 0;  /* 14.0 */
+        v = (soundcnt & 0x8000) ? (v * factor(soundcnt & 0x7f)) >> 21 : 0; /* 14.0 */
         v += bias;
-        if (v < 0) v = 0;
-        if (v > 0x3ff) v = 0x3ff;
+        if (v < 0)
+            v = 0;
+        if (v > 0x3ff)
+            v = 0x3ff;
         out[side] = (int16_t)((v - (int64_t)bias) * 64);
         if (volume != 1.0f) {
             out[side] = (int16_t)((float)out[side] * volume);

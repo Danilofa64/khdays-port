@@ -8,8 +8,8 @@
  * them, here, the thousands of times a second interrupts are polled. IF is
  * acknowledged through the model (writing one clears). */
 #define REG_IME IO32(0x208)
-#define REG_IE  IO32(0x210)
-#define REG_IF  IO32(0x214)
+#define REG_IE IO32(0x210)
+#define REG_IF IO32(0x214)
 
 /* OS_IRQTable: one handler per IE bit, at the start of the DTCM. */
 #define OS_IRQ_TABLE ((volatile u32 *)0x027e0000)
@@ -31,12 +31,12 @@ typedef struct {
 extern OSThreadInfo data_02044330;
 
 /* OSThread fields the return path touches. */
-#define THREAD_STATE(t)      (*(volatile u32 *)((t) + 0x64))
+#define THREAD_STATE(t) (*(volatile u32 *)((t) + 0x64))
 #define THREAD_STATE_HALF(t) (*(volatile u16 *)((t) + 0x64))
-#define THREAD_NEXT(t)       (*(volatile u32 *)((t) + 0x68))
-#define THREAD_QUEUE(t)      (*(volatile u32 *)((t) + 0x78))
-#define THREAD_LINK_PREV(t)  (*(volatile u32 *)((t) + 0x7c))
-#define THREAD_LINK_NEXT(t)  (*(volatile u32 *)((t) + 0x80))
+#define THREAD_NEXT(t) (*(volatile u32 *)((t) + 0x68))
+#define THREAD_QUEUE(t) (*(volatile u32 *)((t) + 0x78))
+#define THREAD_LINK_PREV(t) (*(volatile u32 *)((t) + 0x7c))
+#define THREAD_LINK_NEXT(t) (*(volatile u32 *)((t) + 0x80))
 
 extern int OS_SaveContext(void *context);
 extern void OS_LoadContext(void *context);
@@ -74,7 +74,7 @@ void func_01ff8148(void)
     while ((pending & (1u << index)) == 0) {
         ++index;
     }
-    khdays_io_store(0x04000214, 4, 1u << index);  /* write-one-to-clear */
+    khdays_io_store(0x04000214, 4, 1u << index); /* write-one-to-clear */
     {
         const int was = in_vblank;
         in_vblank = index == 0;
@@ -94,7 +94,7 @@ void func_01ff81a0(void)
     u32 current;
     if (thread != 0) {
         do {
-            THREAD_STATE(thread) = 1;  /* OS_THREAD_STATE_READY */
+            THREAD_STATE(thread) = 1; /* OS_THREAD_STATE_READY */
             THREAD_QUEUE(thread) = 0;
             THREAD_LINK_PREV(thread) = 0;
             next = THREAD_LINK_NEXT(thread);

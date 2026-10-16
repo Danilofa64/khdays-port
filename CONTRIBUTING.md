@@ -54,10 +54,15 @@ Do not submit large generated rewrites that cannot be explained or reviewed.
 - Never silently download game data or proprietary tools.
 - Put a file in the folder of its subject (the README's Repository map); the
   port's tests go in `port/tests/`.
-- Keep comments short: a file starts with 2-5 lines on what it is and where it
-  fits, a function with 1-2 lines; inside a function, comment only what the
-  code does not say. How something was found, and when, goes in the commit
-  message or in `docs/RUNTIME_MAP.md` / `docs/DECOMP_FINDINGS.md`.
+- Keep comments short: at most five lines, a file's on what it is and where it
+  fits, a function's on what it does; inside a function, comment only what the
+  code does not say. What takes longer goes in `docs/` (the README's map of
+  them), how something was found and when in the commit message or in
+  `docs/RUNTIME_MAP.md` / `docs/DECOMP_FINDINGS.md`.
+- Format what you change: C and C++ with clang-format (the `.clang-format`
+  files: C++ at the root, the port's C style in `port/`; Visual Studio ships it
+  in `VC/Tools/Llvm`), Python with `ruff format` and `ruff check` (`ruff.toml`,
+  `pip install ruff`). Generated files and `external/` are never formatted.
 
 ## Commit messages
 

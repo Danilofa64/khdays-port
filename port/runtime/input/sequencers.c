@@ -74,8 +74,8 @@ static int x_taken(uint16_t held, int lockon_scheme)
     return (held & (DS_L | DS_R)) == (DS_L | DS_R);
 }
 
-KhdaysMenuFrame khdays_menu_sequencer_frame(KhdaysMenuSequencer *s, uint32_t directions, int field,
-                                            int command_scheme, int lockon_scheme, uint16_t held)
+KhdaysMenuFrame khdays_menu_sequencer_frame(KhdaysMenuSequencer *s, uint32_t directions, int field, int command_scheme,
+                                            int lockon_scheme, uint16_t held)
 {
     KhdaysMenuFrame out = {0, 0};
     const uint32_t pressed = directions & ~s->last_actions;
@@ -157,8 +157,8 @@ static const Sequence *lock_sequence(int action)
     }
 }
 
-uint16_t khdays_lock_sequencer_frame(KhdaysLockSequencer *s, uint32_t actions, int field, int locked,
-                                     int lockon_scheme, uint16_t held, int r_free)
+uint16_t khdays_lock_sequencer_frame(KhdaysLockSequencer *s, uint32_t actions, int field, int locked, int lockon_scheme,
+                                     uint16_t held, int r_free)
 {
     const uint32_t pressed = actions & ~s->last_actions;
     uint16_t out = 0;

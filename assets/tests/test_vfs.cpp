@@ -46,41 +46,32 @@ int main() {
         khdays::vfs::set_mods_root(mods);
 
         // Decompressed wins over nitrofs.
-        expect(read_string(khdays::vfs::read("a/x.bin")) == "decomp",
-               "view priority");
+        expect(read_string(khdays::vfs::read("a/x.bin")) == "decomp", "view priority");
         // Leading slash is normalized.
-        expect(read_string(khdays::vfs::read("/a/x.bin")) == "decomp",
-               "leading slash");
+        expect(read_string(khdays::vfs::read("/a/x.bin")) == "decomp", "leading slash");
         // Falls through to nitrofs when that is the only view.
-        expect(read_string(khdays::vfs::read("only.bin")) == "raw",
-               "nitrofs fallback");
+        expect(read_string(khdays::vfs::read("only.bin")) == "raw", "nitrofs fallback");
 
         // The game's own view skips the extractor's decompressed
         // copies and reads the raw NitroFS file.
-        expect(khdays::vfs::resolve_original("a/x.bin")
-                   == root / "nitrofs" / "a" / "x.bin",
+        expect(khdays::vfs::resolve_original("a/x.bin") == root / "nitrofs" / "a" / "x.bin",
                "original view is raw NitroFS");
-        expect(!khdays::vfs::resolve_original("missing.bin").has_value(),
-               "original view: missing file");
+        expect(!khdays::vfs::resolve_original("missing.bin").has_value(), "original view: missing file");
 
         // A mod file shadows every data view.
         write_file(mods / "ZMod" / "files" / "a" / "x.bin", "mod");
-        expect(read_string(khdays::vfs::read("a/x.bin")) == "mod",
-               "mod override");
-        expect(khdays::vfs::resolve_original("a/x.bin")
-                   == mods / "ZMod" / "files" / "a" / "x.bin",
+        expect(read_string(khdays::vfs::read("a/x.bin")) == "mod", "mod override");
+        expect(khdays::vfs::resolve_original("a/x.bin") == mods / "ZMod" / "files" / "a" / "x.bin",
                "original view: mod override");
 
         // Missing files and path traversal.
         expect(!khdays::vfs::exists("does/not/exist"), "missing file");
-        expect(!khdays::vfs::resolve("../escape").has_value(),
-               "traversal rejected");
+        expect(!khdays::vfs::resolve("../escape").has_value(), "traversal rejected");
         // An absolute path to a real file outside the root must not resolve
         // either (on Windows it carries a drive root name).
         const auto outside = base / "outside.bin";
         write_file(outside, "outside");
-        expect(!khdays::vfs::resolve(outside.generic_string()).has_value(),
-               "absolute path rejected");
+        expect(!khdays::vfs::resolve(outside.generic_string()).has_value(), "absolute path rejected");
 
         bool threw = false;
         try {

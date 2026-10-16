@@ -17,7 +17,7 @@ struct OamPiece final {
     int y = 0;
     int width = 0;
     int height = 0;
-    int tile = 0;      // OBJ tile number (in mapping units)
+    int tile = 0;  // OBJ tile number (in mapping units)
     int palette = 0;
     bool flip_h = false;
     bool flip_v = false;

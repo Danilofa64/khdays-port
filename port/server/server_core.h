@@ -23,8 +23,7 @@ void khdays_server_start(KhdaysUdp *udp, unsigned long long budget, int relay);
 void khdays_server_stop(void);
 
 /* Handles one datagram of `got` bytes from `from`, at time `now` (ms). */
-void khdays_server_datagram(const KhdaysNetAddress *from, const unsigned char *d, long got,
-                            unsigned long long now);
+void khdays_server_datagram(const KhdaysNetAddress *from, const unsigned char *d, long got, unsigned long long now);
 
 /* Forgets what has been silent too long. Call it about once a second. */
 void khdays_server_tick(unsigned long long now);

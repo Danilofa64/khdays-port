@@ -22,9 +22,8 @@ fs::path path_u8(std::string_view utf8) {
 
 std::string lower(std::string_view text) {
     std::string out(text);
-    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
-        return static_cast<char>(c < 0x80 ? std::tolower(c) : c);
-    });
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return static_cast<char>(c < 0x80 ? std::tolower(c) : c); });
     return out;
 }
 
@@ -32,12 +31,15 @@ bool inside(const fs::path& dir, const fs::path& path) {
     std::error_code ec;
     fs::path d = fs::absolute(dir, ec).lexically_normal();
     fs::path p = fs::absolute(path, ec).lexically_normal();
-    if (d.has_filename() == false) d = d.parent_path();  // a trailing separator
-    if (p.has_filename() == false) p = p.parent_path();
+    if (d.has_filename() == false)
+        d = d.parent_path();  // a trailing separator
+    if (p.has_filename() == false)
+        p = p.parent_path();
     auto di = d.begin();
     auto pi = p.begin();
     for (; di != d.end(); ++di, ++pi) {
-        if (pi == p.end() || *di != *pi) return false;
+        if (pi == p.end() || *di != *pi)
+            return false;
     }
     return pi != p.end();  // strictly inside
 }

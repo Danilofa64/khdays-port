@@ -1,0 +1,17 @@
+# The C++ (assets/, studio/): run clang-format (Visual Studio's, VC/Tools/Llvm) on a file
+# before committing it. port/ has its own (.clang-format there: the C style).
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+IndentCaseLabels: false
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AccessModifierOffset: -4
+SortIncludes: Never
+ReflowComments: false
+PointerAlignment: Left
+SpacesBeforeTrailingComments: 2
+BreakStringLiterals: false

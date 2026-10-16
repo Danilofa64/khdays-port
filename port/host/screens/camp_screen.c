@@ -18,21 +18,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NAMES 21              /* status_&.s: the characters' names, in the game's order */
+#define NAMES 21 /* status_&.s: the characters' names, in the game's order */
 #define LABEL_HEARTS 11
 #define LABEL_TRIALS 13
-#define PROMPT 63             /* mlt_&.s: A's prompt, then B's (the menu page has no B: cut there) */
-#define INFO_DAY 0            /* UI/btl/&/info.s: "DAY %d" */
-#define SAV_YES 5             /* UI/cm/str/sav_&.s: "Yes", then "No" */
+#define PROMPT 63  /* mlt_&.s: A's prompt, then B's (the menu page has no B: cut there) */
+#define INFO_DAY 0 /* UI/btl/&/info.s: "DAY %d" */
+#define SAV_YES 5  /* UI/cm/str/sav_&.s: "Yes", then "No" */
 #define SAV_NO 6
-#define DIMMED 0.4f           /* the options while the question is open */
-#define CFG_HIDDEN 3          /* UI/cm/str/cfg_&.s: "?", a setting the game has off */
+#define DIMMED 0.4f  /* the options while the question is open */
+#define CFG_HIDDEN 3 /* UI/cm/str/cfg_&.s: "?", a setting the game has off */
 #define GLYPH_A 0x3349
 #define GLYPH_B 0x3314
 #define LANGUAGES 6
-#define RING 3.0f             /* the white ring around the place's circle */
+#define RING 3.0f /* the white ring around the place's circle */
 #define FACE_RING 4.0f
-#define PLATE_ALPHA 0.6f      /* a member's plate (the character select's) */
+#define PLATE_ALPHA 0.6f /* a member's plate (the character select's) */
 #define PLATE_EDGE 2.0f
 #define PLATE_READY 4.0f
 static const Uint8 BLACK[3] = {0, 0, 0}, EDGE_GREY[3] = {110, 110, 110};
@@ -159,8 +159,7 @@ static const Plan *plan(int language)
         p->tried = 1;
         if (open_file(language, path, (int)sizeof(path), folder, (int)sizeof(folder)) &&
             each_line(path, plan_line, folder, p)) {
-            p->ok = p->backdrop != NULL && p->source[2] > 0 && p->source[3] > 0 && p->window[2] > 0 &&
-                    p->window[3] > 0;
+            p->ok = p->backdrop != NULL && p->source[2] > 0 && p->source[3] > 0 && p->window[2] > 0 && p->window[3] > 0;
             if (p->view[2] <= 0 || p->view[3] <= 0) {
                 memcpy(p->view, p->source, sizeof(p->view));
             }
@@ -267,12 +266,13 @@ static void screen_line(char *line, const char *folder, void *ctx)
         s.overlap = a;
     } else if (SDL_sscanf(line, "members %f", &a) == 1) {
         s.member_pitch = a;
-    } else if ((SDL_sscanf(line, "option %d %n", &n, &at) == 1 || SDL_sscanf(line, "story_option %d %n", &n, &at) == 1 ||
+    } else if ((SDL_sscanf(line, "option %d %n", &n, &at) == 1 ||
+                SDL_sscanf(line, "story_option %d %n", &n, &at) == 1 ||
                 SDL_sscanf(line, "story_sub %d %n", &n, &at) == 1) &&
                n >= 0 && n < (strncmp(line, "story_sub", 9) == 0 ? 4 : KHDAYS_CAMP_OPTIONS)) {
         unsigned short **slot = strncmp(line, "story_sub", 9) == 0 ? &s.story_sub[n]
-                                : line[0] == 's'                    ? &s.story_option[n]
-                                                                    : &s.option[n];
+                                : line[0] == 's'                   ? &s.story_option[n]
+                                                                   : &s.option[n];
         const size_t room = strlen(line + at) + 1;
         SDL_free(*slot);
         *slot = (unsigned short *)SDL_malloc(room * sizeof(unsigned short));
@@ -615,8 +615,8 @@ static void draw_page(const KhdaysLayoutFrame *fr, const KhdaysCampView *v)
         const int on = i == section;
         const float x = tabs[0] + (float)i * tabs[4], y = tabs[1];
         const float *at = place(on ? "page_tab_selected" : "page_tab");
-        khdays_layout_draw_piece(&s.layout, fr, on ? "page_tab_selected" : "page_tab", x + at[0], y + at[1], at[2], at[3],
-                                 1.0f);
+        khdays_layout_draw_piece(&s.layout, fr, on ? "page_tab_selected" : "page_tab", x + at[0], y + at[1], at[2],
+                                 at[3], 1.0f);
         text(fr, on ? "page_tab_on" : "page_tab", khdays_layout_string(&s.cfg, pg->title[i]), x + tabs[2] / 2,
              y + tabs[3] / 2);
     }
@@ -642,13 +642,14 @@ static void draw_page(const KhdaysLayoutFrame *fr, const KhdaysCampView *v)
         const float fade = st->enabled ? 1.0f : DIMMED; /* its arrows: the game changes it not */
         const int value = st->value >= 0 && st->value < st->values ? st->value : 0;
         float vx = x + arrow[0];
-        khdays_layout_draw_piece(&s.layout, fr, on ? "page_row_selected" : "page_row", x + at[0], y + at[1], at[2], at[3],
-                                 1.0f);
+        khdays_layout_draw_piece(&s.layout, fr, on ? "page_row_selected" : "page_row", x + at[0], y + at[1], at[2],
+                                 at[3], 1.0f);
         text(fr, "setting", khdays_layout_string(&s.cfg, st->enabled ? st->name : CFG_HIDDEN), x,
              mid - capitals("setting") / 2);
         if (left != NULL && right != NULL) {
             const float aw = left->w * arrow[3] / left->h;
-            const unsigned short *found = khdays_layout_string(&s.cfg, st->enabled ? st->value_name[value] : CFG_HIDDEN);
+            const unsigned short *found =
+                khdays_layout_string(&s.cfg, st->enabled ? st->value_name[value] : CFG_HIDDEN);
             static const unsigned short none[1] = {0};
             const unsigned short *words = found != NULL ? found : none;
             khdays_layout_draw_piece(&s.layout, fr, "page_arrow_left", vx, mid - arrow[3] / 2, aw, arrow[3], fade);
@@ -905,8 +906,8 @@ int khdays_camp_screen_draw(SDL_Renderer *renderer)
         s.tried = v.language;
         s.ok = load(renderer, v.language);
     }
-    if (!s.ok || (v.config && (s.page_rows[5] <= 0 || s.page_tabs[2] <= 0 ||
-                               khdays_layout_piece(&s.layout, "page_row") == NULL))) {
+    if (!s.ok || (v.config &&
+                  (s.page_rows[5] <= 0 || s.page_tabs[2] <= 0 || khdays_layout_piece(&s.layout, "page_row") == NULL))) {
         khdays_camp_set_page_drawn(0);
         return 0;
     }
@@ -943,8 +944,8 @@ int khdays_camp_screen_draw(SDL_Renderer *renderer)
         SDL_GetTextureSize(s.backdrop, &tw, &th);
         for (int i = 0; i < 4; ++i) {
             const float *r = strips[i];
-            const SDL_FRect src = {r[0] * tw / KHDAYS_LAYOUT_W, r[1] * th / KHDAYS_LAYOUT_H, r[2] * tw / KHDAYS_LAYOUT_W,
-                                   r[3] * th / KHDAYS_LAYOUT_H};
+            const SDL_FRect src = {r[0] * tw / KHDAYS_LAYOUT_W, r[1] * th / KHDAYS_LAYOUT_H,
+                                   r[2] * tw / KHDAYS_LAYOUT_W, r[3] * th / KHDAYS_LAYOUT_H};
             const SDL_FRect dst = khdays_layout_to_window(&fr, r[0], r[1], r[2], r[3]);
             if (r[2] > 0 && r[3] > 0) {
                 SDL_RenderTexture(renderer, s.backdrop, &src, &dst);

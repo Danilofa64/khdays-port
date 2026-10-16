@@ -20,7 +20,10 @@ static void sha1_block(u32 h[5], const unsigned char *p)
         w[t] = rotl(w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16], 1);
     }
     for (int t = 0; t < 80; ++t) {
-        const u32 f = t < 20 ? (b & c) | (~b & d) : t < 40 ? b ^ c ^ d : t < 60 ? (b & c) | (b & d) | (c & d) : b ^ c ^ d;
+        const u32 f = t < 20   ? (b & c) | (~b & d)
+                      : t < 40 ? b ^ c ^ d
+                      : t < 60 ? (b & c) | (b & d) | (c & d)
+                               : b ^ c ^ d;
         const u32 k = t < 20 ? 0x5a827999u : t < 40 ? 0x6ed9eba1u : t < 60 ? 0x8f1bbcdcu : 0xca62c1d6u;
         const u32 next = rotl(a, 5) + f + e + k + w[t];
         e = d;

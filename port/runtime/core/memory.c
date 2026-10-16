@@ -17,10 +17,10 @@
 #include <windows.h>
 
 #define MAIN_RAM_SIZE 0x400000u
-#define DTCM_BASE     0x027e0000u
-#define GRANULE       0x10000u
+#define DTCM_BASE 0x027e0000u
+#define GRANULE 0x10000u
 #define ARM7_WRAM_BASE 0x037f8000u
-#define ARM7_WRAM_END  0x03810000u
+#define ARM7_WRAM_END 0x03810000u
 
 /* The stacks area: 256 MB, each stack after an inaccessible granule. */
 #define STACKS_BASE 0x0c000000u
@@ -32,8 +32,8 @@ _Static_assert(STACKS_BASE + STACKS_SIZE <= KHDAYS_HEAPS_BASE, "the stacks area 
 /* The window is one placeholder (Windows 10 1803 and later) whose regions are replaced by their
  * memory; nothing else can be placed in it. */
 typedef PVOID(WINAPI *VirtualAlloc2Fn)(HANDLE, PVOID, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER *, ULONG);
-typedef PVOID(WINAPI *MapViewOfFile3Fn)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG,
-                                        MEM_EXTENDED_PARAMETER *, ULONG);
+typedef PVOID(WINAPI *MapViewOfFile3Fn)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER *,
+                                        ULONG);
 static VirtualAlloc2Fn virtual_alloc2;
 static MapViewOfFile3Fn map_view_of_file3;
 
@@ -57,11 +57,11 @@ static int carve(const char *what, unsigned address, unsigned size)
     MEMORY_BASIC_INFORMATION info;
     if (VirtualQuery(at(address), &info, sizeof(info)) != 0 && info.AllocationBase == at(address) &&
         info.RegionSize == size) {
-        return 1;  /* a placeholder of its own already (what was split off around it) */
+        return 1; /* a placeholder of its own already (what was split off around it) */
     }
     /* with MEM_PRESERVE_PLACEHOLDER the size is the part split off, never 0 (the SDK's annotation does
      * not know it) */
-#pragma warning(suppress: 28160 6333)
+#pragma warning(suppress : 28160 6333)
     if (!VirtualFree(at(address), size, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER)) {
         return fail(what, address);
     }
@@ -157,7 +157,7 @@ static void *window_stack(size_t size)
                 STACKS_BASE);
         return NULL;
     }
-    address = stacks_next + GRANULE;  /* the granule under it stays inaccessible */
+    address = stacks_next + GRANULE; /* the granule under it stays inaccessible */
     if (!plain("a context's stack", address, rounded)) {
         return NULL;
     }
@@ -171,7 +171,7 @@ static void window_stack_release(void *stack, size_t size)
         const size_t room = returned_room ? returned_room * 2 : 16;
         void *grown = realloc(returned, room * sizeof(*returned));
         if (grown == NULL) {
-            return;  /* kept, never used again */
+            return; /* kept, never used again */
         }
         returned = grown;
         returned_room = room;
@@ -268,7 +268,7 @@ static LONG CALLBACK heaps_commit(EXCEPTION_POINTERS *info)
 void khdays_heaps_reset(void)
 {
     AcquireSRWLockExclusive(&heaps_lock);
-#pragma warning(suppress: 6250) /* decommitted on purpose: the range stays reserved */
+#pragma warning(suppress : 6250) /* decommitted on purpose: the range stays reserved */
     VirtualFree(at(KHDAYS_HEAPS_BASE), KHDAYS_HEAPS_END - KHDAYS_HEAPS_BASE, MEM_DECOMMIT);
     heaps_committed = 0;
     ReleaseSRWLockExclusive(&heaps_lock);
@@ -329,8 +329,8 @@ int khdays_memory_map(void)
      * headers' heaps instead, unless the heaps are made as on the DS. */
     if (!view(ram, "main RAM", 0x02000000, 0, MAIN_RAM_SIZE) ||
         !view(ram, "main RAM mirror", 0x02400000, 0, DTCM_BASE - 0x02400000) ||
-        !view(ram, "main RAM mirror (shared area)", DTCM_BASE + GRANULE,
-              DTCM_BASE + GRANULE - 0x02400000, 0x02800000 - (DTCM_BASE + GRANULE))) {
+        !view(ram, "main RAM mirror (shared area)", DTCM_BASE + GRANULE, DTCM_BASE + GRANULE - 0x02400000,
+              0x02800000 - (DTCM_BASE + GRANULE))) {
         return 0;
     }
     if (khdays_game_heap_ds_memory()) {
@@ -342,19 +342,15 @@ int khdays_memory_map(void)
         return 0;
     }
     /* The I/O registers' and the IPC/card ports' DS ranges stay inaccessible: the port reaches them. */
-    if (!(plain("ITCM", 0x01ff8000, 0x8000) &&
-          plain("DTCM", DTCM_BASE, 0x4000) &&
+    if (!(plain("ITCM", 0x01ff8000, 0x8000) && plain("DTCM", DTCM_BASE, 0x4000) &&
           plain("shared WRAM", 0x03000000, 0x8000) &&
-          plain("ARM7 WRAM", ARM7_WRAM_BASE, ARM7_WRAM_END - ARM7_WRAM_BASE) &&
-          plain("palettes", 0x05000000, 0x800) &&
-          plain("VRAM", 0x06000000, 0x008a4000) &&
-          plain("OAM", 0x07000000, 0x800) &&
-          empty_gba_slot())) {
+          plain("ARM7 WRAM", ARM7_WRAM_BASE, ARM7_WRAM_END - ARM7_WRAM_BASE) && plain("palettes", 0x05000000, 0x800) &&
+          plain("VRAM", 0x06000000, 0x008a4000) && plain("OAM", 0x07000000, 0x800) && empty_gba_slot())) {
         return 0;
     }
     /* The rewritten game's areas above the DS's ranges (port/tools/references/build.py): the register
      * model's memory and the data area. */
-#pragma warning(suppress: 6326) /* the data area's bounds are the build's numbers: it may be empty */
+#pragma warning(suppress : 6326) /* the data area's bounds are the build's numbers: it may be empty */
     if (!(plain("the register model's memory", KHDAYS_IO_VIEW, KHDAYS_IO_SIZE + KHDAYS_IO2_SIZE) &&
           (KHDAYS_DATA_AREA_END == KHDAYS_DATA_AREA ||
            plain("the data area", KHDAYS_DATA_AREA, KHDAYS_DATA_AREA_END - KHDAYS_DATA_AREA)))) {

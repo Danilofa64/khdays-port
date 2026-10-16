@@ -34,7 +34,8 @@ bool png_size(const fs::path& png, int* width, int* height, std::string* why) {
     const char* error = nullptr;
     uint8_t* pixels = khdays_png_read(u8(png).c_str(), width, height, &error);
     if (pixels == nullptr) {
-        if (why != nullptr) *why = error != nullptr ? error : "unreadable";
+        if (why != nullptr)
+            *why = error != nullptr ? error : "unreadable";
         return false;
     }
     khdays_png_free(pixels);
@@ -99,8 +100,8 @@ CheckResult check_sound(const fs::path& file) {
     }
     r.info(Note::sound_decoded, {str(sound.rate), str(sound.channels), str(static_cast<long long>(sound.frames))});
     if (sound.looped) {
-        r.info(Note::sound_looped, {str(static_cast<long long>(sound.loop_start)),
-                                    str(static_cast<long long>(sound.loop_end))});
+        r.info(Note::sound_looped,
+               {str(static_cast<long long>(sound.loop_start)), str(static_cast<long long>(sound.loop_end))});
     } else {
         r.info(Note::sound_plays_once);
     }

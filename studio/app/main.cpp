@@ -21,8 +21,8 @@ namespace studio {
 namespace {
 
 void apply_language(App& app) {
-    app.language = app.settings.language.empty() ? system_language()
-                                                  : language_from_code(app.settings.language, Language::en);
+    app.language =
+        app.settings.language.empty() ? system_language() : language_from_code(app.settings.language, Language::en);
 }
 
 void take_dialog_files(App& app) {
@@ -36,12 +36,18 @@ void take_dialog_files(App& app) {
         models.swap(app.dialog_model_exports);
         sheet_folders.swap(app.dialog_sheet_folders);
     }
-    if (!sheet_folders.empty()) sheets_export_to(app, path_u8(sheet_folders.front()));
-    if (!rooms.empty()) room_export_to(app, path_u8(rooms.front()));
-    if (!models.empty()) model_export_to(app, path_u8(models.front()));
-    if (!files.empty()) app.offer(path_u8(files.front()));
-    if (!clips.empty()) clip_offer(app, path_u8(clips.front()));
-    if (!exports.empty()) sheet_export_to(app, path_u8(exports.front()));
+    if (!sheet_folders.empty())
+        sheets_export_to(app, path_u8(sheet_folders.front()));
+    if (!rooms.empty())
+        room_export_to(app, path_u8(rooms.front()));
+    if (!models.empty())
+        model_export_to(app, path_u8(models.front()));
+    if (!files.empty())
+        app.offer(path_u8(files.front()));
+    if (!clips.empty())
+        clip_offer(app, path_u8(clips.front()));
+    if (!exports.empty())
+        sheet_export_to(app, path_u8(exports.front()));
 }
 
 void draw_notices(App& app);  // below
@@ -63,10 +69,13 @@ void draw_frame(App& app, bool* settings_open, bool* themes_open) {
                           style.ItemSpacing.x;
     ImGui::SameLine();
     const float room = ImGui::GetContentRegionAvail().x;
-    if (room > buttons) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + room - buttons);
-    if (ImGui::Button(tr(app.language, S::themes))) *themes_open = true;
+    if (room > buttons)
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + room - buttons);
+    if (ImGui::Button(tr(app.language, S::themes)))
+        *themes_open = true;
     ImGui::SameLine();
-    if (ImGui::Button(tr(app.language, S::settings))) *settings_open = true;
+    if (ImGui::Button(tr(app.language, S::settings)))
+        *settings_open = true;
     ImGui::Separator();
 
     const float status_h = ImGui::GetFrameHeightWithSpacing();
@@ -85,8 +94,10 @@ void draw_frame(App& app, bool* settings_open, bool* themes_open) {
     ImGui::End();
     draw_notices(app);
 
-    if (*settings_open) draw_settings(app, settings_open);
-    if (*themes_open) draw_themes(app, themes_open);
+    if (*settings_open)
+        draw_settings(app, settings_open);
+    if (*themes_open)
+        draw_themes(app, themes_open);
 }
 
 // The results a person must see (App::tell), over the window: a success in
@@ -96,10 +107,12 @@ void draw_notices(App& app) {
     app.notices.erase(std::remove_if(app.notices.begin(), app.notices.end(),
                                      [&](const App::Notice& n) { return n.ok && now - n.since > 6000; }),
                       app.notices.end());
-    if (app.notices.empty()) return;
+    if (app.notices.empty())
+        return;
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     const float k = ImGui::GetStyle().FontScaleDpi;
-    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + 48.0f * k), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + 48.0f * k), ImGuiCond_Always,
+                            ImVec2(0.5f, 0.0f));
     ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(vp->WorkSize.x * 0.7f, vp->WorkSize.y * 0.5f));
     ImGui::Begin("##notices", nullptr,
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
@@ -108,7 +121,8 @@ void draw_notices(App& app) {
         const App::Notice& n = app.notices[i];
         ImGui::PushID(static_cast<int>(i));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, n.ok ? ImVec4(0.10f, 0.42f, 0.18f, 1) : ImVec4(0.55f, 0.12f, 0.12f, 1));
-        ImGui::BeginChild("##n", ImVec2(vp->WorkSize.x * 0.6f, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##n", ImVec2(vp->WorkSize.x * 0.6f, 0),
+                          ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x - 90.0f * k);
         ImGui::TextUnformatted(n.text.c_str());
         ImGui::PopTextWrapPos();
@@ -151,8 +165,7 @@ int run_window(App& app) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "khdays-studio", why.c_str(), app.window);
         return 1;
     }
-    SDL_SetGPUSwapchainParameters(app.device, app.window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
-                                  SDL_GPU_PRESENTMODE_VSYNC);
+    SDL_SetGPUSwapchainParameters(app.device, app.window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -184,10 +197,12 @@ int run_window(App& app) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT) done = true;
+            if (event.type == SDL_EVENT_QUIT)
+                done = true;
             if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(app.window))
                 done = true;
-            if (event.type == SDL_EVENT_DROP_FILE && event.drop.data != nullptr) app.offer(path_u8(event.drop.data));
+            if (event.type == SDL_EVENT_DROP_FILE && event.drop.data != nullptr)
+                app.offer(path_u8(event.drop.data));
         }
         if (SDL_GetWindowFlags(app.window) & SDL_WINDOW_MINIMIZED) {
             SDL_Delay(10);
@@ -223,7 +238,8 @@ int run_window(App& app) {
 
     stop_sounds();
     app.catalog_cancel = true;
-    if (app.catalog_thread.joinable()) app.catalog_thread.join();
+    if (app.catalog_thread.joinable())
+        app.catalog_thread.join();
     app.job.reset();
     app.sheets_export.reset();  // stopped and waited for
     app.clear_candidate();
@@ -249,18 +265,21 @@ int main(int argc, char** argv) {
     attach_parent_console();  // a terminal run still shows the command line's output
     std::filesystem::path root = std::filesystem::current_path();
     std::vector<std::string> args;
-    for (int i = 1; i < argc; ++i) args.emplace_back(argv[i]);
+    for (int i = 1; i < argc; ++i)
+        args.emplace_back(argv[i]);
     if (!take_port_argument(args, &root)) {
         std::fprintf(stderr, "khdays-studio: --port needs a folder\n");
         return 2;
     }
-    if (!args.empty()) return run_command_line(root, args);
+    if (!args.empty())
+        return run_command_line(root, args);
 
     App app;
     std::string note;
     app.settings = load_settings(root, &note);
     app.mods_root = root / "mods";
     apply_language(app);
-    if (!note.empty()) app.tell(fmt(app.language, S::settings_bad, {note}), false);
+    if (!note.empty())
+        app.tell(fmt(app.language, S::settings_bad, {note}), false);
     return run_window(app);
 }

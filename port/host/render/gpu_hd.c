@@ -109,9 +109,12 @@ void khdays_gpu_hd_close(void)
     if (device == NULL) {
         return;
     }
-    if (buffer != NULL) SDL_ReleaseGPUBuffer(device, buffer);
-    if (upload != NULL) SDL_ReleaseGPUTransferBuffer(device, upload);
-    if (changed_upload != NULL) SDL_ReleaseGPUTransferBuffer(device, changed_upload);
+    if (buffer != NULL)
+        SDL_ReleaseGPUBuffer(device, buffer);
+    if (upload != NULL)
+        SDL_ReleaseGPUTransferBuffer(device, upload);
+    if (changed_upload != NULL)
+        SDL_ReleaseGPUTransferBuffer(device, changed_upload);
     buffer = NULL;
     upload = NULL;
     changed_upload = NULL;
@@ -143,7 +146,8 @@ static int sync_changed(SDL_GPUCommandBuffer *cmd)
     }
     if (bytes > changed_upload_size) {
         SDL_GPUTransferBufferCreateInfo info;
-        if (changed_upload != NULL) SDL_ReleaseGPUTransferBuffer(device, changed_upload);
+        if (changed_upload != NULL)
+            SDL_ReleaseGPUTransferBuffer(device, changed_upload);
         SDL_zero(info);
         info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         info.size = bytes;
@@ -199,7 +203,8 @@ int khdays_gpu_hd_sync(SDL_GPUCommandBuffer *cmd)
     }
     if (count > places_capacity) {
         uint32_t n = places_capacity ? places_capacity : 64u;
-        while (n < count) n *= 2;
+        while (n < count)
+            n *= 2;
         uint32_t *more_places = (uint32_t *)SDL_realloc(places, n * sizeof(uint32_t)), *more_versions;
         if (more_places == NULL) {
             return 0; /* keep the old tables and try again next frame */
@@ -218,8 +223,10 @@ int khdays_gpu_hd_sync(SDL_GPUCommandBuffer *cmd)
     if (count > table_capacity || end > texel_capacity) {
         /* make the buffer anew, bigger, and upload everything again (the texels after the larger table) */
         SDL_ReleaseGPUBuffer(device, buffer);
-        while (table_capacity < count) table_capacity *= 2;
-        while (texel_capacity < end) texel_capacity *= 2;
+        while (table_capacity < count)
+            table_capacity *= 2;
+        while (texel_capacity < end)
+            texel_capacity *= 2;
         buffer = make_buffer();
         uploaded = texel_end = 0;
         if (buffer == NULL) {
@@ -233,7 +240,8 @@ int khdays_gpu_hd_sync(SDL_GPUCommandBuffer *cmd)
     size = (count - first) * 16u + words * 4u;
     if (size > upload_size) {
         SDL_GPUTransferBufferCreateInfo info;
-        if (upload != NULL) SDL_ReleaseGPUTransferBuffer(device, upload);
+        if (upload != NULL)
+            SDL_ReleaseGPUTransferBuffer(device, upload);
         SDL_zero(info);
         info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         info.size = size;

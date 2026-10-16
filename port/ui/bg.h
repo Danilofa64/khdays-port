@@ -8,10 +8,10 @@
 
 /* A text layer, as its registers have it now. */
 typedef struct KhdaysBgLayer {
-    uint32_t map, chars;  /* in the engine's BG memory */
-    int wt, ht;           /* its map's cells across and down (32 or 64) */
-    int hofs, vofs;       /* its scroll */
-    int colors256;        /* 8-bit characters */
+    uint32_t map, chars; /* in the engine's BG memory */
+    int wt, ht;          /* its map's cells across and down (32 or 64) */
+    int hofs, vofs;      /* its scroll */
+    int colors256;       /* 8-bit characters */
     int priority;
 } KhdaysBgLayer;
 

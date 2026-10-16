@@ -21,12 +21,12 @@ extern KhdaysRef OS_AllocFromArenaLo(int arena, unsigned int size, unsigned int 
 extern KhdaysRef OS_GetArenaLo(int arena);
 
 #define OS_ARENA_MAIN 0
-#define HEAP_ALIGN    0x10 /* Ov001_CreateMainAndSubHeaps's */
+#define HEAP_ALIGN 0x10 /* Ov001_CreateMainAndSubHeaps's */
 
 /* the handles func_ov001_0204cf5c keeps; gCurrentHeap points at one of them */
 #define MAIN_HEAP_HANDLE 0x0204c044u
-#define SUB_HEAP_HANDLE  0x0204c030u
-#define CURRENT_HEAP     0x0204c028u
+#define SUB_HEAP_HANDLE 0x0204c030u
+#define CURRENT_HEAP 0x0204c028u
 
 static const char *const names[2] = {"main heap", "sub heap"};
 
@@ -248,7 +248,7 @@ void khdays_handle_check(unsigned int handle, unsigned int base)
     static unsigned said;
     if (khdays_game_heap_ds_memory() || (base >= KHDAYS_HEADERS_BASE && base < KHDAYS_HEADERS_END) ||
         (base >= 0x02000000u && base < OS_GetArenaLo(OS_ARENA_MAIN))) {
-        return;  /* a header in its heap, or in the game's own data */
+        return; /* a header in its heap, or in the game's own data */
     }
     if (said++ < 16) {
         fprintf(stderr, "memory: the file handle %08x names 0x%08x, outside the headers' heaps\n", handle, base);

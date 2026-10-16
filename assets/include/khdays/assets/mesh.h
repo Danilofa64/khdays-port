@@ -101,27 +101,22 @@ struct NeutralModel final {
 // Recompute the matrix palette from a set of bone (object) matrices, e.g. from
 // an animation. The result lines up index-for-index with NeutralModel::palette,
 // so NeutralVertex::joints stays valid.
-std::vector<std::array<float, 16>> compute_palette(
-    const SkinningProgram& program,
-    const std::vector<std::array<float, 16>>& object_matrices);
+std::vector<std::array<float, 16>> compute_palette(const SkinningProgram& program,
+                                                   const std::vector<std::array<float, 16>>& object_matrices);
 
 // Compute each bone (object)'s world matrix by replaying the model's render
 // program with the given bone matrices. The result is aligned index-for-index
 // with NeutralModel::object_names / object_matrices (unreached bones stay
 // identity). Use it to drive a glTF skin's joints (jointGlobal = bone world) so
 // DS animations retarget onto glTF geometry.
-std::vector<std::array<float, 16>> compute_bone_world_matrices(
-    const SkinningProgram& program,
-    const std::vector<std::array<float, 16>>& object_matrices);
+std::vector<std::array<float, 16>>
+compute_bone_world_matrices(const SkinningProgram& program, const std::vector<std::array<float, 16>>& object_matrices);
 
 // Decode the geometry of one model inside a BMD0/NSBMD file into neutral
 // meshes, executing the render command stream so bones and skinning are
 // applied. Throws std::runtime_error on malformed data.
-NeutralModel decode_model_geometry(
-    const std::filesystem::path& input_path,
-    std::size_t model_index = 0);
+NeutralModel decode_model_geometry(const std::filesystem::path& input_path, std::size_t model_index = 0);
 // Decode from an in-memory BMD0/NSBMD (e.g. carved out of a KAPH/pack).
-NeutralModel decode_model_geometry(
-    const std::uint8_t* data, std::size_t size, std::size_t model_index = 0);
+NeutralModel decode_model_geometry(const std::uint8_t* data, std::size_t size, std::size_t model_index = 0);
 
 }  // namespace khdays::assets

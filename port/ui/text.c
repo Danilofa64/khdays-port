@@ -23,9 +23,9 @@ typedef struct DsCanvas { /* NNSG2dCharCanvas */
     uint32_t char_base;   /* u8 *: the canvas's characters */
     int32_t area_width;   /* in characters */
     int32_t area_height;
-    uint8_t dst_bpp;      /* 4 or 8 */
+    uint8_t dst_bpp; /* 4 or 8 */
     uint8_t reserved[3];
-    uint32_t param;       /* characters per row of the canvas */
+    uint32_t param; /* characters per row of the canvas */
     uint32_t vtable;
 } DsCanvas;
 
@@ -40,21 +40,21 @@ typedef struct DsFrame { /* TileTextRenderer_Init's Frame */
 /* --- The canvases ------------------------------------------------------------------ */
 
 typedef struct Canvas {
-    KhdaysRef cc;          /* the NNSG2dCharCanvas */
-    KhdaysRef buffer;      /* its characters' buffer */
+    KhdaysRef cc;     /* the NNSG2dCharCanvas */
+    KhdaysRef buffer; /* its characters' buffer */
     int area_w, area_h, bpp, param;
     uint32_t bytes;
-    int engine, bg;        /* the layer its transfers went to */
-    uint32_t vram;         /* where its first character is in the engine's BG memory */
-    int pending;           /* it was transferred since the last VBlank */
-    int in_vram;           /* VRAM holds what its transfers put there */
-    uint8_t *seen;         /* what VRAM held of it at the VBlank after its last transfer */
-    uint32_t version;      /* counts the changes of `seen` */
-    uint16_t *cells;       /* for each of the image's cells, the map entry over it (0xffff: not the canvas's) */
+    int engine, bg;   /* the layer its transfers went to */
+    uint32_t vram;    /* where its first character is in the engine's BG memory */
+    int pending;      /* it was transferred since the last VBlank */
+    int in_vram;      /* VRAM holds what its transfers put there */
+    uint8_t *seen;    /* what VRAM held of it at the VBlank after its last transfer */
+    uint32_t version; /* counts the changes of `seen` */
+    uint16_t *cells;  /* for each of the image's cells, the map entry over it (0xffff: not the canvas's) */
     int image, image_scale;
     uint32_t image_version;
-    int said_shown;        /* the trace: 1 reported where it is shown, 2 reported that it is not */
-    int said_obj;          /* the trace: reported that it was loaded into the sprites' characters */
+    int said_shown; /* the trace: 1 reported where it is shown, 2 reported that it is not */
+    int said_obj;   /* the trace: reported that it was loaded into the sprites' characters */
     char id[48];
 } Canvas;
 
@@ -134,8 +134,8 @@ static Canvas *canvas_of(const void *cc_host, const char *made_by)
         c->image = -1;
         snprintf(c->id, sizeof(c->id), "text.canvas");
         if (tracing()) {
-            say("canvas %08x (%dx%d characters, %d bits, buffer %08x) made by %s", c->cc, c->area_w, c->area_h,
-                c->bpp, c->buffer, made_by);
+            say("canvas %08x (%dx%d characters, %d bits, buffer %08x) made by %s", c->cc, c->area_w, c->area_h, c->bpp,
+                c->buffer, made_by);
         }
     }
     return c;
@@ -224,10 +224,10 @@ static void chars_loaded(int engine, int bg, const void *src_host, uint32_t offs
     }
     if (mine != NULL) {
         const uint32_t at = src - mine->buffer;
-        if (tracing() && (!(mine->in_vram || mine->pending) || mine->engine != engine || mine->bg != bg ||
-                          mine->vram != to - at)) {
-            say("canvas %08x loaded: engine %c's BG%d characters, from +%u, %u bytes, to +%u (BG memory +%u)",
-                mine->cc, engine ? 'B' : 'A', bg, at, size, offset, to);
+        if (tracing() &&
+            (!(mine->in_vram || mine->pending) || mine->engine != engine || mine->bg != bg || mine->vram != to - at)) {
+            say("canvas %08x loaded: engine %c's BG%d characters, from +%u, %u bytes, to +%u (BG memory +%u)", mine->cc,
+                engine ? 'B' : 'A', bg, at, size, offset, to);
         }
         mine->engine = engine;
         mine->bg = bg;
@@ -236,14 +236,38 @@ static void chars_loaded(int engine, int bg, const void *src_host, uint32_t offs
     }
 }
 
-void khdays_ui_text_chars_a0(const void *src, unsigned int offset, unsigned int size) { chars_loaded(0, 0, src, offset, size); }
-void khdays_ui_text_chars_a1(const void *src, unsigned int offset, unsigned int size) { chars_loaded(0, 1, src, offset, size); }
-void khdays_ui_text_chars_a2(const void *src, unsigned int offset, unsigned int size) { chars_loaded(0, 2, src, offset, size); }
-void khdays_ui_text_chars_a3(const void *src, unsigned int offset, unsigned int size) { chars_loaded(0, 3, src, offset, size); }
-void khdays_ui_text_chars_b0(const void *src, unsigned int offset, unsigned int size) { chars_loaded(1, 0, src, offset, size); }
-void khdays_ui_text_chars_b1(const void *src, unsigned int offset, unsigned int size) { chars_loaded(1, 1, src, offset, size); }
-void khdays_ui_text_chars_b2(const void *src, unsigned int offset, unsigned int size) { chars_loaded(1, 2, src, offset, size); }
-void khdays_ui_text_chars_b3(const void *src, unsigned int offset, unsigned int size) { chars_loaded(1, 3, src, offset, size); }
+void khdays_ui_text_chars_a0(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(0, 0, src, offset, size);
+}
+void khdays_ui_text_chars_a1(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(0, 1, src, offset, size);
+}
+void khdays_ui_text_chars_a2(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(0, 2, src, offset, size);
+}
+void khdays_ui_text_chars_a3(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(0, 3, src, offset, size);
+}
+void khdays_ui_text_chars_b0(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(1, 0, src, offset, size);
+}
+void khdays_ui_text_chars_b1(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(1, 1, src, offset, size);
+}
+void khdays_ui_text_chars_b2(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(1, 2, src, offset, size);
+}
+void khdays_ui_text_chars_b3(const void *src, unsigned int offset, unsigned int size)
+{
+    chars_loaded(1, 3, src, offset, size);
+}
 
 /* A load into the sprites' characters: only reported for now (a canvas shown
  * by sprites is not an element yet). */
@@ -266,8 +290,14 @@ static void obj_loaded(int engine, const void *src_host, uint32_t offset, uint32
     }
 }
 
-void khdays_ui_text_obj_a(const void *src, uint32_t offset, uint32_t size) { obj_loaded(0, src, offset, size); }
-void khdays_ui_text_obj_b(const void *src, uint32_t offset, uint32_t size) { obj_loaded(1, src, offset, size); }
+void khdays_ui_text_obj_a(const void *src, uint32_t offset, uint32_t size)
+{
+    obj_loaded(0, src, offset, size);
+}
+void khdays_ui_text_obj_b(const void *src, uint32_t offset, uint32_t size)
+{
+    obj_loaded(1, src, offset, size);
+}
 
 /* --- The elements -------------------------------------------------------------------- */
 
@@ -404,7 +434,8 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int sc
     for (int row = 0; row < c->area_h; ++row) {
         for (int col = 0; col < c->area_w; ++col) {
             const uint32_t entry = khdays_bg_map_entry(c->engine, l, ox + col, oy + row);
-            const uint16_t cell = canvas_char(c, l, entry) == row * c->param + col ? (uint16_t)(entry & 0xfc00u) : 0xffffu;
+            const uint16_t cell =
+                canvas_char(c, l, entry) == row * c->param + col ? (uint16_t)(entry & 0xfc00u) : 0xffffu;
             if (c->cells[row * c->area_w + col] != cell) {
                 c->cells[row * c->area_w + col] = cell;
                 changed = 1;
@@ -423,7 +454,8 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int sc
             const uint16_t cell = c->cells[(py / 8) * c->area_w + px / 8];
             uint32_t t = 0;
             if (cell != 0xffffu) {
-                const uint8_t *ch = c->seen + ((uint32_t)(py / 8) * (uint32_t)c->param + (uint32_t)(px / 8)) * char_size;
+                const uint8_t *ch =
+                    c->seen + ((uint32_t)(py / 8) * (uint32_t)c->param + (uint32_t)(px / 8)) * char_size;
                 const int fx = (cell & 0x400u) ? 7 - (px & 7) : px & 7, fy = (cell & 0x800u) ? 7 - (py & 7) : py & 7;
                 const uint32_t pal = (uint32_t)cell >> 12;
                 if (c->bpp == 4) {

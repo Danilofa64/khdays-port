@@ -27,7 +27,8 @@ void play(const fs::path& file) {
     stop_sounds();
     KhdaysReplacement sound{};
     char why[256] = {};
-    if (!khdays_replacement_load(&sound, u8(file).c_str(), nullptr, why, static_cast<int>(sizeof(why)))) return;
+    if (!khdays_replacement_load(&sound, u8(file).c_str(), nullptr, why, static_cast<int>(sizeof(why))))
+        return;
     SDL_AudioSpec spec{};
     spec.format = SDL_AUDIO_S16;
     spec.channels = sound.channels;
@@ -44,7 +45,8 @@ void play(const fs::path& file) {
 }
 
 bool playing(const fs::path& file) {
-    if (player.stream == nullptr || player.what != u8(file)) return false;
+    if (player.stream == nullptr || player.what != u8(file))
+        return false;
     if (SDL_GetAudioStreamQueued(player.stream) <= 0) {
         stop_sounds();
         return false;
@@ -57,14 +59,16 @@ const CheckResult& describe(const fs::path& file) {
     static std::map<std::string, CheckResult> known;
     const std::string key = u8(file);
     auto it = known.find(key);
-    if (it == known.end()) it = known.emplace(key, check_sound(file)).first;
+    if (it == known.end())
+        it = known.emplace(key, check_sound(file)).first;
     return it->second;
 }
 
 void sound_row(App& app, const char* id, const fs::path& file) {
     ImGui::PushID(id);
     if (playing(file)) {
-        if (ImGui::Button(tr(app.language, S::stop))) stop_sounds();
+        if (ImGui::Button(tr(app.language, S::stop)))
+            stop_sounds();
     } else if (ImGui::Button(tr(app.language, S::play))) {
         play(file);
     }

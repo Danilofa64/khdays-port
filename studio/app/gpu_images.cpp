@@ -16,12 +16,14 @@ GpuImages::GpuImages(SDL_GPUDevice* device, std::size_t budget_bytes) : device_(
 GpuImages::~GpuImages() {
     collect();
     for (auto& [key, e] : entries_) {
-        if (e.image.texture != nullptr) SDL_ReleaseGPUTexture(device_, e.image.texture);
+        if (e.image.texture != nullptr)
+            SDL_ReleaseGPUTexture(device_, e.image.texture);
     }
 }
 
 void GpuImages::collect() {
-    for (SDL_GPUTexture* t : released_) SDL_ReleaseGPUTexture(device_, t);
+    for (SDL_GPUTexture* t : released_)
+        SDL_ReleaseGPUTexture(device_, t);
     released_.clear();
 }
 
@@ -35,7 +37,8 @@ SDL_GPUTexture* GpuImages::upload(const std::uint8_t* rgba, int width, int heigh
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
     SDL_GPUTexture* texture = SDL_CreateGPUTexture(device_, &info);
-    if (texture == nullptr) return nullptr;
+    if (texture == nullptr)
+        return nullptr;
 
     const Uint32 bytes = static_cast<Uint32>(width) * static_cast<Uint32>(height) * 4u;
     SDL_GPUTransferBufferCreateInfo tinfo{};
@@ -96,7 +99,8 @@ const GpuImage& GpuImages::get(const fs::path& png) {
             e.image.texture = upload(pixels, w, h);
             e.image.width = w;
             e.image.height = h;
-            if (e.image.texture == nullptr) e.image.error = SDL_GetError();
+            if (e.image.texture == nullptr)
+                e.image.error = SDL_GetError();
             e.bytes = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4u;
             khdays_png_free(pixels);
         }
@@ -114,7 +118,8 @@ const GpuImage& GpuImages::pixels(const std::string& name, std::uint64_t version
     const std::string key = "memory:" + name;
     auto it = entries_.find(key);
     if (it != entries_.end() && it->second.version != version) {
-        if (it->second.image.texture != nullptr) released_.push_back(it->second.image.texture);
+        if (it->second.image.texture != nullptr)
+            released_.push_back(it->second.image.texture);
         total_ -= it->second.bytes;
         entries_.erase(it);
         it = entries_.end();
@@ -122,13 +127,15 @@ const GpuImage& GpuImages::pixels(const std::string& name, std::uint64_t version
     if (it == entries_.end()) {
         Entry e;
         e.version = version;
-        if (width <= 0 || height <= 0 || rgba.size() < static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u) {
+        if (width <= 0 || height <= 0 ||
+            rgba.size() < static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u) {
             e.image.error = "no picture";
         } else {
             e.image.texture = upload(rgba.data(), width, height);
             e.image.width = width;
             e.image.height = height;
-            if (e.image.texture == nullptr) e.image.error = SDL_GetError();
+            if (e.image.texture == nullptr)
+                e.image.error = SDL_GetError();
             e.bytes = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u;
         }
         total_ += e.bytes;
@@ -142,8 +149,10 @@ const GpuImage& GpuImages::pixels(const std::string& name, std::uint64_t version
 
 void GpuImages::forget(const fs::path& png) {
     const auto it = entries_.find(u8(png));
-    if (it == entries_.end()) return;
-    if (it->second.image.texture != nullptr) released_.push_back(it->second.image.texture);
+    if (it == entries_.end())
+        return;
+    if (it->second.image.texture != nullptr)
+        released_.push_back(it->second.image.texture);
     total_ -= it->second.bytes;
     entries_.erase(it);
 }
@@ -154,11 +163,15 @@ void GpuImages::trim() {
     while (total_ > budget_ && entries_.size() > 1) {
         auto oldest = entries_.end();
         for (auto it = entries_.begin(); it != entries_.end(); ++it) {
-            if (it->second.used == 0) continue;
-            if (oldest == entries_.end() || it->second.used < oldest->second.used) oldest = it;
+            if (it->second.used == 0)
+                continue;
+            if (oldest == entries_.end() || it->second.used < oldest->second.used)
+                oldest = it;
         }
-        if (oldest == entries_.end()) break;
-        if (oldest->second.image.texture != nullptr) released_.push_back(oldest->second.image.texture);
+        if (oldest == entries_.end())
+            break;
+        if (oldest->second.image.texture != nullptr)
+            released_.push_back(oldest->second.image.texture);
         total_ -= oldest->second.bytes;
         entries_.erase(oldest);
     }

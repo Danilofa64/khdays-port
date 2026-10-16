@@ -20,7 +20,8 @@ CatalogTree build_catalog_tree(const Catalog& catalog, const std::vector<int>& r
         auto& m = named[static_cast<std::size_t>(parent)];
         const std::string key = kind >= 0 ? "\x01" + std::to_string(kind) : name;
         const auto found = m.find(key);
-        if (found != m.end()) return found->second;
+        if (found != m.end())
+            return found->second;
         const int n = static_cast<int>(t.nodes.size());
         TreeNode node;
         node.name = name;
@@ -61,18 +62,21 @@ CatalogTree build_catalog_tree(const Catalog& catalog, const std::vector<int>& r
     for (std::size_t n = t.nodes.size(); n-- > 0;) {
         TreeNode& node = t.nodes[n];
         node.count += static_cast<int>(node.items.size()) + (node.item >= 0 ? 1 : 0);
-        if (node.parent >= 0) t.nodes[static_cast<std::size_t>(node.parent)].count += node.count;
+        if (node.parent >= 0)
+            t.nodes[static_cast<std::size_t>(node.parent)].count += node.count;
     }
     // order: kinds by kind, folders and leaves by name
     for (auto& node : t.nodes) {
         std::sort(node.children.begin(), node.children.end(), [&](int a, int b) {
             const TreeNode& x = t.nodes[static_cast<std::size_t>(a)];
             const TreeNode& y = t.nodes[static_cast<std::size_t>(b)];
-            if (x.kind != y.kind) return x.kind < y.kind;
+            if (x.kind != y.kind)
+                return x.kind < y.kind;
             return x.name < y.name;
         });
         std::sort(node.items.begin(), node.items.end(), [&](int a, int b) {
-            return leaf_name(catalog.items[static_cast<std::size_t>(a)].key) < leaf_name(catalog.items[static_cast<std::size_t>(b)].key);
+            return leaf_name(catalog.items[static_cast<std::size_t>(a)].key) <
+                   leaf_name(catalog.items[static_cast<std::size_t>(b)].key);
         });
     }
     return t;

@@ -12,10 +12,10 @@
 #endif
 
 struct KhdaysContext {
-    void *sp;                          /* its stack pointer where it stopped (khdays_context_jump) */
-    unsigned char *stack;              /* its stack's lowest address; NULL: the thread's own stack */
+    void *sp;             /* its stack pointer where it stopped (khdays_context_jump) */
+    unsigned char *stack; /* its stack's lowest address; NULL: the thread's own stack */
     size_t size;
-    void (*release)(void *stack, size_t size);  /* how its stack is given back */
+    void (*release)(void *stack, size_t size); /* how its stack is given back */
     void (*entry)(void *argument);
     void *argument;
 };
@@ -38,8 +38,7 @@ void khdays_context_stack_source(void *(*allocate)(size_t size), void (*release)
 /* A stack in the host's own memory, with a guard page below it to catch an overflow. */
 static void *host_stack(size_t size)
 {
-    unsigned char *base = (unsigned char *)VirtualAlloc(NULL, size + 0x1000, MEM_RESERVE | MEM_COMMIT,
-                                                        PAGE_READWRITE);
+    unsigned char *base = (unsigned char *)VirtualAlloc(NULL, size + 0x1000, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     DWORD old;
     if (base == NULL) {
         return NULL;
@@ -59,8 +58,7 @@ static void host_release(void *stack, size_t size)
 static size_t stack_size(void)
 {
     extern IMAGE_DOS_HEADER __ImageBase;
-    const IMAGE_NT_HEADERS *nt = (const IMAGE_NT_HEADERS *)((const unsigned char *)&__ImageBase +
-                                                            __ImageBase.e_lfanew);
+    const IMAGE_NT_HEADERS *nt = (const IMAGE_NT_HEADERS *)((const unsigned char *)&__ImageBase + __ImageBase.e_lfanew);
     return (nt->OptionalHeader.SizeOfStackReserve + 0xffff) & ~(size_t)0xffff;
 }
 
@@ -105,25 +103,25 @@ KhdaysContext *khdays_context_create(void (*entry)(void *argument), void *argume
     /* Build the frame the first switch to it pops (context_x64.asm): it
      * returns into the trampoline, which starts the context. */
     frame = (unsigned long long *)(context->stack + context->size);
-    *--frame = 0;                             /* nothing above the first frame */
-    *--frame = 0;                             /* the return slot 8 below a 16-byte boundary, as a call's */
+    *--frame = 0; /* nothing above the first frame */
+    *--frame = 0; /* the return slot 8 below a 16-byte boundary, as a call's */
     *--frame = (unsigned long long)khdays_context_trampoline;
-    *--frame = 0;                             /* rbp */
-    *--frame = (unsigned long long)context;   /* rbx: the trampoline's argument */
-    *--frame = 0;                             /* rdi */
-    *--frame = 0;                             /* rsi */
-    *--frame = 0;                             /* r12 */
-    *--frame = 0;                             /* r13 */
-    *--frame = 0;                             /* r14 */
-    *--frame = 0;                             /* r15 */
-    frame -= 168 / 8;                         /* xmm6-xmm15, MXCSR, the x87 control word */
+    *--frame = 0;                           /* rbp */
+    *--frame = (unsigned long long)context; /* rbx: the trampoline's argument */
+    *--frame = 0;                           /* rdi */
+    *--frame = 0;                           /* rsi */
+    *--frame = 0;                           /* r12 */
+    *--frame = 0;                           /* r13 */
+    *--frame = 0;                           /* r14 */
+    *--frame = 0;                           /* r15 */
+    frame -= 168 / 8;                       /* xmm6-xmm15, MXCSR, the x87 control word */
     saved = (unsigned char *)frame;
     memset(saved, 0, 168);
-    *(unsigned int *)(saved + 160) = 0x1f80;  /* MXCSR: every exception masked, round to nearest */
-    *(unsigned short *)(saved + 164) = 0x027f;  /* x87: masked, 53-bit precision (Windows x64's) */
-    *--frame = (unsigned long long)(context->stack + context->size);  /* StackBase */
-    *--frame = (unsigned long long)context->stack;                    /* StackLimit */
-    *--frame = (unsigned long long)context->stack;                    /* DeallocationStack */
+    *(unsigned int *)(saved + 160) = 0x1f80;   /* MXCSR: every exception masked, round to nearest */
+    *(unsigned short *)(saved + 164) = 0x027f; /* x87: masked, 53-bit precision (Windows x64's) */
+    *--frame = (unsigned long long)(context->stack + context->size); /* StackBase */
+    *--frame = (unsigned long long)context->stack;                   /* StackLimit */
+    *--frame = (unsigned long long)context->stack;                   /* DeallocationStack */
     context->sp = frame;
     return context;
 }

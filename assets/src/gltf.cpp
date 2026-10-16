@@ -33,9 +33,7 @@
 
 namespace {
 
-const cgltf_accessor* find_attribute(
-    const cgltf_primitive& primitive,
-    const cgltf_attribute_type type) {
+const cgltf_accessor* find_attribute(const cgltf_primitive& primitive, const cgltf_attribute_type type) {
     for (cgltf_size i = 0; i < primitive.attributes_count; ++i) {
         const auto& attr = primitive.attributes[i];
         if (attr.type == type && attr.index == 0) {
@@ -51,8 +49,7 @@ const cgltf_image* base_color_image(const cgltf_primitive& primitive) {
     if (material == nullptr || material->has_pbr_metallic_roughness == 0) {
         return nullptr;
     }
-    const cgltf_texture* texture =
-        material->pbr_metallic_roughness.base_color_texture.texture;
+    const cgltf_texture* texture = material->pbr_metallic_roughness.base_color_texture.texture;
     if (texture == nullptr) {
         return nullptr;
     }
@@ -86,8 +83,7 @@ std::array<float, 16> matrix_multiply(const float* a, const float* b) {
     return result;
 }
 
-constexpr std::array<float, 16> kIdentity{
-    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+constexpr std::array<float, 16> kIdentity{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 
 }  // namespace
 
@@ -98,12 +94,10 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
     cgltf_data* data = nullptr;
     const auto path_string = input_path.string();
 
-    if (cgltf_parse_file(&options, path_string.c_str(), &data)
-        != cgltf_result_success) {
+    if (cgltf_parse_file(&options, path_string.c_str(), &data) != cgltf_result_success) {
         throw std::runtime_error("cannot parse glTF: " + path_string);
     }
-    if (cgltf_load_buffers(&options, data, path_string.c_str())
-        != cgltf_result_success) {
+    if (cgltf_load_buffers(&options, data, path_string.c_str()) != cgltf_result_success) {
         cgltf_free(data);
         throw std::runtime_error("cannot load glTF buffers: " + path_string);
     }
@@ -141,8 +135,10 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
                 }
                 const std::size_t length = std::strlen(comma + 1);
                 std::size_t size = length / 4 * 3;
-                if (length >= 1 && comma[length] == '=') --size;
-                if (length >= 2 && comma[length - 1] == '=') --size;
+                if (length >= 1 && comma[length] == '=')
+                    --size;
+                if (length >= 2 && comma[length - 1] == '=')
+                    --size;
                 void* bytes = nullptr;
                 if (cgltf_load_buffer_base64(&options, size, comma + 1, &bytes) != cgltf_result_success) {
                     throw std::runtime_error("its base64 cannot be decoded");
@@ -180,19 +176,16 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
     std::map<const cgltf_skin*, std::uint32_t> skin_base;
     for (cgltf_size s = 0; s < data->skins_count; ++s) {
         const cgltf_skin& skin = data->skins[s];
-        skin_base.emplace(
-            &skin, static_cast<std::uint32_t>(result.model.palette.size()));
+        skin_base.emplace(&skin, static_cast<std::uint32_t>(result.model.palette.size()));
         for (cgltf_size j = 0; j < skin.joints_count; ++j) {
             cgltf_float world[16];
             cgltf_node_transform_world(skin.joints[j], world);
             std::array<float, 16> inverse_bind = kIdentity;
             if (skin.inverse_bind_matrices != nullptr) {
-                cgltf_accessor_read_float(
-                    skin.inverse_bind_matrices, j, inverse_bind.data(), 16);
+                cgltf_accessor_read_float(skin.inverse_bind_matrices, j, inverse_bind.data(), 16);
             }
             ImportedJoint joint;
-            joint.palette_index =
-                static_cast<std::uint32_t>(result.model.palette.size());
+            joint.palette_index = static_cast<std::uint32_t>(result.model.palette.size());
             const cgltf_node* joint_node = skin.joints[j];
             if (joint_node != nullptr && joint_node->name != nullptr) {
                 joint.name = joint_node->name;
@@ -200,14 +193,13 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
             joint.inverse_bind = inverse_bind;
             std::copy(world, world + 16, joint.world.begin());
             result.joints.push_back(std::move(joint));
-            result.model.palette.push_back(
-                matrix_multiply(world, inverse_bind.data()));
+            result.model.palette.push_back(matrix_multiply(world, inverse_bind.data()));
         }
         // Each joint's parent: its nearest ancestor among the skin's joints.
         const std::size_t first = result.joints.size() - skin.joints_count;
         for (cgltf_size j = 0; j < skin.joints_count; ++j) {
-            for (const cgltf_node* up = skin.joints[j]->parent;
-                 up != nullptr && result.joints[first + j].parent < 0; up = up->parent) {
+            for (const cgltf_node* up = skin.joints[j]->parent; up != nullptr && result.joints[first + j].parent < 0;
+                 up = up->parent) {
                 for (cgltf_size k = 0; k < skin.joints_count; ++k) {
                     if (skin.joints[k] == up) {
                         result.joints[first + j].parent = static_cast<int>(first + k);
@@ -235,38 +227,28 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
         // world transform is ignored and each vertex carries bone indices.
         const cgltf_skin* skin = node.skin;
         const auto skin_it = skin != nullptr ? skin_base.find(skin) : skin_base.end();
-        const std::uint32_t joint_base =
-            skin_it != skin_base.end() ? skin_it->second : 0U;
+        const std::uint32_t joint_base = skin_it != skin_base.end() ? skin_it->second : 0U;
 
         for (cgltf_size p = 0; p < mesh.primitives_count; ++p) {
             const cgltf_primitive& primitive = mesh.primitives[p];
             if (primitive.type != cgltf_primitive_type_triangles) {
                 continue;
             }
-            const cgltf_accessor* positions =
-                find_attribute(primitive, cgltf_attribute_type_position);
+            const cgltf_accessor* positions = find_attribute(primitive, cgltf_attribute_type_position);
             if (positions == nullptr) {
                 continue;
             }
-            const cgltf_accessor* texcoords =
-                find_attribute(primitive, cgltf_attribute_type_texcoord);
-            const cgltf_accessor* colors =
-                find_attribute(primitive, cgltf_attribute_type_color);
-            const cgltf_accessor* normals =
-                find_attribute(primitive, cgltf_attribute_type_normal);
+            const cgltf_accessor* texcoords = find_attribute(primitive, cgltf_attribute_type_texcoord);
+            const cgltf_accessor* colors = find_attribute(primitive, cgltf_attribute_type_color);
+            const cgltf_accessor* normals = find_attribute(primitive, cgltf_attribute_type_normal);
             const cgltf_accessor* joints =
-                skin != nullptr
-                    ? find_attribute(primitive, cgltf_attribute_type_joints)
-                    : nullptr;
+                skin != nullptr ? find_attribute(primitive, cgltf_attribute_type_joints) : nullptr;
             const cgltf_accessor* weights =
-                skin != nullptr
-                    ? find_attribute(primitive, cgltf_attribute_type_weights)
-                    : nullptr;
+                skin != nullptr ? find_attribute(primitive, cgltf_attribute_type_weights) : nullptr;
             const bool skinned = joints != nullptr && weights != nullptr;
 
             const cgltf_image* image = base_color_image(primitive);
-            const auto texture_key =
-                image != nullptr ? image_key(image, m) : std::string{};
+            const auto texture_key = image != nullptr ? image_key(image, m) : std::string{};
             float tex_w = 1.0F;
             float tex_h = 1.0F;
             const auto texture_it = loaded.find(texture_key);
@@ -276,25 +258,19 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
             }
 
             NeutralMesh out_mesh;
-            out_mesh.name =
-                mesh.name != nullptr ? mesh.name : ("mesh_" + std::to_string(m));
+            out_mesh.name = mesh.name != nullptr ? mesh.name : ("mesh_" + std::to_string(m));
             out_mesh.texture_name = texture_key;
             out_mesh.material_name =
                 primitive.material != nullptr && primitive.material->name != nullptr ? primitive.material->name : "";
-            out_mesh.double_sided =
-                primitive.material != nullptr && primitive.material->double_sided != 0;
+            out_mesh.double_sided = primitive.material != nullptr && primitive.material->double_sided != 0;
             if (primitive.material != nullptr) {
                 switch (primitive.material->alpha_mode) {
-                    case cgltf_alpha_mode_mask:
-                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::mask;
-                        out_mesh.alpha_cutoff = primitive.material->alpha_cutoff;
-                        break;
-                    case cgltf_alpha_mode_blend:
-                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::blend;
-                        break;
-                    default:
-                        out_mesh.alpha_mode = NeutralMesh::AlphaMode::opaque;
-                        break;
+                case cgltf_alpha_mode_mask:
+                    out_mesh.alpha_mode = NeutralMesh::AlphaMode::mask;
+                    out_mesh.alpha_cutoff = primitive.material->alpha_cutoff;
+                    break;
+                case cgltf_alpha_mode_blend: out_mesh.alpha_mode = NeutralMesh::AlphaMode::blend; break;
+                default: out_mesh.alpha_mode = NeutralMesh::AlphaMode::opaque; break;
                 }
             } else {
                 out_mesh.alpha_mode = NeutralMesh::AlphaMode::opaque;  // glTF's default material
@@ -312,29 +288,24 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
                 } else {
                     // Static mesh: bake in the node's world transform.
                     vertex.position = {
-                        world[0] * position[0] + world[4] * position[1]
-                            + world[8] * position[2] + world[12],
-                        world[1] * position[0] + world[5] * position[1]
-                            + world[9] * position[2] + world[13],
-                        world[2] * position[0] + world[6] * position[1]
-                            + world[10] * position[2] + world[14]};
+                        world[0] * position[0] + world[4] * position[1] + world[8] * position[2] + world[12],
+                        world[1] * position[0] + world[5] * position[1] + world[9] * position[2] + world[13],
+                        world[2] * position[0] + world[6] * position[1] + world[10] * position[2] + world[14]};
                 }
 
                 std::array<float, 3> normal{};
-                if (normals != nullptr
-                    && cgltf_accessor_read_float(normals, v, normal.data(), 3)) {
+                if (normals != nullptr && cgltf_accessor_read_float(normals, v, normal.data(), 3)) {
                     // Like the position: raw when skinned, else through the
                     // node's transform (its 3x3; renormalize before lighting).
-                    vertex.normal = skinned
-                        ? normal
-                        : std::array<float, 3>{
-                              world[0] * normal[0] + world[4] * normal[1] + world[8] * normal[2],
-                              world[1] * normal[0] + world[5] * normal[1] + world[9] * normal[2],
-                              world[2] * normal[0] + world[6] * normal[1] + world[10] * normal[2]};
+                    vertex.normal =
+                        skinned
+                            ? normal
+                            : std::array<float, 3>{world[0] * normal[0] + world[4] * normal[1] + world[8] * normal[2],
+                                                   world[1] * normal[0] + world[5] * normal[1] + world[9] * normal[2],
+                                                   world[2] * normal[0] + world[6] * normal[1] + world[10] * normal[2]};
                 }
 
-                if (texcoords != nullptr
-                    && cgltf_accessor_read_float(texcoords, v, uv.data(), 2)) {
+                if (texcoords != nullptr && cgltf_accessor_read_float(texcoords, v, uv.data(), 2)) {
                     // Store as texels so the renderer normalizes like DS UVs.
                     vertex.texcoord = {uv[0] * tex_w, uv[1] * tex_h};
                 }
@@ -344,18 +315,15 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
                     cgltf_accessor_read_float(colors, v, color.data(), 4);
                 }
                 vertex.color = {
-                    static_cast<std::uint8_t>(color[0] * 255.0F),
-                    static_cast<std::uint8_t>(color[1] * 255.0F),
-                    static_cast<std::uint8_t>(color[2] * 255.0F),
-                    static_cast<std::uint8_t>(color[3] * 255.0F)};
+                    static_cast<std::uint8_t>(color[0] * 255.0F), static_cast<std::uint8_t>(color[1] * 255.0F),
+                    static_cast<std::uint8_t>(color[2] * 255.0F), static_cast<std::uint8_t>(color[3] * 255.0F)};
 
                 if (skinned) {
                     cgltf_uint joint_indices[4] = {0U, 0U, 0U, 0U};
                     cgltf_accessor_read_uint(joints, v, joint_indices, 4);
                     cgltf_accessor_read_float(weights, v, vertex.weights.data(), 4);
                     for (int i = 0; i < 4; ++i) {
-                        vertex.joints[static_cast<std::size_t>(i)] =
-                            joint_base + joint_indices[i];
+                        vertex.joints[static_cast<std::size_t>(i)] = joint_base + joint_indices[i];
                     }
                 }
                 // Static vertices keep the defaults: palette 0 (identity),
@@ -366,8 +334,8 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
             if (primitive.indices != nullptr) {
                 out_mesh.indices.reserve(primitive.indices->count);
                 for (cgltf_size k = 0; k < primitive.indices->count; ++k) {
-                    out_mesh.indices.push_back(static_cast<std::uint32_t>(
-                        cgltf_accessor_read_index(primitive.indices, k)));
+                    out_mesh.indices.push_back(
+                        static_cast<std::uint32_t>(cgltf_accessor_read_index(primitive.indices, k)));
                 }
             } else {
                 for (cgltf_size k = 0; k < vertex_count; ++k) {
@@ -375,8 +343,7 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
                 }
             }
 
-            result.model.header_vertex_count += static_cast<std::uint16_t>(
-                out_mesh.vertices.size());
+            result.model.header_vertex_count += static_cast<std::uint16_t>(out_mesh.vertices.size());
             result.model.meshes.push_back(std::move(out_mesh));
         }
     }

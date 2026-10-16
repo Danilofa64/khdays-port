@@ -24,7 +24,8 @@ struct TreeNode {
 
 struct CatalogTree {
     std::vector<TreeNode> nodes;  // nodes[0] the root
-    std::vector<int> node_of_item;  // per catalog item: the node holding it (leaf parent or its own node), -1 when not found
+    std::vector<int>
+        node_of_item;  // per catalog item: the node holding it (leaf parent or its own node), -1 when not found
 };
 
 // The tree of `results` (catalog item indices); with `by_kind`, a node per

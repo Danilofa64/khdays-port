@@ -9,14 +9,16 @@
 
 #undef MIi_Wait_BeforeDMA
 #undef MIi_Wait_AfterDMA
-#define MIi_Wait_BeforeDMA(dmaCntp, dmaNo) \
-    do { \
-        dmaCntp = &((vu32 *)REG_DMA0SAD_ADDR)[dmaNo * 3 + 2]; \
-        while (khdays_io_load(KHDAYS_IO_ADDRESS(dmaCntp), 4) & REG_MI_DMA0CNT_E_MASK) {} \
+#define MIi_Wait_BeforeDMA(dmaCntp, dmaNo)                                                                             \
+    do {                                                                                                               \
+        dmaCntp = &((vu32 *)REG_DMA0SAD_ADDR)[dmaNo * 3 + 2];                                                          \
+        while (khdays_io_load(KHDAYS_IO_ADDRESS(dmaCntp), 4) & REG_MI_DMA0CNT_E_MASK) {                                \
+        }                                                                                                              \
     } while (0)
-#define MIi_Wait_AfterDMA(dmaCntp) \
-    do { \
-        while (khdays_io_load(KHDAYS_IO_ADDRESS(dmaCntp), 4) & REG_MI_DMA0CNT_E_MASK) {} \
+#define MIi_Wait_AfterDMA(dmaCntp)                                                                                     \
+    do {                                                                                                               \
+        while (khdays_io_load(KHDAYS_IO_ADDRESS(dmaCntp), 4) & REG_MI_DMA0CNT_E_MASK) {                                \
+        }                                                                                                              \
     } while (0)
 
 #endif

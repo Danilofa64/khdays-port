@@ -95,7 +95,7 @@ int main(int argc, char **argv)
         }
     }
     DeleteFileA(path);
-    printf("%d interrupted saves: the file whole each time (the first image %d times, the second %d)\n", STOPS,
-           seen[0], seen[1]);
+    printf("%d interrupted saves: the file whole each time (the first image %d times, the second %d)\n", STOPS, seen[0],
+           seen[1]);
     return 0;
 }

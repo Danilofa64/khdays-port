@@ -3,7 +3,7 @@
 #include "../menus/newgame.h"
 #include "../core/window.h"
 #include "../../gfx/frame.h"
-#include "mobiclip_frame_core.h"  /* the decomp's libs/mobiclip/video/portable */
+#include "mobiclip_frame_core.h" /* the decomp's libs/mobiclip/video/portable */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -217,9 +217,10 @@ void khdays_video_frame_blitted(u32 request)
     }
     if (k == NULL) {
         char name[48];
-        const int picture = (snprintf(name, sizeof(name), "movie@%08x", destination),
-                             khdays_textures_add_changing(name, (int)width, (int)rows,
-                                                          KHDAYS_REPLACEMENT_BITMAP | (stride / 32u) << 8 | rows << 16));
+        const int picture =
+            (snprintf(name, sizeof(name), "movie@%08x", destination),
+             khdays_textures_add_changing(name, (int)width, (int)rows,
+                                          KHDAYS_REPLACEMENT_BITMAP | (stride / 32u) << 8 | rows << 16));
         if (picture < 0) {
             return;
         }

@@ -1,5 +1,6 @@
 """The installer helper's foundations (setup_steps.py): whole-or-absent outputs, the install's state,
 the result file and the exit codes."""
+
 import json
 import sys
 import tempfile

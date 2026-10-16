@@ -20,9 +20,9 @@ extern "C" {
 
 namespace {
 
-constexpr const char* kArchivePath = "/snd/sound_data.sdat";
-constexpr float kSampleSeconds = 2.5f;      // how much of a stream is played
-constexpr float kShortestEffect = 0.15f;    // effects shorter than this are too short to hear
+constexpr const char *kArchivePath = "/snd/sound_data.sdat";
+constexpr float kSampleSeconds = 2.5f;   // how much of a stream is played
+constexpr float kShortestEffect = 0.15f; // effects shorter than this are too short to hear
 
 enum Kind { MUSIC, EFFECTS, VOICES, KINDS };
 
@@ -34,22 +34,24 @@ struct Sample {
     float volume = 1.0f; // the volume the archive gives it
 };
 
-KhdaysRomReader* reader;
+KhdaysRomReader *reader;
 u32 archive_offset, archive_size;
-KhdaysSoundArchive* archive;
+KhdaysSoundArchive *archive;
 Sample samples[KINDS];
-SDL_AudioStream* stream;
+SDL_AudioStream *stream;
 
-u32 read_archive(void*, u32 offset, void* destination, u32 size) {
+u32 read_archive(void *, u32 offset, void *destination, u32 size)
+{
     if (offset >= archive_size) {
         return 0;
     }
     size = std::min(size, archive_size - offset);
-    khdays_rom_reader_read(reader, archive_offset + offset, static_cast<u8*>(destination), size);
+    khdays_rom_reader_read(reader, archive_offset + offset, static_cast<u8 *>(destination), size);
     return size;
 }
 
-bool open_archive() {
+bool open_archive()
+{
     static bool tried;
     if (!tried) {
         tried = true;
@@ -61,7 +63,8 @@ bool open_archive() {
     return archive != nullptr;
 }
 
-std::vector<std::uint8_t> read_bytes(u32 offset, u32 size) {
+std::vector<std::uint8_t> read_bytes(u32 offset, u32 size)
+{
     std::vector<std::uint8_t> bytes(size);
     if (size != 0) {
         khdays_sound_archive_read(archive, offset, bytes.data(), size);
@@ -69,14 +72,16 @@ std::vector<std::uint8_t> read_bytes(u32 offset, u32 size) {
     return bytes;
 }
 
-u32 le32(const std::uint8_t* p) {
+u32 le32(const std::uint8_t *p)
+{
     return static_cast<u32>(p[0]) | static_cast<u32>(p[1]) << 8 | static_cast<u32>(p[2]) << 16 |
            static_cast<u32>(p[3]) << 24;
 }
 
 // The number of the sound of `kind` named `name` (its identifier is
 // "strm/<name>" or "wave/<name>/0"), or -1.
-int find(int kind, const char* name) {
+int find(int kind, const char *name)
+{
     char want[160], id[160];
     std::snprintf(want, sizeof(want), kind == KHDAYS_SOUND_STREAM ? "strm/%s" : "wave/%s/0", name);
     const int count = khdays_sound_archive_count(archive, kind);
@@ -88,7 +93,8 @@ int find(int kind, const char* name) {
     return -1;
 }
 
-void keep(Sample& s, const khdays::assets::DecodedAudio& audio, std::size_t frames) {
+void keep(Sample &s, const khdays::assets::DecodedAudio &audio, std::size_t frames)
+{
     frames = std::min(frames, audio.samples.size() / std::max<std::size_t>(1, audio.channels));
     s.spec.format = SDL_AUDIO_S16;
     s.spec.channels = audio.channels;
@@ -98,7 +104,8 @@ void keep(Sample& s, const khdays::assets::DecodedAudio& audio, std::size_t fram
 }
 
 // Reads and decodes the first seconds of a stream, from the start of its file.
-void load_stream(Sample& s, const char* name) {
+void load_stream(Sample &s, const char *name)
+{
     const int n = find(KHDAYS_SOUND_STREAM, name);
     const u32 record = n >= 0 ? khdays_sound_archive_record(archive, KHDAYS_SOUND_STREAM, n) : 0;
     u32 offset = 0, size = 0;
@@ -120,12 +127,14 @@ void load_stream(Sample& s, const char* name) {
     const u32 blocks = static_cast<u32>(kSampleSeconds * (float)rate / (float)block_samples) + 1;
     const u32 want = std::min(size, data + blocks * channels * block);
     const std::vector<std::uint8_t> bytes = read_bytes(offset, want);
-    keep(s, khdays::assets::decode_strm(bytes.data(), bytes.size()), static_cast<std::size_t>(kSampleSeconds * (float)rate));
+    keep(s, khdays::assets::decode_strm(bytes.data(), bytes.size()),
+         static_cast<std::size_t>(kSampleSeconds * (float)rate));
     s.volume = static_cast<float>(info[4]) / 127.0f;
 }
 
 // The first wave of a wave archive that plays once and is long enough to hear.
-void load_effect(Sample& s, const char* name) {
+void load_effect(Sample &s, const char *name)
+{
     const int n = find(KHDAYS_SOUND_WAVE, name);
     const u32 record = n >= 0 ? khdays_sound_archive_record(archive, KHDAYS_SOUND_WAVE, n) : 0;
     u32 offset = 0, size = 0;
@@ -145,9 +154,9 @@ void load_effect(Sample& s, const char* name) {
             continue;
         }
         const khdays::assets::DecodedAudio audio = khdays::assets::decode_swav(&swar[start], end - start);
-        const float seconds = audio.sample_rate != 0 ? (float)audio.samples.size() / (float)audio.channels /
-                                                           (float)audio.sample_rate
-                                                     : 0.0f;
+        const float seconds = audio.sample_rate != 0
+                                  ? (float)audio.samples.size() / (float)audio.channels / (float)audio.sample_rate
+                                  : 0.0f;
         if (!audio.loops && seconds >= kShortestEffect) {
             keep(s, audio, audio.samples.size());
             return;
@@ -155,8 +164,9 @@ void load_effect(Sample& s, const char* name) {
     }
 }
 
-Sample* sample_of(int kind) {
-    Sample& s = samples[kind];
+Sample *sample_of(int kind)
+{
+    Sample &s = samples[kind];
     if (!s.tried) {
         s.tried = true;
         try {
@@ -167,11 +177,11 @@ Sample* sample_of(int kind) {
                 default: load_effect(s, "SE_SYS_WAVE"); break;
                 }
             }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             std::fprintf(stderr, "settings: no sample for a volume: %s\n", e.what());
             s.ok = false;
         }
-        static const char* const names[KINDS] = {"music", "effects", "voices"};
+        static const char *const names[KINDS] = {"music", "effects", "voices"};
         if (s.ok) {
             std::fprintf(stderr, "settings: the %s volume's sample: %.2f s at %d Hz, %d channel(s)\n", names[kind],
                          (double)s.samples.size() / s.spec.channels / s.spec.freq, s.spec.freq, s.spec.channels);
@@ -182,8 +192,9 @@ Sample* sample_of(int kind) {
     return s.ok ? &s : nullptr;
 }
 
-void play(int kind, float gain) {
-    const Sample* s = sample_of(kind);
+void play(int kind, float gain)
+{
+    const Sample *s = sample_of(kind);
     if (s == nullptr) {
         return;
     }
@@ -203,7 +214,8 @@ void play(int kind, float gain) {
 
 } // namespace
 
-extern "C" void khdays_settings_sample(const KhdaysSound* before, const KhdaysSound* now) {
+extern "C" void khdays_settings_sample(const KhdaysSound *before, const KhdaysSound *now)
+{
     const float master = static_cast<float>(now->volume) / 100.0f;
     if (now->music != before->music) {
         play(MUSIC, master * static_cast<float>(now->music) / 100.0f);
@@ -215,13 +227,15 @@ extern "C" void khdays_settings_sample(const KhdaysSound* before, const KhdaysSo
     // the movies volume: there is no movie sound to play here (khdays_settings_sample_has_movies)
 }
 
-extern "C" void khdays_settings_sample_stop(void) {
+extern "C" void khdays_settings_sample_stop(void)
+{
     if (stream != nullptr) {
         SDL_ClearAudioStream(stream);
         SDL_PauseAudioStreamDevice(stream);
     }
 }
 
-extern "C" int khdays_settings_sample_has_movies(void) {
+extern "C" int khdays_settings_sample_has_movies(void)
+{
     return 0; // playing an HD video's sound as the sample is not built
 }

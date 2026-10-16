@@ -15,12 +15,12 @@
 #include <windows.h>
 
 static int failures;
-#define CHECK(c)                                                              \
-    do {                                                                      \
-        if (!(c)) {                                                           \
-            fprintf(stderr, "movie_hd_test:%d: failed: %s\n", __LINE__, #c); \
-            ++failures;                                                       \
-        }                                                                     \
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            fprintf(stderr, "movie_hd_test:%d: failed: %s\n", __LINE__, #c);                                           \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 /* --- what the course calls, scripted --- */
@@ -30,7 +30,10 @@ static int status_now; /* what khdays_hd_status says */
 static char opened_path[260];
 static int told_cannot; /* log lines saying a file cannot be played */
 
-int khdays_host_graphics_flags(void) { return graphics_flags; }
+int khdays_host_graphics_flags(void)
+{
+    return graphics_flags;
+}
 
 /* A mod's video (mods/<Mod>/movies/hd<id>.mp4, as khdays-studio saves one):
  * the one mod holds hd843's once the test gives it. */
@@ -61,9 +64,18 @@ int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
     info->rate = 48000;
     return 1;
 }
-void khdays_hd_start(void) { started = 1; }
-void khdays_hd_pause(int pause) { (void)pause; }
-void khdays_hd_close(void) { ++closes; }
+void khdays_hd_start(void)
+{
+    started = 1;
+}
+void khdays_hd_pause(int pause)
+{
+    (void)pause;
+}
+void khdays_hd_close(void)
+{
+    ++closes;
+}
 int khdays_hd_status(char *why, size_t size)
 {
     if (status_now == -1) {
@@ -71,7 +83,10 @@ int khdays_hd_status(char *why, size_t size)
     }
     return status_now;
 }
-void khdays_sound_output_mute(int mute) { muted = mute; }
+void khdays_sound_output_mute(int mute)
+{
+    muted = mute;
+}
 /* the subtitles asked for when a video starts: its movie, in the game's language */
 static char subtitles_movie[16];
 static int subtitles_language;
@@ -80,8 +95,14 @@ void khdays_movie_subtitles_load(const char *movie, int language)
     snprintf(subtitles_movie, sizeof(subtitles_movie), "%s", movie);
     subtitles_language = language;
 }
-int GetLanguage(void) { return 5; }
-int khdays_language_wanted(void) { return 0; }
+int GetLanguage(void)
+{
+    return 5;
+}
+int khdays_language_wanted(void)
+{
+    return 0;
+}
 void khdays_log(const char *format, ...)
 {
     char line[512];
@@ -102,7 +123,10 @@ static void touch(const char *path)
     }
 }
 
-static int held(void) { return khdays_clock_held(KHDAYS_HOLD_MOVIE); }
+static int held(void)
+{
+    return khdays_clock_held(KHDAYS_HOLD_MOVIE);
+}
 
 int main(void)
 {
@@ -135,8 +159,8 @@ int main(void)
     CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd802.mp4") == 0);
     CHECK(khdays_movie_hd_showing() && started && muted);
     CHECK(strcmp(subtitles_movie, "802") == 0 && subtitles_language == 5); /* its subtitles, in the game's language */
-    CHECK(khdays_movie_hd_game_buttons(A) == 0); /* the player's buttons withheld */
-    khdays_movie_hd_stream(2, "/mv/802.mods", 0);   /* a second stream: the same course */
+    CHECK(khdays_movie_hd_game_buttons(A) == 0);                           /* the player's buttons withheld */
+    khdays_movie_hd_stream(2, "/mv/802.mods", 0);                          /* a second stream: the same course */
     CHECK(opens == 1);
     khdays_movie_hd_flags(8);
     khdays_movie_hd_stopped();

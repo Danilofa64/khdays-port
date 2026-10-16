@@ -31,7 +31,8 @@ struct NodeTracks {
 Quat normalized(Quat q) {
     const float l = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
     if (l > 1e-8f) {
-        for (auto& c : q) c /= l;
+        for (auto& c : q)
+            c /= l;
     }
     return q;
 }
@@ -39,18 +40,22 @@ Quat normalized(Quat q) {
 Quat slerp(Quat a, Quat b, float u) {
     float d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
     if (d < 0) {
-        for (auto& c : b) c = -c;
+        for (auto& c : b)
+            c = -c;
         d = -d;
     }
     if (d > 0.9995f) {
         Quat q{};
-        for (int i = 0; i < 4; ++i) q[static_cast<std::size_t>(i)] = a[static_cast<std::size_t>(i)] + u * (b[static_cast<std::size_t>(i)] - a[static_cast<std::size_t>(i)]);
+        for (int i = 0; i < 4; ++i)
+            q[static_cast<std::size_t>(i)] =
+                a[static_cast<std::size_t>(i)] + u * (b[static_cast<std::size_t>(i)] - a[static_cast<std::size_t>(i)]);
         return normalized(q);
     }
     const float th = std::acos(d), sn = std::sin(th);
     const float wa = std::sin((1 - u) * th) / sn, wb = std::sin(u * th) / sn;
     Quat q{};
-    for (int i = 0; i < 4; ++i) q[static_cast<std::size_t>(i)] = wa * a[static_cast<std::size_t>(i)] + wb * b[static_cast<std::size_t>(i)];
+    for (int i = 0; i < 4; ++i)
+        q[static_cast<std::size_t>(i)] = wa * a[static_cast<std::size_t>(i)] + wb * b[static_cast<std::size_t>(i)];
     return q;
 }
 
@@ -69,18 +74,22 @@ std::array<float, 4> sample(const Channel& c, float t, bool rotation) {
     float t0 = 0, t1 = 0;
     cgltf_accessor_read_float(s->input, 0, &t0, 1);
     cgltf_accessor_read_float(s->input, keys - 1, &t1, 1);
-    if (keys == 1 || t <= t0) return key_value(0);
-    if (t >= t1) return key_value(keys - 1);
+    if (keys == 1 || t <= t0)
+        return key_value(0);
+    if (t >= t1)
+        return key_value(keys - 1);
     cgltf_size k = 0;
     float a = t0, b = t0;
     for (k = 0; k + 1 < keys; ++k) {
         cgltf_accessor_read_float(s->input, k, &a, 1);
         cgltf_accessor_read_float(s->input, k + 1, &b, 1);
-        if (t >= a && t <= b) break;
+        if (t >= a && t <= b)
+            break;
     }
     const float span = b - a;
     const float u = span > 0 ? (t - a) / span : 0;
-    if (s->interpolation == cgltf_interpolation_type_step) return key_value(k);
+    if (s->interpolation == cgltf_interpolation_type_step)
+        return key_value(k);
     if (cubic) {
         const auto p0 = value(3 * k + 1), m0 = value(3 * k + 2), p1 = value(3 * (k + 1) + 1), m1 = value(3 * (k + 1));
         const float u2 = u * u, u3 = u2 * u;
@@ -109,11 +118,11 @@ std::array<float, 4> sample(const Channel& c, float t, bool rotation) {
 
 Mat compose(const Vec3& t, const Quat& q, const Vec3& s) {
     const float x = q[0], y = q[1], z = q[2], w = q[3];
-    const float r[9] = {1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w),
-                        2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w),
-                        2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y)};
+    const float r[9] = {1 - 2 * (y * y + z * z), 2 * (x * y + z * w),     2 * (x * z - y * w),
+                        2 * (x * y - z * w),     1 - 2 * (x * x + z * z), 2 * (y * z + x * w),
+                        2 * (x * z + y * w),     2 * (y * z - x * w),     1 - 2 * (x * x + y * y)};
     return {r[0] * s[0], r[1] * s[0], r[2] * s[0], 0, r[3] * s[1], r[4] * s[1], r[5] * s[1], 0,
-            r[6] * s[2], r[7] * s[2], r[8] * s[2], 0, t[0], t[1], t[2], 1};
+            r[6] * s[2], r[7] * s[2], r[8] * s[2], 0, t[0],        t[1],        t[2],        1};
 }
 
 }  // namespace
@@ -121,18 +130,23 @@ Mat compose(const Vec3& t, const Quat& q, const Vec3& s) {
 bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, const AnimationPose& original, Clip* out,
                std::string* why, const std::string& wanted) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
     const std::string ext = lower(u8(file.extension()));
-    if (ext != ".gltf" && ext != ".glb") return fail("a clip is read from glTF or glb");
+    if (ext != ".gltf" && ext != ".glb")
+        return fail("a clip is read from glTF or glb");
     cgltf_options options{};
     cgltf_data* data = nullptr;
     const std::string path = u8(file);
-    if (cgltf_parse_file(&options, path.c_str(), &data) != cgltf_result_success) return fail("not a glTF file");
+    if (cgltf_parse_file(&options, path.c_str(), &data) != cgltf_result_success)
+        return fail("not a glTF file");
     const std::unique_ptr<cgltf_data, void (*)(cgltf_data*)> guard(data, cgltf_free);
-    if (cgltf_load_buffers(&options, data, path.c_str()) != cgltf_result_success) return fail("its buffers cannot be read");
-    if (data->animations_count == 0) return fail("the file has no animation");
+    if (cgltf_load_buffers(&options, data, path.c_str()) != cgltf_result_success)
+        return fail("its buffers cannot be read");
+    if (data->animations_count == 0)
+        return fail("the file has no animation");
     // the one named as wanted, else the first
     cgltf_size chosen = 0;
     bool named = wanted.empty();
@@ -152,7 +166,8 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
     std::map<const cgltf_node*, std::string> names;
     for (cgltf_size i = 0; i < data->nodes_count; ++i) {
         const cgltf_node& n = data->nodes[i];
-        if (n.name == nullptr) continue;
+        if (n.name == nullptr)
+            continue;
         NodeTracks t;
         if (n.has_matrix) {
             // its matrix as T * R * S: the dump writes matrices
@@ -161,10 +176,12 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
             t.t = {m[12], m[13], m[14]};
             Vec3 c[3];
             for (int k = 0; k < 3; ++k) {
-                c[k] = {m[static_cast<std::size_t>(4 * k)], m[static_cast<std::size_t>(4 * k + 1)], m[static_cast<std::size_t>(4 * k + 2)]};
+                c[k] = {m[static_cast<std::size_t>(4 * k)], m[static_cast<std::size_t>(4 * k + 1)],
+                        m[static_cast<std::size_t>(4 * k + 2)]};
                 t.s[static_cast<std::size_t>(k)] = std::sqrt(c[k][0] * c[k][0] + c[k][1] * c[k][1] + c[k][2] * c[k][2]);
                 if (t.s[static_cast<std::size_t>(k)] > 1e-8f) {
-                    for (auto& v : c[k]) v /= t.s[static_cast<std::size_t>(k)];
+                    for (auto& v : c[k])
+                        v /= t.s[static_cast<std::size_t>(k)];
                 }
             }
             // rotation matrix to quaternion
@@ -185,9 +202,12 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
             }
             t.r = normalized(q);
         } else {
-            if (n.has_translation) t.t = {n.translation[0], n.translation[1], n.translation[2]};
-            if (n.has_rotation) t.r = {n.rotation[0], n.rotation[1], n.rotation[2], n.rotation[3]};
-            if (n.has_scale) t.s = {n.scale[0], n.scale[1], n.scale[2]};
+            if (n.has_translation)
+                t.t = {n.translation[0], n.translation[1], n.translation[2]};
+            if (n.has_rotation)
+                t.r = {n.rotation[0], n.rotation[1], n.rotation[2], n.rotation[3]};
+            if (n.has_scale)
+                t.s = {n.scale[0], n.scale[1], n.scale[2]};
         }
         tracks[n.name] = t;
         names[&n] = n.name;
@@ -196,13 +216,18 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
     for (cgltf_size i = 0; i < anim.channels_count; ++i) {
         const cgltf_animation_channel& ch = anim.channels[i];
         const auto found = names.find(ch.target_node);
-        if (found == names.end() || ch.sampler == nullptr || ch.sampler->input->count == 0) continue;
+        if (found == names.end() || ch.sampler == nullptr || ch.sampler->input->count == 0)
+            continue;
         NodeTracks& t = tracks[found->second];
         Channel c{ch.sampler, 3};
-        if (ch.target_path == cgltf_animation_path_type_translation) t.translation = c;
-        else if (ch.target_path == cgltf_animation_path_type_rotation) t.rotation = {ch.sampler, 4};
-        else if (ch.target_path == cgltf_animation_path_type_scale) t.scale = c;
-        else continue;
+        if (ch.target_path == cgltf_animation_path_type_translation)
+            t.translation = c;
+        else if (ch.target_path == cgltf_animation_path_type_rotation)
+            t.rotation = {ch.sampler, 4};
+        else if (ch.target_path == cgltf_animation_path_type_scale)
+            t.scale = c;
+        else
+            continue;
         float a = 0, b = 0;
         cgltf_accessor_read_float(ch.sampler->input, 0, &a, 1);
         cgltf_accessor_read_float(ch.sampler->input, ch.sampler->input->count - 1, &b, 1);
@@ -218,13 +243,15 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
     std::vector<int> moved(nodes.size(), 0);
     for (std::size_t n = 0; n < nodes.size(); ++n) {
         const auto t = tracks.find(nodes[n]);
-        if (t == tracks.end()) continue;
+        if (t == tracks.end())
+            continue;
         const NodeTracks& nt = t->second;
-        if (nt.translation.sampler == nullptr && nt.rotation.sampler == nullptr && nt.scale.sampler == nullptr) continue;
+        if (nt.translation.sampler == nullptr && nt.rotation.sampler == nullptr && nt.scale.sampler == nullptr)
+            continue;
         moved[n] = 1;
         for (std::size_t f = 0; f < frames; ++f) {
-            const float time = frames > 1 ? start + (end - start) * static_cast<float>(f) / static_cast<float>(frames - 1)
-                                          : start;
+            const float time =
+                frames > 1 ? start + (end - start) * static_cast<float>(f) / static_cast<float>(frames - 1) : start;
             Vec3 tr = nt.t, sc = nt.s;
             Quat ro = nt.r;
             if (nt.translation.sampler != nullptr) {
@@ -239,14 +266,16 @@ bool load_clip(const fs::path& file, const std::vector<std::string>& nodes, cons
                 const auto v = sample(nt.scale, time, false);
                 sc = {v[0], v[1], v[2]};
             }
-            if (n < clip.pose[f].size()) clip.pose[f][n] = compose(tr, ro, sc);
+            if (n < clip.pose[f].size())
+                clip.pose[f][n] = compose(tr, ro, sc);
         }
     }
     for (std::size_t n = 0; n < nodes.size(); ++n) {
         (moved[n] ? clip.animated : clip.left_alone).push_back(nodes[n]);
         clip.moved.push_back(moved[n] != 0);
     }
-    if (clip.animated.empty()) return fail("the clip moves none of the game model's nodes (named as the dump names them)");
+    if (clip.animated.empty())
+        return fail("the clip moves none of the game model's nodes (named as the dump names them)");
     *out = std::move(clip);
     return true;
 }

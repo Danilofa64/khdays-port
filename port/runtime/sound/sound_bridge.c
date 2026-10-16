@@ -28,10 +28,10 @@
 
 static SRWLOCK lock = SRWLOCK_INIT;
 static const KhdaysSnd7Driver *driver;
-static KhdaysSoundHw hw;  /* the channels the player hears */
-static u64 driver_time;   /* how far the driver has run */
-static u64 next_sample;   /* the cycle of the next output sample */
-static u32 shared_work;   /* where the ARM9 put the shared work (SND_COMMAND_SHARED_WORK) */
+static KhdaysSoundHw hw; /* the channels the player hears */
+static u64 driver_time;  /* how far the driver has run */
+static u64 next_sample;  /* the cycle of the next output sample */
+static u32 shared_work;  /* where the ARM9 put the shared work (SND_COMMAND_SHARED_WORK) */
 
 static const KhdaysSnd7Driver *forced_driver; /* a test's driver (khdays_sound_bridge_use_driver) */
 
@@ -111,10 +111,10 @@ int khdays_sound_bridge_replies_waiting(void)
 /* The mixer: either the DS's (a sample every 1024 cycles: 32,728 Hz, 16 bits)
  * or the PC's (floats at the output device's rate). A change of mixer waits
  * until the buffer being filled is finished. */
-static int output_pc;                       /* the PC's mixer is in use */
+static int output_pc; /* the PC's mixer is in use */
 static u32 output_rate = KHDAYS_SOUND_RATE;
-static u64 output_phase;                    /* PC mixer: KHDAYS_CLOCK_HZ x how far into a cycle the next sample is */
-static int pending_pc = -1;                 /* a change asked for (-1: none) */
+static u64 output_phase;    /* PC mixer: KHDAYS_CLOCK_HZ x how far into a cycle the next sample is */
+static int pending_pc = -1; /* a change asked for (-1: none) */
 static u32 pending_rate;
 
 /* How many cycles until the next output sample. */
@@ -136,7 +136,7 @@ static u32 cycles_to_next_sample(void)
  * grows, so a run that is killed still leaves a valid file. */
 static FILE *wav;
 static u32 wav_bytes;
-static int wav_pc;      /* the file holds the PC mixer's floats */
+static int wav_pc; /* the file holds the PC mixer's floats */
 static u32 wav_rate;
 static s16 frames[2 * 512];
 static float pc_frames[2 * 512];
@@ -150,7 +150,7 @@ static void wav_header(void)
     *(u32 *)(h + 4) = 36 + wav_bytes;
     memcpy(h + 8, "WAVEfmt ", 8);
     *(u32 *)(h + 16) = 16;
-    *(u16 *)(h + 20) = wav_pc ? 3 : 1;  /* IEEE float, PCM */
+    *(u16 *)(h + 20) = wav_pc ? 3 : 1; /* IEEE float, PCM */
     *(u16 *)(h + 22) = 2;
     *(u32 *)(h + 24) = wav_rate;
     *(u32 *)(h + 28) = wav_rate * bytes;
@@ -230,15 +230,14 @@ const KhdaysSoundArchive *khdays_sound_bridge_archive(void)
 /* What each ARM7 sequence player plays (khdays_sound_player_assigned), what
  * each stream player plays (khdays_sound_stream_prepared), and each channel's
  * last known category (a note whose track let it go keeps its category). */
-static int sequence_category[16] = {KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
-                                    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
-                                    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
-                                    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
-                                    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
-                                    KHDAYS_SOUND_EFFECTS};
+static int sequence_category[16] = {
+    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
+    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
+    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS,
+    KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS, KHDAYS_SOUND_EFFECTS};
 static int stream_category[4] = {KHDAYS_SOUND_MUSIC, KHDAYS_SOUND_MUSIC, KHDAYS_SOUND_MUSIC, KHDAYS_SOUND_MUSIC};
 static int channel_category[16];
-static int channel_replaced[16];  /* a mod's file plays instead (sound_mods.c): this channel is silenced */
+static int channel_replaced[16]; /* a mod's file plays instead (sound_mods.c): this channel is silenced */
 static u32 channel_starts[16];
 static float channel_gain[16];
 static float player_gain[16], stream_gain[4];
@@ -248,7 +247,7 @@ static double delay_ms(LARGE_INTEGER from, LARGE_INTEGER to);
 static void sound_name(int kind, int number, int entry, const char *prefix, char *name, int size);
 static int delay_stderr;
 static LARGE_INTEGER sequence_requested_at; /* when StartSeq was entered (KHDAYS_TRACE_SOUND_COMMANDS) */
-static char sequence_playing[16][96];        /* each ARM7 player's sequence name, for the log's "stopped" lines */
+static char sequence_playing[16][96];       /* each ARM7 player's sequence name, for the log's "stopped" lines */
 static const char *const category_names[KHDAYS_SOUND_CATEGORIES] = {"music", "effects", "voices", "movies"};
 static volatile LONG movie_channels; /* khdays_sound_movie_channels */
 
@@ -303,8 +302,8 @@ void khdays_sound_sequence_started(int arm7_player, int kind, int number, int en
 void khdays_sound_player_assigned(int arm7_player, int archive_player)
 {
     const KhdaysSoundArchive *a = khdays_sound_bridge_archive();
-    const int category =
-        a != NULL ? khdays_sound_category(khdays_sound_archive_player_name(a, archive_player), 0) : KHDAYS_SOUND_EFFECTS;
+    const int category = a != NULL ? khdays_sound_category(khdays_sound_archive_player_name(a, archive_player), 0)
+                                   : KHDAYS_SOUND_EFFECTS;
     if (arm7_player < 0 || arm7_player > 15) {
         return;
     }
@@ -344,15 +343,17 @@ static void update_gains(void)
                 category = sequence_category[player];
                 replaced = khdays_sound_mods_replaces_player(player);
             } else if (movie_channels & 1 << n) {
-                category = KHDAYS_SOUND_MOVIES; /* a movie's sound: one of the channels its player locked */
+                category = KHDAYS_SOUND_MOVIES;      /* a movie's sound: one of the channels its player locked */
                 replaced = khdays_video_mod_sound(); /* a mod's movie plays its own sound instead */
             } else if (c->starts != channel_starts[n]) {
                 category = KHDAYS_SOUND_EFFECTS;
                 replaced = 0;
                 if (!(told & 1 << n)) {
                     told |= 1 << n;
-                    fprintf(stderr, "sound: channel %d plays a sound no sequence or stream started (the game set "
-                                    "it up itself): counted as an effect\n", n);
+                    fprintf(stderr,
+                            "sound: channel %d plays a sound no sequence or stream started (the game set "
+                            "it up itself): counted as an effect\n",
+                            n);
                 }
             }
         }
@@ -407,11 +408,12 @@ static void run(void *context, u64 cycle)
         float extra[2] = {0.0f, 0.0f};
         khdays_sound_hw_step(&hw, cycles);
         if (!unity && (frame_count & 63) == 0) {
-            update_gains();  /* what a channel plays changes when its notes start: check every 64 samples */
+            update_gains(); /* what a channel plays changes when its notes start: check every 64 samples */
         }
         if (mods && khdays_sound_mods_present()) {
-            khdays_sound_mods_mix(&hw, driver, output_rate, shared_work != 0 ? *(volatile u32 *)KHDAYS_W(shared_work) : 0,
-                                  player_gain, stream_gain, extra);
+            khdays_sound_mods_mix(&hw, driver, output_rate,
+                                  shared_work != 0 ? *(volatile u32 *)KHDAYS_W(shared_work) : 0, player_gain,
+                                  stream_gain, extra);
         }
         if (movie) {
             khdays_video_mod_mix(output_rate, bus.category[KHDAYS_SOUND_MOVIES], extra);
@@ -445,7 +447,7 @@ static const KhdaysSnd7Host host = {NULL, run, reply};
 /* The streams the port reads itself. Made when the first stream is prepared
  * (by then the game's data, the ADPCM tables among it, is in place). */
 static KhdaysStreams *streams;
-static KhdaysRomReader *stream_rom;  /* the sound's own reads of the ROM */
+static KhdaysRomReader *stream_rom; /* the sound's own reads of the ROM */
 
 /* Where each stream player's file is: in the ROM (the sound archive's file
  * runs from `top` to `bottom`, and the stream is at `at` in it; FS_ReadFile
@@ -483,12 +485,12 @@ static u32 stream_report_at = 600;
 /* KHDAYS_TRACE_SOUND_COMMANDS: for each stream asked for, the milliseconds until it is prepared and
  * until the port first plays it. */
 static int delay_trace = -1;
-static LARGE_INTEGER *requested_at;             /* when each stream number was asked for (grows) */
+static LARGE_INTEGER *requested_at; /* when each stream number was asked for (grows) */
 static int requested_count;
 static LARGE_INTEGER delay_request[KHDAYS_STREAM_PLAYERS], delay_prepared[KHDAYS_STREAM_PLAYERS];
 static volatile LONG delay_waiting[KHDAYS_STREAM_PLAYERS]; /* stream number + 1 until heard */
 
-static int delay_stderr;  /* KHDAYS_TRACE_SOUND_COMMANDS: print the delays on stderr too */
+static int delay_stderr; /* KHDAYS_TRACE_SOUND_COMMANDS: print the delays on stderr too */
 
 /* Whether the delays are measured (for the trace or the session log). */
 static int delay_on(void)
@@ -518,7 +520,8 @@ static void note_request(int number)
     if (number >= requested_count) {
         int count = requested_count ? requested_count : 64;
         LARGE_INTEGER *grown;
-        while (count <= number) count *= 2;
+        while (count <= number)
+            count *= 2;
         grown = (LARGE_INTEGER *)realloc(requested_at, (size_t)count * sizeof(*grown));
         if (grown == NULL) {
             return; /* the delay is not measured */
@@ -571,7 +574,8 @@ static void stream_heard(int handle)
     }
     QueryPerformanceCounter(&now);
     a = khdays_sound_bridge_archive();
-    if (a == NULL || !khdays_sound_archive_identifier(a, KHDAYS_SOUND_STREAM, (int)waiting - 1, 0, name, sizeof(name))) {
+    if (a == NULL ||
+        !khdays_sound_archive_identifier(a, KHDAYS_SOUND_STREAM, (int)waiting - 1, 0, name, sizeof(name))) {
         snprintf(name, sizeof(name), "strm/%ld", waiting - 1);
     }
     if (delay_stderr) {
@@ -595,7 +599,8 @@ static int heard_stream_sample(void *context, int handle, uint64_t index, int32_
         const u32 at = khdays_streams_ring_address(streams, handle, index, &unit);
         if (at != 0) {
             const u8 *ring = (const u8 *)KHDAYS_W(at);
-            const int32_t held = unit == 1 ? (int32_t)(int8_t)ring[0] * 256 : (int32_t)(int16_t)(ring[0] | ring[1] << 8);
+            const int32_t held =
+                unit == 1 ? (int32_t)(int8_t)ring[0] * 256 : (int32_t)(int16_t)(ring[0] | ring[1] << 8);
             ++stream_samples;
             if (held != *sample) {
                 const u32 ring_samples = khdays_streams_ring_samples(streams, handle);
@@ -609,8 +614,10 @@ static int heard_stream_sample(void *context, int handle, uint64_t index, int32_
                     static u64 lag[64];
                     const u64 quarter = ring_samples / 4;
                     const u32 next = khdays_streams_ring_address(streams, handle, index + 1, &unit);
-                    const int32_t held_next = next == 0 ? 0 : unit == 1 ? (int32_t)(int8_t)((const u8 *)KHDAYS_W(next))[0] * 256
-                                              : (int32_t)(int16_t)(((const u8 *)KHDAYS_W(next))[0] | ((const u8 *)KHDAYS_W(next))[1] << 8);
+                    const int32_t held_next = next == 0   ? 0
+                                              : unit == 1 ? (int32_t)(int8_t)((const u8 *)KHDAYS_W(next))[0] * 256
+                                                          : (int32_t)(int16_t)(((const u8 *)KHDAYS_W(next))[0] |
+                                                                               ((const u8 *)KHDAYS_W(next))[1] << 8);
                     u64 *last = &lag[handle & 63];
                     int32_t after;
                     int found = *last != 0 && *last < index &&
@@ -626,16 +633,17 @@ static int heard_stream_sample(void *context, int handle, uint64_t index, int32_
                     }
                     stream_late += found;
                     if (found && khdays_events_vblank_count() >= stream_report_at) {
-                        fprintf(stderr, "stream check: stream player %d's channel %d: its ring %llu quarters behind\n", handle & 3,
-                                (handle >> 2) & 15, (unsigned long long)(*last / quarter));
+                        fprintf(stderr, "stream check: stream player %d's channel %d: its ring %llu quarters behind\n",
+                                handle & 3, (handle >> 2) & 15, (unsigned long long)(*last / quarter));
                     }
                 }
             }
         }
         if (khdays_events_vblank_count() >= stream_report_at) {
             stream_report_at = khdays_events_vblank_count() + 600;
-            fprintf(stderr, "stream check: %llu samples of %llu differed from the ring (%llu zero, %llu from quarters "
-                            "before, %llu other)\n",
+            fprintf(stderr,
+                    "stream check: %llu samples of %llu differed from the ring (%llu zero, %llu from quarters "
+                    "before, %llu other)\n",
                     (unsigned long long)stream_differing, (unsigned long long)stream_samples,
                     (unsigned long long)stream_zeroed, (unsigned long long)stream_late,
                     (unsigned long long)(stream_differing - stream_zeroed - stream_late));
@@ -650,7 +658,8 @@ static int heard_stream_sample(void *context, int handle, uint64_t index, int32_
 static int heard_bind(void *context, int channel, uint32_t sad, uint32_t len, int format)
 {
     const int handle = context != NULL ? khdays_streams_bind(context, channel, sad, len, format) : -1;
-    return handle >= 0 || !khdays_sound_mods_present() ? handle : khdays_sound_mods_bind_wave(channel, sad, len, format);
+    return handle >= 0 || !khdays_sound_mods_present() ? handle
+                                                       : khdays_sound_mods_bind_wave(channel, sad, len, format);
 }
 
 static int heard_sample(void *context, int handle, uint64_t index, int32_t *sample)
@@ -670,16 +679,16 @@ void khdays_sound_wave_archive_loaded(int wave_archive, const void *address)
     a = khdays_sound_bridge_archive();
     AcquireSRWLockExclusive(&lock);
     if (hw.source == NULL) {
-        hw.source = &heard_source;  /* before any stream is prepared: only the replaced waves */
+        hw.source = &heard_source; /* before any stream is prepared: only the replaced waves */
     }
-    khdays_sound_mods_wave_archive(a, wave_archive, (u32)((const unsigned char *)address - khdays_window));  /* its DS address */
+    khdays_sound_mods_wave_archive(a, wave_archive,
+                                   (u32)((const unsigned char *)address - khdays_window)); /* its DS address */
     ReleaseSRWLockExclusive(&lock);
 }
 
-
 void khdays_sound_stream_prepared(int player, int stream_number, int channels, const u8 *channel, u32 ring,
-                                  u32 ring_bytes, const void *header, u32 file_at, int in_memory, u32 top,
-                                  u32 bottom, u32 start_sample, int mono)
+                                  u32 ring_bytes, const void *header, u32 file_at, int in_memory, u32 top, u32 bottom,
+                                  u32 start_sample, int mono)
 {
     KhdaysStreamPrepared prepared;
     if (driver == NULL || player < 0 || player >= KHDAYS_STREAM_PLAYERS || channels < 1 ||
@@ -817,7 +826,7 @@ int khdays_sound_bridge_start(void)
     khdays_sound_hw_write(&hw, 0x104, 2, 0x200);
     next_sample = driver_time = now;
     hw.clock = next_sample;
-    flush_output();  /* apply a mixer the host asked for before the start */
+    flush_output(); /* apply a mixer the host asked for before the start */
     if (path != NULL) {
         wav = fopen(path, "wb");
         if (wav == NULL) {
@@ -910,7 +919,8 @@ static void count_commands(u32 data)
     }
     if (vblank >= report_at) {
         report_at = vblank + 600;
-        fprintf(stderr, "sound commands at VBlank %u: %u lists, %u empty words; lists in each VBlank that sent any:", vblank,
+        fprintf(stderr,
+                "sound commands at VBlank %u: %u lists, %u empty words; lists in each VBlank that sent any:", vblank,
                 lists, empty);
         for (int n = 0; n < 8; ++n) {
             fprintf(stderr, " %d%s x%u", n, n == 7 ? "+" : "", frames_with[n]);
@@ -935,7 +945,8 @@ int khdays_sound_bridge_word(u32 data, u32 err)
         for (u32 command = data; command != 0; command = *(volatile u32 *)KHDAYS_W(command)) {
             if (*(volatile u32 *)KHDAYS_W(command + 4) == 1) {
                 const u32 p = *(volatile u32 *)KHDAYS_W(command + 8);
-                khdays_log("sound: player %u stopped (%s)", p, p < 16 && sequence_playing[p][0] ? sequence_playing[p] : "?");
+                khdays_log("sound: player %u stopped (%s)", p,
+                           p < 16 && sequence_playing[p][0] ? sequence_playing[p] : "?");
             }
         }
     }

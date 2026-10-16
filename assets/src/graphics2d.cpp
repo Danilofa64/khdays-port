@@ -33,26 +33,20 @@ std::uint32_t read_u32(const ByteVector& d, const std::size_t o) {
     if (o + 4U > d.size()) {
         throw std::runtime_error("2D: read past end of file");
     }
-    return static_cast<std::uint32_t>(d[o])
-        | (static_cast<std::uint32_t>(d[o + 1U]) << 8U)
-        | (static_cast<std::uint32_t>(d[o + 2U]) << 16U)
-        | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
+    return static_cast<std::uint32_t>(d[o]) | (static_cast<std::uint32_t>(d[o + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(d[o + 2U]) << 16U) | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
 }
 
 bool has_magic(const ByteVector& d, const char* magic) {
-    return d.size() >= 4U && d[0] == magic[0] && d[1] == magic[1]
-        && d[2] == magic[2] && d[3] == magic[3];
+    return d.size() >= 4U && d[0] == magic[0] && d[1] == magic[1] && d[2] == magic[2] && d[3] == magic[3];
 }
 
 std::array<std::uint8_t, 4> rgb555_to_rgba(const std::uint16_t c) {
     const auto r5 = static_cast<std::uint8_t>(c & 0x1FU);
     const auto g5 = static_cast<std::uint8_t>((c >> 5U) & 0x1FU);
     const auto b5 = static_cast<std::uint8_t>((c >> 10U) & 0x1FU);
-    return {
-        static_cast<std::uint8_t>((r5 << 3U) | (r5 >> 2U)),
-        static_cast<std::uint8_t>((g5 << 3U) | (g5 >> 2U)),
-        static_cast<std::uint8_t>((b5 << 3U) | (b5 >> 2U)),
-        255U};
+    return {static_cast<std::uint8_t>((r5 << 3U) | (r5 >> 2U)), static_cast<std::uint8_t>((g5 << 3U) | (g5 >> 2U)),
+            static_cast<std::uint8_t>((b5 << 3U) | (b5 >> 2U)), 255U};
 }
 
 }  // namespace
@@ -105,8 +99,7 @@ TileGraphics decode_ncgr(const std::uint8_t* data, std::size_t size) {
             } else {
                 const std::size_t byte = src + static_cast<std::size_t>(px) / 2U;
                 if (byte < d.size()) {
-                    index = (px & 1) == 0 ? (d[byte] & 0x0FU)
-                                          : (d[byte] >> 4U);
+                    index = (px & 1) == 0 ? (d[byte] & 0x0FU) : (d[byte] >> 4U);
                 }
             }
             tiles.indices[dst + static_cast<std::size_t>(px)] = index;
@@ -144,10 +137,8 @@ namespace {
 // Read a little-endian u32 straight from a raw pointer + offset (bounds-checked
 // by the caller).
 std::uint32_t raw_u32(const std::uint8_t* p, const std::size_t o) {
-    return static_cast<std::uint32_t>(p[o])
-        | (static_cast<std::uint32_t>(p[o + 1U]) << 8U)
-        | (static_cast<std::uint32_t>(p[o + 2U]) << 16U)
-        | (static_cast<std::uint32_t>(p[o + 3U]) << 24U);
+    return static_cast<std::uint32_t>(p[o]) | (static_cast<std::uint32_t>(p[o + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(p[o + 2U]) << 16U) | (static_cast<std::uint32_t>(p[o + 3U]) << 24U);
 }
 
 // Route a resource into the pack by its own Nitro magic.
@@ -177,16 +168,13 @@ void classify_pk2d_resource(Pk2dPack& out, const ResourceView view) {
 
 }  // namespace
 
-SlotContainer parse_slot_container(
-    const std::uint8_t* data, const std::size_t size) {
+SlotContainer parse_slot_container(const std::uint8_t* data, const std::size_t size) {
     SlotContainer out;
     if (data == nullptr || size < 0x28U) {
         return out;
     }
-    const bool kaph = data[0] == 'K' && data[1] == 'A'
-        && data[2] == 'P' && data[3] == 'H';
-    const bool d2kp = data[0] == 'D' && data[1] == '2'
-        && data[2] == 'K' && data[3] == 'P';
+    const bool kaph = data[0] == 'K' && data[1] == 'A' && data[2] == 'P' && data[3] == 'H';
+    const bool d2kp = data[0] == 'D' && data[1] == '2' && data[2] == 'K' && data[3] == 'P';
     if (!kaph && !d2kp) {
         return out;
     }
@@ -195,8 +183,7 @@ SlotContainer parse_slot_container(
     // {u32 count; u32 offsets[count]; u32 sizes[count]}.
     for (std::size_t slot = 0U; slot < 8U; ++slot) {
         const std::uint32_t section = raw_u32(data, 0x08U + slot * 4U);
-        if (section == 0xFFFFFFFFU || section == 0U
-            || static_cast<std::size_t>(section) + 4U > size) {
+        if (section == 0xFFFFFFFFU || section == 0U || static_cast<std::size_t>(section) + 4U > size) {
             continue;
         }
         const std::uint32_t count = raw_u32(data, section);
@@ -223,8 +210,7 @@ Pk2dPack parse_pk2d(const std::uint8_t* data, const std::size_t size) {
     Pk2dPack out;
     // A D2KP is a slot container; classify every listed resource by its own
     // magic, so the slot->type assignment does not need to be hard-coded.
-    if (data == nullptr || size < 0x28U
-        || data[0] != 'D' || data[1] != '2' || data[2] != 'K' || data[3] != 'P') {
+    if (data == nullptr || size < 0x28U || data[0] != 'D' || data[1] != '2' || data[2] != 'K' || data[3] != 'P') {
         return out;
     }
     const SlotContainer container = parse_slot_container(data, size);

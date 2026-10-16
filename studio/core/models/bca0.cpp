@@ -25,17 +25,20 @@ void put16(std::vector<std::uint8_t>& d, std::size_t at, std::uint32_t v) {
     d[at + 1] = static_cast<std::uint8_t>((v >> 8) & 0xFF);
 }
 void put32(std::vector<std::uint8_t>& d, std::size_t at, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+    for (int i = 0; i < 4; ++i)
+        d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
 }
 void add16(std::vector<std::uint8_t>& d, std::uint32_t v) {
     d.push_back(static_cast<std::uint8_t>(v & 0xFF));
     d.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
 }
 void add32(std::vector<std::uint8_t>& d, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
+    for (int i = 0; i < 4; ++i)
+        d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
 }
 void pad4(std::vector<std::uint8_t>& d) {
-    while (d.size() % 4) d.push_back(0);
+    while (d.size() % 4)
+        d.push_back(0);
 }
 
 // 20.12, held to its range: the game's event cameras use its largest value
@@ -58,7 +61,8 @@ std::array<std::uint16_t, 5> encode_basis(const Vec3& a, const Vec3& b) {
     const std::uint32_t v[6] = {q13(b[1]), q13(a[0]), q13(a[1]), q13(a[2]), q13(b[0]), q13(b[2])};
     const std::uint32_t low[5] = {(v[5] >> 12) & 1, (v[5] >> 9) & 7, (v[5] >> 6) & 7, (v[5] >> 3) & 7, v[5] & 7};
     std::uint16_t input[5];
-    for (int i = 0; i < 5; ++i) input[i] = static_cast<std::uint16_t>((v[i] << 3) | low[i]);
+    for (int i = 0; i < 5; ++i)
+        input[i] = static_cast<std::uint16_t>((v[i] << 3) | low[i]);
     return {input[1], input[2], input[3], input[4], input[0]};
 }
 
@@ -70,8 +74,10 @@ Vec3 cross(const Vec3& a, const Vec3& b) {
 }
 bool normalize(Vec3& v) {
     const float l = std::sqrt(dot(v, v));
-    if (l < 1e-6f) return false;
-    for (auto& x : v) x /= l;
+    if (l < 1e-6f)
+        return false;
+    for (auto& x : v)
+        x /= l;
     return true;
 }
 // Some unit vector perpendicular to `v` (a unit vector).
@@ -97,7 +103,8 @@ Trs decompose(const Mat& m) {
     Vec3 c[3];
     bool ok[3];
     for (int k = 0; k < 3; ++k) {
-        c[k] = {m[static_cast<std::size_t>(4 * k)], m[static_cast<std::size_t>(4 * k + 1)], m[static_cast<std::size_t>(4 * k + 2)]};
+        c[k] = {m[static_cast<std::size_t>(4 * k)], m[static_cast<std::size_t>(4 * k + 1)],
+                m[static_cast<std::size_t>(4 * k + 2)]};
         Vec3 u = c[k];
         ok[k] = normalize(u);
     }
@@ -108,24 +115,29 @@ Trs decompose(const Mat& m) {
     normalize(z);
     if (ok[0] && ok[1]) {
         a = x;
-        for (int i = 0; i < 3; ++i) y[static_cast<std::size_t>(i)] -= dot(y, a) * a[static_cast<std::size_t>(i)];
-        if (!normalize(y)) y = ok[2] ? cross(z, a) : perpendicular(a);
+        for (int i = 0; i < 3; ++i)
+            y[static_cast<std::size_t>(i)] -= dot(y, a) * a[static_cast<std::size_t>(i)];
+        if (!normalize(y))
+            y = ok[2] ? cross(z, a) : perpendicular(a);
         normalize(y);
         b = y;
     } else if (ok[0]) {
         a = x;
         b = ok[2] ? cross(z, a) : perpendicular(a);
-        if (!normalize(b)) b = perpendicular(a);
+        if (!normalize(b))
+            b = perpendicular(a);
     } else if (ok[1]) {
         b = y;
         a = ok[2] ? cross(b, z) : perpendicular(b);
-        if (!normalize(a)) a = perpendicular(b);
+        if (!normalize(a))
+            a = perpendicular(b);
     } else if (ok[2]) {
         a = perpendicular(z);
         b = cross(z, a);
     }
     const Vec3 r[3] = {a, b, cross(a, b)};
-    for (int k = 0; k < 3; ++k) out.s[static_cast<std::size_t>(k)] = dot(c[k], r[k]);
+    for (int k = 0; k < 3; ++k)
+        out.s[static_cast<std::size_t>(k)] = dot(c[k], r[k]);
     out.a = a;
     out.b = b;
     return out;
@@ -143,32 +155,39 @@ Mat compose(const Trs& p) {
 struct J0ac {
     std::size_t at = 0, end = 0;  // in the BCA0; `end` its JNT0's
     std::size_t frames = 0, nodes = 0;
-    std::size_t entry = 0;        // its dictionary entry's data word
+    std::size_t entry = 0;  // its dictionary entry's data word
 };
 
 bool find_j0ac(const std::uint8_t* d, std::size_t size, std::size_t index, J0ac* out, std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
-    if (size < 0x14 || d[0] != 'B' || d[1] != 'C' || d[2] != 'A' || d[3] != '0') return fail("not a BCA0");
-    if (le16(d, size, 0xE) != 1) return fail("a BCA0 with sections besides JNT0 (the game's have none)");
+    if (size < 0x14 || d[0] != 'B' || d[1] != 'C' || d[2] != 'A' || d[3] != '0')
+        return fail("not a BCA0");
+    if (le16(d, size, 0xE) != 1)
+        return fail("a BCA0 with sections besides JNT0 (the game's have none)");
     const std::size_t jnt = le32(d, size, 0x10);
     const std::size_t jnt_size = le32(d, size, jnt + 4);
-    if (jnt + jnt_size > size || d[jnt] != 'J' || d[jnt + 1] != 'N') return fail("no JNT0");
+    if (jnt + jnt_size > size || d[jnt] != 'J' || d[jnt + 1] != 'N')
+        return fail("no JNT0");
     const std::size_t dict = jnt + 8;
     const std::size_t count = d[dict + 1];
     const std::size_t entries = dict + le16(d, size, dict + 6);
     const std::size_t unit = le16(d, size, entries);
-    if (index >= count || unit < 4) return fail("no such animation");
+    if (index >= count || unit < 4)
+        return fail("no such animation");
     J0ac j;
     j.entry = entries + 4 + unit * index;
     j.at = jnt + le32(d, size, j.entry);
-    if (j.at + 0x14 > size || d[j.at] != 'J' || d[j.at + 2] != 'A' || d[j.at + 3] != 'C') return fail("no J0AC block");
+    if (j.at + 0x14 > size || d[j.at] != 'J' || d[j.at + 2] != 'A' || d[j.at + 3] != 'C')
+        return fail("no J0AC block");
     j.end = jnt + jnt_size;
     j.frames = le16(d, size, j.at + 4);
     j.nodes = le16(d, size, j.at + 6);
-    if (j.at + 0x14 + 2 * j.nodes > j.end) return fail("a J0AC shorter than its node table");
+    if (j.at + 0x14 + 2 * j.nodes > j.end)
+        return fail("a J0AC shorter than its node table");
     *out = j;
     return true;
 }
@@ -182,18 +201,24 @@ bool node_block(const std::uint8_t* d, std::size_t size, std::size_t at, std::si
     if ((flags & 1) == 0) {
         if (((flags >> 1) & 3) == 0) {
             for (int i = 0; i < 3; ++i) {
-                if ((flags >> (3 + i)) & 1) cur += 4;
-                else offsets->push_back(cur + 4), cur += 8;
+                if ((flags >> (3 + i)) & 1)
+                    cur += 4;
+                else
+                    offsets->push_back(cur + 4), cur += 8;
             }
         }
         if (((flags >> 6) & 3) == 0) {
-            if ((flags >> 8) & 1) cur += 4;
-            else offsets->push_back(cur + 4), cur += 8;
+            if ((flags >> 8) & 1)
+                cur += 4;
+            else
+                offsets->push_back(cur + 4), cur += 8;
         }
         if (((flags >> 9) & 3) == 0) {
             for (int i = 0; i < 3; ++i) {
-                if ((flags >> (11 + i)) & 1) cur += 8;
-                else offsets->push_back(cur + 4), cur += 8;
+                if ((flags >> (11 + i)) & 1)
+                    cur += 8;
+                else
+                    offsets->push_back(cur + 4), cur += 8;
             }
         }
     }
@@ -205,15 +230,18 @@ bool node_block(const std::uint8_t* d, std::size_t size, std::size_t at, std::si
 
 std::vector<Bca0Animation> bca0_animations(const std::uint8_t* d, std::size_t size) {
     std::vector<Bca0Animation> out;
-    if (size < 0x14 || d[0] != 'B' || d[1] != 'C' || d[2] != 'A' || d[3] != '0') return out;
+    if (size < 0x14 || d[0] != 'B' || d[1] != 'C' || d[2] != 'A' || d[3] != '0')
+        return out;
     const std::size_t jnt = le32(d, size, 0x10);
-    if (jnt + 0x10 > size || d[jnt] != 'J' || d[jnt + 1] != 'N') return out;
+    if (jnt + 0x10 > size || d[jnt] != 'J' || d[jnt + 1] != 'N')
+        return out;
     const std::size_t dict = jnt + 8;
     const std::size_t count = d[dict + 1];
     const std::size_t entries = dict + le16(d, size, dict + 6);
     const std::size_t unit = le16(d, size, entries);
     const std::size_t names = entries + le16(d, size, entries + 2);
-    if (unit < 4 || names + 16 * count > size) return out;
+    if (unit < 4 || names + 16 * count > size)
+        return out;
     for (std::size_t i = 0; i < count; ++i) {
         Bca0Animation a;
         const char* text = reinterpret_cast<const char*>(d + names + 16 * i);
@@ -234,27 +262,34 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
                             const std::vector<bool>& keep, const std::vector<std::uint8_t>* original,
                             std::vector<std::uint8_t>* out, std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
     const std::vector<std::uint8_t>& source = original != nullptr ? *original : bca0;
     const std::uint8_t* d = source.data();
     const std::size_t size = source.size();
     J0ac target, old;
-    if (!find_j0ac(bca0.data(), bca0.size(), index, &target, why)) return false;
-    if (!find_j0ac(d, size, index, &old, why)) return false;
+    if (!find_j0ac(bca0.data(), bca0.size(), index, &target, why))
+        return false;
+    if (!find_j0ac(d, size, index, &old, why))
+        return false;
     if (target.frames != old.frames || target.nodes != old.nodes) {
         return fail("the animation in the file is not the game's (other frame or node counts)");
     }
     const std::size_t frames = old.frames, nodes = old.nodes;
-    if (pose.size() != frames) return fail("the new animation's frame count is not the original's");
+    if (pose.size() != frames)
+        return fail("the new animation's frame count is not the original's");
     for (const auto& f : pose) {
-        if (f.size() != nodes) return fail("the new animation's node count is not the original's");
+        if (f.size() != nodes)
+            return fail("the new animation's node count is not the original's");
     }
-    if (!keep.empty() && keep.size() != nodes) return fail("the nodes to keep are not the animation's nodes");
+    if (!keep.empty() && keep.size() != nodes)
+        return fail("the nodes to keep are not the animation's nodes");
     auto kept = [&](std::size_t n) { return !keep.empty() && keep[n]; };
     bool any_new = false;
-    for (std::size_t n = 0; n < nodes; ++n) any_new = any_new || !kept(n);
+    for (std::size_t n = 0; n < nodes; ++n)
+        any_new = any_new || !kept(n);
     if (any_new && (frames == 0 || frames > 0x0FFF)) {
         return fail("frame count " + std::to_string(frames) + " outside a curve's 12 bits");
     }
@@ -272,12 +307,15 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
     std::size_t region = std::min(old_pivot, old_basis);  // from old.at
     bool any_kept = false;
     for (std::size_t n = 0; n < nodes; ++n) {
-        if (!kept(n)) continue;
+        if (!kept(n))
+            continue;
         any_kept = true;
         Kept& k = kept_blocks[n];
         k.from = old.at + le16(d, size, old.at + 0x14 + 2 * n);
-        if (!node_block(d, size, k.from, &k.bytes, &k.offsets)) return fail("a node's curves run past the file");
-        for (const std::size_t o : k.offsets) region = std::min<std::size_t>(region, le32(d, size, k.from + o));
+        if (!node_block(d, size, k.from, &k.bytes, &k.offsets))
+            return fail("a node's curves run past the file");
+        for (const std::size_t o : k.offsets)
+            region = std::min<std::size_t>(region, le32(d, size, k.from + o));
     }
     if (any_kept && old.at + std::max(region, old_basis) > old.end) {
         return fail("the original's curves point past its JNT0");
@@ -292,7 +330,8 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
     std::vector<std::vector<Trs>> trs(nodes, std::vector<Trs>(frames));
     std::vector<std::vector<std::uint32_t>> rot(nodes, std::vector<std::uint32_t>(frames));
     for (std::size_t n = 0; n < nodes; ++n) {
-        if (kept(n)) continue;
+        if (kept(n))
+            continue;
         for (std::size_t f = 0; f < frames; ++f) {
             trs[n][f] = decompose(pose[f][n]);
             const auto e = encode_basis(trs[n][f].a, trs[n][f].b);
@@ -318,27 +357,30 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
     add32(j, 0);                          // pivots: below
     add32(j, 0);                          // bases: below
     const std::size_t table = j.size();
-    for (std::size_t n = 0; n < nodes; ++n) add16(j, 0);
+    for (std::size_t n = 0; n < nodes; ++n)
+        add16(j, 0);
     pad4(j);
     std::vector<std::size_t> data_fields;                      // the new nodes' data offsets, in order
     std::vector<std::pair<std::size_t, std::uint32_t>> moved;  // a kept node's data offset: its place, its value
     // start 0, end the frame count (as all 109,205 of the game's every-frame curves), 32-bit data
     const std::uint32_t curve = static_cast<std::uint32_t>(frames) << 16;
     for (std::size_t n = 0; n < nodes; ++n) {
-        if (j.size() > 0xFFFF) return fail("node blocks past a node table's 16-bit offsets");
+        if (j.size() > 0xFFFF)
+            return fail("node blocks past a node table's 16-bit offsets");
         put16(j, table + 2 * n, static_cast<std::uint32_t>(j.size()));
         if (kept(n)) {
             const Kept& k = kept_blocks[n];
             const std::size_t at = j.size();
             j.insert(j.end(), d + k.from, d + k.from + k.bytes);
-            for (const std::size_t o : k.offsets) moved.emplace_back(at + o, le32(d, size, k.from + o));
+            for (const std::size_t o : k.offsets)
+                moved.emplace_back(at + o, le32(d, size, k.from + o));
             continue;
         }
         const std::size_t old_node = old.at + le16(d, size, old.at + 0x14 + 2 * n);
-        add16(j, 0);                     // flags: translation, rotation and scale each sampled
-        j.push_back(d[old_node + 2]);    // kept as the original's
+        add16(j, 0);                   // flags: translation, rotation and scale each sampled
+        j.push_back(d[old_node + 2]);  // kept as the original's
         j.push_back(d[old_node + 3]);
-        for (int k = 0; k < 7; ++k) {    // tx, ty, tz, r, sx, sy, sz
+        for (int k = 0; k < 7; ++k) {  // tx, ty, tz, r, sx, sy, sz
             add32(j, curve);
             data_fields.push_back(j.size());
             add32(j, 0);
@@ -347,13 +389,16 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
     pad4(j);
     std::size_t field = 0;
     for (std::size_t n = 0; n < nodes; ++n) {
-        if (kept(n)) continue;
+        if (kept(n))
+            continue;
         for (int k = 0; k < 3; ++k) {
             put32(j, data_fields[field++], static_cast<std::uint32_t>(j.size()));
-            for (std::size_t f = 0; f < frames; ++f) add32(j, static_cast<std::uint32_t>(fx32(trs[n][f].t[static_cast<std::size_t>(k)])));
+            for (std::size_t f = 0; f < frames; ++f)
+                add32(j, static_cast<std::uint32_t>(fx32(trs[n][f].t[static_cast<std::size_t>(k)])));
         }
         put32(j, data_fields[field++], static_cast<std::uint32_t>(j.size()));
-        for (std::size_t f = 0; f < frames; ++f) add16(j, rot[n][f]);
+        for (std::size_t f = 0; f < frames; ++f)
+            add16(j, rot[n][f]);
         pad4(j);
         for (int k = 0; k < 3; ++k) {
             put32(j, data_fields[field++], static_cast<std::uint32_t>(j.size()));
@@ -365,11 +410,13 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
         }
     }
     if (any_kept) {
-        while (j.size() % 4 != region % 4) j.push_back(0);  // the copy as aligned as the original
+        while (j.size() % 4 != region % 4)
+            j.push_back(0);  // the copy as aligned as the original
         const std::size_t copy = j.size();
         j.insert(j.end(), d + old.at + region, d + old.at + region + region_bytes);
         auto to_copy = [&](std::size_t value) { return static_cast<std::uint32_t>(copy + value - region); };
-        for (const auto& [place, value] : moved) put32(j, place, to_copy(value));
+        for (const auto& [place, value] : moved)
+            put32(j, place, to_copy(value));
         put32(j, 0x0C, to_copy(old_pivot));
         put32(j, 0x10, to_copy(old_basis));
         j.resize(copy - region + old_basis + 10 * basis_base, 0);  // up to the new rotations' first index
@@ -378,7 +425,8 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
         put32(j, 0x10, static_cast<std::uint32_t>(j.size()));
     }
     for (const auto& e : basis) {
-        for (const std::uint16_t w : e) add16(j, w);
+        for (const std::uint16_t w : e)
+            add16(j, w);
     }
     pad4(j);
 
@@ -387,7 +435,8 @@ bool replace_bca0_animation(const std::vector<std::uint8_t>& bca0, std::size_t i
     const std::size_t jnt = le32(t, bca0.size(), 0x10);
     const std::size_t jnt_size = le32(t, bca0.size(), jnt + 4);
     std::vector<std::uint8_t> o(bca0.begin(), bca0.begin() + static_cast<std::ptrdiff_t>(jnt + jnt_size));
-    while ((o.size() - jnt) % 4) o.push_back(0);
+    while ((o.size() - jnt) % 4)
+        o.push_back(0);
     const std::size_t at = o.size();
     o.insert(o.end(), j.begin(), j.end());
     put32(o, target.entry, static_cast<std::uint32_t>(at - jnt));

@@ -4,7 +4,6 @@
  * routine does them (docs/PLATFORM.md, "The HAL's translations"). */
 #include "hal.h"
 
-
 static u32 pixel(const u8 *red, const u8 *green, const u8 *blue, s32 luma)
 {
     return (u32)red[luma] + ((u32)green[luma] << 5) + ((u32)blue[luma] << 10);
@@ -37,10 +36,10 @@ void Ov024_MobiClip_BlitRows(const u32 *view)
                 luma += 2;
                 /* the low pixel with its 0x8000, the high one added, then
                  * 0x80000000 -- in the routine's order */
-                *(u32 *)row0 = ((pixel(red, green, blue, y00) | 0x8000u) + (pixel(red, green, blue, y01) << 16)) |
-                               0x80000000u;
-                *(u32 *)row1 = ((pixel(red, green, blue, y10) | 0x8000u) + (pixel(red, green, blue, y11) << 16)) |
-                               0x80000000u;
+                *(u32 *)row0 =
+                    ((pixel(red, green, blue, y00) | 0x8000u) + (pixel(red, green, blue, y01) << 16)) | 0x80000000u;
+                *(u32 *)row1 =
+                    ((pixel(red, green, blue, y10) | 0x8000u) + (pixel(red, green, blue, y11) << 16)) | 0x80000000u;
                 row0 += 4;
                 row1 += 4;
             }

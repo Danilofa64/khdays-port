@@ -126,13 +126,13 @@ typedef struct Stream {
  * guest, one: the host. */
 typedef struct Peer {
     int used;
-    int state;                 /* PENDING (joining) or MEMBER */
-    unsigned int aid;          /* its player number (0 is the host) */
+    int state;        /* PENDING (joining) or MEMBER */
+    unsigned int aid; /* its player number (0 is the host) */
     unsigned char id[ID_SIZE];
     Route address;
-    u64 heard, pinged;         /* when it was last heard from, and last pinged */
-    double rtt_ms;             /* round trip; < 0 until measured */
-    double loss;               /* share of pings unanswered in the last report period */
+    u64 heard, pinged; /* when it was last heard from, and last pinged */
+    double rtt_ms;     /* round trip; < 0 until measured */
+    double loss;       /* share of pings unanswered in the last report period */
     unsigned int pings, pongs;
     /* For the session log's report (every REPORT_EVERY): records resent, and
      * the most records that waited for the game, and for an acknowledgement. */
@@ -503,7 +503,7 @@ static Queued *push(unsigned int kind, unsigned int aid, const void *data, unsig
 static void drop_events(void)
 {
     for (int i = 0; i < net.event_count; ++i) {
-#pragma warning(suppress: 6001) /* grow() zeroes what it adds: each item's data is NULL or its own copy */
+#pragma warning(suppress : 6001) /* grow() zeroes what it adds: each item's data is NULL or its own copy */
         free(net.events[i].data);
     }
     net.event_count = 0;
@@ -514,7 +514,7 @@ static void drop_events(void)
 static void free_records(Records *r)
 {
     for (int i = 0; i < r->count; ++i) {
-#pragma warning(suppress: 6001) /* grow() zeroes what it adds: each item's data is NULL or its own copy */
+#pragma warning(suppress : 6001) /* grow() zeroes what it adds: each item's data is NULL or its own copy */
         free(r->items[i].data);
     }
     free(r->items);
@@ -690,8 +690,7 @@ static void control_came(Peer *p, unsigned int port, const unsigned char *data, 
 /* A record arrived. If it is the next in order it goes to the game, followed
  * by any early ones that now follow on. An early record waits; one already
  * received is ignored. */
-static void received_record(Peer *p, unsigned int port, unsigned int seq, const unsigned char *data,
-                            unsigned int size)
+static void received_record(Peer *p, unsigned int port, unsigned int seq, const unsigned char *data, unsigned int size)
 {
     Stream *s = &p->streams[port];
     s->ack_due = 1;
@@ -795,7 +794,7 @@ static void announce(int gone)
     put32(body, net.build);
     put32(body + 4, 0); /* reserved for a digest of the file mods (T023): 0 for now */
     put16(body + 8, khdays_host_udp_port(net.session));
-#pragma warning(suppress: 6386) /* body holds 20 + info_size bytes (size above, in size_t): 12 fit */
+#pragma warning(suppress : 6386) /* body holds 20 + info_size bytes (size above, in size_t): 12 fit */
     body[10] = (unsigned char)net.open;
     body[11] = (unsigned char)members();
     put32(body + 12, net.ggid);
@@ -912,8 +911,8 @@ static int own_address(unsigned int ip)
 
 /* A room announcement (ANNOUNCE's body), heard on the local network (`local`) or listed by the
  * server, reachable at `address`. A room seen on the local network keeps its local address. */
-static void room_seen(const unsigned char *id, const KhdaysNetAddress *address, int local,
-                      const unsigned char *body, unsigned int size, u64 now)
+static void room_seen(const unsigned char *id, const KhdaysNetAddress *address, int local, const unsigned char *body,
+                      unsigned int size, u64 now)
 {
     Room *r;
     unsigned int info_size;
@@ -1052,14 +1051,15 @@ static void on_server(unsigned int kind, const unsigned char *body, unsigned int
                         (size_t)(net.introduced_count - 1) * sizeof(*net.introduced));
                 --net.introduced_count;
             }
-            net.introduced = (struct Introduced *)grow(net.introduced, &net.introduced_room,
-                                                        net.introduced_count + 1, sizeof(*net.introduced));
+            net.introduced = (struct Introduced *)grow(net.introduced, &net.introduced_room, net.introduced_count + 1,
+                                                       sizeof(*net.introduced));
             g = &net.introduced[net.introduced_count++];
             g->token = token;
             g->address = address;
             g->until = now + PUNCH_FOR;
             g->punched = 0;
-        } else if (net.joining && net.join_online && net.join_token == 0 && memcmp(body + 4, net.join_id, ID_SIZE) == 0) {
+        } else if (net.joining && net.join_online && net.join_token == 0 &&
+                   memcmp(body + 4, net.join_id, ID_SIZE) == 0) {
             net.join_token = token;
             net.join_met = now;
             net.join_sent = 0;
@@ -1082,8 +1082,7 @@ static void on_server(unsigned int kind, const unsigned char *body, unsigned int
             khdays_log("net: the room asked for is no longer on the server");
         }
         return;
-    default:
-        return;
+    default: return;
     }
 }
 
@@ -1198,11 +1197,11 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
             }
             return;
         }
-        refuse = get32(body) != net.build ? KHDAYS_NET_REFUSE_BUILD
-                 : !net.open                 ? KHDAYS_NET_REFUSE_CLOSED
+        refuse = get32(body) != net.build                     ? KHDAYS_NET_REFUSE_BUILD
+                 : !net.open                                  ? KHDAYS_NET_REFUSE_CLOSED
                  : (unsigned int)members() >= net.max_members ? KHDAYS_NET_REFUSE_FULL
                  : !password_proven(sender, body, size)       ? KHDAYS_NET_REFUSE_PASSWORD
-                                                             : 0;
+                                                              : 0;
         if (refuse != 0) {
             send_kind(from, REFUSE, &refuse, 1);
             khdays_log("net: a join refused (reason %u)", refuse);
@@ -1319,8 +1318,7 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
             left(p, "said goodbye");
         }
         return;
-    default:
-        return;
+    default: return;
     }
 }
 
@@ -1754,9 +1752,9 @@ int khdays_net_begin(void)
     net.running = 1;
     net.started = 1;
     net.thread = SDL_CreateThread(run, "khdays-net", NULL);
-    khdays_log("net: up, session port %u, rooms on port %u%s%s%s%s", khdays_host_udp_port(net.session),
-               net.group.port, net.online ? ", online through the server" : "",
-               net.lan ? "" : ", not on the local network", net.punch ? "" : ", never straight",
+    khdays_log("net: up, session port %u, rooms on port %u%s%s%s%s", khdays_host_udp_port(net.session), net.group.port,
+               net.online ? ", online through the server" : "", net.lan ? "" : ", not on the local network",
+               net.punch ? "" : ", never straight",
                net.delay_ms > 0 || net.loss > 0 || net.jitter_ms > 0 ? " (delay/loss/jitter knobs on)" : "");
     return 1;
 }
@@ -1833,7 +1831,8 @@ int khdays_net_host(unsigned int ggid, const void *info, unsigned int size, unsi
     net.info = copy_of(info, size);
     net.info_size = size;
     {
-        const unsigned int most = ANNOUNCE_MOST > 20 + size + DETAILS_FIXED ? ANNOUNCE_MOST - 20 - size - DETAILS_FIXED : 0;
+        const unsigned int most =
+            ANNOUNCE_MOST > 20 + size + DETAILS_FIXED ? ANNOUNCE_MOST - 20 - size - DETAILS_FIXED : 0;
         if (net.room_name_size > most) {
             net.room_name_size = most;
             while (net.room_name_size > 0 && ((unsigned char)net.room_name[net.room_name_size] & 0xc0) == 0x80) {
@@ -2435,8 +2434,7 @@ int khdays_net_next(KhdaysNetEvent *event, void *data, unsigned int room, unsign
         if (event->kind == KHDAYS_NET_RECORD && net.join_up_to[event->port] > 0) {
             join_waiting(event, (unsigned char *)data, room, i);
         }
-        if (event->kind == KHDAYS_NET_RECORD && event->port == GAME_PORT && net.role == GUEST &&
-            net.filter != NULL) {
+        if (event->kind == KHDAYS_NET_RECORD && event->port == GAME_PORT && net.role == GUEST && net.filter != NULL) {
             event->size = net.filter((unsigned char *)data, event->size);
             if (event->size == 0) {
                 --i; /* the filter left nothing: look at the next event instead */
@@ -2608,7 +2606,8 @@ int khdays_net_room_at(int index, KhdaysNetRoomView *out, char *name, unsigned i
                            : -1;
         /* the host's name as the game shows it: the start of the game's information
          * (WMGameInfo's userGameInfo, UTF-16), up to its end */
-        for (unsigned int k = 0; k + 1 < sizeof(out->host) / sizeof(out->host[0]) && 16 + 2 * k + 1 < r->info_size; ++k) {
+        for (unsigned int k = 0; k + 1 < sizeof(out->host) / sizeof(out->host[0]) && 16 + 2 * k + 1 < r->info_size;
+             ++k) {
             out->host[k] = (unsigned short)(r->info[16 + 2 * k] | r->info[17 + 2 * k] << 8);
             if (out->host[k] == 0) {
                 break;

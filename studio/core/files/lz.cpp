@@ -14,7 +14,8 @@ std::vector<std::uint8_t> lz_compress(std::uint8_t type, const std::vector<std::
         out.push_back(static_cast<std::uint8_t>((n >> 16) & 0xFF));
     } else {  // the extended form (a size of 0 reads as it too): three zero bytes, then the size in 32 bits
         out.insert(out.end(), {0, 0, 0});
-        for (int i = 0; i < 4; ++i) out.push_back(static_cast<std::uint8_t>((n >> (8 * i)) & 0xFF));
+        for (int i = 0; i < 4; ++i)
+            out.push_back(static_cast<std::uint8_t>((n >> (8 * i)) & 0xFF));
     }
 
     // the latest positions of each 3-byte prefix, chained, within the 4096-byte window
@@ -36,17 +37,19 @@ std::vector<std::uint8_t> lz_compress(std::uint8_t type, const std::vector<std::
         std::size_t best_len = 0, best_dist = 0;
         if (pos + 3 <= n) {
             int steps = 0;
-            for (std::int64_t cand = head[key(pos)]; cand >= 0 && pos - static_cast<std::size_t>(cand) <= kWindow &&
-                                                       steps < 512;
+            for (std::int64_t cand = head[key(pos)];
+                 cand >= 0 && pos - static_cast<std::size_t>(cand) <= kWindow && steps < 512;
                  cand = prev[static_cast<std::size_t>(cand)], ++steps) {
                 const std::size_t c = static_cast<std::size_t>(cand);
                 const std::size_t limit = std::min(max_length, n - pos);
                 std::size_t len = 0;
-                while (len < limit && in[c + len] == in[pos + len]) ++len;
+                while (len < limit && in[c + len] == in[pos + len])
+                    ++len;
                 if (len > best_len) {
                     best_len = len;
                     best_dist = pos - c;
-                    if (len == limit) break;
+                    if (len == limit)
+                        break;
                 }
             }
         }

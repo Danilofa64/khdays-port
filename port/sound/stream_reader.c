@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { FORMAT_PCM8, FORMAT_PCM16, FORMAT_ADPCM };  /* the file's (StrmFormat) */
+enum { FORMAT_PCM8, FORMAT_PCM16, FORMAT_ADPCM }; /* the file's (StrmFormat) */
 
 /* The samples made and not yet played past, per channel: a window of the
  * sequence the ring would hold, as the ring holds it (PCM8 bytes, else
@@ -21,13 +21,13 @@ enum { FORMAT_PCM8, FORMAT_PCM16, FORMAT_ADPCM };  /* the file's (StrmFormat) */
 #define GENERATION_MASK 0xffffffu
 
 typedef struct AdpcmState {
-    int16_t sample;  /* prevSample */
-    uint8_t index;   /* prevIndex */
+    int16_t sample; /* prevSample */
+    uint8_t index;  /* prevIndex */
 } AdpcmState;
 
 typedef struct Stream {
     int active;
-    unsigned generation;  /* one more at each prepare: a channel bound before is not this stream's */
+    unsigned generation; /* one more at each prepare: a channel bound before is not this stream's */
     KhdaysStreamPrepared prepared;
     KhdaysStreamFile file;
     /* The file's header (NNSSndStrmData, offsets from the file's start). */
@@ -47,13 +47,13 @@ typedef struct Stream {
     int finished;
     AdpcmState adpcm[KHDAYS_STREAM_CHANNELS];
     /* What it has made. */
-    uint32_t unit;               /* bytes a sample in the ring: 1 or 2 */
-    uint64_t made;               /* samples of the sequence made so far */
+    uint32_t unit; /* bytes a sample in the ring: 1 or 2 */
+    uint64_t made; /* samples of the sequence made so far */
     uint8_t *window[KHDAYS_STREAM_CHANNELS];
-    uint8_t *step[KHDAYS_STREAM_CHANNELS];  /* one step's output */
-    uint8_t *read_buffer;        /* sDecodeBuffer's part: an ADPCM read */
+    uint8_t *step[KHDAYS_STREAM_CHANNELS]; /* one step's output */
+    uint8_t *read_buffer;                  /* sDecodeBuffer's part: an ADPCM read */
     uint32_t read_buffer_size;
-    uint8_t *discard;            /* the samples a dirty start decodes and drops */
+    uint8_t *discard; /* the samples a dirty start decodes and drops */
     uint32_t discard_size;
 } Stream;
 
@@ -143,15 +143,20 @@ static int16_t decode_adpcm(const KhdaysStreams *streams, int code, AdpcmState *
     const int step = streams->step_table[state->index];
     int sample = state->sample, index = state->index;
     int d = step >> 3;
-    if (code & 4) d += step;
-    if (code & 2) d += step >> 1;
-    if (code & 1) d += step >> 2;
+    if (code & 4)
+        d += step;
+    if (code & 2)
+        d += step >> 1;
+    if (code & 1)
+        d += step >> 2;
     if (code & 8) {
         sample -= d;
-        if (sample < -32768) sample = -32768;
+        if (sample < -32768)
+            sample = -32768;
     } else {
         sample += d;
-        if (sample > 32767) sample = 32767;
+        if (sample > 32767)
+            sample = 32767;
     }
     index += streams->index_table[code];
     if (index < 0) {
@@ -197,7 +202,7 @@ static void make_step(const KhdaysStreams *streams, Stream *s, uint32_t bytes)
             if (block_offset_sample == 0) {
                 s->dirty = 0;
             } else {
-                samples = block_offset_sample;  /* from the block's start, to reach its state */
+                samples = block_offset_sample; /* from the block's start, to reach its state */
                 block_offset_sample = 0;
             }
         }
@@ -214,9 +219,7 @@ static void make_step(const KhdaysStreams *streams, Stream *s, uint32_t bytes)
         block_offset = block_offset_sample;
         size = samples;
         switch (s->format) {
-        case FORMAT_PCM8:
-            read_size = size;
-            break;
+        case FORMAT_PCM8: read_size = size; break;
         case FORMAT_PCM16:
             block_offset <<= 1;
             size <<= 1;
@@ -228,7 +231,7 @@ static void make_step(const KhdaysStreams *streams, Stream *s, uint32_t bytes)
             end = (end + 1) >> 1;
             read_size = end - block_offset;
             if (block_offset_sample == 0) {
-                read_size += 4;  /* the block's AdpcmState first */
+                read_size += 4; /* the block's AdpcmState first */
             } else {
                 block_offset += 4;
             }
@@ -242,9 +245,8 @@ static void make_step(const KhdaysStreams *streams, Stream *s, uint32_t bytes)
              * follows (and what it writes past the ring is not the ring's). */
             uint8_t *dest = s->dirty ? grow(&s->discard, &s->discard_size, size) : s->step[ch] + dest_offset;
             if (ch < s->file_channels) {
-                uint8_t *read_dest = s->format == FORMAT_ADPCM
-                                         ? grow(&s->read_buffer, &s->read_buffer_size, read_size)
-                                         : dest;
+                uint8_t *read_dest =
+                    s->format == FORMAT_ADPCM ? grow(&s->read_buffer, &s->read_buffer_size, read_size) : dest;
                 if (s->file.read(s->file.context, offset + (uint32_t)ch * block_size, read_dest, read_size) !=
                     read_size) {
                     size = 0;
@@ -284,7 +286,7 @@ static void make_step(const KhdaysStreams *streams, Stream *s, uint32_t bytes)
             } else if (s->prepared.mono) {
                 memset(dest, 0, size);
             } else if (!s->dirty) {
-                memcpy(dest, s->step[0] + dest_offset, size);  /* the first channel's, for a stereo player */
+                memcpy(dest, s->step[0] + dest_offset, size); /* the first channel's, for a stereo player */
             }
         }
         if (s->dirty) {
@@ -355,7 +357,7 @@ int khdays_streams_sample(void *context, int handle, uint64_t index, int32_t *sa
         s->made += step_samples;
     }
     if (index + WINDOW < s->made) {
-        return 0;  /* further back than it keeps: the channel reads its ring */
+        return 0; /* further back than it keeps: the channel reads its ring */
     }
     at = s->window[channel] + (uint32_t)(index % WINDOW) * s->unit;
     *sample = s->unit == 1 ? (int32_t)(int8_t)at[0] * 256 : (int32_t)(int16_t)(at[0] | at[1] << 8);
@@ -377,8 +379,7 @@ uint32_t khdays_streams_ring_address(const KhdaysStreams *streams, int handle, u
     }
     ring_samples = s->prepared.ring_bytes / s->unit;
     *unit = (int)s->unit;
-    return s->prepared.ring + (uint32_t)channel * s->prepared.ring_bytes +
-           (uint32_t)(index % ring_samples) * s->unit;
+    return s->prepared.ring + (uint32_t)channel * s->prepared.ring_bytes + (uint32_t)(index % ring_samples) * s->unit;
 }
 
 uint32_t khdays_streams_ring_samples(const KhdaysStreams *streams, int handle)

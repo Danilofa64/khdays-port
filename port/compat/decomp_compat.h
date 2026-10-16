@@ -35,10 +35,9 @@ struct khdays_data_init {
 };
 #pragma pack(pop)
 #pragma section(".khdi$m", read, write)
-#define KHDAYS_DATA_INIT(name, module)                                        \
-    __declspec(allocate(".khdi$m")) struct khdays_data_init khdays_init_##name = { \
-        (unsigned int)&name, (const void *)&name##__khdays_init,              \
-        sizeof(name##__khdays_init), module};
+#define KHDAYS_DATA_INIT(name, module)                                                                                 \
+    __declspec(allocate(".khdi$m")) struct khdays_data_init khdays_init_##name = {                                     \
+        (unsigned int)&name, (const void *)&name##__khdays_init, sizeof(name##__khdays_init), module};
 
 /* A call the decomp's C makes with fewer arguments than the ROM passes, where
  * the missing value is not yet known (prepare.py, port/abi): reaching it
@@ -46,7 +45,8 @@ struct khdays_data_init {
 #ifdef __cplusplus
 extern "C"
 #endif
-__declspec(noreturn) void khdays_abi_gap(const char *what);
+    __declspec(noreturn) void
+    khdays_abi_gap(const char *what);
 #define KHDAYS_ABI_GAP(what) (khdays_abi_gap(what), 0)
 
 /* The math unit's and the plain interrupt registers without the trap's
@@ -76,13 +76,13 @@ void khdays_io_store(unsigned int address, int size, unsigned int value);
 
 /* `*(T (*)[n])dst = *(T (*)[n])src;` -- a whole-array assignment mwcc accepts
  * (prepare.py rewrites it to this). */
-#define KHDAYS_ARRAY_ASSIGN(T, n, dst, src)                         \
-    do {                                                            \
-        T *khdays_d_ = (T *)(dst);                                  \
-        const T *khdays_s_ = (const T *)(src);                      \
-        for (int khdays_i_ = 0; khdays_i_ < (n); ++khdays_i_) {     \
-            khdays_d_[khdays_i_] = khdays_s_[khdays_i_];            \
-        }                                                           \
+#define KHDAYS_ARRAY_ASSIGN(T, n, dst, src)                                                                            \
+    do {                                                                                                               \
+        T *khdays_d_ = (T *)(dst);                                                                                     \
+        const T *khdays_s_ = (const T *)(src);                                                                         \
+        for (int khdays_i_ = 0; khdays_i_ < (n); ++khdays_i_) {                                                        \
+            khdays_d_[khdays_i_] = khdays_s_[khdays_i_];                                                               \
+        }                                                                                                              \
     } while (0)
 
 #endif

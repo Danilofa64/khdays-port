@@ -9,8 +9,8 @@ Snd7Channel snd7_channel[16];
 
 /* 0x03807cf0: the channels no note may take (+4), and those only a strong
  * request may (+0). */
-static uint32_t lock_mask;       /* +4 */
-static uint32_t weak_lock_mask;  /* +0 */
+static uint32_t lock_mask;      /* +4 */
+static uint32_t weak_lock_mask; /* +0 */
 
 static int32_t level_of(uint16_t volume)
 {
@@ -60,14 +60,9 @@ void snd7_channel_sync(void)
                 snd7_hw_setup_pcm(n, c->data, c->format, c->loop ? 1 : 2, c->loop_start, c->loop_length,
                                   c->volume & 0xff, c->volume >> 8, c->timer, c->pan);
                 break;
-            case 1:
-                snd7_hw_setup_psg(n, (int)c->data, c->volume & 0xff, c->volume >> 8, c->timer, c->pan);
-                break;
-            case 2:
-                snd7_hw_setup_noise(n, c->volume & 0xff, c->volume >> 8, c->timer, c->pan);
-                break;
-            default:
-                break;
+            case 1: snd7_hw_setup_psg(n, (int)c->data, c->volume & 0xff, c->volume >> 8, c->timer, c->pan); break;
+            case 2: snd7_hw_setup_noise(n, c->volume & 0xff, c->volume >> 8, c->timer, c->pan); break;
+            default: break;
             }
             continue;
         }
@@ -121,8 +116,8 @@ void snd7_channel_main(int periodic)
         if (c->sweep_pitch == 0 || c->sweep_counter >= c->sweep_length) {
             sweep = 0;
         } else {
-            sweep = (int32_t)((int64_t)c->sweep_pitch * (c->sweep_length - c->sweep_counter) /
-                              (int64_t)c->sweep_length);
+            sweep =
+                (int32_t)((int64_t)c->sweep_pitch * (c->sweep_length - c->sweep_counter) / (int64_t)c->sweep_length);
             if (periodic && c->auto_sweep) {
                 ++c->sweep_counter;
             }
@@ -133,17 +128,10 @@ void snd7_channel_main(int periodic)
         if (lfo != 0) {
             int64_t x = lfo;
             switch (c->lfo.param.target) {
-            case 0:
-                x *= 64;
-                break;
-            case 1:
-                x *= 60;
-                break;
-            case 2:
-                x *= 64;
-                break;
-            default:
-                break;
+            case 0: x *= 64; break;
+            case 1: x *= 60; break;
+            case 2: x *= 64; break;
+            default: break;
             }
             lfo_value = (int32_t)(x >> 14);
         }
@@ -151,19 +139,14 @@ void snd7_channel_main(int periodic)
             snd7_lfo_update(&c->lfo);
         }
         switch (c->lfo.param.target) {
-        case 0:
-            pitch += lfo_value;
-            break;
+        case 0: pitch += lfo_value; break;
         case 1:
             if (volume > -0x8000) {
                 volume += lfo_value;
             }
             break;
-        case 2:
-            pan += lfo_value;
-            break;
-        default:
-            break;
+        case 2: pan += lfo_value; break;
+        default: break;
         }
         pan += c->init_pan;
         if (c->pan_range != 127) {
@@ -262,11 +245,8 @@ int snd7_channel_envelope(Snd7Channel *c, int periodic)
             }
             break;
         }
-        case 3: /* release */
-            c->envelope -= c->release;
-            break;
-        default:
-            break;
+        case 3: /* release */ c->envelope -= c->release; break;
+        default: break;
         }
     }
     return c->envelope >> 7;
@@ -316,8 +296,7 @@ int snd7_channel_is_active(const Snd7Channel *c)
  * locked (the weakly locked too, for a strong request), in the driver's
  * order, the one of lowest priority, then of lowest level; none if it
  * outranks the note. Its owner is told, and it starts over as a note's. */
-Snd7Channel *snd7_channel_alloc(uint32_t mask, int priority, int strong, Snd7ChannelCallback callback,
-                                void *data)
+Snd7Channel *snd7_channel_alloc(uint32_t mask, int priority, int strong, Snd7ChannelCallback callback, void *data)
 {
     Snd7Channel *best = NULL;
     mask &= ~lock_mask;
@@ -525,8 +504,8 @@ void snd7_channel_start(Snd7Channel *c, int32_t length)
 /* 0x037ff0fc: SNDCAPxCNT and its destination and length. */
 void snd7_capture_setup(int unit, int format, uint32_t destination, int length, int loop, int add, int source)
 {
-    const uint32_t control = (uint32_t)source | ((uint32_t)(loop == 0) << 2 | (uint32_t)format << 3 |
-                                                 (uint32_t)add << 1);
+    const uint32_t control =
+        (uint32_t)source | ((uint32_t)(loop == 0) << 2 | (uint32_t)format << 3 | (uint32_t)add << 1);
     snd7_reg_write(0x108 + (uint32_t)unit, 1, (uint8_t)control);
     snd7_reg_write(0x110 + (uint32_t)unit * 8, 4, destination);
     snd7_reg_write(0x114 + (uint32_t)unit * 8, 2, (uint16_t)length);

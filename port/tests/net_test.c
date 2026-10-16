@@ -46,8 +46,7 @@ static int host(void)
                     unsigned int index;
                     memcpy(&index, data + at, sizeof(index));
                     if (index != next || e.size - at < 4 + index % 200) {
-                        fprintf(stderr, "host: record %u (%u bytes left) where %u was due\n", index, e.size - at,
-                                next);
+                        fprintf(stderr, "host: record %u (%u bytes left) where %u was due\n", index, e.size - at, next);
                         return 3;
                     }
                     at += 4 + index % 200;
@@ -125,7 +124,8 @@ static int guest(void)
                     return 6;
                 }
                 printf("net: %u records delivered once each, in order, with 30%% of the datagrams lost; "
-                       "link level %d, round trip %d ms\n", RECORDS, khdays_net_link_level(), ms);
+                       "link level %d, round trip %d ms\n",
+                       RECORDS, khdays_net_link_level(), ms);
                 khdays_net_end();
                 khdays_host_udp_close(stray);
                 return 0;
@@ -197,7 +197,8 @@ static int host_controls(void)
                     header = (unsigned int)data[at] | (unsigned int)data[at + 1] << 8;
                     length = header >> 6;
                     if (((header >> 1) & 31u) == 3 && length == 12) {
-                        unsigned int chosen, buttons = ((unsigned int)data[at + 4] | (unsigned int)data[at + 5] << 8) >> 3;
+                        unsigned int chosen,
+                            buttons = ((unsigned int)data[at + 4] | (unsigned int)data[at + 5] << 8) >> 3;
                         memcpy(&chosen, data + at + 6, 4);
                         ++controls;
                         ++received;
@@ -287,8 +288,8 @@ static int guest_controls(void)
 
 /* --- the controls at the battle's pace, the host sending more than once a tick --- */
 
-#define PACED 900          /* controls: 18 s of them, one a tick */
-#define LATEST_MS 500u     /* the longest any may wait */
+#define PACED 900      /* controls: 18 s of them, one a tick */
+#define LATEST_MS 500u /* the longest any may wait */
 
 static int host_paced(void)
 {
@@ -484,7 +485,8 @@ static int guest_locked(void)
                     return 4;
                 }
                 printf("net: a room's name, players (%d of %d), password and ping (%d ms) seen; the wrong "
-                       "password refused, the right one taken\n", room.players, room.most, room.ping_ms);
+                       "password refused, the right one taken\n",
+                       room.players, room.most, room.ping_ms);
                 khdays_net_end();
                 return 0;
             }

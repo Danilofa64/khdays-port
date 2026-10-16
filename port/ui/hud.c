@@ -36,9 +36,9 @@ static int trace_count;
  * same in Mission Mode and the story, and its lower screen in a mission. */
 typedef struct Piece {
     const char *id;
-    int screen;          /* 0 engine A's, 1 engine B's */
+    int screen; /* 0 engine A's, 1 engine B's */
     int x0, y0, x1, y1;
-    unsigned layers;     /* bit n: BGn */
+    unsigned layers; /* bit n: BGn */
     const char *from[3];
 } Piece;
 
@@ -89,13 +89,13 @@ static int from_piece(const Piece *piece, const char *file)
 /* A piece's element on one layer: its cells as they were last drawn, and its
  * image. */
 typedef struct Shown {
-    int cells_x, cells_y, w, h;   /* its top-left cell in the visible grid, and its size in cells */
-    int room;                     /* how many cells the arrays hold */
-    uint32_t *entries;            /* w * h: the map entry under each cell (0xffffffff: not the piece's) */
-    uint8_t *chars;               /* w * h * 64: each cell's character as VRAM held it */
-    uint32_t *hd;                 /* w * h: the mod's tile drawn instead in each cell (tiles2d.h), 0 none */
+    int cells_x, cells_y, w, h; /* its top-left cell in the visible grid, and its size in cells */
+    int room;                   /* how many cells the arrays hold */
+    uint32_t *entries;          /* w * h: the map entry under each cell (0xffffffff: not the piece's) */
+    uint8_t *chars;             /* w * h * 64: each cell's character as VRAM held it */
+    uint32_t *hd;               /* w * h: the mod's tile drawn instead in each cell (tiles2d.h), 0 none */
     int image, image_w, image_h, image_scale;
-    int hd_image1, hd_w, hd_h;    /* the image of the mods' tiles in colour, + 1 (0: none), its size */
+    int hd_image1, hd_w, hd_h; /* the image of the mods' tiles in colour, + 1 (0: none), its size */
 } Shown;
 
 static Shown shown[PIECE_COUNT][4];
@@ -135,8 +135,8 @@ static int grow(Shown *sh, int cells)
 static const KhdaysTextureReplacement *hd_sheet(uint32_t word)
 {
     const KhdaysTextureReplacement *r = word != 0u ? khdays_textures_replacement((int)(word >> 20) - 1) : NULL;
-    return r != NULL && r->rgba != NULL && (r->info & KHDAYS_REPLACEMENT_TILES) != 0u && ((r->info >> 8) & 255u) != 0u &&
-                   (r->info >> 16) != 0u
+    return r != NULL && r->rgba != NULL && (r->info & KHDAYS_REPLACEMENT_TILES) != 0u &&
+                   ((r->info >> 8) & 255u) != 0u && (r->info >> 16) != 0u
                ? r
                : NULL;
 }
@@ -259,8 +259,9 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
                     ux = (entry & 0x400u) ? 8 * rs - 1 - ux : ux;
                     uy = (entry & 0x800u) ? 8 * rs - 1 - uy : uy;
                     {
-                        const uint32_t s = r->rgba[(size_t)((int)(tile / (uint32_t)cols) * 8 * rs + uy) * (size_t)r->width +
-                                                   (size_t)((int)(tile % (uint32_t)cols) * 8 * rs + ux)];
+                        const uint32_t s =
+                            r->rgba[(size_t)((int)(tile / (uint32_t)cols) * 8 * rs + uy) * (size_t)r->width +
+                                    (size_t)((int)(tile % (uint32_t)cols) * 8 * rs + ux)];
                         if (r->info & KHDAYS_REPLACEMENT_INDEXED) {
                             v = s & 0xffu;
                         } else {
@@ -274,7 +275,8 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
                 }
                 if (v != 0 && entry != 0xffffffffu) {
                     const uint32_t pal = entry >> 12;
-                    t = !l->colors256 ? KET_OPAQUE | (pal * 16u + v) : KET_OPAQUE | KET_EXTENDED | pal << KET_EXT_PAL_SHIFT | v;
+                    t = !l->colors256 ? KET_OPAQUE | (pal * 16u + v)
+                                      : KET_OPAQUE | KET_EXTENDED | pal << KET_EXT_PAL_SHIFT | v;
                 }
                 texels[(size_t)ty * (size_t)tw + (size_t)tx] = t;
                 if (colours != NULL) {
@@ -318,9 +320,9 @@ static int emit_piece(int index, int bg, const KhdaysBgLayer *l)
 /* A sprite of the piece's screen that the port draws: its image, kept by its
  * OAM entry and made again when what it draws changed. */
 typedef struct Sprite {
-    uint32_t attrs;      /* attr0 | attr1 << 16 as last drawn (without the position) */
+    uint32_t attrs; /* attr0 | attr1 << 16 as last drawn (without the position) */
     uint32_t attr2;
-    uint8_t *pixels;     /* w * h palette indices as drawn last */
+    uint8_t *pixels; /* w * h palette indices as drawn last */
     int room, w, h;
     int image, image_scale;
 } Sprite;
@@ -443,7 +445,8 @@ static void emit_sprites(int index)
                     const uint32_t v = sp->pixels[sy0 * w + sx0];
                     const uint32_t t = v == 0 ? 0u : KET_OPAQUE | (colors256 ? v : pal * 16u + v);
                     for (int yy = 0; yy < scale; ++yy) {
-                        uint32_t *out = texels + (size_t)(py * scale + yy) * (size_t)(w * scale) + (size_t)px * (size_t)scale;
+                        uint32_t *out =
+                            texels + (size_t)(py * scale + yy) * (size_t)(w * scale) + (size_t)px * (size_t)scale;
                         for (int xx = 0; xx < scale; ++xx) {
                             out[xx] = t;
                         }
@@ -614,9 +617,8 @@ static void trace_layer(uint32_t frame, int engine, int bg, const KhdaysBgLayer 
                 snprintf(line, sizeof(line),
                          "hud: frame %u, engine %c BG%d (priority %d): dots %d,%d-%d,%d, map cells %d,%d %dx%d, %d "
                          "cells, characters %u-%u, palettes %04x",
-                         frame, engine ? 'B' : 'A', bg, l->priority, px0, py0, px1, py1,
-                         ((l->hofs >> 3) + x0) % l->wt, ((l->vofs >> 3) + y0) % l->ht, x1 - x0 + 1, y1 - y0 + 1,
-                         cells, tmin, tmax, pals);
+                         frame, engine ? 'B' : 'A', bg, l->priority, px0, py0, px1, py1, ((l->hofs >> 3) + x0) % l->wt,
+                         ((l->vofs >> 3) + y0) % l->ht, x1 - x0 + 1, y1 - y0 + 1, cells, tmin, tmax, pals);
                 at = strlen(line);
                 for (int k = 0; k < file_count && at < sizeof(line) - 1; ++k) {
                     at += (size_t)snprintf(line + at, sizeof(line) - at, "%s %s x%d", k ? "," : "; from",

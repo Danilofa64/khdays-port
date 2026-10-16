@@ -2,6 +2,7 @@
 -- tiny, stored, encrypted only, compressed and encrypted, with remastered assets of each kind --
 written as the collections write them and read back byte for byte. The table here is a made-up
 permutation (the game's own is never in the repository); the encryption is its own inverse (XOR)."""
+
 import hashlib
 import random
 import struct
@@ -35,7 +36,7 @@ def write_archive(base: Path, entries, cipher):
     """entries: path -> (data, kind, [(asset name, data, kind)])."""
     hed, pkg = bytearray(), bytearray()
     for path, (data, kind, assets) in entries.items():
-        date = 0x665f4db9
+        date = 0x665F4DB9
         # the header holds the stored length, which depends on the header (its key): settle it
         stored_len = ca.STORED
         for _ in range(4):
@@ -70,11 +71,15 @@ class Reader(unittest.TestCase):
             "stored/plain.bin": (blob(1000), "stored", []),
             "crypt/only.bin": (blob(777), "encrypted", []),
             "zip/big.bin": (bytes(5000) + blob(300), "compressed", []),
-            "menu/fm/title.2ld": (blob(2049), "compressed", [
-                ("UK_title_2ld0.png", blob(4097), "encrypted"),
-                ("se/obj/nested.dds", bytes(3000) + blob(13), "compressed"),
-                ("tiny.bin", blob(5), "stored"),
-            ]),
+            "menu/fm/title.2ld": (
+                blob(2049),
+                "compressed",
+                [
+                    ("UK_title_2ld0.png", blob(4097), "encrypted"),
+                    ("se/obj/nested.dds", bytes(3000) + blob(13), "compressed"),
+                    ("tiny.bin", blob(5), "stored"),
+                ],
+            ),
         }
         with tempfile.TemporaryDirectory() as d:
             base = Path(d) / "test_first"
@@ -87,8 +92,9 @@ class Reader(unittest.TestCase):
                 out = Path(d) / "out"
                 written = ca.materialise(archive, ["menu/fm/title.2ld"], out)
                 self.assertEqual(written, 4)
-                self.assertEqual((out / "remastered/menu/fm/title.2ld/se/obj/nested.dds").read_bytes(),
-                                 assets_of(entries)[1])
+                self.assertEqual(
+                    (out / "remastered/menu/fm/title.2ld/se/obj/nested.dds").read_bytes(), assets_of(entries)[1]
+                )
                 with self.assertRaises(ca.ArchiveError):
                     archive.read("not/there.bin")
 

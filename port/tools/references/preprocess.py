@@ -2,6 +2,7 @@
 includes, definitions and forced include, line markers kept), MSVC's dialect mapped to ISO C for the
 parser; of the pragmas, pack and optimize stay.
 """
+
 from __future__ import annotations
 
 import re
@@ -24,6 +25,7 @@ def decomp_defines() -> list[str]:
 @dataclass
 class Flags:
     """What the khdays-decomp target compiles a source with (port/CMakeLists.txt)."""
+
     includes: list[Path] = field(default_factory=list)
     defines: list[str] = field(default_factory=list)
     forced: list[Path] = field(default_factory=list)
@@ -31,13 +33,14 @@ class Flags:
     @staticmethod
     def game_side() -> "Flags":
         dsprot = next((DECOMP / "src").rglob("dsprot_types.h")).parent
-        return Flags(includes=[PORT / "compat" / "include", DECOMP / "include", dsprot],
-                     defines=decomp_defines(),
-                     forced=[PORT / "compat" / "decomp_compat.h"])
+        return Flags(
+            includes=[PORT / "compat" / "include", DECOMP / "include", dsprot],
+            defines=decomp_defines(),
+            forced=[PORT / "compat" / "decomp_compat.h"],
+        )
 
     def arguments(self) -> list[str]:
-        return ([f"/I{p}" for p in self.includes] + [f"/D{d}" for d in self.defines] +
-                [f"/FI{p}" for p in self.forced])
+        return [f"/I{p}" for p in self.includes] + [f"/D{d}" for d in self.defines] + [f"/FI{p}" for p in self.forced]
 
 
 PRAGMA = re.compile(r"^[ \t]*#[ \t]*pragma\b(?![ \t]+(?:pack|optimize)\b).*$", re.M)
@@ -75,8 +78,9 @@ def preprocess(source: Path, flags: Flags, env: dict[str, str], cl: str | None =
     args = [cl or compiler(env), "/nologo", "/E", "/Zp4"] + flags.arguments()
     if source.suffix == ".cpp":
         raise PreprocessError(f"{source}: C++ is not the type pass's")
-    r = subprocess.run(args + [str(source)], env=env, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace")
+    r = subprocess.run(
+        args + [str(source)], env=env, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     if r.returncode:
         raise PreprocessError(f"{source}: the preprocessor failed:\n{r.stderr.strip()[:2000]}")
     return r.stdout if raw else iso_dialect(r.stdout)

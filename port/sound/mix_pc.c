@@ -32,7 +32,7 @@ void khdays_sound_mix_pc(const KhdaysSoundHw *hw, const float gain[16], float vo
         left[n] = v * (1.0f - pan);
         right[n] = v * pan;
         if ((n == 1 && (soundcnt & 0x1000)) || (n == 3 && (soundcnt & 0x2000))) {
-            continue;  /* not to the mixer */
+            continue; /* not to the mixer */
         }
         mix_left += left[n];
         mix_right += right[n];

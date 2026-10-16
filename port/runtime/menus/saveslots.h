@@ -12,7 +12,7 @@
 #define KHDAYS_GAME_SLOTS 3      /* the game's own (and the chip's) */
 #define KHDAYS_SLOT_COPY 0x2018u /* one copy: magic, SHA-1, the game's state */
 #define KHDAYS_SLOT_BYTES (2u * KHDAYS_SLOT_COPY)
-#define KHDAYS_SLOTS_START 0x20u /* after the chip's header */
+#define KHDAYS_SLOTS_START 0x20u   /* after the chip's header */
 #define KHDAYS_STATE_BYTES 0x1cacu /* the game's state, signed, from a copy's +0x18 */
 
 /* What a file holds, as the game's read tells it (Ov000_PollSaveLoad): copy 0

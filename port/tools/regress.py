@@ -4,6 +4,7 @@ walks (port/tools/regress_walks/: --walk-save OLD.sav [--only NAME] [--record]) 
 traces (--input FILE --save PATH --log PATH). Each run is in a temporary directory with a link to
 data/ and a copy of the save. docs/BUILD.md, "The regression walks".
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,10 +31,10 @@ EXPECTED = WALKS_DIR / "expected.txt"
 @dataclass
 class Walk:
     name: str
-    timeout: int        # seconds; a walk ends when its time is up
-    player_save: bool   # the player's save (else the walks' own old save)
-    saves: bool = False # the walk saves the game (else the save must stay as it was)
-    players: int = 1    # copies of the game playing it together, each with its script
+    timeout: int  # seconds; a walk ends when its time is up
+    player_save: bool  # the player's save (else the walks' own old save)
+    saves: bool = False  # the walk saves the game (else the save must stay as it was)
+    players: int = 1  # copies of the game playing it together, each with its script
     script: str | None = None  # the scripts' name, if not the walk's
     # "direct" or "relay": the players meet through a khdays-server of this
     # PC (the one next to EXE), not the local network; "relay" never tries
@@ -69,9 +70,11 @@ SCENE_LINE = re.compile(r"^khdays-native: frame \d+, scene (\d+)")
 # the game's memory the port could not reach (sound data it could
 # not read, a file handle's header outside the headers' heaps, a heap full) --
 # a silent title once passed every walk's scenes.
-TROUBLE = re.compile(r"Run-Time Check|reached a call|exception 0x|outside the modelled|"
-                     r"no native function|gap|AddressSanitizer|played as silence|"
-                     r"outside the headers' heaps|could not give")
+TROUBLE = re.compile(
+    r"Run-Time Check|reached a call|exception 0x|outside the modelled|"
+    r"no native function|gap|AddressSanitizer|played as silence|"
+    r"outside the headers' heaps|could not give"
+)
 # The server's log: only a sanitizer's report means it went wrong.
 SERVER_TROUBLE = re.compile(r"AddressSanitizer")
 
@@ -82,8 +85,7 @@ def player_saves(work: Path, player: int) -> Path:
     return work / "saves" if player == 1 else work / "saves" / f"player{player}"
 
 
-def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | None = None,
-                 player: int = 1) -> Path:
+def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | None = None, player: int = 1) -> Path:
     """A fresh directory with data/ linked in and, if given, a copy of the save
     (where player `player` keeps it), the mods folder linked in as mods/ and a
     copy of a settings file as saves/settings.ini (screens = one for the
@@ -92,11 +94,11 @@ def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | N
     link = work / "data"
     # A junction, not a copy: data/ is gigabytes. `mklink /J` needs no
     # administrator rights.
-    subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(ROOT / "data")],
-                   check=True, capture_output=True)
+    subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(ROOT / "data")], check=True, capture_output=True)
     if mods is not None:
-        subprocess.run(["cmd", "/c", "mklink", "/J", str(work / "mods"), str(mods.resolve())],
-                       check=True, capture_output=True)
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(work / "mods"), str(mods.resolve())], check=True, capture_output=True
+        )
     if save is not None:
         player_saves(work, player).mkdir(parents=True)
         shutil.copy2(save, player_saves(work, player) / "khdays.sav")
@@ -132,21 +134,27 @@ def start_server(exe: Path, log: Path) -> tuple[subprocess.Popen, int]:
     probe.close()
     with log.open("wb") as out:
         # never the PC's router: a walk opens no port on it
-        server = subprocess.Popen([str(exe.parent / "khdays-server.exe"), "--port", str(port), "--router", "off"],
-                                  stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT)
+        server = subprocess.Popen(
+            [str(exe.parent / "khdays-server.exe"), "--port", str(port), "--router", "off"],
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=subprocess.STDOUT,
+        )
     return server, port
 
 
-def run_game(exe: Path, work: Path, script: str, extra_env: dict[str, str], timeout: int,
-             log: Path, window: bool) -> int | None:
+def run_game(
+    exe: Path, work: Path, script: str, extra_env: dict[str, str], timeout: int, log: Path, window: bool
+) -> int | None:
     """Run the game in `work` with `script` as its input until it exits or its
     time is up. stdout and stderr go to `log`. Returns the exit code, or None
     when the time ran out (the normal end of a walk)."""
     return run_games(exe, [(work, script, log)], extra_env, timeout, window)[0]
 
 
-def run_games(exe: Path, players: list[tuple[Path, str, Path]], extra_env: dict[str, str], timeout: int,
-              window: bool) -> list[int | None]:
+def run_games(
+    exe: Path, players: list[tuple[Path, str, Path]], extra_env: dict[str, str], timeout: int, window: bool
+) -> list[int | None]:
     """Run a copy of the game for each (work, script, log), all at once --
     player 1, 2, ... in that order, as the copies of a multiplayer walk -- each
     until it exits or the time is up. Returns each one's exit code, or None
@@ -175,8 +183,7 @@ def run_games(exe: Path, players: list[tuple[Path, str, Path]], extra_env: dict[
                 elif slot == str(player):
                     env[own] = value
             with log.open("wb") as out:
-                games.append(subprocess.Popen([str(exe)], cwd=work, env=env, stdout=out,
-                                              stderr=subprocess.STDOUT))
+                games.append(subprocess.Popen([str(exe)], cwd=work, env=env, stdout=out, stderr=subprocess.STDOUT))
         deadline = time.monotonic() + timeout
         codes: list[int | None] = []
         for game in games:
@@ -365,22 +372,40 @@ def run_script(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("exe", type=Path, nargs="?", default=DEFAULT_EXE,
-                        help=f"the khdays-native.exe to run (default: {DEFAULT_EXE.relative_to(ROOT)})")
+    parser.add_argument(
+        "exe",
+        type=Path,
+        nargs="?",
+        default=DEFAULT_EXE,
+        help=f"the khdays-native.exe to run (default: {DEFAULT_EXE.relative_to(ROOT)})",
+    )
     walks = parser.add_argument_group("regression walks")
     walks.add_argument("--walk-save", type=Path, help="the save the mission, story and play walks start from")
-    walks.add_argument("--player-save", type=Path, default=ROOT / "saves" / "khdays.sav",
-                       help="the save the run07 walk starts from (default: saves/khdays.sav)")
+    walks.add_argument(
+        "--player-save",
+        type=Path,
+        default=ROOT / "saves" / "khdays.sav",
+        help="the save the run07 walk starts from (default: saves/khdays.sav)",
+    )
     walks.add_argument("--only", help="run only this walk")
-    walks.add_argument("--record", action="store_true",
-                       help="write the scene sequences of this run to regress_walks/expected.txt")
+    walks.add_argument(
+        "--record", action="store_true", help="write the scene sequences of this run to regress_walks/expected.txt"
+    )
     walks.add_argument("--logs", type=Path, help="keep each walk's log in this directory")
-    parser.add_argument("--mods", type=Path, help="a mods folder to play with, linked in as mods/ (the walks or the "
-                        "script)")
-    parser.add_argument("--settings", type=Path, help="a settings file the game starts with, copied as "
-                        "saves/settings.ini (the walks or the script)")
-    parser.add_argument("--env", action="append", default=[],
-                        help="an extra NAME=VALUE for the game (the walks or the script); N:NAME=VALUE for player N alone")
+    parser.add_argument(
+        "--mods", type=Path, help="a mods folder to play with, linked in as mods/ (the walks or the script)"
+    )
+    parser.add_argument(
+        "--settings",
+        type=Path,
+        help="a settings file the game starts with, copied as saves/settings.ini (the walks or the script)",
+    )
+    parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        help="an extra NAME=VALUE for the game (the walks or the script); N:NAME=VALUE for player N alone",
+    )
     one = parser.add_argument_group("one script")
     one.add_argument("--input", type=Path, help="a file holding a KHDAYS_INPUT script")
     one.add_argument("--save", type=Path, help="the save to start from (copied; none = a new game)")

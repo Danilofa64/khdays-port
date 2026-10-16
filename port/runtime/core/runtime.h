@@ -10,7 +10,7 @@ extern "C" {
 void khdays_diag_init(void);
 
 /* The native address of the function named `name` (from the PDB), or 0. */
-unsigned long long khdays_diag_symbol(const char *name);  /* a native address */
+unsigned long long khdays_diag_symbol(const char *name); /* a native address */
 /* The name of the native function holding `address` (from the PDB), "?" if
  * none; valid until the next call. */
 const char *khdays_diag_function_at(const void *address);

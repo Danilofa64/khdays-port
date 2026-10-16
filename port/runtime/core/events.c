@@ -21,12 +21,12 @@
 #include <windows.h>
 
 static u64 last_update;
-static u64 alarm_at;     /* the cycle timer 1 would overflow at (khdays_alarm_set_after) */
+static u64 alarm_at; /* the cycle timer 1 would overflow at (khdays_alarm_set_after) */
 static int alarm_armed;
 static u64 next_vblank = KHDAYS_VBLANK_LINE * KHDAYS_CYCLES_PER_LINE;
 static u32 vblank_count;
 static u32 presented;
-static u32 dma_at_vblank;  /* channel mask */
+static u32 dma_at_vblank; /* channel mask */
 
 /* The next timed event on the game's side. The sound's alarms are not among them: the sound thread
  * keeps the ARM7's time, and a reply it has for the game wakes the wait. */
@@ -81,7 +81,7 @@ static u32 timing_accesses[KHDAYS_TIMING_KINDS];
 /* The instructions already named, by kind (the list grows with the game's). */
 typedef struct TimingSite {
     int kind;
-    khdays_uptr site;  /* the instruction's native address */
+    khdays_uptr site; /* the instruction's native address */
 } TimingSite;
 static TimingSite *timing_sites;
 static int timing_nsites, timing_room;
@@ -166,7 +166,7 @@ void khdays_events_update(void)
         khdays_io_request_irq(1u << 4); /* timer 1: the SDK's alarm handler */
     }
     if (khdays_g3d_fifo_irq()) {
-        khdays_io_request_irq(1u << 21);  /* GXFIFO: raised for as long as the condition holds */
+        khdays_io_request_irq(1u << 21); /* GXFIFO: raised for as long as the condition holds */
     }
     while (now >= next_vblank) {
         /* VBlank: the frame the game prepared is shown (only the last when several VBlanks passed at once),
@@ -175,7 +175,7 @@ void khdays_events_update(void)
             khdays_display_vblank(vblank_count);
         }
         khdays_input_frame(vblank_count + 1);
-        if (IO16(0x004) & 0x0008) {  /* DISPSTAT: VBlank IRQ enabled */
+        if (IO16(0x004) & 0x0008) { /* DISPSTAT: VBlank IRQ enabled */
             if (IO32(0x214) & 1u) {
                 ++timing_merged; /* the last VBlank's interrupt is not taken yet: one handler serves both */
             }

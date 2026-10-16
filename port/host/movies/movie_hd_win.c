@@ -17,7 +17,7 @@
 #include <string.h>
 
 #define PICTURES_AHEAD 0.15 /* seconds of pictures decoded ahead of the clock */
-#define SOUND_AHEAD    0.30 /* seconds of sound queued ahead of the device */
+#define SOUND_AHEAD 0.30    /* seconds of sound queued ahead of the device */
 
 typedef struct Picture {
     double time; /* its presentation time in the file, in seconds */
@@ -51,19 +51,19 @@ static struct {
     int spare_count, spare_capacity;
     long decoded, taken; /* pictures decoded; the number of the last one taken (-1: none) */
     double first_time;   /* the first picture's time */
-    double duration; /* how long the file says it lasts (MF_PD_DURATION), or 0 when it does not say */
+    double duration;     /* how long the file says it lasts (MF_PD_DURATION), or 0 when it does not say */
     /* the sound */
     IMFSourceReader *audio;
     SDL_AudioStream *sound;
     int sound_eos;
     volatile LONGLONG put_frames; /* sound frames put into the stream so far */
-    double sound_start; /* the first sound sample's time */
-    int last_queued;    /* after the sound's end: what was still queued, and since when */
+    double sound_start;           /* the first sound sample's time */
+    int last_queued;              /* after the sound's end: what was still queued, and since when */
     LONGLONG still_since;
     /* the counter's clock: used without sound, or once the sound has all played */
     volatile LONG counter_clock;
-    double counter_base;      /* the video time it starts from */
-    LONGLONG counter_start;   /* the counter's value at that time */
+    double counter_base;              /* the video time it starts from */
+    LONGLONG counter_start;           /* the counter's value at that time */
     LONGLONG paused_at, paused_ticks; /* when the pause began; the counter ticks spent paused */
     LARGE_INTEGER frequency;
     /* what happened, for the report when it closes */
@@ -265,7 +265,7 @@ static uint8_t *picture_buffer(size_t size)
         if (p.size == size) {
             return p.data;
         }
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(p.data);
     }
     return (uint8_t *)malloc(size);
@@ -341,7 +341,8 @@ static int keep_picture(IMFSample *sample, double time)
         DWORD max_length = 0;
         hr = IMFMediaBuffer_Lock(buffer, &scan0, &max_length, &length);
         if (FAILED(hr)) {
-            if (two_d != NULL) IMF2DBuffer_Release(two_d);
+            if (two_d != NULL)
+                IMF2DBuffer_Release(two_d);
             IMFMediaBuffer_Release(buffer);
             say("a picture cannot be read", hr);
             return 0;
@@ -409,8 +410,8 @@ static int read_picture(void)
         if (ok && hd.duration > 0.0 && last + 0.5 < hd.duration) {
             /* its pictures end well before its length: a file cut short. It
              * fails as a broken file does (and the game's movie is shown) */
-            snprintf(hd.why, sizeof(hd.why), "its pictures end at %.2f s of its %.2f s (the file cut short?)",
-                     last, hd.duration);
+            snprintf(hd.why, sizeof(hd.why), "its pictures end at %.2f s of its %.2f s (the file cut short?)", last,
+                     hd.duration);
             ok = 0;
         }
     }
@@ -427,8 +428,7 @@ static void read_sound(void)
     HRESULT hr = IMFSourceReader_ReadSample(hd.audio, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, &index, &flags,
                                             &time, &sample);
     if (FAILED(hr) || (flags & MF_SOURCE_READERF_ERROR)) {
-        fprintf(stderr, "movies: the HD video's sound cannot be decoded (0x%08lx); it ends there\n",
-                (unsigned long)hr);
+        fprintf(stderr, "movies: the HD video's sound cannot be decoded (0x%08lx); it ends there\n", (unsigned long)hr);
         hd.sound_eos = 1;
         SDL_FlushAudioStream(hd.sound);
         return;
@@ -622,17 +622,18 @@ void khdays_hd_close(void)
         SDL_DestroyAudioStream(hd.sound); /* the sound stops at once */
     }
     if (hd.open_ok) {
-        fprintf(stderr, "movies: the HD video showed %ld pictures, %ld late (passed over), its picture at most "
-                        "%.1f ms off its clock\n",
+        fprintf(stderr,
+                "movies: the HD video showed %ld pictures, %ld late (passed over), its picture at most "
+                "%.1f ms off its clock\n",
                 hd.shown, hd.late, hd.worst_offset * 1000.0);
     }
     AcquireSRWLockExclusive(&lock);
     for (int i = 0; i < hd.count; ++i) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(hd.pictures[i].data);
     }
     for (int i = 0; i < hd.spare_count; ++i) {
-#pragma warning(suppress: 6001) /* every item below the count was written before the count moved: none uninitialised */
+#pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(hd.spare[i].data);
     }
     free(hd.pictures);
@@ -680,8 +681,10 @@ int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
     hd.thread = hd.opened != NULL && hd.wake != NULL ? CreateThread(NULL, 0, run, NULL, 0, NULL) : NULL;
     if (hd.thread == NULL) {
         snprintf(why, size, "no thread for it");
-        if (hd.opened != NULL) CloseHandle(hd.opened);
-        if (hd.wake != NULL) CloseHandle(hd.wake);
+        if (hd.opened != NULL)
+            CloseHandle(hd.opened);
+        if (hd.wake != NULL)
+            CloseHandle(hd.wake);
         hd.opened = hd.wake = NULL;
         free(hd.url);
         hd.url = NULL;
@@ -747,15 +750,15 @@ int khdays_hd_status(char *why, size_t size)
     if (trace && SDL_GetTicks() - traced_at >= 1000) {
         /* with KHDAYS_TRACE_MOVIE_HD: once a second, where the video is */
         traced_at = SDL_GetTicks();
-        fprintf(stderr, "movie hd: status %d, started %ld, clock %.3f, pictures %d (newest %.3f), taken %ld, "
-                        "decoded %ld, video end %d, sound end %d, queued %d, counter clock %ld\n",
+        fprintf(stderr,
+                "movie hd: status %d, started %ld, clock %.3f, pictures %d (newest %.3f), taken %ld, "
+                "decoded %ld, video end %d, sound end %d, queued %d, counter clock %ld\n",
                 hd.status, (long)hd.started, clock_now(), hd.count,
-                hd.count > 0 ? hd.pictures[hd.count - 1].time : -1.0, hd.taken, hd.decoded, hd.video_eos,
-                hd.sound_eos, hd.sound != NULL ? SDL_GetAudioStreamQueued(hd.sound) : -1, (long)hd.counter_clock);
+                hd.count > 0 ? hd.pictures[hd.count - 1].time : -1.0, hd.taken, hd.decoded, hd.video_eos, hd.sound_eos,
+                hd.sound != NULL ? SDL_GetAudioStreamQueued(hd.sound) : -1, (long)hd.counter_clock);
     }
     status = hd.status;
-    if (status == 0 && hd.started && hd.video_eos &&
-        (hd.sound == NULL || hd.counter_clock)) {
+    if (status == 0 && hd.started && hd.video_eos && (hd.sound == NULL || hd.counter_clock)) {
         /* every picture is decoded; it has ended once the last one was taken and its time has passed */
         const double last = hd.count > 0 ? hd.pictures[hd.count - 1].time : hd.first_time;
         const double frame = hd.info.fps > 0.0 ? 1.0 / hd.info.fps : 0.0;

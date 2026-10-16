@@ -23,10 +23,10 @@ typedef struct Entry {
     char identifier[160];
     char path[520];
     KhdaysOriginalLoop loop;
-    volatile LONG state;  /* written by the decoder when it is done */
+    volatile LONG state; /* written by the decoder when it is done */
     KhdaysReplacement file;
-    int users;            /* players and streams playing it */
-    u64 used;             /* when it was last given to one */
+    int users; /* players and streams playing it */
+    u64 used;  /* when it was last given to one */
     struct Entry *next;
 } Entry;
 
@@ -48,7 +48,7 @@ static DWORD WINAPI decoder(LPVOID unused)
             SleepConditionVariableSRW(&queue_filled, &queue_lock, INFINITE, 0);
         }
         e = queue[0];
-#pragma warning(suppress: 6386) /* queued > 0 here (the wait above): one fewer, never a wrap */
+#pragma warning(suppress : 6386) /* queued > 0 here (the wait above): one fewer, never a wrap */
         memmove(queue, queue + 1, (size_t)--queued * sizeof(queue[0]));
         ReleaseSRWLockExclusive(&queue_lock);
         if (khdays_replacement_load(&e->file, e->path, &e->loop, why, sizeof(why))) {
@@ -73,7 +73,7 @@ static void enqueue(Entry *e)
         queue[queued++] = e;
         WakeConditionVariable(&queue_filled);
     } else {
-        InterlockedExchange(&e->state, LET_GO);  /* asked again at its next start */
+        InterlockedExchange(&e->state, LET_GO); /* asked again at its next start */
     }
     ReleaseSRWLockExclusive(&queue_lock);
 }
@@ -158,7 +158,7 @@ static Entry *entry_find(const char *identifier)
             char relative[200];
             snprintf(relative, sizeof(relative), "sounds/%s%s", identifier, extensions[i]);
             if (khdays_mods_find(relative, e->path, sizeof(e->path))) {
-                e->state = LET_GO;  /* to decode */
+                e->state = LET_GO; /* to decode */
                 break;
             }
         }
@@ -231,11 +231,11 @@ static u32 rd32(u32 address)
 #define WAVE_ARCHIVES 32
 
 static struct {
-    u32 address;  /* 0: none */
+    u32 address; /* 0: none */
     int number;
     u32 size;
     int waves;
-    Entry **entry;  /* per wave, NULL: none */
+    Entry **entry; /* per wave, NULL: none */
     u64 used;
 } wave_archive[WAVE_ARCHIVES];
 
@@ -243,7 +243,7 @@ static struct {
  * name or number>), looked at once for each. */
 static int has_folder(const KhdaysSoundArchive *archive, int number)
 {
-    static signed char *known;  /* by archive number: 0 not looked at, 1 has, -1 has not (grows) */
+    static signed char *known; /* by archive number: 0 not looked at, 1 has, -1 has not (grows) */
     static int known_count;
     char identifier[160], *slash;
     WIN32_FIND_DATAA mod;
@@ -254,7 +254,8 @@ static int has_folder(const KhdaysSoundArchive *archive, int number)
     if (number >= known_count) {
         int count = known_count ? known_count : 256;
         signed char *grown;
-        while (count <= number) count *= 2;
+        while (count <= number)
+            count *= 2;
         grown = (signed char *)realloc(known, (size_t)count);
         if (grown == NULL) {
             return 0;
@@ -271,7 +272,7 @@ static int has_folder(const KhdaysSoundArchive *archive, int number)
         (slash = strrchr(identifier, '/')) == NULL) {
         return 0;
     }
-    *slash = '\0';  /* wave/<archive> */
+    *slash = '\0'; /* wave/<archive> */
     h = FindFirstFileA("mods\\*", &mod);
     if (h != INVALID_HANDLE_VALUE) {
         do {
@@ -292,7 +293,7 @@ static int has_folder(const KhdaysSoundArchive *archive, int number)
 /* What each channel bound to a wave plays. */
 static struct {
     Entry *entry;
-    u32 rate;  /* the original's */
+    u32 rate; /* the original's */
 } wave_channel[16];
 
 void khdays_sound_mods_wave_archive(const KhdaysSoundArchive *archive, int number, u32 address)
@@ -310,13 +311,13 @@ void khdays_sound_mods_wave_archive(const KhdaysSoundArchive *archive, int numbe
         if (wave_archive[i].address == address) {
             if (wave_archive[i].number == number && wave_archive[i].size == rd32(address + 8)) {
                 wave_archive[i].used = ++uses;
-                return;  /* known */
+                return; /* known */
             }
             slot = i;
             break;
         }
         if (wave_archive[i].used < wave_archive[slot].used) {
-            slot = i;  /* the least recently loaded, if it is new */
+            slot = i; /* the least recently loaded, if it is new */
         }
     }
     waves = (int)rd32(address + 0x38);
@@ -340,7 +341,7 @@ void khdays_sound_mods_wave_archive(const KhdaysSoundArchive *archive, int numbe
         free(entry);
         return;
     }
-    free(wave_archive[slot].entry);  /* its entries stay, as every entry does */
+    free(wave_archive[slot].entry); /* its entries stay, as every entry does */
     wave_archive[slot].address = address;
     wave_archive[slot].number = number;
     wave_archive[slot].size = rd32(address + 8);
@@ -364,7 +365,7 @@ int khdays_sound_mods_bind_wave(int channel, uint32_t sad, uint32_t len, int for
             continue;
         }
         if (memcmp((const u8 *)KHDAYS_W(address), "SWAR", 4) != 0 || rd32(address + 8) != wave_archive[i].size) {
-            wave_archive[i].address = 0;  /* its memory went to something else */
+            wave_archive[i].address = 0; /* its memory went to something else */
             continue;
         }
         for (int w = 0; w < wave_archive[i].waves; ++w) {
@@ -386,7 +387,7 @@ int khdays_sound_mods_bind_wave(int channel, uint32_t sad, uint32_t len, int for
                                                  words * per_word - header};
                 Entry *e = entry_want(wave_archive[i].entry[w], &loop);
                 if (e == NULL || e->state != READY || (int)param[0] != format) {
-                    return -1;  /* the original, until its file is decoded */
+                    return -1; /* the original, until its file is decoded */
                 }
                 set_entry(&wave_channel[channel].entry, e);
                 wave_channel[channel].rate = loop.rate;
@@ -410,7 +411,7 @@ int khdays_sound_mods_wave_sample(int handle, uint64_t index, int32_t *sample)
     long s;
     if (!(handle & KHDAYS_WAVE_HANDLE) || e == NULL || e->state != READY) {
         *sample = 0;
-        return 1;  /* bound: the channel keeps to it until its next start */
+        return 1; /* bound: the channel keeps to it until its next start */
     }
     r = &e->file;
     at = r->rate == wave_channel[channel].rate || wave_channel[channel].rate == 0
@@ -434,8 +435,8 @@ enum { IDLE, ARMED, PREPARED, PLAYING };
 static struct {
     Entry *entry;
     int state;
-    u32 tag;     /* the command list that prepares it */
-    u64 played;  /* output samples since it started, its pauses not counted */
+    u32 tag;    /* the command list that prepares it */
+    u64 played; /* output samples since it started, its pauses not counted */
 } sequence[16];
 
 static struct {
@@ -499,8 +500,7 @@ static float factor(uint32_t value)
 }
 
 void khdays_sound_mods_mix(const KhdaysSoundHw *hw, const KhdaysSnd7Driver *driver, uint32_t rate,
-                           uint32_t finished_tag, const float player_gain[16], const float stream_gain[4],
-                           float out[2])
+                           uint32_t finished_tag, const float player_gain[16], const float stream_gain[4], float out[2])
 {
     static const float divider[4] = {1.0f, 2.0f, 4.0f, 16.0f};
     const uint32_t soundcnt = khdays_sound_hw_read(hw, 0x100, 2);
@@ -569,8 +569,8 @@ void khdays_sound_mods_mix(const KhdaysSoundHw *hw, const KhdaysSnd7Driver *driv
                 reload < 0x10000u ? (double)(c->counter - reload) / (double)(0x10000u - reload) : 0.0;
             /* at the original's rate the file's own samples, held as the
              * channel holds them; at another, between them */
-            const double sample = (double)stream[s].start + (double)(c->played - 1) +
-                                  (r->rate == stream[s].rate ? 0.0 : fraction);
+            const double sample =
+                (double)stream[s].start + (double)(c->played - 1) + (r->rate == stream[s].rate ? 0.0 : fraction);
             const double at = stream[s].rate != 0 ? sample * (double)r->rate / (double)stream[s].rate : 0.0;
             const float v = khdays_replacement_sample(r, at, khdays_streams_handle_channel(c->source)) *
                             factor(cnt & 0x7f) / divider[(cnt >> 8) & 3] * stream_gain[s] * master;

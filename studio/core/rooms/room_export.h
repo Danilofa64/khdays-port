@@ -16,12 +16,12 @@ namespace studio {
 // Writes `out` (a .gltf, its buffer embedded) and the models' textures beside
 // it; false with the reason. Models the dump does not have are left out and
 // named in `notes`.
-bool export_room(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump, const World& w, int room,
-                 const std::filesystem::path& out, std::vector<std::string>* notes, std::string* why);
+bool export_room(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump, const World& w,
+                 int room, const std::filesystem::path& out, std::vector<std::string>* notes, std::string* why);
 
 // The points of the room's models (as the dump has them, at rest) in the
 // room's space: what align_with_room compares a modder's model with.
-std::vector<std::array<float, 3>> room_points(const std::filesystem::path& nitrofs, const std::filesystem::path& graphics_dump,
-                                              const World& w, int room);
+std::vector<std::array<float, 3>> room_points(const std::filesystem::path& nitrofs,
+                                              const std::filesystem::path& graphics_dump, const World& w, int room);
 
 }  // namespace studio

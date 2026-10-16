@@ -33,13 +33,13 @@ typedef struct KhdaysTextureReplacement {
  * each `scale` times the DS's 8x8 (bits 8-15); INDEXED when its texels are
  * the game's palette indices (in their low byte) rather than colours. */
 #define KHDAYS_REPLACEMENT_INDEXED 0x1u
-#define KHDAYS_REPLACEMENT_TILES   0x2u
+#define KHDAYS_REPLACEMENT_TILES 0x2u
 
 /* A bitmap the game wrote (a movie's frame, video.c): its picture drawn in
  * place of the bitmap's pixels at the picture's own size, the bitmap's rows
  * of `units` 32-byte units (bits 8-15) and `rows` rows (bits 16-31). The
  * units drawn instead are numbered from the bitmap's start (tiles2d.h). */
-#define KHDAYS_REPLACEMENT_BITMAP  0x4u
+#define KHDAYS_REPLACEMENT_BITMAP 0x4u
 
 /* A texture from a file's data, as the port draws it, into `rgba` (width x
  * height x 4 bytes, the sizes of `param`): `param` its TEXIMAGE_PARAM (the

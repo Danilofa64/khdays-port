@@ -29,7 +29,7 @@ struct SheetSource {
     int tiles = 0, columns = 0;
     bool shaped = false;  // its header gives its columns and rows (columns * rows == tiles)
     std::vector<Resource> screens, cell_banks, palettes;  // NSCR, NCER, NCLR in the same data
-    int sheets_in_data = 0;  // how many sheets the data holds
+    int sheets_in_data = 0;                               // how many sheets the data holds
     // palettes of other game data near it (load_sheet_source): numbered after
     // the data's own, closest first -- the same entry of the file without
     // its language, the file's other entries, that file's other entries, the
@@ -53,9 +53,15 @@ struct SheetSource {
     int seen_row = 0;
     int unseen_tiles = 0;
 
-    int bpp() const { return tile_bytes == 64 ? 8 : 4; }
-    int width() const { return columns * 8; }
-    int height() const { return (tiles + columns - 1) / columns * 8; }
+    int bpp() const {
+        return tile_bytes == 64 ? 8 : 4;
+    }
+    int width() const {
+        return columns * 8;
+    }
+    int height() const {
+        return (tiles + columns - 1) / columns * 8;
+    }
 };
 
 // How many palettes there are to choose from (the data's own and nearby).
@@ -66,7 +72,8 @@ std::string palette_from(const SheetSource& s, int i);
 
 // The sheet named `key` (`<data>/chr/<n>`) from the extracted game files,
 // with the palettes near it.
-bool load_sheet_source(const std::filesystem::path& nitrofs, const std::string& key, SheetSource* out, std::string* why);
+bool load_sheet_source(const std::filesystem::path& nitrofs, const std::string& key, SheetSource* out,
+                       std::string* why);
 
 // The row after a sheet's 16 in the palette of the colours seen in play:
 // greys, for the tiles the game was never seen drawing.
@@ -150,7 +157,7 @@ int liveliest_row(const SheetSource& s, const khdays::assets::Palette2D& palette
 
 // Where each pixel of an assembled picture (at scale 1) comes from.
 struct Place {
-    std::int32_t tile = -1;  // -1: no tile there
+    std::int32_t tile = -1;     // -1: no tile there
     std::uint8_t x = 0, y = 0;  // in the tile, flips undone
     std::uint8_t row = 0;       // its palette row (4 bits a pixel), or 256-colour palette
     bool flip_h = false, flip_v = false;

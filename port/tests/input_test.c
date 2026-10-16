@@ -26,12 +26,12 @@ int khdays_mods_find(const char *relative, char *path, int size)
     return 0;
 }
 
-#define CHECK(condition)                                                                 \
-    do {                                                                                   \
-        if (!(condition)) {                                                                \
-            fprintf(stderr, "%s:%d: failed: %s\n", __FILE__, __LINE__, #condition);        \
-            ++failures;                                                                    \
-        }                                                                                  \
+#define CHECK(condition)                                                                                               \
+    do {                                                                                                               \
+        if (!(condition)) {                                                                                            \
+            fprintf(stderr, "%s:%d: failed: %s\n", __FILE__, __LINE__, #condition);                                    \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 #define DS(action) ((uint16_t)(1u << (action)))
@@ -134,7 +134,7 @@ static void test_stick_directions(void)
         /* Resting on the edge between right and up-right does not flicker. */
         int active = 0, sector = -1;
         CHECK(stick_at(20, 100, &stick, &active, &sector) == right);
-        CHECK(stick_at(23, 100, &stick, &active, &sector) == right);  /* past 22.5, within the hysteresis */
+        CHECK(stick_at(23, 100, &stick, &active, &sector) == right); /* past 22.5, within the hysteresis */
         CHECK(stick_at(21, 100, &stick, &active, &sector) == right);
         CHECK(stick_at(30, 100, &stick, &active, &sector) == (right | up)); /* clearly the next one */
     }
@@ -511,7 +511,8 @@ static void test_video_settings(void)
 
     /* Every value, and back through a save. */
     CHECK(load_text("[video]\ninternal_resolution = window\naspect = 16:10\nscaling = smooth\n"
-                    "texture_smoothing = on\nhd_graphics = off\ndump_graphics = on\n", &q) == 0);
+                    "texture_smoothing = on\nhd_graphics = off\ndump_graphics = on\n",
+                    &q) == 0);
     CHECK(q.video.internal_resolution == KHDAYS_RESOLUTION_WINDOW && q.video.aspect == KHDAYS_ASPECT_16_10);
     CHECK(q.video.smooth_scaling && q.video.texture_smoothing && !q.video.hd_graphics && q.video.dump_graphics);
     path_of("video.ini", path, sizeof(path));
@@ -571,10 +572,10 @@ static void test_video_settings(void)
 
     /* Bad values: a notice each, and the default. */
     CHECK(load_text("[video]\ninternal_resolution = huge\naspect = 21:9\nscaling = blurry\nhd_graphics = maybe\n"
-                    "internal_resolution = 0\n", &q) == 5);
+                    "internal_resolution = 0\n",
+                    &q) == 5);
     CHECK(q.video.internal_resolution == KHDAYS_RESOLUTION_WINDOW && q.video.aspect == KHDAYS_ASPECT_16_9 &&
-          !q.video.smooth_scaling &&
-          q.video.hd_graphics);
+          !q.video.smooth_scaling && q.video.hd_graphics);
     if (SDL_getenv("KHDAYS_LANGUAGE") == NULL) {
         CHECK(load_text("language = es\n[video]\naspect = 21:9\n", &q) == 1);
         CHECK(strstr(last_notice, "no es un valor posible") != NULL && strstr(last_notice, "se usa 16:9") != NULL);
@@ -843,7 +844,7 @@ static void test_settings_model(void)
         {KHDAYS_SET_RUN_FROM, KHDAYS_ROW_NUMBER, 50, 95, 5},
         {KHDAYS_SET_WALK_SPEED, KHDAYS_ROW_NUMBER, 20, 90, 5},
         {KHDAYS_SET_DISPLAY, KHDAYS_ROW_CHOICE, 0, KHDAYS_DISPLAY_COUNT - 1, 0},
-        {KHDAYS_SET_RESOLUTION, KHDAYS_ROW_CHOICE, 0, 15, 0}, /* as the window allows, 2x-16x: 1x is not offered */
+        {KHDAYS_SET_RESOLUTION, KHDAYS_ROW_CHOICE, 0, 15, 0},  /* as the window allows, 2x-16x: 1x is not offered */
         {KHDAYS_SET_ANTIALIASING, KHDAYS_ROW_CHOICE, 0, 3, 0}, /* off, 2x, 3x, 4x */
         {KHDAYS_SET_ASPECT, KHDAYS_ROW_CHOICE, 0, KHDAYS_ASPECT_COUNT - 1, 0},
         {KHDAYS_SET_SCREENS, KHDAYS_ROW_CHOICE, 0, 1, 0},
@@ -939,7 +940,8 @@ static void test_settings_model(void)
         CHECK(rows[1].values[1] == 2 && rows[1].values[15] == 16);
         p.video.internal_resolution = 1;
         khdays_model_rows(KHDAYS_SECTION_VIDEO, &p, &context, rows);
-        CHECK(rows[1].high == 16 && khdays_model_choice_of(&rows[1]) == 0 && strcmp(rows[1].choices[0], "1x (DS)") == 0);
+        CHECK(rows[1].high == 16 && khdays_model_choice_of(&rows[1]) == 0 &&
+              strcmp(rows[1].choices[0], "1x (DS)") == 0);
         khdays_model_set_choice(&p, &rows[1], khdays_model_choice_of(&rows[1]) + 1);
         CHECK(p.video.internal_resolution == KHDAYS_RESOLUTION_WINDOW);
     }
@@ -1064,8 +1066,8 @@ static void test_settings_screen(void)
     to_cell(2);
     key(SDL_SCANCODE_DELETE);
     CHECK(khdays_settings_profile()->input[PAD][BASE][KHDAYS_ACT_A][0] == KHDAYS_NO_INPUT);
-    key(SDL_SCANCODE_ESCAPE);                 /* to the column */
-    CHECK(key(SDL_SCANCODE_ESCAPE) == 0);     /* "No input would press: A" */
+    key(SDL_SCANCODE_ESCAPE);             /* to the column */
+    CHECK(key(SDL_SCANCODE_ESCAPE) == 0); /* "No input would press: A" */
     shot("3-unbound");
     CHECK(khdays_settings_is_open());
     CHECK(key(SDL_SCANCODE_RETURN) == 0); /* the safe answer, "Back", is chosen */
@@ -1138,7 +1140,7 @@ static void test_face_buttons(void)
         for (int i = 0; i < KHDAYS_SECTION_VIDEO; ++i) {
             pad_press(SDL_GAMEPAD_BUTTON_DPAD_DOWN); /* to Video */
         }
-        CHECK(pad_press(cases[c].accept) == 0); /* in */
+        CHECK(pad_press(cases[c].accept) == 0);  /* in */
         pad_press(SDL_GAMEPAD_BUTTON_DPAD_DOWN); /* past the display mode */
         pad_press(SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
         CHECK(v->internal_resolution == 2); /* on the video section */
@@ -1597,8 +1599,8 @@ static void test_analog(void)
         int x, y;
         unsigned dpad;
     } directions[] = {
-        {0, FULL, UP},          {-FULL, FULL, UP | LEFT},    {-FULL, 0, LEFT}, {-FULL, -FULL, DOWN | LEFT},
-        {0, -FULL, DOWN},       {FULL, -FULL, DOWN | RIGHT}, {FULL, 0, RIGHT}, {FULL, FULL, UP | RIGHT},
+        {0, FULL, UP},    {-FULL, FULL, UP | LEFT},    {-FULL, 0, LEFT}, {-FULL, -FULL, DOWN | LEFT},
+        {0, -FULL, DOWN}, {FULL, -FULL, DOWN | RIGHT}, {FULL, 0, RIGHT}, {FULL, FULL, UP | RIGHT},
     };
     for (size_t i = 0; i < sizeof(directions) / sizeof(directions[0]); ++i) {
         CHECK(khdays_analog_heading(directions[i].x, directions[i].y) == game_heading(directions[i].dpad));
@@ -1731,8 +1733,7 @@ static void test_menu_sequencer(void)
 }
 
 /* Lock-on on its own buttons is the DS's own R presses for it. */
-static uint16_t lock_frame(KhdaysLockSequencer *s, uint32_t actions, int locked, int scheme, uint16_t held,
-                           int r_free)
+static uint16_t lock_frame(KhdaysLockSequencer *s, uint32_t actions, int locked, int scheme, uint16_t held, int r_free)
 {
     return khdays_lock_sequencer_frame(s, actions, 1, locked, scheme, held, r_free);
 }
@@ -1765,7 +1766,7 @@ static void test_lock_sequencer(void)
     CHECK(lock_frame(&s, 0, 1, 0, 0, 0) == 0);
     CHECK(lock_frame(&s, next, 1, 0, 0, 0) == 0); /* pressed again: waits */
     CHECK(lock_frame(&s, 0, 1, 0, 0, 0) == 0);
-    CHECK(lock_frame(&s, 0, 1, 0, 0, 1) == R);    /* the game's window has passed */
+    CHECK(lock_frame(&s, 0, 1, 0, 0, 1) == R); /* the game's window has passed */
     CHECK(lock_frame(&s, 0, 1, 0, 0, 1) == 0);
     /* Locking on waits for the window too. */
     khdays_lock_sequencer_reset(&s);
@@ -1785,8 +1786,8 @@ static void test_lock_sequencer(void)
     CHECK(lock_frame(&s, on, 0, 0, R, 1) == 0);
     CHECK(lock_frame(&s, on, 0, 0, 0, 1) == R);
     CHECK(khdays_lock_sequencer_frame(&s, on, 0, 0, 0, 0, 1) == R);
-    CHECK(khdays_lock_sequencer_frame(&s, on, 0, 0, 0, 0, 1) == R);   /* held */
-    CHECK(khdays_lock_sequencer_frame(&s, 0, 0, 0, 0, 0, 1) == 0);    /* let go */
+    CHECK(khdays_lock_sequencer_frame(&s, on, 0, 0, 0, 0, 1) == R); /* held */
+    CHECK(khdays_lock_sequencer_frame(&s, 0, 0, 0, 0, 0, 1) == 0);  /* let go */
     CHECK(khdays_lock_sequencer_frame(&s, next, 0, 0, 0, 0, 1) == R);
     CHECK(khdays_lock_sequencer_frame(&s, prev, 0, 0, 1, 0, 1) == L);
     CHECK(lock_frame(&s, 0, 0, 0, 0, 1) == 0);

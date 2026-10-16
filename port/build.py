@@ -4,6 +4,7 @@ port/CMakeLists.txt with Ninja in Visual Studio's x64 environment, into build/po
 obj-release-x64 (Release) or obj-asan-x64 (--asan: AddressSanitizer on the port's own code).
   python port/build.py [--config Debug|Release] [--asan] [--jobs N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,12 +20,27 @@ OBJ = ROOT / "build" / "port" / "obj-x64"
 
 
 def vcvarsall() -> Path:
-    vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / \
-        "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    vswhere = (
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+        / "Microsoft Visual Studio"
+        / "Installer"
+        / "vswhere.exe"
+    )
     out = subprocess.run(
-        [str(vswhere), "-latest", "-products", "*", "-requires",
-         "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
-        capture_output=True, text=True, check=True).stdout.strip()
+        [
+            str(vswhere),
+            "-latest",
+            "-products",
+            "*",
+            "-requires",
+            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "-property",
+            "installationPath",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
     if not out:
         raise SystemExit("no Visual Studio with the C++ x64 build tools found")
     return Path(out) / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat"
@@ -32,8 +48,7 @@ def vcvarsall() -> Path:
 
 def msvc_env(arch: str = "x64") -> dict[str, str]:
     """The Visual Studio environment that builds for `arch` (vcvarsall's name)."""
-    out = subprocess.run(f'"{vcvarsall()}" {arch} >nul && set', shell=True,
-                         capture_output=True, text=True, check=True)
+    out = subprocess.run(f'"{vcvarsall()}" {arch} >nul && set', shell=True, capture_output=True, text=True, check=True)
     env = dict(line.split("=", 1) for line in out.stdout.splitlines() if "=" in line)
     env["VSLANG"] = "1033"  # English diagnostics
     return env
@@ -47,6 +62,7 @@ def oem_console() -> int:
     if os.name != "nt":
         return 0
     import ctypes
+
     kernel32 = ctypes.windll.kernel32
     old = kernel32.GetConsoleOutputCP()
     if old and old != kernel32.GetOEMCP():
@@ -62,9 +78,12 @@ def check_header_tracking(obj: Path, env: dict[str, str]) -> None:
         return
     out = subprocess.run([ninja, "-C", str(obj), "-t", "deps", target], env=env, capture_output=True).stdout
     if b"#deps 0" in out:
-        print("build.py: ninja recorded no header of runtime/display/display.c: a change to a header alone will not "
-              "rebuild what includes it. Configure and build the tree in the same console code page "
-              "(see oem_console).", file=sys.stderr)
+        print(
+            "build.py: ninja recorded no header of runtime/display/display.c: a change to a header alone will not "
+            "rebuild what includes it. Configure and build the tree in the same console code page "
+            "(see oem_console).",
+            file=sys.stderr,
+        )
 
 
 def run(cmd: list[str], env: dict[str, str]) -> None:
@@ -84,8 +103,11 @@ def generated(config: str, asan: bool = False) -> tuple[Path, Path]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="Debug", choices=["Debug", "Release"])
-    ap.add_argument("--asan", action="store_true",
-                    help="AddressSanitizer on the port's own code (Release flags; build/port/obj-asan-x64)")
+    ap.add_argument(
+        "--asan",
+        action="store_true",
+        help="AddressSanitizer on the port's own code (Release flags; build/port/obj-asan-x64)",
+    )
     ap.add_argument("--jobs", type=int, default=0)
     args = ap.parse_args()
     if args.asan:
@@ -98,21 +120,31 @@ def main() -> int:
     finally:
         if console:
             import ctypes
+
             ctypes.windll.kernel32.SetConsoleOutputCP(console)
 
 
 def build_tree(args: argparse.Namespace, gen: Path, obj: Path) -> int:
     """Prepares the decomp, configures the tree and builds it."""
-    subprocess.run([sys.executable, str(ROOT / "port" / "tools" / "prepare.py"), "--out", str(gen)],
-                   check=True)
+    subprocess.run([sys.executable, str(ROOT / "port" / "tools" / "prepare.py"), "--out", str(gen)], check=True)
     env = msvc_env()
-    configure = ["cmake", "-S", str(ROOT / "port"), "-B", str(obj), "-G", "Ninja",
-                 f"-DCMAKE_BUILD_TYPE={args.config}", f"-DKHDAYS_GEN={gen}",
-                 "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl",
-                 # SDL3 is fetched into each build directory (port/CMakeLists.txt
-                 # pins the release); drop a source directory an older cache kept.
-                 "-UFETCHCONTENT_SOURCE_DIR_SDL3",
-                 f"-DKHDAYS_ASAN={'ON' if args.asan else 'OFF'}"]
+    configure = [
+        "cmake",
+        "-S",
+        str(ROOT / "port"),
+        "-B",
+        str(obj),
+        "-G",
+        "Ninja",
+        f"-DCMAKE_BUILD_TYPE={args.config}",
+        f"-DKHDAYS_GEN={gen}",
+        "-DCMAKE_C_COMPILER=cl",
+        "-DCMAKE_CXX_COMPILER=cl",
+        # SDL3 is fetched into each build directory (port/CMakeLists.txt
+        # pins the release); drop a source directory an older cache kept.
+        "-UFETCHCONTENT_SOURCE_DIR_SDL3",
+        f"-DKHDAYS_ASAN={'ON' if args.asan else 'OFF'}",
+    ]
     run(configure, env)
     build = ["cmake", "--build", str(obj)]
     if args.jobs:

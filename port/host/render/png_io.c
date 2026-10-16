@@ -6,7 +6,7 @@
 #pragma warning(push, 0)
 #endif
 #define STBI_ONLY_PNG
-#define STBI_WINDOWS_UTF8  /* paths are UTF-8, as SDL gives them */
+#define STBI_WINDOWS_UTF8 /* paths are UTF-8, as SDL gives them */
 #define STBIW_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -94,7 +94,8 @@ uint8_t *khdays_png_read_indexed(const char *path, int *width, int *height, uint
     const char *why = NULL;
     if (palette != NULL) { /* black and opaque until the file says otherwise */
         memset(palette, 0, 256 * 4);
-        for (int i = 0; i < 256; ++i) palette[i * 4 + 3] = 255;
+        for (int i = 0; i < 256; ++i)
+            palette[i * 4 + 3] = 255;
     }
     if (file == NULL) {
         why = "the file could not be read";
@@ -125,7 +126,8 @@ uint8_t *khdays_png_read_indexed(const char *path, int *width, int *height, uint
                 palette[i * 4 + 2] = data[i * 3 + 2];
             }
         } else if (memcmp(tag, "tRNS", 4) == 0 && palette != NULL) {
-            for (uint32_t i = 0; i < len && i < 256; ++i) palette[i * 4 + 3] = data[i];
+            for (uint32_t i = 0; i < len && i < 256; ++i)
+                palette[i * 4 + 3] = data[i];
         } else if (memcmp(tag, "IDAT", 4) == 0) {
             uint8_t *grown = (uint8_t *)realloc(idat, idat_size + len);
             if (grown == NULL) {
@@ -153,7 +155,7 @@ uint8_t *khdays_png_read_indexed(const char *path, int *width, int *height, uint
     {
         const size_t stride = ((size_t)w * depth + 7) / 8;
         raw = (uint8_t *)stbi_zlib_decode_malloc_guesssize_headerflag((const char *)idat, (int)idat_size,
-                                                                       (int)((stride + 1) * h), &raw_len, 1);
+                                                                      (int)((stride + 1) * h), &raw_len, 1);
         if (raw == NULL || (size_t)raw_len < (stride + 1) * h) {
             why = "its image data could not be decompressed";
             goto done;
@@ -175,15 +177,15 @@ uint8_t *khdays_png_read_indexed(const char *path, int *width, int *height, uint
             }
             for (uint32_t x = 0; x < w; ++x) {
                 const size_t bit = (size_t)x * depth;
-                out[(size_t)y * w + x] =
-                    (uint8_t)((row[bit / 8] >> (8 - depth - (bit % 8))) & ((1u << depth) - 1u));
+                out[(size_t)y * w + x] = (uint8_t)((row[bit / 8] >> (8 - depth - (bit % 8))) & ((1u << depth) - 1u));
             }
         }
         *width = (int)w;
         *height = (int)h;
     }
 done:
-    if (out == NULL && error != NULL) *error = why;
+    if (out == NULL && error != NULL)
+        *error = why;
     free(raw);
     free(idat);
     SDL_free(file);
@@ -199,11 +201,13 @@ static uint32_t crc32_of(const uint8_t *p, size_t n)
     if (crc_table[1] == 0) {
         for (uint32_t i = 0; i < 256; ++i) {
             uint32_t v = i;
-            for (int k = 0; k < 8; ++k) v = (v & 1u) ? 0xedb88320u ^ (v >> 1) : v >> 1;
+            for (int k = 0; k < 8; ++k)
+                v = (v & 1u) ? 0xedb88320u ^ (v >> 1) : v >> 1;
             crc_table[i] = v;
         }
     }
-    for (size_t i = 0; i < n; ++i) c = crc_table[(c ^ p[i]) & 0xffu] ^ (c >> 8);
+    for (size_t i = 0; i < n; ++i)
+        c = crc_table[(c ^ p[i]) & 0xffu] ^ (c >> 8);
     return c ^ 0xffffffffu;
 }
 
@@ -217,7 +221,8 @@ static size_t put_chunk(uint8_t *out, const char *tag, const uint8_t *data, uint
     out[2] = (uint8_t)(len >> 8);
     out[3] = (uint8_t)len;
     memcpy(out + 4, tag, 4);
-    if (len != 0) memcpy(out + 8, data, len);
+    if (len != 0)
+        memcpy(out + 8, data, len);
     crc = crc32_of(out + 4, len + 4u);
     out[8 + len] = (uint8_t)(crc >> 24);
     out[9 + len] = (uint8_t)(crc >> 16);
@@ -236,16 +241,20 @@ const char *khdays_png_write_indexed(const char *path, const uint8_t *indices, i
     int zipped_len = 0;
     size_t at = 0;
     const char *why = NULL;
-    if (colours < 1) colours = 1;
-    if (colours > 256) colours = 256;
-    if (rows == NULL) return "no memory";
+    if (colours < 1)
+        colours = 1;
+    if (colours > 256)
+        colours = 256;
+    if (rows == NULL)
+        return "no memory";
     for (int y = 0; y < height; ++y) {
         rows[(size_t)y * stride] = 0; /* no filter */
         memcpy(rows + (size_t)y * stride + 1, indices + (size_t)y * (size_t)width, (size_t)width);
     }
     zipped = stbi_zlib_compress(rows, (int)(stride * (size_t)height), &zipped_len, 8);
     free(rows);
-    if (zipped == NULL) return "the image could not be compressed";
+    if (zipped == NULL)
+        return "the image could not be compressed";
     /* the signature, then the IHDR, PLTE, tRNS, IDAT and IEND chunks (each 12 bytes plus its data) */
     file = (uint8_t *)malloc(8 + 25 + 12 + (size_t)colours * 3 + 13 + 12 + (size_t)zipped_len + 12);
     if (file == NULL) {
@@ -263,11 +272,13 @@ const char *khdays_png_write_indexed(const char *path, const uint8_t *indices, i
     header[10] = header[11] = header[12] = 0;
     at += put_chunk(file + at, "IHDR", header, 13);
     at += put_chunk(file + at, "PLTE", palette, (uint32_t)colours * 3u);
-    if (transparent0) at += put_chunk(file + at, "tRNS", &clear0, 1);
+    if (transparent0)
+        at += put_chunk(file + at, "tRNS", &clear0, 1);
     at += put_chunk(file + at, "IDAT", zipped, (uint32_t)zipped_len);
     at += put_chunk(file + at, "IEND", NULL, 0);
     STBIW_FREE(zipped);
-    if (!SDL_SaveFile(path, file, at)) why = "the file could not be written";
+    if (!SDL_SaveFile(path, file, at))
+        why = "the file could not be written";
     free(file);
     return why;
 }

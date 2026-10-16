@@ -57,10 +57,12 @@ extern void Ov025_ReleaseHandleGridAndList(KhdaysRef record, KhdaysRef work, Khd
 extern KhdaysRef func_ov025_02087254(KhdaysRef record);
 extern int Ov025_LookupTypeCode(int which);
 
-static const Counting title_counting = {Ov000_InitRecordContext, Ov000_BuildMenuGrid, Ov000_RebuildViewAndCountCells,
-                                        Ov000_ReleaseHandleGridAndList, func_ov000_02058360, Ov000_LookupTypeCode};
-static const Counting story_counting = {Ov025_InitRecordContext, Ov025_BuildMenuGrid, Ov025_RebuildViewAndCountCells,
-                                        Ov025_ReleaseHandleGridAndList, func_ov025_02087254, Ov025_LookupTypeCode};
+static const Counting title_counting = {
+    Ov000_InitRecordContext,        Ov000_BuildMenuGrid, Ov000_RebuildViewAndCountCells,
+    Ov000_ReleaseHandleGridAndList, func_ov000_02058360, Ov000_LookupTypeCode};
+static const Counting story_counting = {
+    Ov025_InitRecordContext,        Ov025_BuildMenuGrid, Ov025_RebuildViewAndCountCells,
+    Ov025_ReleaseHandleGridAndList, func_ov025_02087254, Ov025_LookupTypeCode};
 
 extern void Ov008_InitRecordContext(KhdaysRef record, KhdaysRef zero);
 extern void Ov008_BuildMenuGrid(KhdaysRef record, KhdaysRef work, KhdaysRef list, KhdaysRef ids);
@@ -68,8 +70,9 @@ extern void Ov008_RebuildViewAndCountCells(KhdaysRef record, KhdaysRef work, Khd
 extern void Ov008_ReleaseHandleGridAndList(KhdaysRef record, KhdaysRef work, KhdaysRef list);
 extern KhdaysRef func_ov008_02053464(KhdaysRef record);
 extern int Ov008_LookupTypeCode(int which);
-static const Counting mission_counting = {Ov008_InitRecordContext, Ov008_BuildMenuGrid, Ov008_RebuildViewAndCountCells,
-                                          Ov008_ReleaseHandleGridAndList, func_ov008_02053464, Ov008_LookupTypeCode};
+static const Counting mission_counting = {
+    Ov008_InitRecordContext,        Ov008_BuildMenuGrid, Ov008_RebuildViewAndCountCells,
+    Ov008_ReleaseHandleGridAndList, func_ov008_02053464, Ov008_LookupTypeCode};
 
 /* The game's own redraws of its lists' rows after a record changes, and its cursors' moves (see "The
  * game's own lists in pages") */
@@ -116,8 +119,8 @@ static const Camp camps[] = {
 #define SCENE_OBJECT 0x0u
 #define SCENE_CURRENT 0x8u
 #define OBJECT_HEAP 0x20u
-#define GAME_STATE 0x0204be18u   /* gGameState: the game's state, a reference */
-#define STATE_MENU_IDS 0xee0u    /* the panels' grid in the state (Ov000_RecordLoadResult's menuIds) */
+#define GAME_STATE 0x0204be18u /* gGameState: the game's state, a reference */
+#define STATE_MENU_IDS 0xee0u  /* the panels' grid in the state (Ov000_RecordLoadResult's menuIds) */
 
 /* the title's list's context (see above) */
 #define GUEST_SHOWN 0x4accu
@@ -144,12 +147,12 @@ static const Camp camps[] = {
 #define SAVE_ENTRIES 0x10u
 #define SAVE_ENTRY_SIZE 0x1cu
 #define SAVE_ENTRY_HOLDS 0x10u
-#define SAVE_COUNTER 0x1ef8u           /* the highest save counter of the slots read */
-#define FIELD_SAVE_SLOT 0xc98          /* the slot saved to last: the camp's cursor starts there */
+#define SAVE_COUNTER 0x1ef8u  /* the highest save counter of the slots read */
+#define FIELD_SAVE_SLOT 0xc98 /* the slot saved to last: the camp's cursor starts there */
 #define SAVE_YES 0x64u
 #define SAVE_ERROR 0x23cu
 #define SAVE_ERROR_KIND 0x240u
-#define SAVE_READING 0x244u            /* the slot read's step (a byte) */
+#define SAVE_READING 0x244u /* the slot read's step (a byte) */
 enum { SAVE_PICK, SAVE_ASK, SAVE_SAVING, SAVE_READING_AGAIN, SAVE_DONE, SAVE_FAILED };
 
 /* KeyRepeat_Update's: its delay at +2, its interval at +4, in VBlanks at frame rate mode 2 */
@@ -159,24 +162,34 @@ enum { SAVE_PICK, SAVE_ASK, SAVE_SAVING, SAVE_READING_AGAIN, SAVE_DONE, SAVE_FAI
 /* the strings' records the screens draw: UI/load/lrd_&.s.z (Ov000_DrawLoadPageText) and
  * UI/cm/str/sav_&.s.z (Ov025_SaveMenuDrawPrompt) */
 enum {
-    LRD_LOAD = 3, LRD_DELETE = 4, LRD_DELETE_WARNING = 5, LRD_DELETING = 9, LRD_DELETED = 10,
-    LRD_BROKEN_DELETE = 14, LRD_NETWORK = 16, LRD_GUEST = 17, LRD_GUEST_NOTE = 18, LRD_WRITE_ERROR = 19,
-    LRD_READ_ERROR = 20, LRD_ERROR_NOTE = 21, LRD_SURE = 22
+    LRD_LOAD = 3,
+    LRD_DELETE = 4,
+    LRD_DELETE_WARNING = 5,
+    LRD_DELETING = 9,
+    LRD_DELETED = 10,
+    LRD_BROKEN_DELETE = 14,
+    LRD_NETWORK = 16,
+    LRD_GUEST = 17,
+    LRD_GUEST_NOTE = 18,
+    LRD_WRITE_ERROR = 19,
+    LRD_READ_ERROR = 20,
+    LRD_ERROR_NOTE = 21,
+    LRD_SURE = 22
 };
 enum { SAV_OVERWRITE = 2, SAV_CREATE = 3, SAV_SAVED = 7, SAV_WRITE_ERROR = 10, SAV_SAVING = 11, SAV_READ_ERROR = 13 };
 
 static SRWLOCK lock = SRWLOCK_INIT;
-static KhdaysSaveView shown;  /* under the lock */
+static KhdaysSaveView shown; /* under the lock */
 
-static int active;            /* the screen shown last frame (KHDAYS_SAVELIST_*) */
+static int active; /* the screen shown last frame (KHDAYS_SAVELIST_*) */
 static int cursor;
 static int current_file = -1; /* the file this game was loaded from or saved to last */
 static u16 held, handed;      /* the buttons held last frame; the ones given to the game */
 static u32 steer_field;       /* the game's cursor the port takes to a place before a button, 0 none */
 static int steer_to;
 static u16 steer_button;
-static int steer_rest;        /* a frame with no direction between two presses */
-static int repeat_dir;        /* the direction held: -1 up, 1 down, 0 none */
+static int steer_rest; /* a frame with no direction between two presses */
+static int repeat_dir; /* the direction held: -1 up, 1 down, 0 none */
 static u32 repeat_from, repeat_count;
 static KhdaysSaveRow rows[KHDAYS_SLOT_COUNT];
 static u32 rows_changed, rows_generation;
@@ -199,7 +212,7 @@ static void wr16(u32 address, u16 value)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 static int language(void)
@@ -342,8 +355,8 @@ static int direction(u16 buttons, u32 repeat)
     const u32 now = khdays_events_vblank_count();
     const int mode = GetFrameRateMode();
     const u32 speed = mode == 0 ? 2u : mode == 1 ? 3u : 1u;
-    const u32 delay = repeat != 0 ? (u32)*(volatile u16 *)KHDAYS_W(repeat + REPEAT_DELAY) * speed : 0;
-    const u32 interval = repeat != 0 ? (u32)*(volatile u16 *)KHDAYS_W(repeat + REPEAT_INTERVAL) * speed : 0;
+    const u32 delay = repeat != 0 ? (u32) * (volatile u16 *)KHDAYS_W(repeat + REPEAT_DELAY) * speed : 0;
+    const u32 interval = repeat != 0 ? (u32) * (volatile u16 *)KHDAYS_W(repeat + REPEAT_INTERVAL) * speed : 0;
     u32 elapsed;
     if (dir == 0) {
         repeat_dir = 0;
@@ -551,8 +564,7 @@ static u16 camp_buttons(const Camp *camp, u32 ctx, u32 menu, u16 buttons)
         if (latest >= 0) {
             khdays_slots_show(latest);
         }
-        if (opening != 1 || rd32(menu + SAVE_OPENING_SLOT) != 0 ||
-            *(volatile u8 *)KHDAYS_W(menu + SAVE_READING) != 0) {
+        if (opening != 1 || rd32(menu + SAVE_OPENING_SLOT) != 0 || *(volatile u8 *)KHDAYS_W(menu + SAVE_READING) != 0) {
             khdays_log("save list: the camp's save screen was found late (its opening at step %d)", opening);
         }
         make_rows(camp->counting);
@@ -702,7 +714,7 @@ static int edge_step(int row, int dir, int guest, int *to_row)
 {
     const int last = KHDAYS_SLOT_COUNT - KHDAYS_GAME_SLOTS;
     *to_row = -1;
-    if (row == KHDAYS_GAME_SLOTS) {         /* the guest's row: on to the first file, or back to the last */
+    if (row == KHDAYS_GAME_SLOTS) { /* the guest's row: on to the first file, or back to the last */
         *to_row = dir > 0 ? 0 : KHDAYS_GAME_SLOTS - 1;
         return dir > 0 ? 0 : last;
     }

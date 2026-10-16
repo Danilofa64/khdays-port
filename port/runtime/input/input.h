@@ -27,7 +27,7 @@ enum {
 void khdays_input_init(void);
 
 /* An object update ran (runtime/core/diag.c, from Obj_UpdateAll). */
-void khdays_input_update_ran(khdays_uptr update);  /* its native address */
+void khdays_input_update_ran(khdays_uptr update); /* its native address */
 
 /* At each VBlank: apply the script's items for this frame. */
 void khdays_input_frame(u32 frame);

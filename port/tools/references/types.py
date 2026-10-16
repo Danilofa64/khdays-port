@@ -2,6 +2,7 @@
 It models what the game's C uses; an expression it cannot type stops it (TypeFailure) naming the file,
 the line and the construct: nothing is rewritten by a guess.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -36,6 +37,7 @@ class CType:
 @dataclass(eq=False)
 class Arithmetic(CType):
     """An integer or floating type, by its C spelling (`unsigned int`...)."""
+
     spelling: str
     quals: tuple = ()
     floating: bool = False
@@ -85,6 +87,7 @@ class Function(CType):
 @dataclass(eq=False)
 class RecordDefinition:
     """One struct or union tag: shared by every type that names it."""
+
     kind: str  # 'struct' or 'union'
     tag: str | None
     fields: dict[str, CType] | None = None  # None: incomplete
@@ -142,23 +145,41 @@ def decayed(t: CType) -> CType:
 
 ARITHMETIC_WORDS = {
     ("void",): None,
-    ("char",): "char", ("signed", "char"): "signed char", ("unsigned", "char"): "unsigned char",
-    ("short",): "short", ("short", "int"): "short", ("signed", "short"): "short",
-    ("signed", "short", "int"): "short", ("unsigned", "short"): "unsigned short",
+    ("char",): "char",
+    ("signed", "char"): "signed char",
+    ("unsigned", "char"): "unsigned char",
+    ("short",): "short",
+    ("short", "int"): "short",
+    ("signed", "short"): "short",
+    ("signed", "short", "int"): "short",
+    ("unsigned", "short"): "unsigned short",
     ("unsigned", "short", "int"): "unsigned short",
-    ("int",): "int", ("signed",): "int", ("signed", "int"): "int",
-    ("unsigned",): "unsigned int", ("unsigned", "int"): "unsigned int",
-    ("long",): "long", ("long", "int"): "long", ("signed", "long"): "long", ("signed", "long", "int"): "long",
-    ("unsigned", "long"): "unsigned long", ("unsigned", "long", "int"): "unsigned long",
-    ("long", "long"): "long long", ("long", "long", "int"): "long long", ("signed", "long", "long"): "long long",
+    ("int",): "int",
+    ("signed",): "int",
+    ("signed", "int"): "int",
+    ("unsigned",): "unsigned int",
+    ("unsigned", "int"): "unsigned int",
+    ("long",): "long",
+    ("long", "int"): "long",
+    ("signed", "long"): "long",
+    ("signed", "long", "int"): "long",
+    ("unsigned", "long"): "unsigned long",
+    ("unsigned", "long", "int"): "unsigned long",
+    ("long", "long"): "long long",
+    ("long", "long", "int"): "long long",
+    ("signed", "long", "long"): "long long",
     ("signed", "long", "long", "int"): "long long",
-    ("unsigned", "long", "long"): "unsigned long long", ("unsigned", "long", "long", "int"): "unsigned long long",
-    ("float",): "float", ("double",): "double", ("long", "double"): "long double",
+    ("unsigned", "long", "long"): "unsigned long long",
+    ("unsigned", "long", "long", "int"): "unsigned long long",
+    ("float",): "float",
+    ("double",): "double",
+    ("long", "double"): "long double",
     ("_Bool",): "_Bool",
 }
 
 
 # --- failures ---------------------------------------------------------------------
+
 
 class TypeFailure(Exception):
     def __init__(self, node, message: str):
@@ -170,6 +191,7 @@ class TypeFailure(Exception):
 
 
 # --- scopes -------------------------------------------------------------------------
+
 
 @dataclass(eq=False)
 class Symbol:
@@ -206,6 +228,7 @@ class Scope:
 
 
 # --- the pass ---------------------------------------------------------------------------
+
 
 class TypePass(c_ast.NodeVisitor):
     """Gives every expression node its type (self.types: id(node) -> CType)
@@ -275,16 +298,44 @@ class TypePass(c_ast.NodeVisitor):
         if isinstance(node, c_ast.IdentifierType):
             names = tuple(n for n in node.names if n not in ("signed",) or len(node.names) > 1)
             words = tuple(node.names)
-            if len(words) == 1 and words[0] not in ("void", "char", "short", "int", "long", "float", "double",
-                                                    "signed", "unsigned", "_Bool"):
+            if len(words) == 1 and words[0] not in (
+                "void",
+                "char",
+                "short",
+                "int",
+                "long",
+                "float",
+                "double",
+                "signed",
+                "unsigned",
+                "_Bool",
+            ):
                 s = self.scope.find(words[0])
                 if s is None or s.kind != "typedef":
                     raise TypeFailure(where, f"an unknown type name {words[0]!r}")
                 return s.type
-            key = tuple(sorted(words, key=lambda w: ("signed", "unsigned", "short", "long", "char", "int",
-                                                      "float", "double", "void", "_Bool").index(w)
-                               if w in ("signed", "unsigned", "short", "long", "char", "int", "float", "double",
-                                        "void", "_Bool") else 99))
+            key = tuple(
+                sorted(
+                    words,
+                    key=lambda w: (
+                        (
+                            "signed",
+                            "unsigned",
+                            "short",
+                            "long",
+                            "char",
+                            "int",
+                            "float",
+                            "double",
+                            "void",
+                            "_Bool",
+                        ).index(w)
+                        if w
+                        in ("signed", "unsigned", "short", "long", "char", "int", "float", "double", "void", "_Bool")
+                        else 99
+                    ),
+                )
+            )
             if words == ("void",):
                 return Void()
             spelling = ARITHMETIC_WORDS.get(key) or ARITHMETIC_WORDS.get(words)
@@ -350,9 +401,9 @@ class TypePass(c_ast.NodeVisitor):
 
     def declare(self, node: c_ast.Decl) -> Symbol | None:
         if node.name is None:  # a tag's declaration, `struct X { ... };`
-            self.type_of_declarator(node.type) if not isinstance(node.type, (c_ast.Struct, c_ast.Union,
-                                                                              c_ast.Enum)) \
-                else self.base_type(node.type, node)
+            self.type_of_declarator(node.type) if not isinstance(
+                node.type, (c_ast.Struct, c_ast.Union, c_ast.Enum)
+            ) else self.base_type(node.type, node)
             return None
         t = self.type_of_declarator(node.type)
         kind = "function" if isinstance(t, Function) else "object"
@@ -360,8 +411,13 @@ class TypePass(c_ast.NodeVisitor):
         if isinstance(t, Array) and t.length is None and previous is not None and isinstance(previous.type, Array):
             t = previous.type if previous.type.length is not None else t
         storage = tuple(node.storage)
-        if previous is not None and previous.kind == kind and "static" in previous.storage and \
-                "static" not in storage and (self.scope is self.file or "extern" in storage):
+        if (
+            previous is not None
+            and previous.kind == kind
+            and "static" in previous.storage
+            and "static" not in storage
+            and (self.scope is self.file or "extern" in storage)
+        ):
             storage += ("static",)  # a later declaration keeps the internal linkage (C11 6.2.2p4)
         symbol = Symbol(node.name, t, kind, storage, self.scope is self.file, node)
         if "extern" in node.storage and self.scope is not self.file:
@@ -474,8 +530,9 @@ class TypePass(c_ast.NodeVisitor):
         elif isinstance(node, c_ast.Return):
             if node.expr is not None:
                 self.expression(node.expr)
-        elif isinstance(node, (c_ast.Goto, c_ast.Break, c_ast.Continue, c_ast.EmptyStatement, c_ast.Pragma,
-                               c_ast.StaticAssert)):
+        elif isinstance(
+            node, (c_ast.Goto, c_ast.Break, c_ast.Continue, c_ast.EmptyStatement, c_ast.Pragma, c_ast.StaticAssert)
+        ):
             if isinstance(node, c_ast.StaticAssert):
                 self.expression(node.cond)
         else:
@@ -725,8 +782,20 @@ class TypePass(c_ast.NodeVisitor):
         return self
 
 
-INTEGER_RANK = ["_Bool", "char", "signed char", "unsigned char", "short", "unsigned short", "int", "unsigned int",
-                "long", "unsigned long", "long long", "unsigned long long"]
+INTEGER_RANK = [
+    "_Bool",
+    "char",
+    "signed char",
+    "unsigned char",
+    "short",
+    "unsigned short",
+    "int",
+    "unsigned int",
+    "long",
+    "unsigned long",
+    "long long",
+    "unsigned long long",
+]
 
 
 def promoted(t: CType) -> CType:

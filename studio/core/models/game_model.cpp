@@ -49,7 +49,8 @@ bool ends_with_z(const std::string& path) {
 std::vector<std::size_t> sections(const std::vector<std::uint8_t>& d, const char* magic) {
     std::vector<std::size_t> out;
     for (std::size_t at = 0; at + 0x18 <= d.size(); at += 4) {
-        if (std::memcmp(&d[at], magic, 4) == 0 && le32(d, at + 8) <= d.size() - at) out.push_back(at);
+        if (std::memcmp(&d[at], magic, 4) == 0 && le32(d, at + 8) <= d.size() - at)
+            out.push_back(at);
     }
     return out;
 }
@@ -67,7 +68,8 @@ std::vector<GameData> game_file_data(const fs::path& nitrofs, const std::string&
             const std::size_t at = base + (static_cast<std::size_t>(le16(whole, 0x10 + 2 * e)) << 9);
             const std::uint32_t raw = le32(whole, sizes + 4 * e);
             const std::size_t size = raw & 0x7fffffffu;
-            if (at >= whole.size() || size > whole.size() - at) continue;
+            if (at >= whole.size() || size > whole.size() - at)
+                continue;
             std::vector<std::uint8_t> bytes(whole.begin() + static_cast<std::ptrdiff_t>(at),
                                             whole.begin() + static_cast<std::ptrdiff_t>(at + size));
             out.push_back({game_path + "#" + std::to_string(e), (raw & 0x80000000u) ? decompress(bytes) : bytes});
@@ -82,7 +84,8 @@ std::vector<std::uint8_t> game_label_data(const fs::path& nitrofs, const std::st
     const auto hash = label.rfind('#');
     const std::string path = hash == std::string::npos ? label : label.substr(0, hash);
     for (auto& d : game_file_data(nitrofs, path)) {
-        if (d.label == label) return std::move(d.bytes);
+        if (d.label == label)
+            return std::move(d.bytes);
     }
     return {};
 }
@@ -90,17 +93,20 @@ std::vector<std::uint8_t> game_label_data(const fs::path& nitrofs, const std::st
 bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, const std::string& key, GameModel* out,
                      std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
     const auto mdl = key.rfind("/mdl/");
-    if (mdl == std::string::npos) return fail("not a model's name: " + key);
+    if (mdl == std::string::npos)
+        return fail("not a model's name: " + key);
     GameModel g;
     g.label = key.substr(0, mdl);
     g.name = key.substr(mdl + 5);
 
     const std::vector<std::uint8_t> d = game_label_data(nitrofs, g.label);
-    if (d.empty()) return fail("no data for " + g.label);
+    if (d.empty())
+        return fail("no data for " + g.label);
     bool found = false;
     for (const std::size_t at : sections(d, "BMD0")) {
         const std::size_t size = le32(d, at + 8);
@@ -117,13 +123,16 @@ bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, con
                 break;
             }
         }
-        if (found) break;
+        if (found)
+            break;
     }
-    if (!found) return fail("no model " + g.name + " in " + g.label);
+    if (!found)
+        return fail("no model " + g.name + " in " + g.label);
 
     // the port's W_G and parents (models.cpp lines 246-251)
-    g.rest = g.model.skinning != nullptr ? assets::compute_bone_world_matrices(*g.model.skinning, g.model.object_matrices)
-                                         : g.model.object_matrices;
+    g.rest = g.model.skinning != nullptr
+                 ? assets::compute_bone_world_matrices(*g.model.skinning, g.model.object_matrices)
+                 : g.model.object_matrices;
     g.parents = g.model.object_parents;
     g.parents.resize(g.rest.size(), -1);
 
@@ -131,7 +140,8 @@ bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, con
     std::error_code ec;
     for (const auto& e : fs::directory_iterator(graphics_dump / path_u8(g.label) / "tex", ec)) {
         const std::string file = u8(e.path().filename());
-        if (lower(u8(e.path().extension())) != ".png") continue;
+        if (lower(u8(e.path().extension())) != ".png")
+            continue;
         const std::string stem = file.substr(0, file.size() - 4);
         const std::string texture = stem.substr(0, stem.find('@'));
         g.textures.emplace(texture, e.path());
@@ -147,13 +157,15 @@ bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, con
         std::vector<std::string> found;
         for (const auto& e : fs::directory_iterator(nitrofs / path_u8(dir), ec)) {
             std::error_code type_ec;
-            if (e.is_regular_file(type_ec)) found.push_back((dir.empty() ? "" : dir + "/") + u8(e.path().filename()));
+            if (e.is_regular_file(type_ec))
+                found.push_back((dir.empty() ? "" : dir + "/") + u8(e.path().filename()));
         }
         std::sort(found.begin(), found.end());
         files.insert(files.end(), found.begin(), found.end());
     };
     add_folder(folder);
-    if (folder == "mi/ch") add_folder("mi/mo");
+    if (folder == "mi/ch")
+        add_folder("mi/mo");
     for (const auto& file : files) {
         for (const auto& data : game_file_data(nitrofs, file)) {
             for (const std::size_t at : sections(data.bytes, "BCA0")) {
@@ -166,7 +178,8 @@ bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, con
                     } catch (const std::exception&) {
                         break;
                     }
-                    if (a.bones.size() != g.model.object_names.size()) continue;
+                    if (a.bones.size() != g.model.object_names.size())
+                        continue;
                     g.animations.push_back({data.label, at, size, i, i < named.size() ? named[i].name : a.name,
                                             a.frame_count, fits_skeleton(g.model, a)});
                 }
@@ -175,7 +188,8 @@ bool load_game_model(const fs::path& nitrofs, const fs::path& graphics_dump, con
     }
     // those made for it first, its own file's before the others
     std::stable_sort(g.animations.begin(), g.animations.end(), [&](const GameAnimation& x, const GameAnimation& y) {
-        if (x.fits != y.fits) return x.fits;
+        if (x.fits != y.fits)
+            return x.fits;
         const bool xs = x.label.rfind(path, 0) == 0, ys = y.label.rfind(path, 0) == 0;
         return xs && !ys;
     });
@@ -196,9 +210,11 @@ bool fits_skeleton(const assets::NeutralModel& model, const assets::SkeletalAnim
         const Mat& p = posed[i];
         const float rest = std::sqrt(r[12] * r[12] + r[13] * r[13] + r[14] * r[14]);
         const float now = std::sqrt(p[12] * p[12] + p[13] * p[13] + p[14] * p[14]);
-        if (rest < 1e-3f && now < 1e-3f) continue;  // a bone at its parent's place, either way
+        if (rest < 1e-3f && now < 1e-3f)
+            continue;  // a bone at its parent's place, either way
         ++compared;
-        if (std::fabs(rest - now) <= 0.1f * std::max(rest, now) + 1e-3f) ++kept;
+        if (std::fabs(rest - now) <= 0.1f * std::max(rest, now) + 1e-3f)
+            ++kept;
     }
     return compared == 0 || kept * 10 >= compared * 8;
 }
@@ -207,13 +223,15 @@ bool load_game_animation(const fs::path& nitrofs, const GameAnimation& a, assets
                          std::string* why) {
     const std::vector<std::uint8_t> d = game_label_data(nitrofs, a.label);
     if (a.offset + a.size > d.size()) {
-        if (why != nullptr) *why = "no data for " + a.label;
+        if (why != nullptr)
+            *why = "no data for " + a.label;
         return false;
     }
     try {
         *out = assets::load_nsbca(&d[a.offset], a.size, a.index);
     } catch (const std::exception& e) {
-        if (why != nullptr) *why = e.what();
+        if (why != nullptr)
+            *why = e.what();
         return false;
     }
     return true;
@@ -221,12 +239,12 @@ bool load_game_animation(const fs::path& nitrofs, const GameAnimation& a, assets
 
 void pose_game_model(const GameModel& g, const assets::SkeletalAnimation* animation, float frame,
                      std::vector<Mat>* node_world, std::vector<Mat>* palette) {
-    const std::vector<Mat> objects =
-        animation != nullptr ? assets::sample_animation(*animation, frame, g.model.object_matrices)
-                             : g.model.object_matrices;
+    const std::vector<Mat> objects = animation != nullptr
+                                         ? assets::sample_animation(*animation, frame, g.model.object_matrices)
+                                         : g.model.object_matrices;
     if (node_world != nullptr) {
-        *node_world = g.model.skinning != nullptr ? assets::compute_bone_world_matrices(*g.model.skinning, objects)
-                                                  : objects;
+        *node_world =
+            g.model.skinning != nullptr ? assets::compute_bone_world_matrices(*g.model.skinning, objects) : objects;
     }
     if (palette != nullptr) {
         *palette = g.model.skinning != nullptr ? assets::compute_palette(*g.model.skinning, objects) : g.model.palette;

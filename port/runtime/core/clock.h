@@ -6,13 +6,13 @@
 
 /* The ARM9 bus clock the timers count (33.513982 MHz), and the display
  * timing: 263 lines of 355 dots x 6 cycles, VBlank from line 192 to 261. */
-#define KHDAYS_CLOCK_HZ        33513982u
+#define KHDAYS_CLOCK_HZ 33513982u
 #define KHDAYS_CYCLES_PER_LINE 2130u
 #define KHDAYS_LINES_PER_FRAME 263u
 #define KHDAYS_CYCLES_PER_FRAME (KHDAYS_CYCLES_PER_LINE * KHDAYS_LINES_PER_FRAME)
-#define KHDAYS_VBLANK_LINE     192u
+#define KHDAYS_VBLANK_LINE 192u
 /* How long the DS's VBlank lasts (lines 192-261): DISPSTAT's VBlank bit stays set that long. */
-#define KHDAYS_VBLANK_CYCLES   (70u * KHDAYS_CYCLES_PER_LINE)
+#define KHDAYS_VBLANK_CYCLES (70u * KHDAYS_CYCLES_PER_LINE)
 
 void khdays_clock_init(void);
 

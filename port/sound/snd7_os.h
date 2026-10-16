@@ -11,15 +11,15 @@ typedef void (*Snd7AlarmHandler)(uint32_t arg);
 typedef struct Snd7OsAlarm {
     Snd7AlarmHandler handler; /* NULL: not in use */
     uint32_t arg;
-    uint64_t fire;            /* the tick it fires at */
-    uint64_t period;          /* 0: once */
-    uint64_t start;           /* a periodic alarm's first tick */
+    uint64_t fire;   /* the tick it fires at */
+    uint64_t period; /* 0: once */
+    uint64_t start;  /* a periodic alarm's first tick */
 } Snd7OsAlarm;
 
 void snd7_os_reset(void);
 uint64_t snd7_os_tick(void);
 
-void snd7_os_create_alarm(Snd7OsAlarm *alarm);                                    /* 0x037fd3a0 */
+void snd7_os_create_alarm(Snd7OsAlarm *alarm); /* 0x037fd3a0 */
 void snd7_os_set_alarm(Snd7OsAlarm *alarm, uint64_t ticks, Snd7AlarmHandler handler, uint32_t arg);
 void snd7_os_set_periodic_alarm(Snd7OsAlarm *alarm, uint64_t start, uint64_t period, Snd7AlarmHandler handler,
                                 uint32_t arg);

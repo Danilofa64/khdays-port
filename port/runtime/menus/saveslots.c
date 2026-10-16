@@ -20,7 +20,7 @@ static int port_view;
 static int chosen = -1; /* the file game slot 0 was in the port's view, -1 before one */
 static int page = -1;   /* the page view's first file, -1 when it is not on */
 static volatile int view[KHDAYS_GAME_SLOTS];
-static u8 *files[PORT_FILES];   /* the port's files, KHDAYS_SLOT_BYTES each; NULL until there is one */
+static u8 *files[PORT_FILES]; /* the port's files, KHDAYS_SLOT_BYTES each; NULL until there is one */
 static int changed[PORT_FILES];
 static u8 blank[KHDAYS_SLOT_BYTES]; /* a slot never written: each copy's first 0x20 bytes zero, the rest erased */
 static u8 dropped;                  /* where a write to a blank slot goes */

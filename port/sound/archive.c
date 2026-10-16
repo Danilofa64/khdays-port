@@ -27,10 +27,10 @@ typedef struct Names {
 
 struct KhdaysSoundArchive {
     Names sequence, sequence_archive, wave_archive, player, stream_player, stream;
-    Names *entry;  /* each sequence archive's entries */
+    Names *entry; /* each sequence archive's entries */
     KhdaysArchiveRead read;
     void *context;
-    uint32_t info, fat;  /* the blocks' offsets */
+    uint32_t info, fat; /* the blocks' offsets */
 };
 
 typedef struct Reader {
@@ -64,7 +64,7 @@ static int alloc_names(Reader *r, Names *names, uint32_t count)
 static void read_name(Reader *r, uint32_t symb, uint32_t name, char *out)
 {
     if (name != 0) {
-        r->read(r->context, symb + name, out, NAME_CHARS - 1);  /* up to its NUL */
+        r->read(r->context, symb + name, out, NAME_CHARS - 1); /* up to its NUL */
         out[NAME_CHARS - 1] = '\0';
     }
 }
@@ -194,9 +194,8 @@ int khdays_sound_archive_identifier(const KhdaysSoundArchive *archive, int kind,
     case KHDAYS_SOUND_SEQUENCE_ARCHIVE_ENTRY:
         name_or_number(a, sizeof(a), name_of(&archive->sequence_archive, number), number);
         name_or_number(b, sizeof(b),
-                       number >= 0 && number < archive->sequence_archive.count
-                           ? name_of(&archive->entry[number], entry)
-                           : "",
+                       number >= 0 && number < archive->sequence_archive.count ? name_of(&archive->entry[number], entry)
+                                                                               : "",
                        entry);
         return snprintf(out, (size_t)size, "seqarc/%s/%s", a, b) < size;
     case KHDAYS_SOUND_WAVE:
@@ -205,13 +204,11 @@ int khdays_sound_archive_identifier(const KhdaysSoundArchive *archive, int kind,
     case KHDAYS_SOUND_STREAM:
         name_or_number(a, sizeof(a), name_of(&archive->stream, number), number);
         return snprintf(out, (size_t)size, "strm/%s", a) < size;
-    default:
-        return 0;
+    default: return 0;
     }
 }
 
-uint32_t khdays_sound_archive_read(const KhdaysSoundArchive *archive, uint32_t offset, void *destination,
-                                   uint32_t size)
+uint32_t khdays_sound_archive_read(const KhdaysSoundArchive *archive, uint32_t offset, void *destination, uint32_t size)
 {
     return archive->read(archive->context, offset, destination, size);
 }

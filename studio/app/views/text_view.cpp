@@ -82,7 +82,8 @@ void open(App& app, const Item& item) {
         const fs::path mine = m->dir / path_u8(replacement_path(item, "", false));
         std::error_code ec;
         TextFile held;
-        if (fs::is_regular_file(mine, ec) && parse_text_file(read_bytes(mine), database, &held, &why) && held.lists.size() == v.game.lists.size()) {
+        if (fs::is_regular_file(mine, ec) && parse_text_file(read_bytes(mine), database, &held, &why) &&
+            held.lists.size() == v.game.lists.size()) {
             v.start = held;
         }
     }
@@ -90,14 +91,16 @@ void open(App& app, const Item& item) {
     if (e.lists.empty()) {
         for (const auto& list : v.start.lists) {
             std::vector<std::string> shown;
-            for (const auto& s : list) shown.push_back(assets::message_to_utf8(s));
+            for (const auto& s : list)
+                shown.push_back(assets::message_to_utf8(s));
             e.lists.push_back(std::move(shown));
         }
     }
 }
 
 std::string lower_text(std::string s) {
-    for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (auto& c : s)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
 }
 
@@ -105,7 +108,8 @@ std::string lower_text(std::string s) {
 
 void draw_text_view(App& app, const Item& item) {
     const std::string mod_name = app.current_mod() != nullptr ? app.current_mod()->name : std::string();
-    if (v.item != app.selected || v.mod != mod_name) open(app, item);
+    if (v.item != app.selected || v.mod != mod_name)
+        open(app, item);
     const auto lang = app.language;
     if (!v.error.empty()) {
         ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", v.error.c_str());
@@ -115,9 +119,11 @@ void draw_text_view(App& app, const Item& item) {
     std::size_t texts = 0, changed = 0;
     for (std::size_t l = 0; l < e.lists.size(); ++l) {
         texts += e.lists[l].size();
-        for (std::size_t k = 0; k < e.lists[l].size(); ++k) changed += e.lists[l][k] != assets::message_to_utf8(v.start.lists[l][k]) ? 1 : 0;
+        for (std::size_t k = 0; k < e.lists[l].size(); ++k)
+            changed += e.lists[l][k] != assets::message_to_utf8(v.start.lists[l][k]) ? 1 : 0;
     }
-    ImGui::TextUnformatted(fmt(lang, S::text_header, {item.key, std::to_string(texts), std::to_string(e.lists.size())}).c_str());
+    ImGui::TextUnformatted(
+        fmt(lang, S::text_header, {item.key, std::to_string(texts), std::to_string(e.lists.size())}).c_str());
     ImGui::PushTextWrapPos(0.0f);
     ImGui::TextDisabled("%s", tr(lang, S::text_hint));
     ImGui::PopTextWrapPos();
@@ -132,7 +138,8 @@ void draw_text_view(App& app, const Item& item) {
             TextFile out = v.start;
             for (std::size_t l = 0; l < out.lists.size() && l < e.lists.size(); ++l) {
                 for (std::size_t k = 0; k < out.lists[l].size() && k < e.lists[l].size(); ++k) {
-                    if (e.lists[l][k] != assets::message_to_utf8(out.lists[l][k])) out.lists[l][k] = assets::message_from_utf8(e.lists[l][k]);
+                    if (e.lists[l][k] != assets::message_to_utf8(out.lists[l][k]))
+                        out.lists[l][k] = assets::message_from_utf8(e.lists[l][k]);
                 }
             }
             const fs::path dest = m->dir / path_u8(replacement_path(item, "", false));
@@ -144,14 +151,18 @@ void draw_text_view(App& app, const Item& item) {
             {
                 std::ofstream f(dest, std::ios::binary | std::ios::trunc);
                 f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-                if (!f) why = "cannot write " + u8(dest);
+                if (!f)
+                    why = "cannot write " + u8(dest);
             }
-            if (why.empty() && (!parse_text_file(read_bytes(dest), out.database, &check, &why) || check.lists != out.lists)) {
-                if (why.empty()) why = "it does not read back as written";
+            if (why.empty() &&
+                (!parse_text_file(read_bytes(dest), out.database, &check, &why) || check.lists != out.lists)) {
+                if (why.empty())
+                    why = "it does not read back as written";
             }
             if (why.empty()) {
-                app.tell(fmt(lang, S::text_saved, {u8(dest.lexically_relative(app.settings.root)), std::to_string(changed)}) + "  " +
-                             tr(lang, S::restart_note),
+                app.tell(fmt(lang, S::text_saved,
+                             {u8(dest.lexically_relative(app.settings.root)), std::to_string(changed)}) +
+                             "  " + tr(lang, S::restart_note),
                          true);
                 v.start = out;  // what the mod holds now
             } else {
@@ -179,11 +190,14 @@ void draw_text_view(App& app, const Item& item) {
     // a database's lists
     if (e.lists.size() > 1) {
         ImGui::SetNextItemWidth(16 * ImGui::GetFontSize());
-        const std::string current = fmt(lang, S::text_list, {std::to_string(v.list), std::to_string(e.lists[static_cast<std::size_t>(v.list)].size())});
+        const std::string current =
+            fmt(lang, S::text_list,
+                {std::to_string(v.list), std::to_string(e.lists[static_cast<std::size_t>(v.list)].size())});
         if (ImGui::BeginCombo("##list", current.c_str())) {
             for (std::size_t l = 0; l < e.lists.size(); ++l) {
-                if (ImGui::Selectable(fmt(lang, S::text_list, {std::to_string(l), std::to_string(e.lists[l].size())}).c_str(),
-                                      static_cast<int>(l) == v.list)) {
+                if (ImGui::Selectable(
+                        fmt(lang, S::text_list, {std::to_string(l), std::to_string(e.lists[l].size())}).c_str(),
+                        static_cast<int>(l) == v.list)) {
                     v.list = static_cast<int>(l);
                 }
             }
@@ -194,8 +208,10 @@ void draw_text_view(App& app, const Item& item) {
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##filter", tr(lang, S::text_filter), &v.filter);
 
-    if (v.list < 0 || static_cast<std::size_t>(v.list) >= e.lists.size()) v.list = 0;
-    if (e.lists.empty()) return;
+    if (v.list < 0 || static_cast<std::size_t>(v.list) >= e.lists.size())
+        v.list = 0;
+    if (e.lists.empty())
+        return;
     auto& shown = e.lists[static_cast<std::size_t>(v.list)];
     const auto& game = v.game.lists[static_cast<std::size_t>(v.list)];
     std::vector<int> rows;
@@ -207,8 +223,10 @@ void draw_text_view(App& app, const Item& item) {
         }
     }
     const assets::Font* font = font_for(item);
-    const ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable;
-    if (!ImGui::BeginTable("##texts", 3, flags)) return;
+    const ImGuiTableFlags flags =
+        ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable;
+    if (!ImGui::BeginTable("##texts", 3, flags))
+        return;
     ImGui::TableSetupScrollFreeze(0, 1);
     ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed);
     ImGui::TableSetupColumn(tr(lang, S::text_games), ImGuiTableColumnFlags_WidthStretch, 1.0f);
@@ -227,15 +245,18 @@ void draw_text_view(App& app, const Item& item) {
             ImGui::TableSetColumnIndex(2);
             ImGui::PushID(static_cast<int>(k));
             const bool edited = shown[k] != assets::message_to_utf8(v.start.lists[static_cast<std::size_t>(v.list)][k]);
-            if (edited) ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.18f, 0.32f, 0.18f, 1));
+            if (edited)
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.18f, 0.32f, 0.18f, 1));
             const int lines = 1 + static_cast<int>(std::count(shown[k].begin(), shown[k].end(), '\n'));
             ImGui::InputTextMultiline("##t", &shown[k],
-                                      ImVec2(-1, static_cast<float>(lines) * ImGui::GetTextLineHeight() + 2 * ImGui::GetStyle().FramePadding.y));
-            if (edited) ImGui::PopStyleColor();
+                                      ImVec2(-1, static_cast<float>(lines) * ImGui::GetTextLineHeight() +
+                                                     2 * ImGui::GetStyle().FramePadding.y));
+            if (edited)
+                ImGui::PopStyleColor();
             // the characters the game cannot draw
             if (font != nullptr) {
-                const std::u16string missing =
-                    missing_glyphs(assets::message_from_utf8(shown[k]), [&](char16_t c) { return font->glyph_of(c) >= 0; });
+                const std::u16string missing = missing_glyphs(assets::message_from_utf8(shown[k]),
+                                                              [&](char16_t c) { return font->glyph_of(c) >= 0; });
                 if (!missing.empty()) {
                     ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.35f, 1), "%s",
                                        fmt(lang, S::text_no_glyph, {assets::message_to_utf8(missing)}).c_str());

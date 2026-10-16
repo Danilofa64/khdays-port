@@ -9,9 +9,9 @@
 
 #include <stdint.h>
 
-#define KHDAYS_STREAM_PLAYERS     4     /* NNS_SND_STRM_PLAYER_NUM */
-#define KHDAYS_STREAM_CHANNELS    16    /* NNSSndStrm.channelNo */
-#define KHDAYS_STREAM_HEADER_SIZE 0x40  /* NNSSndStrmData: the file's first bytes, as the player keeps them */
+#define KHDAYS_STREAM_PLAYERS 4        /* NNS_SND_STRM_PLAYER_NUM */
+#define KHDAYS_STREAM_CHANNELS 16      /* NNSSndStrm.channelNo */
+#define KHDAYS_STREAM_HEADER_SIZE 0x40 /* NNSSndStrmData: the file's first bytes, as the player keeps them */
 
 /* The stream's file: `size` bytes at `offset` from its start; returns how
  * many it read. */
@@ -22,14 +22,14 @@ typedef struct KhdaysStreamFile {
 
 /* What PrepareStrm (0x0201ce18) has set up when it returns TRUE. */
 typedef struct KhdaysStreamPrepared {
-    int player;                                 /* the stream player, 0-3 */
-    int channels;                               /* the channels that play it */
-    uint8_t channel[KHDAYS_STREAM_CHANNELS];    /* their numbers */
-    uint32_t ring;                              /* the first channel's ring; each next one follows */
-    uint32_t ring_bytes;                        /* a ring's size (chBufLen) */
-    uint8_t header[KHDAYS_STREAM_HEADER_SIZE];  /* player->info */
-    uint32_t start_sample;                      /* player->curSample */
-    int mono;                                   /* a channel past the file's is silent, not a copy of the first */
+    int player;                                /* the stream player, 0-3 */
+    int channels;                              /* the channels that play it */
+    uint8_t channel[KHDAYS_STREAM_CHANNELS];   /* their numbers */
+    uint32_t ring;                             /* the first channel's ring; each next one follows */
+    uint32_t ring_bytes;                       /* a ring's size (chBufLen) */
+    uint8_t header[KHDAYS_STREAM_HEADER_SIZE]; /* player->info */
+    uint32_t start_sample;                     /* player->curSample */
+    int mono;                                  /* a channel past the file's is silent, not a copy of the first */
 } KhdaysStreamPrepared;
 
 typedef struct KhdaysStreams KhdaysStreams;

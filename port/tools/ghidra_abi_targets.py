@@ -3,6 +3,7 @@
 A lines for void functions whose value callers use, B lines for calls passing fewer arguments; --missed,
 --next and --merge for the rescans (docs/BUILD.md, "The tools").
 """
+
 from __future__ import annotations
 
 import json
@@ -34,9 +35,12 @@ def merge(gen: Path) -> int:
     rescan = (gen / "ghidra_rescan.txt").read_text(encoding="utf-8").splitlines()
     done = {(line.split()[1], line.split()[2]) for line in rescan if line.startswith("B ")}
     done_returns = {line.split()[1] for line in rescan if line.startswith("A ")}
-    kept = [line for line in ABI.read_text(encoding="utf-8").splitlines()
-            if not (line.startswith("B ") and (line.split()[1], line.split()[2]) in done)
-            and not (line.startswith("A ") and line.split()[1] in done_returns)]
+    kept = [
+        line
+        for line in ABI.read_text(encoding="utf-8").splitlines()
+        if not (line.startswith("B ") and (line.split()[1], line.split()[2]) in done)
+        and not (line.startswith("A ") and line.split()[1] in done_returns)
+    ]
     ABI.write_text("\n".join(kept + rescan) + "\n", encoding="utf-8", newline="\n")
     still = sum(1 for line in rescan if line.endswith(" no-call-found"))
     print(f"{len(done)} pairs rescanned, {still} still without a call")
@@ -77,8 +81,9 @@ def main() -> int:
             continue
         cs, ca = where[caller]
         fs, fa = where[e["callee"]]
-        lines.append(f"B {keys[caller]} {cs} {ca:08x} {keys[e['callee']]} {fs} {fa:08x} "
-                     f"{e['decl_count']} {e['def_count']}")
+        lines.append(
+            f"B {keys[caller]} {cs} {ca:08x} {keys[e['callee']]} {fs} {fa:08x} {e['decl_count']} {e['def_count']}"
+        )
     target = "ghidra_targets.txt"
     if "--next" in sys.argv:
         # abi_repair.next_targets names functions; the file keeps keys
@@ -92,17 +97,22 @@ def main() -> int:
         target = "ghidra_rescan_targets.txt"
     elif "--missed" in sys.argv:
         scanned, missed = scanned_pairs()
-        returns = {line.split()[1] for line in ABI.read_text(encoding="utf-8").splitlines()
-                   if line.startswith("A ")}
-        lines = [line for line in lines
-                 if (line.startswith("A ") and line.split()[1] not in returns)
-                 or (line.startswith("B ")
-                     and ((line.split()[1], line.split()[4]) in missed
-                          or (line.split()[1], line.split()[4]) not in scanned))]
+        returns = {line.split()[1] for line in ABI.read_text(encoding="utf-8").splitlines() if line.startswith("A ")}
+        lines = [
+            line
+            for line in lines
+            if (line.startswith("A ") and line.split()[1] not in returns)
+            or (
+                line.startswith("B ")
+                and ((line.split()[1], line.split()[4]) in missed or (line.split()[1], line.split()[4]) not in scanned)
+            )
+        ]
         target = "ghidra_rescan_targets.txt"
     (gen / target).write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"{len(lines)} targets ({sum(l[0] == 'A' for l in lines)} returns, "
-          f"{sum(l[0] == 'B' for l in lines)} call sites); no address for: {sorted(missing)}")
+    print(
+        f"{len(lines)} targets ({sum(l[0] == 'A' for l in lines)} returns, "
+        f"{sum(l[0] == 'B' for l in lines)} call sites); no address for: {sorted(missing)}"
+    )
     return 0
 
 

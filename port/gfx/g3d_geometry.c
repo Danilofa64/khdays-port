@@ -36,7 +36,7 @@ static void missing(unsigned what, const char *text)
 /* --- Fixed point ------------------------------------------------------------ */
 
 typedef struct Mtx {
-    int32_t m[16];  /* row-major, 20.12; vectors are rows: v' = v * M */
+    int32_t m[16]; /* row-major, 20.12; vectors are rows: v' = v * M */
 } Mtx;
 
 static const Mtx identity = {{0x1000, 0, 0, 0, 0, 0x1000, 0, 0, 0, 0, 0x1000, 0, 0, 0, 0, 0x1000}};
@@ -90,8 +90,8 @@ static List *shown = &lists[1];
 /* A vertex in clip space, before clipping. */
 typedef struct Clip {
     int32_t x, y, z, w;
-    int r, g, b;      /* 6 bits */
-    int32_t s, t;     /* 12.4 */
+    int r, g, b;  /* 6 bits */
+    int32_t s, t; /* 12.4 */
 } Clip;
 _Static_assert(sizeof(Clip) == sizeof(KhdaysG3dPreVertex), "a vertex before clipping is nine words");
 _Static_assert(sizeof(KhdaysG3dClipVertex) == sizeof(KhdaysG3dPreVertex), "a mod's vertex is nine words");
@@ -105,12 +105,12 @@ static struct {
     Mtx clip;
     int clip_dirty;
 
-    uint32_t attr_pending, attr;  /* POLYGON_ATTR: set / latched at BEGIN_VTXS */
+    uint32_t attr_pending, attr; /* POLYGON_ATTR: set / latched at BEGIN_VTXS */
     uint32_t teximage, pltt;
-    int color[3];                 /* 5 bits each */
+    int color[3]; /* 5 bits each */
     int32_t raw_s, raw_t, s, t;
-    int32_t vx, vy, vz;           /* the last vertex (for the partial VTX forms) */
-    int prim;                     /* BEGIN_VTXS type, -1 outside a list */
+    int32_t vx, vy, vz; /* the last vertex (for the partial VTX forms) */
+    int prim;           /* BEGIN_VTXS type, -1 outside a list */
     Clip strip[4];
     int strip_count, poly_index;
 
@@ -120,39 +120,38 @@ static struct {
     int shininess_on;
     uint8_t shininess[128];
 
-    uint8_t viewport[4];          /* x1, y1, x2, y2 */
-    int32_t widen, widen_next;    /* the list being built's horizontal clip, the next list's */
-    int hud;                      /* the polygons sent now are the HUD's */
-    uintptr_t draw;               /* the model draw the polygons come from (khdays_g3d_draw_begin) */
+    uint8_t viewport[4];       /* x1, y1, x2, y2 */
+    int32_t widen, widen_next; /* the list being built's horizontal clip, the next list's */
+    int hud;                   /* the polygons sent now are the HUD's */
+    uintptr_t draw;            /* the model draw the polygons come from (khdays_g3d_draw_begin) */
     uint32_t occurrence, draw_ordinal;
     /* the polygons outside model draws, numbered per material (stream_key):
      * open addressing, keys + 1 (0 free), cleared with each list */
     uint32_t *stream_keys, *stream_counts;
     int32_t stream_capacity, stream_used;
-    uintptr_t *drawn;             /* the resources drawn in the list being built, one per draw */
+    uintptr_t *drawn; /* the resources drawn in the list being built, one per draw */
     int32_t ndrawn, drawn_capacity;
-    uint32_t swap_params;         /* of the last SwapBuffers: the list being built uses them */
+    uint32_t swap_params; /* of the last SwapBuffers: the list being built uses them */
 
     int box_result;
     int32_t pos_result[4];
     int16_t vec_result[3];
-    uint32_t irq_mode;            /* GXSTAT bits 30-31 */
+    uint32_t irq_mode; /* GXSTAT bits 30-31 */
 } g;
 
 /* Parameter words per command; 0 for one that takes none. */
 static const int8_t param_count[0x80] = {
-    [0x10] = 1, [0x11] = 0, [0x12] = 1, [0x13] = 1, [0x14] = 1, [0x15] = 0, [0x16] = 16,
-    [0x17] = 12, [0x18] = 16, [0x19] = 12, [0x1a] = 9, [0x1b] = 3, [0x1c] = 3,
-    [0x20] = 1, [0x21] = 1, [0x22] = 1, [0x23] = 2, [0x24] = 1, [0x25] = 1, [0x26] = 1,
-    [0x27] = 1, [0x28] = 1, [0x29] = 1, [0x2a] = 1, [0x2b] = 1,
-    [0x30] = 1, [0x31] = 1, [0x32] = 1, [0x33] = 1, [0x34] = 32,
-    [0x40] = 1, [0x41] = 0, [0x50] = 1, [0x60] = 1, [0x70] = 3, [0x71] = 2, [0x72] = 1,
+    [0x10] = 1,  [0x11] = 0,  [0x12] = 1, [0x13] = 1, [0x14] = 1, [0x15] = 0,  [0x16] = 16, [0x17] = 12,
+    [0x18] = 16, [0x19] = 12, [0x1a] = 9, [0x1b] = 3, [0x1c] = 3, [0x20] = 1,  [0x21] = 1,  [0x22] = 1,
+    [0x23] = 2,  [0x24] = 1,  [0x25] = 1, [0x26] = 1, [0x27] = 1, [0x28] = 1,  [0x29] = 1,  [0x2a] = 1,
+    [0x2b] = 1,  [0x30] = 1,  [0x31] = 1, [0x32] = 1, [0x33] = 1, [0x34] = 32, [0x40] = 1,  [0x41] = 0,
+    [0x50] = 1,  [0x60] = 1,  [0x70] = 3, [0x71] = 2, [0x72] = 1,
 };
 
 static int valid_command(unsigned c)
 {
-    return (c >= 0x10 && c <= 0x1c) || (c >= 0x20 && c <= 0x2b) || (c >= 0x30 && c <= 0x34) ||
-           c == 0x40 || c == 0x41 || c == 0x50 || c == 0x60 || (c >= 0x70 && c <= 0x72);
+    return (c >= 0x10 && c <= 0x1c) || (c >= 0x20 && c <= 0x2b) || (c >= 0x30 && c <= 0x34) || c == 0x40 || c == 0x41 ||
+           c == 0x50 || c == 0x60 || (c >= 0x70 && c <= 0x72);
 }
 
 int khdays_g3d_param_count(unsigned command)
@@ -176,18 +175,22 @@ int khdays_g3d_list_reserve(KhdaysG3dList *l, int32_t polys, int32_t verts)
     if (polys > l->poly_capacity) {
         int32_t n = l->poly_capacity > 0 ? l->poly_capacity : KHDAYS_G3D_DS_POLYS;
         Polygon *grown;
-        while (n < polys) n *= 2;
+        while (n < polys)
+            n *= 2;
         grown = (Polygon *)realloc(l->polys, sizeof(Polygon) * (size_t)n);
-        if (grown == NULL) return 0;
+        if (grown == NULL)
+            return 0;
         l->polys = grown;
         l->poly_capacity = n;
     }
     if (verts > l->vert_capacity) {
         int32_t n = l->vert_capacity > 0 ? l->vert_capacity : KHDAYS_G3D_DS_VERTS;
         Vertex *grown;
-        while (n < verts) n *= 2;
+        while (n < verts)
+            n *= 2;
         grown = (Vertex *)realloc(l->verts, sizeof(Vertex) * (size_t)n);
-        if (grown == NULL) return 0;
+        if (grown == NULL)
+            return 0;
         l->verts = grown;
         l->vert_capacity = n;
     }
@@ -201,21 +204,26 @@ static int pre_reserve(KhdaysG3dList *l, int32_t polys, int32_t verts)
         int32_t n = l->pre_capacity > 0 ? l->pre_capacity : KHDAYS_G3D_DS_POLYS;
         Polygon *grown;
         KhdaysG3dPreInfo *grown_info;
-        while (n < polys) n *= 2;
+        while (n < polys)
+            n *= 2;
         grown = (Polygon *)realloc(l->pre, sizeof(Polygon) * (size_t)n);
-        if (grown == NULL) return 0;
+        if (grown == NULL)
+            return 0;
         l->pre = grown;
         grown_info = (KhdaysG3dPreInfo *)realloc(l->pre_info, sizeof(KhdaysG3dPreInfo) * (size_t)n);
-        if (grown_info == NULL) return 0;
+        if (grown_info == NULL)
+            return 0;
         l->pre_info = grown_info;
         l->pre_capacity = n;
     }
     if (verts > l->pre_vert_capacity) {
         int32_t n = l->pre_vert_capacity > 0 ? l->pre_vert_capacity : KHDAYS_G3D_DS_VERTS;
         KhdaysG3dPreVertex *grown;
-        while (n < verts) n *= 2;
+        while (n < verts)
+            n *= 2;
         grown = (KhdaysG3dPreVertex *)realloc(l->pre_verts, sizeof(KhdaysG3dPreVertex) * (size_t)n);
-        if (grown == NULL) return 0;
+        if (grown == NULL)
+            return 0;
         l->pre_verts = grown;
         l->pre_vert_capacity = n;
     }
@@ -224,8 +232,7 @@ static int pre_reserve(KhdaysG3dList *l, int32_t polys, int32_t verts)
 
 int khdays_g3d_list_copy(KhdaysG3dList *to, const KhdaysG3dList *from)
 {
-    if (!khdays_g3d_list_reserve(to, from->npolys, from->nverts) ||
-        !pre_reserve(to, from->npre, from->npre_verts)) {
+    if (!khdays_g3d_list_reserve(to, from->npolys, from->nverts) || !pre_reserve(to, from->npre, from->npre_verts)) {
         to->npolys = to->nverts = to->beyond_ds = 0;
         to->npre = to->npre_verts = 0;
         return 0;
@@ -358,14 +365,16 @@ static const Mtx *clip_matrix(void)
 static void stack_push(void)
 {
     if (g.mode == 0) {
-        if (g.proj_sp > 0) g.stack_error = 1;
+        if (g.proj_sp > 0)
+            g.stack_error = 1;
         g.proj_stack[0] = g.proj;
         g.proj_sp = (g.proj_sp + 1) & 1;
     } else if (g.mode == 3) {
         g.tex_stack[0] = g.tex;
         g.tex_sp = (g.tex_sp + 1) & 1;
     } else {
-        if (g.pos_sp >= 31) g.stack_error = 1;
+        if (g.pos_sp >= 31)
+            g.stack_error = 1;
         g.pos_stack[g.pos_sp & 31] = g.pos;
         g.vec_stack[g.pos_sp & 31] = g.vec;
         g.pos_sp = (g.pos_sp + 1) & 63;
@@ -382,7 +391,8 @@ static void stack_pop(uint32_t param)
         g.tex = g.tex_stack[0];
     } else {
         g.pos_sp = (g.pos_sp - sext(param, 6)) & 63;
-        if (g.pos_sp >= 31) g.stack_error = 1;
+        if (g.pos_sp >= 31)
+            g.stack_error = 1;
         g.pos = g.pos_stack[g.pos_sp & 31];
         g.vec = g.vec_stack[g.pos_sp & 31];
     }
@@ -397,7 +407,8 @@ static void stack_store(uint32_t param)
     } else if (g.mode == 3) {
         g.tex_stack[0] = g.tex;
     } else {
-        if (n == 31) g.stack_error = 1;
+        if (n == 31)
+            g.stack_error = 1;
         g.pos_stack[n] = g.pos;
         g.vec_stack[n] = g.vec;
     }
@@ -411,7 +422,8 @@ static void stack_restore(uint32_t param)
     } else if (g.mode == 3) {
         g.tex = g.tex_stack[0];
     } else {
-        if (n == 31) g.stack_error = 1;
+        if (n == 31)
+            g.stack_error = 1;
         g.pos = g.pos_stack[n];
         g.vec = g.vec_stack[n];
     }
@@ -427,8 +439,7 @@ static void direction(uint32_t packed, int32_t out[3])
     const int64_t v[3] = {(int64_t)sext(packed, 10) << 3, (int64_t)sext(packed >> 10, 10) << 3,
                           (int64_t)sext(packed >> 20, 10) << 3};
     for (int j = 0; j < 3; ++j) {
-        out[j] = (int32_t)((v[0] * g.vec.m[0 * 4 + j] + v[1] * g.vec.m[1 * 4 + j] +
-                            v[2] * g.vec.m[2 * 4 + j]) >> 12);
+        out[j] = (int32_t)((v[0] * g.vec.m[0 * 4 + j] + v[1] * g.vec.m[1 * 4 + j] + v[2] * g.vec.m[2 * 4 + j]) >> 12);
     }
 }
 
@@ -448,9 +459,13 @@ static void normal(uint32_t packed)
         missing(MISSING_TEXGEN_NORMAL,
                 "texture coordinates from normals (GBATEK's shift; not verified against hardware)");
         g.s = (int32_t)((((int64_t)sext(packed, 10) * g.tex.m[0] + (int64_t)sext(packed >> 10, 10) * g.tex.m[4] +
-                          (int64_t)sext(packed >> 20, 10) * g.tex.m[8]) >> 17) + g.raw_s);
+                          (int64_t)sext(packed >> 20, 10) * g.tex.m[8]) >>
+                         17) +
+                        g.raw_s);
         g.t = (int32_t)((((int64_t)sext(packed, 10) * g.tex.m[1] + (int64_t)sext(packed >> 10, 10) * g.tex.m[5] +
-                          (int64_t)sext(packed >> 20, 10) * g.tex.m[9]) >> 17) + g.raw_t);
+                          (int64_t)sext(packed >> 20, 10) * g.tex.m[9]) >>
+                         17) +
+                        g.raw_t);
     }
     for (int c = 0; c < 3; ++c) {
         color[c] = g.emission[c] << 12;
@@ -461,11 +476,14 @@ static void normal(uint32_t packed)
             continue;
         }
         diffuse = -dot(g.light_vec[i], n);
-        if (diffuse < 0) diffuse = 0;
+        if (diffuse < 0)
+            diffuse = 0;
         shine = -dot(g.half_vec[i], n);
-        if (shine < 0) shine = 0;
+        if (shine < 0)
+            shine = 0;
         shine = (int32_t)(((int64_t)shine * shine) >> 12);
-        if (shine > 0x1000) shine = 0x1000;
+        if (shine > 0x1000)
+            shine = 0x1000;
         if (g.shininess_on) {
             shine = g.shininess[shine >> 5 > 127 ? 127 : shine >> 5] << 4;
         }
@@ -473,7 +491,7 @@ static void normal(uint32_t packed)
             const int lc = g.light_color[i][c];
             color[c] += (g.specular[c] * lc * shine) >> 5;
             color[c] += (g.diffuse[c] * lc * diffuse) >> 5;
-            color[c] += (g.ambient[c] * lc) << 7;  /* (a * lc / 32) with 12 fractional bits */
+            color[c] += (g.ambient[c] * lc) << 7; /* (a * lc / 32) with 12 fractional bits */
         }
     }
     for (int c = 0; c < 3; ++c) {
@@ -495,7 +513,7 @@ static int clip_plane(const Clip *in, int n, Clip *out, int axis, int sign, int3
         const int32_t *pa = &a->x, *pb = &b->x;
         const int64_t wa = axis == 0 ? ((int64_t)a->w * widen) >> 12 : a->w;
         const int64_t wb = axis == 0 ? ((int64_t)b->w * widen) >> 12 : b->w;
-        const int64_t da = wa - (int64_t)sign * pa[axis];  /* >= 0 inside */
+        const int64_t da = wa - (int64_t)sign * pa[axis]; /* >= 0 inside */
         const int64_t db = wb - (int64_t)sign * pb[axis];
         if (da >= 0) {
             out[m++] = *a;
@@ -560,9 +578,11 @@ static uint32_t stream_ordinal(uint32_t key)
             return 0;
         }
         for (int32_t i = 0; i < g.stream_capacity; ++i) {
-            if (g.stream_keys[i] == 0) continue;
+            if (g.stream_keys[i] == 0)
+                continue;
             uint32_t at = g.stream_keys[i] & (uint32_t)(n - 1);
-            while (keys[at] != 0) at = (at + 1) & (uint32_t)(n - 1);
+            while (keys[at] != 0)
+                at = (at + 1) & (uint32_t)(n - 1);
             keys[at] = g.stream_keys[i];
             counts[at] = g.stream_counts[i];
         }
@@ -573,7 +593,8 @@ static uint32_t stream_ordinal(uint32_t key)
         g.stream_capacity = n;
     }
     uint32_t at = key & (uint32_t)(g.stream_capacity - 1);
-    while (g.stream_keys[at] != 0 && g.stream_keys[at] != key) at = (at + 1) & (uint32_t)(g.stream_capacity - 1);
+    while (g.stream_keys[at] != 0 && g.stream_keys[at] != key)
+        at = (at + 1) & (uint32_t)(g.stream_capacity - 1);
     if (g.stream_keys[at] == 0) {
         g.stream_keys[at] = key;
         g.stream_counts[at] = 0;
@@ -637,7 +658,7 @@ static void finish_polygon(List *out, int32_t ds[2], const Clip *v, int n, const
     if (det != 0 && ((front && !(attr & 0x80)) || (!front && !(attr & 0x40)))) {
         return;
     }
-    if (!(attr & 0x1000)) {  /* far-plane intersecting polygons hidden */
+    if (!(attr & 0x1000)) { /* far-plane intersecting polygons hidden */
         for (int i = 0; i < n; ++i) {
             if (v[i].z > v[i].w) {
                 return;
@@ -700,8 +721,10 @@ static void finish_polygon(List *out, int32_t ds[2], const Clip *v, int n, const
             o->b = (float)a[i].b;
             o->s = (float)a[i].s;
             o->t = (float)a[i].t;
-            if (o->y < p->ymin) p->ymin = o->y;
-            if (o->y > p->ymax) p->ymax = o->y;
+            if (o->y < p->ymin)
+                p->ymin = o->y;
+            if (o->y > p->ymax)
+                p->ymax = o->y;
         }
     }
     if (report && polygon_hook != NULL) {
@@ -733,20 +756,24 @@ static void vertex(int32_t x, int32_t y, int32_t z)
     g.vy = y;
     g.vz = z;
     if (g.prim < 0) {
-        return;  /* outside BEGIN_VTXS */
+        return; /* outside BEGIN_VTXS */
     }
     if ((g.teximage >> 30) == 3) {
         missing(MISSING_TEXGEN_VERTEX,
                 "texture coordinates from vertices (GBATEK's shift; not verified against hardware)");
-        g.s = (int32_t)((((int64_t)x * g.tex.m[0] + (int64_t)y * g.tex.m[4] + (int64_t)z * g.tex.m[8]) >> 20) +
-                        g.raw_s);
-        g.t = (int32_t)((((int64_t)x * g.tex.m[1] + (int64_t)y * g.tex.m[5] + (int64_t)z * g.tex.m[9]) >> 20) +
-                        g.raw_t);
+        g.s =
+            (int32_t)((((int64_t)x * g.tex.m[0] + (int64_t)y * g.tex.m[4] + (int64_t)z * g.tex.m[8]) >> 20) + g.raw_s);
+        g.t =
+            (int32_t)((((int64_t)x * g.tex.m[1] + (int64_t)y * g.tex.m[5] + (int64_t)z * g.tex.m[9]) >> 20) + g.raw_t);
     }
-    c.x = (int32_t)(((int64_t)x * m->m[0] + (int64_t)y * m->m[4] + (int64_t)z * m->m[8] + ((int64_t)m->m[12] << 12)) >> 12);
-    c.y = (int32_t)(((int64_t)x * m->m[1] + (int64_t)y * m->m[5] + (int64_t)z * m->m[9] + ((int64_t)m->m[13] << 12)) >> 12);
-    c.z = (int32_t)(((int64_t)x * m->m[2] + (int64_t)y * m->m[6] + (int64_t)z * m->m[10] + ((int64_t)m->m[14] << 12)) >> 12);
-    c.w = (int32_t)(((int64_t)x * m->m[3] + (int64_t)y * m->m[7] + (int64_t)z * m->m[11] + ((int64_t)m->m[15] << 12)) >> 12);
+    c.x = (int32_t)(((int64_t)x * m->m[0] + (int64_t)y * m->m[4] + (int64_t)z * m->m[8] + ((int64_t)m->m[12] << 12)) >>
+                    12);
+    c.y = (int32_t)(((int64_t)x * m->m[1] + (int64_t)y * m->m[5] + (int64_t)z * m->m[9] + ((int64_t)m->m[13] << 12)) >>
+                    12);
+    c.z = (int32_t)(((int64_t)x * m->m[2] + (int64_t)y * m->m[6] + (int64_t)z * m->m[10] + ((int64_t)m->m[14] << 12)) >>
+                    12);
+    c.w = (int32_t)(((int64_t)x * m->m[3] + (int64_t)y * m->m[7] + (int64_t)z * m->m[11] + ((int64_t)m->m[15] << 12)) >>
+                    12);
     c.r = expand5(g.color[0]);
     c.g = expand5(g.color[1]);
     c.b = expand5(g.color[2]);
@@ -755,19 +782,19 @@ static void vertex(int32_t x, int32_t y, int32_t z)
 
     g.strip[g.strip_count++] = c;
     switch (g.prim) {
-    case 0:  /* separate triangles */
+    case 0: /* separate triangles */
         if (g.strip_count == 3) {
             emit_polygon(g.strip, 3);
             g.strip_count = 0;
         }
         break;
-    case 1:  /* separate quads */
+    case 1: /* separate quads */
         if (g.strip_count == 4) {
             emit_polygon(g.strip, 4);
             g.strip_count = 0;
         }
         break;
-    case 2:  /* triangle strip: every second triangle is wound the other way */
+    case 2: /* triangle strip: every second triangle is wound the other way */
         if (g.strip_count == 3) {
             Clip t[3];
             if (g.poly_index & 1) {
@@ -785,7 +812,7 @@ static void vertex(int32_t x, int32_t y, int32_t z)
             g.strip_count = 2;
         }
         break;
-    default:  /* quad strip: v0 v1 v3 v2 */
+    default: /* quad strip: v0 v1 v3 v2 */
         if (g.strip_count == 4) {
             Clip q[4] = {g.strip[0], g.strip[1], g.strip[3], g.strip[2]};
             emit_polygon(q, 4);
@@ -841,22 +868,26 @@ void khdays_g3d_light(const KhdaysG3dMaterial *m, const float n[3], float rgb[3]
         if (!(m->attr & (1u << i))) {
             continue;
         }
-        diffuse = -((float)g.light_vec[i][0] * n[0] + (float)g.light_vec[i][1] * n[1] +
-                    (float)g.light_vec[i][2] * n[2]) / 4096.0f;
-        if (diffuse < 0) diffuse = 0;
-        shine = -((float)g.half_vec[i][0] * n[0] + (float)g.half_vec[i][1] * n[1] +
-                  (float)g.half_vec[i][2] * n[2]) / 4096.0f;
-        if (shine < 0) shine = 0;
+        diffuse =
+            -((float)g.light_vec[i][0] * n[0] + (float)g.light_vec[i][1] * n[1] + (float)g.light_vec[i][2] * n[2]) /
+            4096.0f;
+        if (diffuse < 0)
+            diffuse = 0;
+        shine = -((float)g.half_vec[i][0] * n[0] + (float)g.half_vec[i][1] * n[1] + (float)g.half_vec[i][2] * n[2]) /
+                4096.0f;
+        if (shine < 0)
+            shine = 0;
         shine *= shine;
-        if (shine > 1) shine = 1;
+        if (shine > 1)
+            shine = 1;
         if (g.shininess_on) {
             const int k = (int)(shine * 4096.0f) >> 5;
             shine = (float)g.shininess[k > 127 ? 127 : k] / 256.0f;
         }
         for (int c = 0; c < 3; ++c) {
             const float lc = (float)g.light_color[i][c];
-            color[c] += ((float)m->specular[c] * shine + (float)m->diffuse[c] * diffuse + (float)m->ambient[c]) *
-                        lc / 32.0f;
+            color[c] +=
+                ((float)m->specular[c] * shine + (float)m->diffuse[c] * diffuse + (float)m->ambient[c]) * lc / 32.0f;
         }
     }
     for (int c = 0; c < 3; ++c) {
@@ -865,8 +896,7 @@ void khdays_g3d_light(const KhdaysG3dMaterial *m, const float n[3], float rgb[3]
 }
 
 /* clip_plane in floats. */
-static int clip_plane_f(const KhdaysG3dClipVertex *in, int n, KhdaysG3dClipVertex *out, int axis, int sign,
-                        float widen)
+static int clip_plane_f(const KhdaysG3dClipVertex *in, int n, KhdaysG3dClipVertex *out, int axis, int sign, float widen)
 {
     int m = 0;
     for (int i = 0; i < n; ++i) {
@@ -963,8 +993,10 @@ static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, c
             o->b = a[i].b;
             o->s = a[i].s;
             o->t = a[i].t;
-            if (o->y < p->ymin) p->ymin = o->y;
-            if (o->y > p->ymax) p->ymax = o->y;
+            if (o->y < p->ymin)
+                p->ymin = o->y;
+            if (o->y > p->ymax)
+                p->ymax = o->y;
         }
     }
     if (report && polygon_hook != NULL) {
@@ -997,8 +1029,7 @@ static void box_test(const uint32_t *p)
     const int32_t w = sext(p[1] >> 16, 16), h = sext(p[2], 16), d = sext(p[2] >> 16, 16);
     const Mtx *m = clip_matrix();
     Clip corner[8];
-    static const int faces[6][4] = {{0, 1, 3, 2}, {4, 5, 7, 6}, {0, 1, 5, 4},
-                                    {2, 3, 7, 6}, {0, 2, 6, 4}, {1, 3, 7, 5}};
+    static const int faces[6][4] = {{0, 1, 3, 2}, {4, 5, 7, 6}, {0, 1, 5, 4}, {2, 3, 7, 6}, {0, 2, 6, 4}, {1, 3, 7, 5}};
     for (int i = 0; i < 8; ++i) {
         const int64_t cx = x + ((i & 1) ? w : 0), cy = y + ((i & 2) ? h : 0), cz = z + ((i & 4) ? d : 0);
         memset(&corner[i], 0, sizeof(Clip));
@@ -1028,9 +1059,11 @@ static void box_test(const uint32_t *p)
 static int compare_translucent(const void *a, const void *b)
 {
     const Polygon *pa = (const Polygon *)a, *pb = (const Polygon *)b;
-    if (pa->ymin != pb->ymin) return pa->ymin < pb->ymin ? -1 : 1;
-    if (pa->ymax != pb->ymax) return pa->ymax < pb->ymax ? -1 : 1;
-    return pa->first < pb->first ? -1 : pa->first > pb->first;  /* as submitted */
+    if (pa->ymin != pb->ymin)
+        return pa->ymin < pb->ymin ? -1 : 1;
+    if (pa->ymax != pb->ymax)
+        return pa->ymax < pb->ymax ? -1 : 1;
+    return pa->first < pb->first ? -1 : pa->first > pb->first; /* as submitted */
 }
 
 /* A closed list into drawing order: the opaque polygons as submitted, then
@@ -1049,20 +1082,22 @@ static void into_drawing_order_with(List *l, Polygon **order_, int32_t *order_ca
             if (report) {
                 missing(MISSING_MEMORY, "no memory for a list's polygons (the ones that do not fit are left out)");
             }
-            return;  /* left in the order they came */
+            return; /* left in the order they came */
         }
         *order_ = grown;
         *order_capacity = l->npolys;
     }
     order = *order_;
     for (int i = 0; i < l->npolys; ++i) {
-        if (!l->polys[i].translucent) order[n++] = l->polys[i];
+        if (!l->polys[i].translucent)
+            order[n++] = l->polys[i];
     }
     first_translucent = n;
     for (int i = 0; i < l->npolys; ++i) {
-        if (l->polys[i].translucent) order[n++] = l->polys[i];
+        if (l->polys[i].translucent)
+            order[n++] = l->polys[i];
     }
-    if (!(l->swap_params & 1)) {  /* auto-sort by Y */
+    if (!(l->swap_params & 1)) { /* auto-sort by Y */
         qsort(order + first_translucent, (size_t)(n - first_translucent), sizeof(order[0]), compare_translucent);
     }
     memcpy(l->polys, order, sizeof(Polygon) * (size_t)n);
@@ -1148,7 +1183,7 @@ static List *free_list(void)
             return l;
         }
     }
-    return NULL;  /* cannot happen: four lists, at most three in use besides */
+    return NULL; /* cannot happen: four lists, at most three in use besides */
 }
 
 /* SwapBuffers: the list being built is closed, with the parameters of the
@@ -1231,7 +1266,8 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
     case 0x14: stack_restore(p[0]); break;
     case 0x15: load(&identity); break;
     case 0x16:
-        for (int i = 0; i < 16; ++i) m.m[i] = (int32_t)p[i];
+        for (int i = 0; i < 16; ++i)
+            m.m[i] = (int32_t)p[i];
         load(&m);
         break;
     case 0x17:
@@ -1243,10 +1279,14 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
                 m.m[r * 4 + c] = (int32_t)p[r * 3 + c];
             }
         }
-        if (cmd == 0x17) load(&m); else multiply(&m, 0);
+        if (cmd == 0x17)
+            load(&m);
+        else
+            multiply(&m, 0);
         break;
     case 0x18:
-        for (int i = 0; i < 16; ++i) m.m[i] = (int32_t)p[i];
+        for (int i = 0; i < 16; ++i)
+            m.m[i] = (int32_t)p[i];
         multiply(&m, 0);
         break;
     case 0x1b:
@@ -1273,8 +1313,12 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
         g.raw_s = sext(p[0], 16);
         g.raw_t = sext(p[0] >> 16, 16);
         if ((g.teximage >> 30) == 1) {
-            g.s = (int32_t)(((int64_t)g.raw_s * g.tex.m[0] + (int64_t)g.raw_t * g.tex.m[4] + g.tex.m[8] + g.tex.m[12]) >> 12);
-            g.t = (int32_t)(((int64_t)g.raw_s * g.tex.m[1] + (int64_t)g.raw_t * g.tex.m[5] + g.tex.m[9] + g.tex.m[13]) >> 12);
+            g.s =
+                (int32_t)(((int64_t)g.raw_s * g.tex.m[0] + (int64_t)g.raw_t * g.tex.m[4] + g.tex.m[8] + g.tex.m[12]) >>
+                          12);
+            g.t =
+                (int32_t)(((int64_t)g.raw_s * g.tex.m[1] + (int64_t)g.raw_t * g.tex.m[5] + g.tex.m[9] + g.tex.m[13]) >>
+                          12);
         } else {
             g.s = g.raw_s;
             g.t = g.raw_t;
@@ -1340,7 +1384,7 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
         g.strip_count = 0;
         g.poly_index = 0;
         break;
-    case 0x41: break;  /* END_VTXS does nothing on the hardware */
+    case 0x41: break; /* END_VTXS does nothing on the hardware */
     case 0x50: swap_buffers(p[0]); break;
     case 0x60:
         g.viewport[0] = (uint8_t)p[0];
@@ -1356,7 +1400,8 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
         g.vy = (int32_t)y;
         g.vz = (int32_t)z;
         for (int j = 0; j < 4; ++j) {
-            g.pos_result[j] = (int32_t)((x * c->m[j] + y * c->m[4 + j] + z * c->m[8 + j] + ((int64_t)c->m[12 + j] << 12)) >> 12);
+            g.pos_result[j] =
+                (int32_t)((x * c->m[j] + y * c->m[4 + j] + z * c->m[8 + j] + ((int64_t)c->m[12 + j] << 12)) >> 12);
         }
         break;
     }
@@ -1364,12 +1409,11 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
         int32_t v[3];
         direction(p[0], v);
         for (int j = 0; j < 3; ++j) {
-            g.vec_result[j] = (int16_t)sext((uint32_t)v[j], 13);  /* 4-bit sign, 12 fractional */
+            g.vec_result[j] = (int16_t)sext((uint32_t)v[j], 13); /* 4-bit sign, 12 fractional */
         }
         break;
     }
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -1378,7 +1422,7 @@ void khdays_g3d_command(unsigned cmd, const uint32_t *p)
 static void entry(unsigned cmd, uint32_t param)
 {
     if (!valid_command(cmd)) {
-        return;  /* invalid commands fetch no parameters (GBATEK) */
+        return; /* invalid commands fetch no parameters (GBATEK) */
     }
     if (param_count[cmd] == 0) {
         khdays_g3d_command(cmd, NULL);
@@ -1481,7 +1525,7 @@ uint32_t khdays_g3d_read(uint32_t offset)
         return (uint32_t)clip_matrix()->m[(offset - 0x640) / 4];
     }
     if (offset >= 0x680 && offset < 0x6a4) {
-        const int i = (offset - 0x680) / 4;  /* 3x3: rows of the 4x4 */
+        const int i = (offset - 0x680) / 4; /* 3x3: rows of the 4x4 */
         return (uint32_t)g.vec.m[(i / 3) * 4 + i % 3];
     }
     return 0;
@@ -1490,5 +1534,5 @@ uint32_t khdays_g3d_read(uint32_t offset)
 int khdays_g3d_fifo_irq(void)
 {
     const uint32_t mode = g.irq_mode >> 30;
-    return mode == 1 || mode == 2;  /* less than half full; empty */
+    return mode == 1 || mode == 2; /* less than half full; empty */
 }

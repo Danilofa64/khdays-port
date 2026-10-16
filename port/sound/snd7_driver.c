@@ -14,7 +14,7 @@ uintptr_t snd7_ds_base;
 const uint8_t *snd7_segment;
 uint64_t snd7_now;
 
-static uint32_t random_state;  /* 0x03807404, initialised data */
+static uint32_t random_state; /* 0x03807404, initialised data */
 
 void khdays_snd7_native_set_ds_base(uintptr_t base)
 {
@@ -137,5 +137,5 @@ static uint64_t next_event(void)
     return snd7_os_next_event();
 }
 
-const KhdaysSnd7Driver khdays_snd7_native = {"native",     start, word, advance, next_event, snd7_seq_channel_player,
-                                             khdays_snd7_native_player_record};
+const KhdaysSnd7Driver khdays_snd7_native = {
+    "native", start, word, advance, next_event, snd7_seq_channel_player, khdays_snd7_native_player_record};

@@ -55,10 +55,7 @@ def read_rom_info(path: Path) -> RomInfo:
         header = stream.read(HEADER_MIN_SIZE)
 
     if len(header) < HEADER_MIN_SIZE:
-        raise ValueError(
-            f"The file is too small to be a valid NDS ROM "
-            f"({len(header)} bytes)."
-        )
+        raise ValueError(f"The file is too small to be a valid NDS ROM ({len(header)} bytes).")
 
     title = decode_ascii(header[0x00:0x0C])
     game_code = decode_ascii(header[0x0C:0x10])
@@ -135,9 +132,7 @@ def print_database_entry(info: RomInfo) -> None:
 def parse_args() -> argparse.Namespace:
     default_db = Path(__file__).with_name("supported_roms.json")
 
-    parser = argparse.ArgumentParser(
-        description="Inspect and verify a user-provided Nintendo DS ROM."
-    )
+    parser = argparse.ArgumentParser(description="Inspect and verify a user-provided Nintendo DS ROM.")
     parser.add_argument("rom", type=Path, help="Path to the .nds file")
     parser.add_argument(
         "--database",

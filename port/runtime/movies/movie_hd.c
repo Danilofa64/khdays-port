@@ -24,13 +24,13 @@ int khdays_language_wanted(void); /* language.c */
 enum { IDLE, PLAYING, HELD, FINISHING, SKIPPING };
 
 static SRWLOCK lock = SRWLOCK_INIT;
-static volatile LONG state = IDLE; /* read without the lock to see whether a course runs */
-static char id[64];               /* the movie's, as the game names it */
-static int skippable = -1;        /* the DS lets START skip it: 1, 0, -1 not said yet */
-static int skip_wanted;           /* START came before the movie said */
-static int skipped;               /* the game marked its skip */
+static volatile LONG state = IDLE;    /* read without the lock to see whether a course runs */
+static char id[64];                   /* the movie's, as the game names it */
+static int skippable = -1;            /* the DS lets START skip it: 1, 0, -1 not said yet */
+static int skip_wanted;               /* START came before the movie said */
+static int skipped;                   /* the game marked its skip */
 static uint16_t game_last, host_last; /* the buttons last seen, for START's press */
-static volatile LONG ended;       /* a course has just ended: the buttons held then are withheld */
+static volatile LONG ended;           /* a course has just ended: the buttons held then are withheld */
 
 /* state and ended read as they are written: atomically (the decoder's thread
  * and the game's both look; volatile alone is atomic only by MSVC's reading) */
@@ -43,9 +43,9 @@ static LONG ended_now(void)
 {
     return InterlockedCompareExchange(&ended, 0, 0);
 }
-static uint16_t stuck;            /* ... until they are let go */
-static int credits_scene;         /* the credits scene runs (khdays_movie_hd_credits) */
-static int course_credits;        /* the course is its movie's */
+static uint16_t stuck;     /* ... until they are let go */
+static int credits_scene;  /* the credits scene runs (khdays_movie_hd_credits) */
+static int course_credits; /* the course is its movie's */
 
 /* The ids already told about (no video, or one that cannot be played): once each. */
 static char (*told)[64];
@@ -60,7 +60,7 @@ static int tell_once(const char *movie)
     }
     if (told_count == told_capacity) {
         const int capacity = told_capacity ? told_capacity * 2 : 16;
-        char (*grown)[64] = realloc(told, (size_t)capacity * sizeof(*told));
+        char(*grown)[64] = realloc(told, (size_t)capacity * sizeof(*told));
         if (grown == NULL) {
             return 1;
         }
@@ -155,8 +155,7 @@ static void request_skip(void)
             finish("skipped");
         }
         break;
-    default:
-        break;
+    default: break;
     }
 }
 

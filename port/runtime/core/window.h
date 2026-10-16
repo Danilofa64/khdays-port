@@ -16,17 +16,17 @@ extern unsigned char *khdays_window;
 /* The game's heaps' region: above the DS's ranges and the stacks, below 0x80000000 (the game keeps
  * heap handles and free sizes in int). The main heap's span, then the sub heap's; a granule is
  * committed when first touched (memory.c). */
-#define KHDAYS_HEAPS_BASE    0x20000000u
+#define KHDAYS_HEAPS_BASE 0x20000000u
 #define KHDAYS_MAIN_HEAP_END 0x30000000u
-#define KHDAYS_HEAPS_END     0x80000000u
+#define KHDAYS_HEAPS_END 0x80000000u
 
 /* The headers' heaps: a packed archive's header is named in the game's file handles by 24 bits from
  * 0x01ff8000 (Archive_OpenSubfileByHandle), so it must lie below 0x02ff8000. They sit where the DS's
  * upper main RAM mirrors were: the sub heap's from KHDAYS_HEADERS_BASE, the main heap's from
  * KHDAYS_HEADERS_MID. */
 #define KHDAYS_HEADERS_BASE 0x02800000u
-#define KHDAYS_HEADERS_MID  0x02c00000u
-#define KHDAYS_HEADERS_END  0x02ff8000u
+#define KHDAYS_HEADERS_MID 0x02c00000u
+#define KHDAYS_HEADERS_END 0x02ff8000u
 
 /* Whether `reference` lies in memory the game reads and writes as its RAM:
  * main RAM (0x02000000-0x02400000), the headers' heaps or the heaps' region.

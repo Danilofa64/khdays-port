@@ -50,7 +50,8 @@ typedef struct KhdaysOneScreenDraw {
  * without the 3D (KDF_SPLIT) at the DS's 256 columns, then the one picture is
  * made from them and the 3D at `scale` (with `raster`, as wide as
  * one->columns). */
-int khdays_gfx_render_draw_one(const KhdaysFramePackage *package, int scale, int raster, const KhdaysOneScreenDraw *one);
+int khdays_gfx_render_draw_one(const KhdaysFramePackage *package, int scale, int raster,
+                               const KhdaysOneScreenDraw *one);
 
 /* The size the window shows the draws that follow at, in window pixels a DS pixel. What is made larger
  * (the antialiasing, the window's size rounded up) is shrunk to it on the card (shrink.hlsl), each

@@ -5,11 +5,11 @@
 #include "text_patches.h"
 
 extern "C" {
-#include "../../host/app/host.h"  // khdays_host_tell_no_data
+#include "../../host/app/host.h" // khdays_host_tell_no_data
 #include "origin.h"
 }
 
-#include "khdays/assets/message.h"  // lz_decompress
+#include "khdays/assets/message.h" // lz_decompress
 #include "khdays/vfs/filesystem.h"
 
 #include <algorithm>
@@ -30,44 +30,48 @@ namespace fs = std::filesystem;
 struct Region {
     u32 start;
     u32 end;
-    int kind;       // what serves it: see read_region
-    int index;      // file id for kind GAME_FILE
+    int kind;  // what serves it: see read_region
+    int index; // file id for kind GAME_FILE
 };
 
 enum { HEADER, SYSTEM_BLOB, FAT, GAME_FILE, UNEXTRACTED };
 
 std::vector<u8> header;
-std::vector<u8> fat;  // as the game reads it (moved mod files patched in)
+std::vector<u8> fat; // as the game reads it (moved mod files patched in)
 struct Blob {
     u32 start;
     std::vector<u8> bytes;
 };
-std::vector<Blob> blobs;  // arm9, arm7, overlay table, fnt
+std::vector<Blob> blobs; // arm9, arm7, overlay table, fnt
 
 struct GameFile {
-    fs::path path;  // resolved through the VFS
+    fs::path path; // resolved through the VFS
     u32 size;
-    std::vector<u8> bytes;  // the port's wording of a file (text_patches.h), served from memory
+    std::vector<u8> bytes; // the port's wording of a file (text_patches.h), served from memory
 };
 std::vector<GameFile> files;
-std::vector<std::string> game_paths;  // by file id: the FNT's name, or _unnamed/file_NNNNN.bin
-std::map<std::string, u32> file_ids;  // the game's paths, as the FNT names them
-std::vector<Region> regions;  // sorted by start
+std::vector<std::string> game_paths; // by file id: the FNT's name, or _unnamed/file_NNNNN.bin
+std::map<std::string, u32> file_ids; // the game's paths, as the FNT names them
+std::vector<Region> regions;         // sorted by start
 
-u32 le32(const u8* p) {
+u32 le32(const u8 *p)
+{
     return p[0] | p[1] << 8 | p[2] << 16 | static_cast<u32>(p[3]) << 24;
 }
-u16 le16(const u8* p) {
+u16 le16(const u8 *p)
+{
     return static_cast<u16>(p[0] | p[1] << 8);
 }
 
 // A path as UTF-8 (the message box's).
-std::string utf8(const fs::path& p) {
+std::string utf8(const fs::path &p)
+{
     const auto u = p.u8string();
     return std::string(u.begin(), u.end());
 }
 
-[[noreturn]] void fail(const std::string& what) {
+[[noreturn]] void fail(const std::string &what)
+{
     std::fprintf(stderr, "rom: %s\n", what.c_str());
     std::fflush(stderr);
     // the player told too (a window's message box: the port may run with no console)
@@ -77,7 +81,8 @@ std::string utf8(const fs::path& p) {
     std::exit(8);
 }
 
-std::vector<u8> read_whole(const fs::path& path) {
+std::vector<u8> read_whole(const fs::path &path)
+{
     std::ifstream in{path, std::ios::binary};
     if (!in) {
         fail("cannot read " + path.string());
@@ -86,17 +91,17 @@ std::vector<u8> read_whole(const fs::path& path) {
 }
 
 // FNT: file id -> game path.
-void walk_fnt(const std::vector<u8>& fnt, u32 dir, const std::string& prefix,
-              std::map<u32, std::string>& names) {
-    const u8* entry = fnt.data() + 8 * (dir & 0xfff);
-    const u8* p = fnt.data() + le32(entry);
+void walk_fnt(const std::vector<u8> &fnt, u32 dir, const std::string &prefix, std::map<u32, std::string> &names)
+{
+    const u8 *entry = fnt.data() + 8 * (dir & 0xfff);
+    const u8 *p = fnt.data() + le32(entry);
     u32 id = le16(entry + 4);
     for (;;) {
         const u8 type = *p++;
         if (type == 0) {
             return;
         }
-        const std::string name(reinterpret_cast<const char*>(p), type & 0x7f);
+        const std::string name(reinterpret_cast<const char *>(p), type & 0x7f);
         p += type & 0x7f;
         if (type & 0x80) {
             const u32 sub = le16(p);
@@ -108,7 +113,7 @@ void walk_fnt(const std::vector<u8>& fnt, u32 dir, const std::string& prefix,
     }
 }
 
-}  // namespace
+} // namespace
 
 // Open files, most recently used first. The game reads a file in 0x200-byte blocks and opening costs
 // most (a field's load reads about a hundred files), so up to 192 stay open, each with a buffer of up
@@ -118,7 +123,7 @@ struct OpenFile {
     int id;
     std::vector<char> buffer;
     std::ifstream in;
-    u32 at = ~0u;  // where the next read would start without a seek
+    u32 at = ~0u; // where the next read would start without a seek
 };
 struct KhdaysRomReader {
     std::list<OpenFile> open_files;
@@ -128,8 +133,9 @@ namespace {
 
 KhdaysRomReader card_reader;
 
-OpenFile& handle(KhdaysRomReader& reader, int id) {
-    auto& open_files = reader.open_files;
+OpenFile &handle(KhdaysRomReader &reader, int id)
+{
+    auto &open_files = reader.open_files;
     for (auto it = open_files.begin(); it != open_files.end(); ++it) {
         if (it->id == id) {
             open_files.splice(open_files.begin(), open_files, it);
@@ -140,7 +146,7 @@ OpenFile& handle(KhdaysRomReader& reader, int id) {
         open_files.pop_back();
     }
     open_files.emplace_front();
-    OpenFile& f = open_files.front();
+    OpenFile &f = open_files.front();
     f.id = id;
     f.buffer.resize(std::min<std::size_t>(64 * 1024, files[id].size + 1u));
     f.in.rdbuf()->pubsetbuf(f.buffer.data(), static_cast<std::streamsize>(f.buffer.size()));
@@ -151,44 +157,40 @@ OpenFile& handle(KhdaysRomReader& reader, int id) {
     return f;
 }
 
-void read_region(KhdaysRomReader& reader, const Region& r, u32 offset, u8* out, u32 size) {
+void read_region(KhdaysRomReader &reader, const Region &r, u32 offset, u8 *out, u32 size)
+{
     const u32 at = offset - r.start;
     switch (r.kind) {
-    case HEADER:
-        std::memcpy(out, header.data() + at, size);
-        return;
-    case SYSTEM_BLOB:
-        std::memcpy(out, blobs[r.index].bytes.data() + at, size);
-        return;
-    case FAT:
-        std::memcpy(out, fat.data() + at, size);
-        return;
+    case HEADER: std::memcpy(out, header.data() + at, size); return;
+    case SYSTEM_BLOB: std::memcpy(out, blobs[r.index].bytes.data() + at, size); return;
+    case FAT: std::memcpy(out, fat.data() + at, size); return;
     case GAME_FILE: {
         if (!files[r.index].bytes.empty()) {
             std::memcpy(out, files[r.index].bytes.data() + at, size);
             return;
         }
-        OpenFile& f = handle(reader, r.index);
+        OpenFile &f = handle(reader, r.index);
         if (f.at != at || !f.in) {
             f.in.clear();
             f.in.seekg(at);
         }
-        f.in.read(reinterpret_cast<char*>(out), size);
+        f.in.read(reinterpret_cast<char *>(out), size);
         f.at = f.in ? at + size : ~0u;
         return;
     }
     default: {
         char message[96];
-        std::snprintf(message, sizeof(message),
-                      "the game read ROM bytes the extraction does not keep (0x%08x)", offset);
+        std::snprintf(message, sizeof(message), "the game read ROM bytes the extraction does not keep (0x%08x)",
+                      offset);
         fail(message);
     }
     }
 }
 
-}  // namespace
+} // namespace
 
-extern "C" int khdays_rom_init(void) {
+extern "C" int khdays_rom_init(void)
+{
     if (!khdays::vfs::autodetect_data_root()) {
         std::error_code ec;
         const fs::path searched = fs::absolute("data/extracted", ec);
@@ -204,7 +206,7 @@ extern "C" int khdays_rom_init(void) {
     const auto field = [](u32 offset) { return le32(header.data() + offset); };
 
     const struct {
-        const char* name;
+        const char *name;
         u32 offset_field;
         u32 size_field;
     } system_files[] = {
@@ -214,13 +216,13 @@ extern "C" int khdays_rom_init(void) {
         {"fnt.bin", 0x40, 0x44},
     };
     regions.push_back({0, 0x200, HEADER, 0});
-    for (const auto& s : system_files) {
+    for (const auto &s : system_files) {
         Blob blob{field(s.offset_field), read_whole(system / s.name)};
         if (blob.bytes.size() != field(s.size_field)) {
             fail(std::string("system/") + s.name + " does not match the header's size");
         }
-        regions.push_back({blob.start, blob.start + static_cast<u32>(blob.bytes.size()),
-                           SYSTEM_BLOB, static_cast<int>(blobs.size())});
+        regions.push_back({blob.start, blob.start + static_cast<u32>(blob.bytes.size()), SYSTEM_BLOB,
+                           static_cast<int>(blobs.size())});
         blobs.push_back(std::move(blob));
     }
     fat = read_whole(system / "fat.bin");
@@ -239,7 +241,7 @@ extern "C" int khdays_rom_init(void) {
     // Files, by FAT id, through the VFS.
     std::map<u32, std::string> names;
     walk_fnt(blobs[3].bytes, 0xf000, "", names);
-    for (const auto& [id, name] : names) {
+    for (const auto &[id, name] : names) {
         file_ids[name] = id;
     }
     const u32 count = static_cast<u32>(fat.size() / 8);
@@ -259,7 +261,8 @@ extern "C" int khdays_rom_init(void) {
         }
         // a mission world a mod replaces (the studio's map editor): its rooms' models named from the start,
         // so the mod's are drawn even with HD graphics off (models.cpp)
-        if (game_path.rfind("mi/wd/wd_", 0) == 0 && khdays::vfs::find_in_mods(fs::path("files") / fs::u8path(game_path))) {
+        if (game_path.rfind("mi/wd/wd_", 0) == 0 &&
+            khdays::vfs::find_in_mods(fs::path("files") / fs::u8path(game_path))) {
             khdays_origin_want();
         }
         std::vector<u8> worded;
@@ -285,12 +288,12 @@ extern "C" int khdays_rom_init(void) {
             regions.push_back({placed, placed + size, GAME_FILE, static_cast<int>(id)});
         }
     }
-    std::sort(regions.begin(), regions.end(),
-              [](const Region& a, const Region& b) { return a.start < b.start; });
+    std::sort(regions.begin(), regions.end(), [](const Region &a, const Region &b) { return a.start < b.start; });
     return 1;
 }
 
-extern "C" const u8* khdays_rom_header(void) {
+extern "C" const u8 *khdays_rom_header(void)
+{
     return header.data();
 }
 
@@ -298,14 +301,15 @@ namespace {
 
 // The regions are read-only once khdays_rom_init has built them, so any
 // thread can read them with a reader of its own.
-void read_rom(KhdaysRomReader& reader, u32 offset, u8* destination, u32 size) {
+void read_rom(KhdaysRomReader &reader, u32 offset, u8 *destination, u32 size)
+{
     while (size != 0) {
         // The last region starting at or before offset.
         auto it = std::upper_bound(regions.begin(), regions.end(), offset,
-                                   [](u32 value, const Region& r) { return value < r.start; });
+                                   [](u32 value, const Region &r) { return value < r.start; });
         u32 chunk;
         if (it != regions.begin() && offset < std::prev(it)->end) {
-            const Region& r = *std::prev(it);
+            const Region &r = *std::prev(it);
             chunk = std::min(size, r.end - offset);
             read_region(reader, r, offset, destination, chunk);
         } else {
@@ -320,21 +324,25 @@ void read_rom(KhdaysRomReader& reader, u32 offset, u8* destination, u32 size) {
     }
 }
 
-}  // namespace
+} // namespace
 
-extern "C" void khdays_rom_read(u32 offset, u8* destination, u32 size) {
+extern "C" void khdays_rom_read(u32 offset, u8 *destination, u32 size)
+{
     read_rom(card_reader, offset, destination, size);
 }
 
-extern "C" KhdaysRomReader* khdays_rom_reader_new(void) {
+extern "C" KhdaysRomReader *khdays_rom_reader_new(void)
+{
     return new KhdaysRomReader;
 }
 
-extern "C" void khdays_rom_reader_read(KhdaysRomReader* reader, u32 offset, u8* destination, u32 size) {
+extern "C" void khdays_rom_reader_read(KhdaysRomReader *reader, u32 offset, u8 *destination, u32 size)
+{
     read_rom(*reader, offset, destination, size);
 }
 
-extern "C" int khdays_rom_file_data(KhdaysRomReader* reader, const char* path, int entry, u8** data, u32* size) {
+extern "C" int khdays_rom_file_data(KhdaysRomReader *reader, const char *path, int entry, u8 **data, u32 *size)
+{
     u32 top = 0, bytes = 0;
     std::vector<u8> out;
     bool packed = false;
@@ -376,7 +384,7 @@ extern "C" int khdays_rom_file_data(KhdaysRomReader* reader, const char* path, i
             return 0;
         }
     }
-    *data = static_cast<u8*>(std::malloc(out.empty() ? 1 : out.size()));
+    *data = static_cast<u8 *>(std::malloc(out.empty() ? 1 : out.size()));
     if (*data == nullptr) {
         return 0;
     }
@@ -387,7 +395,8 @@ extern "C" int khdays_rom_file_data(KhdaysRomReader* reader, const char* path, i
     return 1;
 }
 
-extern "C" int khdays_rom_find(const char* path, u32* offset, u32* size) {
+extern "C" int khdays_rom_find(const char *path, u32 *offset, u32 *size)
+{
     while (*path == '/') {
         ++path;
     }
@@ -400,15 +409,17 @@ extern "C" int khdays_rom_find(const char* path, u32* offset, u32* size) {
     return 1;
 }
 
-extern "C" int khdays_rom_file_count(void) {
+extern "C" int khdays_rom_file_count(void)
+{
     return static_cast<int>(game_paths.size());
 }
 
-extern "C" int khdays_rom_file_info(int id, char* path, int size, u32* offset, u32* bytes) {
+extern "C" int khdays_rom_file_info(int id, char *path, int size, u32 *offset, u32 *bytes)
+{
     if (id < 0 || static_cast<std::size_t>(id) >= game_paths.size()) {
         return 0;
     }
-    const std::string& name = game_paths[static_cast<std::size_t>(id)];
+    const std::string &name = game_paths[static_cast<std::size_t>(id)];
     if (name.size() + 1 > static_cast<std::size_t>(size)) {
         return 0;
     }
@@ -418,14 +429,15 @@ extern "C" int khdays_rom_file_info(int id, char* path, int size, u32* offset, u
     return 1;
 }
 
-extern "C" int khdays_rom_file_at(u32 offset, char* path, int size, u32* within) {
+extern "C" int khdays_rom_file_at(u32 offset, char *path, int size, u32 *within)
+{
     const auto it = std::upper_bound(regions.begin(), regions.end(), offset,
-                                     [](u32 value, const Region& r) { return value < r.start; });
+                                     [](u32 value, const Region &r) { return value < r.start; });
     if (it == regions.begin() || offset >= std::prev(it)->end || std::prev(it)->kind != GAME_FILE) {
         return 0;
     }
-    const Region& r = *std::prev(it);
-    const std::string& name = game_paths[static_cast<std::size_t>(r.index)];
+    const Region &r = *std::prev(it);
+    const std::string &name = game_paths[static_cast<std::size_t>(r.index)];
     if (name.size() + 1 > static_cast<std::size_t>(size)) {
         return 0;
     }
@@ -434,32 +446,24 @@ extern "C" int khdays_rom_file_at(u32 offset, char* path, int size, u32* within)
     return 1;
 }
 
-extern "C" int khdays_rom_area_at(u32 offset, char* name, int size, u32* start, u32* end) {
+extern "C" int khdays_rom_area_at(u32 offset, char *name, int size, u32 *start, u32 *end)
+{
     // the system blobs in the order khdays_rom_init reads them
-    static const char* const blob_names[] = {"(the ARM9 binary)", "(the ARM7 binary)", "(the overlay table)",
+    static const char *const blob_names[] = {"(the ARM9 binary)", "(the ARM7 binary)", "(the overlay table)",
                                              "(the FNT)"};
     const auto it = std::upper_bound(regions.begin(), regions.end(), offset,
-                                     [](u32 value, const Region& r) { return value < r.start; });
+                                     [](u32 value, const Region &r) { return value < r.start; });
     if (it == regions.begin() || offset >= std::prev(it)->end) {
         return 0;
     }
-    const Region& r = *std::prev(it);
+    const Region &r = *std::prev(it);
     std::string what;
     switch (r.kind) {
-    case HEADER:
-        what = "(the header)";
-        break;
-    case SYSTEM_BLOB:
-        what = r.index >= 0 && r.index < 4 ? blob_names[r.index] : "(a system file)";
-        break;
-    case FAT:
-        what = "(the FAT)";
-        break;
-    case GAME_FILE:
-        what = game_paths[static_cast<std::size_t>(r.index)];
-        break;
-    default:
-        return 0;
+    case HEADER: what = "(the header)"; break;
+    case SYSTEM_BLOB: what = r.index >= 0 && r.index < 4 ? blob_names[r.index] : "(a system file)"; break;
+    case FAT: what = "(the FAT)"; break;
+    case GAME_FILE: what = game_paths[static_cast<std::size_t>(r.index)]; break;
+    default: return 0;
     }
     if (what.size() + 1 > static_cast<std::size_t>(size)) {
         return 0;
@@ -470,7 +474,8 @@ extern "C" int khdays_rom_area_at(u32 offset, char* name, int size, u32* start, 
     return 1;
 }
 
-extern "C" int khdays_mods_find(const char* relative, char* path, int size) {
+extern "C" int khdays_mods_find(const char *relative, char *path, int size)
+{
     const auto found = khdays::vfs::find_in_mods(fs::u8path(relative));
     if (!found) {
         return 0;

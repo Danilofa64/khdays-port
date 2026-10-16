@@ -19,7 +19,7 @@ namespace studio {
 struct PreviewImage {
     const std::uint8_t* rgba = nullptr;  // null: drawn in the vertex colour
     int width = 0, height = 0;
-    std::array<bool, 2> repeat{true, true};  // past 0..1 on S, T: repeated (else clamped)
+    std::array<bool, 2> repeat{true, true};    // past 0..1 on S, T: repeated (else clamped)
     std::array<bool, 2> mirror{false, false};  // and mirrored
 };
 
@@ -51,8 +51,12 @@ public:
     // Where a point is on the picture (begin()'s size), in pixels; false behind the viewer.
     bool project(const std::array<float, 3>& p, float* x, float* y) const;
 
-    int width() const { return width_; }
-    int height() const { return height_; }
+    int width() const {
+        return width_;
+    }
+    int height() const {
+        return height_;
+    }
 
     // Releases what the last frame no longer uses (call at the frame's start).
     void collect();

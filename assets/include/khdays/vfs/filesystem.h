@@ -17,8 +17,7 @@ const std::filesystem::path& data_root();
 
 // Find the data root under `extracted_dir` (the single hash subdirectory that
 // holds a `nitrofs/`). Returns true and sets the root on success.
-bool autodetect_data_root(
-    const std::filesystem::path& extracted_dir = "data/extracted");
+bool autodetect_data_root(const std::filesystem::path& extracted_dir = "data/extracted");
 
 // Set the mods root (default "mods"). Each mod may shadow game files under
 // `mods/<Mod>/files/<game_path>`.

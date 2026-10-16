@@ -318,8 +318,8 @@ static int ready(int s, short events, unsigned long long until)
     return poll(&fd, 1, (int)(until - now)) > 0 && (fd.revents & events) != 0;
 }
 
-long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply,
-                              size_t room, int ms, unsigned int *local)
+long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply, size_t room,
+                              int ms, unsigned int *local)
 {
     const unsigned long long until = khdays_host_net_clock_ms() + (unsigned long long)ms;
     struct sockaddr_in address;

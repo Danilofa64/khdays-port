@@ -30,15 +30,15 @@ extern "C" {
 
 namespace {
 
-constexpr int kScreen = 0;                     // engine A
-constexpr int kLayer = 2;                      // its BG2: the pause's lines
+constexpr int kScreen = 0; // engine A
+constexpr int kLayer = 2;  // its BG2: the pause's lines
 constexpr int kCellX = 10, kCellsW = 11, kCellsH = 2;
 constexpr int kW = kCellsW * 8, kH = kCellsH * 8;
-constexpr int kGameRow[2] = {11, 13};          // the game's Continue and Give Up
-constexpr int kRow[3] = {11, 13, 15};          // the port's Continue, Retry, Give Up
-constexpr int kInsideLeft = 18, kInsideRight = 78, kInsideTop = 4, kInsideBottom = 12;  // [left, right) x [top, bottom)
+constexpr int kGameRow[2] = {11, 13}; // the game's Continue and Give Up
+constexpr int kRow[3] = {11, 13, 15}; // the port's Continue, Retry, Give Up
+constexpr int kInsideLeft = 18, kInsideRight = 78, kInsideTop = 4, kInsideBottom = 12; // [left, right) x [top, bottom)
 
-using Line = std::array<std::uint32_t, kW * kH>;  // texels: 0, or KET_OPAQUE | the BG palette's index
+using Line = std::array<std::uint32_t, kW * kH>; // texels: 0, or KET_OPAQUE | the BG palette's index
 
 // The game's two lines as VRAM held them last, by line and lit.
 struct Seen {
@@ -61,7 +61,8 @@ Line live[2], drawn[3];
 std::optional<khdays::assets::Font> font;
 bool font_tried;
 
-const khdays::assets::Font* the_font() {
+const khdays::assets::Font *the_font()
+{
     if (!font_tried) {
         font_tried = true;
         const auto path = khdays::vfs::resolve("text/font_eu_08.nftr");
@@ -69,7 +70,7 @@ const khdays::assets::Font* the_font() {
             if (path) {
                 font = khdays::assets::decode_nftr(*path);
             }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             std::fprintf(stderr, "ui: the pause's Retry font could not be read (%s)\n", e.what());
         }
         if (!font) {
@@ -81,7 +82,8 @@ const khdays::assets::Font* the_font() {
 
 // The line from map cell (kCellX, row) as the map and VRAM hold it; false when a cell shows nothing
 // (not drawn).
-bool read_line(const KhdaysBgLayer& l, int row, Line& out) {
+bool read_line(const KhdaysBgLayer &l, int row, Line &out)
+{
     const int size = l.colors256 ? 64 : 32;
     bool any = false;
     out.fill(0);
@@ -95,10 +97,10 @@ bool read_line(const KhdaysBgLayer& l, int row, Line& out) {
                     const int ex = (entry & 0x400u) ? 7 - x : x, ey = (entry & 0x800u) ? 7 - y : y;
                     std::uint32_t v;
                     if (l.colors256) {
-                        const std::uint8_t* b = khdays_bg_memory(kScreen, at + static_cast<std::uint32_t>(ey * 8 + ex));
+                        const std::uint8_t *b = khdays_bg_memory(kScreen, at + static_cast<std::uint32_t>(ey * 8 + ex));
                         v = b != nullptr ? *b : 0u;
                     } else {
-                        const std::uint8_t* b =
+                        const std::uint8_t *b =
                             khdays_bg_memory(kScreen, at + static_cast<std::uint32_t>(ey * 4 + ex / 2));
                         v = b != nullptr ? (*b >> ((ex & 1) * 4)) & 15u : 0u;
                         v = v != 0 ? pal * 16u + v : 0u;
@@ -115,14 +117,16 @@ bool read_line(const KhdaysBgLayer& l, int row, Line& out) {
 }
 
 // How bright the BG palette's colour `t` names is (its components' sum).
-int brightness(std::uint32_t t) {
-    const std::uint16_t c = *static_cast<const volatile std::uint16_t*>(KHDAYS_W(0x05000000u + (t & 0xffu) * 2u));
+int brightness(std::uint32_t t)
+{
+    const std::uint16_t c = *static_cast<const volatile std::uint16_t *>(KHDAYS_W(0x05000000u + (t & 0xffu) * 2u));
     return (c & 31) + ((c >> 5) & 31) + ((c >> 10) & 31);
 }
 
-std::u16string utf16(const char* s) {
+std::u16string utf16(const char *s)
+{
     std::u16string out;
-    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(s); *p != 0;) {
+    for (const unsigned char *p = reinterpret_cast<const unsigned char *>(s); *p != 0;) {
         unsigned c = *p++;
         int more = c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
         c &= more == 3 ? 0x07u : more == 2 ? 0x0fu : more == 1 ? 0x1fu : 0x7fu;
@@ -135,8 +139,9 @@ std::u16string utf16(const char* s) {
 }
 
 // Retry: the line `from` with its words taken out and `words` written in; false without the font.
-bool retry_line(const Line& from, const char* words, Line& out) {
-    const auto* f = the_font();
+bool retry_line(const Line &from, const char *words, Line &out)
+{
+    const auto *f = the_font();
     std::uint32_t inside[kH] = {};
     int left = kW, right = -1;
     std::uint32_t white = 0, shadow = 0;
@@ -199,7 +204,9 @@ bool retry_line(const Line& from, const char* words, Line& out) {
         auto ink = [&](int x, int y) {
             return x >= 0 && y >= 0 && x < text.width && y < text.height &&
                    text.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(text.width) +
-                              static_cast<std::size_t>(x)) * 4u + 3u] >= 128;
+                              static_cast<std::size_t>(x)) *
+                                 4u +
+                             3u] >= 128;
         };
         for (int y = 0; y < text.height; ++y) {
             for (int x = 0; x < text.width; ++x) {
@@ -218,10 +225,11 @@ bool retry_line(const Line& from, const char* words, Line& out) {
     return true;
 }
 
-void emit_line(int index, const Line& texels, int x, int y) {
+void emit_line(int index, const Line &texels, int x, int y)
+{
     const int scale = khdays_ui_scale();
-    Shown& s = shown[index];
-    static const char* const ids[3] = {"pause.continue", "pause.retry", "pause.give_up"};
+    Shown &s = shown[index];
+    static const char *const ids[3] = {"pause.continue", "pause.retry", "pause.give_up"};
     if (s.image < 0 || s.scale != scale || s.texels != texels) {
         if (s.image < 0 || s.scale != scale) {
             khdays_ui_image_put(s.image);
@@ -231,14 +239,14 @@ void emit_line(int index, const Line& texels, int x, int y) {
         if (s.image < 0) {
             return;
         }
-        std::uint32_t* out = khdays_ui_image_begin(s.image);
+        std::uint32_t *out = khdays_ui_image_begin(s.image);
         if (out == nullptr) {
             return;
         }
         for (int py = 0; py < kH * scale; ++py) {
             for (int px = 0; px < kW * scale; ++px) {
-                out[static_cast<std::size_t>(py) * static_cast<std::size_t>(kW * scale) + static_cast<std::size_t>(px)] =
-                    texels[static_cast<std::size_t>((py / scale) * kW + px / scale)];
+                out[static_cast<std::size_t>(py) * static_cast<std::size_t>(kW * scale) +
+                    static_cast<std::size_t>(px)] = texels[static_cast<std::size_t>((py / scale) * kW + px / scale)];
             }
         }
         khdays_ui_image_end(s.image);
@@ -258,8 +266,9 @@ void emit_line(int index, const Line& texels, int x, int y) {
 
 // --- A mod's pictures ----------------------------------------------------------------------------
 
-const char* const kCodes[6] = {"en", "en", "fr", "de", "it", "es"};  // by the game's language (1-5)
-const char* const kFiles[KHDAYS_PAUSE_KEYS] = {"title", "question", "continue", "skip", "withdraw", "retry", "yes", "no"};
+const char *const kCodes[6] = {"en", "en", "fr", "de", "it", "es"}; // by the game's language (1-5)
+const char *const kFiles[KHDAYS_PAUSE_KEYS] = {"title",    "question", "continue", "skip",
+                                               "withdraw", "retry",    "yes",      "no"};
 // the hand's size and place by its line's strip (DS dots): where the game's lit strip has it, in the
 // strip's first 16 dots, the capsule's rim from dot 9
 constexpr float kHand = 20.0f;
@@ -274,15 +283,17 @@ struct Picture {
 std::vector<Picture> pictures;
 int pictures_scale = 0;
 
-std::string mod_file(const std::string& relative) {
+std::string mod_file(const std::string &relative)
+{
     char path[1024];
     return khdays_mods_find(relative.c_str(), path, static_cast<int>(sizeof(path))) ? std::string(path) : std::string();
 }
 
 // The picture of `relative` brought down to w x h texels (each texel the average of the dots it
 // covers, their colours weighed by their alpha); -1 when the mod has none.
-int picture(const std::string& relative, int w, int h) {
-    for (const auto& p : pictures) {
+int picture(const std::string &relative, int w, int h)
+{
+    for (const auto &p : pictures) {
         if (p.file == relative && p.w == w && p.h == h) {
             return p.image;
         }
@@ -293,10 +304,10 @@ int picture(const std::string& relative, int w, int h) {
     p.h = h;
     const std::string path = mod_file(relative);
     int sw = 0, sh = 0;
-    const char* error = nullptr;
-    std::uint8_t* src = path.empty() ? nullptr : khdays_png_read(path.c_str(), &sw, &sh, &error);
+    const char *error = nullptr;
+    std::uint8_t *src = path.empty() ? nullptr : khdays_png_read(path.c_str(), &sw, &sh, &error);
     if (src != nullptr && sw > 0 && sh > 0 && w > 0 && h > 0 && (p.image = khdays_ui_image_get(w, h)) >= 0) {
-        std::uint32_t* out = khdays_ui_image_begin(p.image);
+        std::uint32_t *out = khdays_ui_image_begin(p.image);
         if (out != nullptr) {
             for (int y = 0; y < h; ++y) {
                 const int y0 = y * sh / h, y1 = std::max(y0 + 1, (y + 1) * sh / h);
@@ -304,8 +315,9 @@ int picture(const std::string& relative, int w, int h) {
                     const int x0 = x * sw / w, x1 = std::max(x0 + 1, (x + 1) * sw / w);
                     double r = 0, g = 0, b = 0, a = 0;
                     for (int sy = y0; sy < y1; ++sy) {
-                        const std::uint8_t* d =
-                            src + (static_cast<std::size_t>(sy) * static_cast<std::size_t>(sw) + static_cast<std::size_t>(x0)) * 4u;
+                        const std::uint8_t *d = src + (static_cast<std::size_t>(sy) * static_cast<std::size_t>(sw) +
+                                                       static_cast<std::size_t>(x0)) *
+                                                          4u;
                         for (int sx = x0; sx < x1; ++sx, d += 4) {
                             r += d[0] * d[3], g += d[1] * d[3], b += d[2] * d[3], a += d[3];
                         }
@@ -321,14 +333,16 @@ int picture(const std::string& relative, int w, int h) {
             khdays_ui_image_end(p.image);
         }
     } else if (src == nullptr && !path.empty()) {
-        std::fprintf(stderr, "ui: the pause's %s could not be read (%s)\n", path.c_str(), error != nullptr ? error : "?");
+        std::fprintf(stderr, "ui: the pause's %s could not be read (%s)\n", path.c_str(),
+                     error != nullptr ? error : "?");
     }
     khdays_png_free(src);
     pictures.push_back(p);
     return p.image;
 }
 
-std::string piece_file(const KhdaysPausePiece& p, const char* code) {
+std::string piece_file(const KhdaysPausePiece &p, const char *code)
+{
     std::string f = std::string(code) + "/" + kFiles[p.key];
     if (p.key >= KHDAYS_PAUSE_CONTINUE && p.lit != 0) {
         f += "_lit";
@@ -336,7 +350,8 @@ std::string piece_file(const KhdaysPausePiece& p, const char* code) {
     return "layouts/pause/" + f + ".png";
 }
 
-void emit_picture(const char* id, int layer, int image, float x, float y, float w, float h) {
+void emit_picture(const char *id, int layer, int image, float x, float y, float w, float h)
+{
     KhdaysUiElement e;
     e.id = id;
     e.screen = kScreen;
@@ -351,28 +366,31 @@ void emit_picture(const char* id, int layer, int image, float x, float y, float 
 
 // A piece's drawn size (DS dots): the title a quarter as tall as wide (its strip is 12 x 2 cells:
 // it reaches past them), the others as their strips.
-void piece_size(const KhdaysPausePiece& p, float& w, float& h) {
+void piece_size(const KhdaysPausePiece &p, float &w, float &h)
+{
     w = static_cast<float>(p.w * 8);
     h = p.key == KHDAYS_PAUSE_TITLE ? w / 4.0f : static_cast<float>(p.h * 8);
 }
 
 // The pause in the mod's pictures; false when the mod has not all of them (the game's then).
-bool emit_pictures(const KhdaysPauseView& pv) {
+bool emit_pictures(const KhdaysPauseView &pv)
+{
     KhdaysBgLayer l;
     const int scale = khdays_ui_scale();
-    const char* code = kCodes[pv.language >= 1 && pv.language <= 5 ? pv.language : 1];
+    const char *code = kCodes[pv.language >= 1 && pv.language <= 5 ? pv.language : 1];
     int images[KHDAYS_PAUSE_PIECES];
     if (!khdays_bg_text_layer(kScreen, pv.layer, &l)) {
         return false;
     }
     if (scale != pictures_scale) {
-        for (const auto& p : pictures) {
+        for (const auto &p : pictures) {
             khdays_ui_image_put(p.image);
         }
         pictures.clear();
         pictures_scale = scale;
     }
-    const float ox = static_cast<float>(-(l.hofs & (l.wt * 8 - 1))), oy = static_cast<float>(-(l.vofs & (l.ht * 8 - 1)));
+    const float ox = static_cast<float>(-(l.hofs & (l.wt * 8 - 1))),
+                oy = static_cast<float>(-(l.vofs & (l.ht * 8 - 1)));
     for (int i = 0; i < pv.count; ++i) {
         float w, h;
         piece_size(pv.piece[i], w, h);
@@ -382,10 +400,12 @@ bool emit_pictures(const KhdaysPauseView& pv) {
         }
     }
     for (int i = 0; i < pv.count; ++i) {
-        const KhdaysPausePiece& p = pv.piece[i];
+        const KhdaysPausePiece &p = pv.piece[i];
         float w, h;
         piece_size(p, w, h);
-        emit_picture(p.key == KHDAYS_PAUSE_TITLE ? "pause.title" : p.key == KHDAYS_PAUSE_QUESTION ? "pause.question" : "pause.line",
+        emit_picture(p.key == KHDAYS_PAUSE_TITLE      ? "pause.title"
+                     : p.key == KHDAYS_PAUSE_QUESTION ? "pause.question"
+                                                      : "pause.line",
                      pv.layer, images[i], ox + static_cast<float>(p.x * 8),
                      oy + static_cast<float>(p.y * 8) + (static_cast<float>(p.h * 8) - h) / 2.0f, w, h);
         for (int cy = p.y; cy < p.y + p.h; ++cy) {
@@ -397,12 +417,13 @@ bool emit_pictures(const KhdaysPauseView& pv) {
     for (int i = 0; i < pv.count; ++i) {
         // then the hand (given later, drawn over its line: ui/elements.c), where the game's lit strip
         // has it
-        const KhdaysPausePiece& p = pv.piece[i];
+        const KhdaysPausePiece &p = pv.piece[i];
         if (p.key < KHDAYS_PAUSE_CONTINUE || p.lit == 0) {
             continue;
         }
         const float lx = ox + static_cast<float>(p.x * 8), ly = oy + static_cast<float>(p.y * 8);
-        const int hand = picture("layouts/pause/hand.png", static_cast<int>(kHand) * scale, static_cast<int>(kHand) * scale);
+        const int hand =
+            picture("layouts/pause/hand.png", static_cast<int>(kHand) * scale, static_cast<int>(kHand) * scale);
         if (hand >= 0) {
             emit_picture("pause.hand", pv.layer, hand, lx + kHandLeft, ly + kHandTop, kHand, kHand);
         }
@@ -410,7 +431,8 @@ bool emit_pictures(const KhdaysPauseView& pv) {
     return true;
 }
 
-void emit() {
+void emit()
+{
     KhdaysRetryView v;
     KhdaysPauseView pv;
     KhdaysBgLayer l;
@@ -421,7 +443,7 @@ void emit() {
         return;
     }
     if (v.language != seen_language) {
-        std::memset(seen.have, 0, sizeof(seen.have));  // the lines' words are the language's
+        std::memset(seen.have, 0, sizeof(seen.have)); // the lines' words are the language's
         seen_language = v.language;
     }
     // the game's lines now: Continue lit while its cursor is on it, Give Up while on Give Up
@@ -441,10 +463,12 @@ void emit() {
     {
         // Retry from a line in the state it is drawn in: Give Up's lit one, or either's plain one
         const int lit = v.cursor == 1;
-        const Line* from = lit ? (seen.have[1][1] ? &seen.line[1][1] : nullptr)
-                               : (seen.have[1][0] ? &seen.line[1][0] : seen.have[0][0] ? &seen.line[0][0] : nullptr);
+        const Line *from = lit ? (seen.have[1][1] ? &seen.line[1][1] : nullptr)
+                               : (seen.have[1][0]   ? &seen.line[1][0]
+                                  : seen.have[0][0] ? &seen.line[0][0]
+                                                    : nullptr);
         if (from == nullptr || !retry_line(*from, khdays_text_in(TXT_PAUSE_RETRY, v.language), drawn[1])) {
-            return;  // the game's two lines, as it draws them
+            return; // the game's two lines, as it draws them
         }
     }
     for (int k = 0; k < 3; ++k) {
@@ -457,8 +481,9 @@ void emit() {
     }
 }
 
-}  // namespace
+} // namespace
 
-extern "C" void khdays_ui_pause_init(void) {
+extern "C" void khdays_ui_pause_init(void)
+{
     khdays_ui_register(KHDAYS_UI_PAUSE, emit);
 }

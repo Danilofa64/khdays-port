@@ -8,15 +8,15 @@
 #include "g3d.h"
 
 typedef struct KhdaysG3dInterp {
-    KhdaysG3dPreVertex *verts;  /* the picture's vertices before clipping */
+    KhdaysG3dPreVertex *verts; /* the picture's vertices before clipping */
     int32_t vert_capacity;
-    int32_t *slots;             /* the older list's polygons by key: index + 1, 0 free */
+    int32_t *slots; /* the older list's polygons by key: index + 1, 0 free */
     int32_t slot_capacity;
-    int32_t matched, polygons;  /* the last picture's: polygons placed between, of all */
-    int32_t jumped;             /* of those matched, how many moved more than a quarter of the view
+    int32_t matched, polygons; /* the last picture's: polygons placed between, of all */
+    int32_t jumped;            /* of those matched, how many moved more than a quarter of the view
                                    between the two lists (its first vertex): a wrong match's mark */
-    int32_t jumped_mod;         /* of those, a mod's model's */
-    struct {                    /* the draws they came from (the first few): resource, occurrence, how many */
+    int32_t jumped_mod;        /* of those, a mod's model's */
+    struct {                   /* the draws they came from (the first few): resource, occurrence, how many */
         uint64_t draw;
         uint32_t occurrence;
         int32_t count;

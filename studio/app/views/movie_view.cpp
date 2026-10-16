@@ -36,7 +36,8 @@ Player player;
 
 std::string lower_ext(const fs::path& file) {
     std::string ext = u8(file.extension());
-    for (auto& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (auto& c : ext)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return ext;
 }
 
@@ -48,7 +49,9 @@ bool looks_mpeg(const fs::path& file) {
     return in && b[0] == 0 && b[1] == 0 && b[2] == 1 && (b[3] == 0xba || b[3] == 0xb3);
 }
 
-std::uint8_t clamp8(int v) { return static_cast<std::uint8_t>(std::clamp(v, 0, 255)); }
+std::uint8_t clamp8(int v) {
+    return static_cast<std::uint8_t>(std::clamp(v, 0, 255));
+}
 
 // The decoder's NV12 picture as RGBA (BT.601, limited range: the port's SDL
 // texture's default), every `step`-th pixel when the picture is large.
@@ -76,7 +79,8 @@ void take_picture(const KhdaysHdPicture& p) {
 }
 
 void stop() {
-    if (player.open) khdays_hd_close();
+    if (player.open)
+        khdays_hd_close();
     player.open = false;
     player.paused = false;
 }
@@ -99,7 +103,8 @@ void play(App& app, int item, const fs::path& file) {
 
 // What the player gives this frame: a newer picture, its end, a failure.
 void poll(App& app) {
-    if (!player.open) return;
+    if (!player.open)
+        return;
     KhdaysHdPicture p;
     if (khdays_hd_picture_begin(&p)) {
         take_picture(p);
@@ -119,7 +124,8 @@ void poll(App& app) {
 std::string clock_text(Uint64 ms) {
     const Uint64 s = ms / 1000;
     char text[32];
-    std::snprintf(text, sizeof(text), "%llu:%02llu", static_cast<unsigned long long>(s / 60), static_cast<unsigned long long>(s % 60));
+    std::snprintf(text, sizeof(text), "%llu:%02llu", static_cast<unsigned long long>(s / 60),
+                  static_cast<unsigned long long>(s % 60));
     return text;
 }
 
@@ -147,7 +153,8 @@ void movie_offer(App& app, const Item& item, const fs::path& file) {
         return;
     }
     // the mod's file may be the one playing
-    if (player.open && player.item == app.selected) stop();
+    if (player.open && player.item == app.selected)
+        stop();
     // one video per movie in a mod: the other kind goes (the .mpg would win over an .mp4)
     std::string why;
     if (!remove_replacement(m->dir, item, &why)) {
@@ -162,14 +169,16 @@ void movie_offer(App& app, const Item& item, const fs::path& file) {
         app.tell(fmt(app.language, S::save_failed, {u8(dest) + ": " + ec.message()}), false);
         return;
     }
-    app.tell(fmt(app.language, hd ? S::movie_saved_hd : S::movie_saved, {u8(dest.lexically_relative(app.settings.root))}) + "  " +
-                 tr(app.language, S::restart_note),
-             true);
+    app.tell(
+        fmt(app.language, hd ? S::movie_saved_hd : S::movie_saved, {u8(dest.lexically_relative(app.settings.root))}) +
+            "  " + tr(app.language, S::restart_note),
+        true);
 }
 
 void draw_movie_view(App& app, const Item& item) {
     const auto lang = app.language;
-    if (player.item != app.selected) movie_view_leave();
+    if (player.item != app.selected)
+        movie_view_leave();
     std::error_code ec;
     const auto size = fs::file_size(item.original, ec);
     ImGui::TextUnformatted(fmt(lang, S::movie_header, {item.key, std::to_string((ec ? 0 : size) / 1024)}).c_str());
@@ -186,7 +195,8 @@ void draw_movie_view(App& app, const Item& item) {
         const bool hd = lower_ext(held.front().file) == ".mp4";
         ImGui::TextUnformatted(fmt(lang, hd ? S::movie_from_mod_hd : S::movie_from_mod, {held.front().mod}).c_str());
     } else if (have_own) {
-        ImGui::TextUnformatted(fmt(lang, S::movie_from_player, {u8(own.lexically_relative(app.settings.root))}).c_str());
+        ImGui::TextUnformatted(
+            fmt(lang, S::movie_from_player, {u8(own.lexically_relative(app.settings.root))}).c_str());
     } else {
         ImGui::TextUnformatted(tr(lang, S::movie_from_game));
     }
@@ -198,17 +208,22 @@ void draw_movie_view(App& app, const Item& item) {
         fs::path file;
     };
     std::vector<Source> sources;
-    if (have_game) sources.push_back({tr(lang, S::movie_source_game), game});
-    if (have_own) sources.push_back({fmt(lang, S::movie_source_player, {u8(own.lexically_relative(app.settings.root))}), own});
-    for (const auto& h : held) sources.push_back({fmt(lang, S::movie_source_mod, {h.mod, u8(h.file.filename())}), h.file});
+    if (have_game)
+        sources.push_back({tr(lang, S::movie_source_game), game});
+    if (have_own)
+        sources.push_back({fmt(lang, S::movie_source_player, {u8(own.lexically_relative(app.settings.root))}), own});
+    for (const auto& h : held)
+        sources.push_back({fmt(lang, S::movie_source_mod, {h.mod, u8(h.file.filename())}), h.file});
     if (!have_game) {
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextDisabled("%s", fmt(lang, S::movie_no_preview, {u8(game.lexically_relative(app.settings.root))}).c_str());
+        ImGui::TextDisabled("%s",
+                            fmt(lang, S::movie_no_preview, {u8(game.lexically_relative(app.settings.root))}).c_str());
         ImGui::PopTextWrapPos();
     }
     for (std::size_t i = 0; i < sources.size(); ++i) {
         ImGui::PushID(static_cast<int>(i));
-        const bool this_one = player.item == app.selected && player.file == sources[i].file && (player.open || player.ended);
+        const bool this_one =
+            player.item == app.selected && player.file == sources[i].file && (player.open || player.ended);
         if (ImGui::SmallButton(this_one && player.open ? tr(lang, S::stop) : tr(lang, S::movie_play))) {
             if (this_one && player.open) {
                 stop();
@@ -236,7 +251,8 @@ void draw_movie_view(App& app, const Item& item) {
             }
             ImGui::SameLine();
         }
-        if (ImGui::Button(tr(lang, S::movie_again))) play(app, app.selected, player.file);
+        if (ImGui::Button(tr(lang, S::movie_again)))
+            play(app, app.selected, player.file);
         ImGui::SameLine();
         const Uint64 now = player.paused ? player.paused_at : SDL_GetTicks();
         ImGui::Text("%s  %s  %dx%d%s", clock_text(player.open ? now - player.started - player.paused_for : 0).c_str(),
@@ -246,10 +262,12 @@ void draw_movie_view(App& app, const Item& item) {
         if (image.texture != nullptr) {
             // as large as the panel allows: its width, half the window's height (a DS movie
             // of 256x160 enlarged like an HD one made smaller)
-            const float aspect = static_cast<float>(player.info.height) / static_cast<float>(std::max(1, player.info.width));
+            const float aspect =
+                static_cast<float>(player.info.height) / static_cast<float>(std::max(1, player.info.width));
             const float high = std::max(160.0f, ImGui::GetWindowHeight() * 0.5f);
             const float w = std::min(ImGui::GetContentRegionAvail().x, high / aspect);
-            ImGui::Image(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(image.texture))), ImVec2(w, w * aspect));
+            ImGui::Image(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(image.texture))),
+                         ImVec2(w, w * aspect));
         }
     }
 
@@ -264,7 +282,8 @@ void draw_movie_view(App& app, const Item& item) {
         static const SDL_DialogFileFilter videos[] = {{"MP4, MPEG-1", "mp4;mpg;mpeg"}};
         SDL_ShowOpenFileDialog(
             [](void* user, const char* const* files, int) {
-                if (files == nullptr || files[0] == nullptr) return;
+                if (files == nullptr || files[0] == nullptr)
+                    return;
                 App* a = static_cast<App*>(user);
                 std::lock_guard lock(a->dialog_mutex);
                 a->dialog_files.emplace_back(files[0]);
@@ -272,11 +291,13 @@ void draw_movie_view(App& app, const Item& item) {
             &app, app.window, videos, 1, nullptr, false);
     }
     bool mine = false;
-    for (const auto& h : held) mine = mine || h.mod == m->name;
+    for (const auto& h : held)
+        mine = mine || h.mod == m->name;
     if (mine) {
         same_line_if_room(button_width(tr(lang, S::text_give_back)));
         if (ImGui::Button(tr(lang, S::text_give_back))) {
-            if (player.open && player.item == app.selected) stop();
+            if (player.open && player.item == app.selected)
+                stop();
             std::string why;
             if (remove_replacement(m->dir, item, &why)) {
                 app.tell(fmt(lang, S::removed, {item.key, m->name}), true);

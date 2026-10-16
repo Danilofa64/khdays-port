@@ -4,8 +4,8 @@
 #ifndef KHDAYS_DSPROT_RANGES_H
 #define KHDAYS_DSPROT_RANGES_H
 
-extern void func_ov028_0208a7e0(unsigned int *pRange);   /* Encryptor_StartRange */
-extern void func_ov028_0208a8ac(unsigned int *pRange);   /* Encryptor_EndRange */
+extern void func_ov028_0208a7e0(unsigned int *pRange); /* Encryptor_StartRange */
+extern void func_ov028_0208a8ac(unsigned int *pRange); /* Encryptor_EndRange */
 
 #define DSPROT_RANGE_BEGIN(key)
 #define DSPROT_RANGE_END(key)

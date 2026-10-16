@@ -16,11 +16,7 @@ enum {
     KHDAYS_UI_PARTS
 };
 
-enum {
-    KHDAYS_UI_OFF,
-    KHDAYS_UI_CHECK,
-    KHDAYS_UI_ON
-};
+enum { KHDAYS_UI_OFF, KHDAYS_UI_CHECK, KHDAYS_UI_ON };
 
 /* Reads KHDAYS_UI=<part>=<off|check|on>[,<part>=<mode>...] once (all=<mode>
  * sets every part), and writes each part's mode in the session log. */

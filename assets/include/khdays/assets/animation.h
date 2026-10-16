@@ -45,20 +45,15 @@ struct SkeletalAnimation final {
 
 // Load a skeletal animation from an NSBCA file. Throws std::runtime_error on
 // malformed data.
-SkeletalAnimation load_nsbca(
-    const std::filesystem::path& input_path,
-    std::size_t animation_index = 0);
+SkeletalAnimation load_nsbca(const std::filesystem::path& input_path, std::size_t animation_index = 0);
 
 // Same, from an in-memory NSBCA (e.g. a BCA0 carved out of a KAPH archive).
-SkeletalAnimation load_nsbca(
-    const std::uint8_t* data, std::size_t size, std::size_t animation_index = 0);
+SkeletalAnimation load_nsbca(const std::uint8_t* data, std::size_t size, std::size_t animation_index = 0);
 
 // Sample the animation at a (possibly fractional) frame, returning one bone
 // (object) matrix per bone, column-major. Bones the animation does not drive
 // keep their rest matrix; extra rest bones are passed through unchanged.
-std::vector<std::array<float, 16>> sample_animation(
-    const SkeletalAnimation& animation,
-    float frame,
-    const std::vector<std::array<float, 16>>& rest_object_matrices);
+std::vector<std::array<float, 16>> sample_animation(const SkeletalAnimation& animation, float frame,
+                                                    const std::vector<std::array<float, 16>>& rest_object_matrices);
 
 }  // namespace khdays::assets

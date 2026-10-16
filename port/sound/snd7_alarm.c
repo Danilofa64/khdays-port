@@ -5,11 +5,11 @@
 #include "snd7_os.h"
 
 typedef struct Snd7Alarm {
-    uint8_t active;     /* +0x00 */
-    uint8_t id;         /* +0x01: which setting, so the ARM9 tells a late one */
-    uint64_t ticks;     /* +0x04: to the first */
-    uint64_t period;    /* +0x0c: 0 once */
-    Snd7OsAlarm alarm;  /* +0x14 */
+    uint8_t active;    /* +0x00 */
+    uint8_t id;        /* +0x01: which setting, so the ARM9 tells a late one */
+    uint64_t ticks;    /* +0x04: to the first */
+    uint64_t period;   /* +0x0c: 0 once */
+    Snd7OsAlarm alarm; /* +0x14 */
 } Snd7Alarm;
 
 static Snd7Alarm alarms[8];

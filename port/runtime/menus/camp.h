@@ -11,17 +11,17 @@
 extern "C" {
 #endif
 
-#define KHDAYS_CAMP_OPTIONS 7    /* each camp's seven: Mission Mode's entries 101-107, the story's 1-6 and 9 */
-#define KHDAYS_CAMP_FIELDS 0x15  /* the status panel's fields (Ov008_DrawStatusField's 0-0x14) */
+#define KHDAYS_CAMP_OPTIONS 7   /* each camp's seven: Mission Mode's entries 101-107, the story's 1-6 and 9 */
+#define KHDAYS_CAMP_FIELDS 0x15 /* the status panel's fields (Ov008_DrawStatusField's 0-0x14) */
 #define KHDAYS_CAMP_CHARACTERS 19
-#define KHDAYS_CAMP_PLACES 4      /* a group's: the game's four */
-#define KHDAYS_CAMP_NAME 12       /* a player's name: the game's 11 UTF-16 characters and a NUL */
+#define KHDAYS_CAMP_PLACES 4 /* a group's: the game's four */
+#define KHDAYS_CAMP_NAME 12  /* a player's name: the game's 11 UTF-16 characters and a NUL */
 /* where a member is (the game's pages: the member's record +3): the menu, an option's page (1-6:
  * the options' order), or ready (8: it accepted the mission) */
 enum { KHDAYS_CAMP_IN_MENU = 0, KHDAYS_CAMP_READY = 8 };
-#define KHDAYS_CAMP_SETTINGS 25   /* the Preferences page's table: the game's 25 entries */
-#define KHDAYS_CAMP_VALUES 3      /* a setting's values: an entry holds three */
-#define KHDAYS_CAMP_SECTIONS 5    /* the page's tabs: a list of them holds five */
+#define KHDAYS_CAMP_SETTINGS 25 /* the Preferences page's table: the game's 25 entries */
+#define KHDAYS_CAMP_VALUES 3    /* a setting's values: an entry holds three */
+#define KHDAYS_CAMP_SECTIONS 5  /* the page's tabs: a list of them holds five */
 
 /* A setting of the Preferences page (an entry of the game's table, its words cfg_&.s records):
  * its name and help, its values' names and helps, the one chosen; the game's flag `enabled` off,
@@ -66,29 +66,29 @@ typedef struct KhdaysCampMember {
 
 typedef struct KhdaysCampView {
     int shown;
-    int story;            /* the story's camp (ov025): its options, its day; no group */
-    int sub;              /* the story's: 0 its options, 1 Holo-Missions' two, 2 Files' two (selected
+    int story;                       /* the story's camp (ov025): its options, its day; no group */
+    int sub;                         /* the story's: 0 its options, 1 Holo-Missions' two, 2 Files' two (selected
                            * the one of them the cursor is on) */
-    int day;              /* the story's day (the game state's field 9) */
-    int difficulty;       /* the story's (the game state's 0x40a, two bits: 0-2 Beginner, Standard, Proud) */
-    int language;         /* the game's (1-5) */
-    int16_t master;       /* the game's fade: its brightness, -16 black to 16 white */
-    int selected;         /* the option selected, 0 on (the game's entry - 101); -1 none (waiting) */
-    int description;      /* the record of root_&.s the game shows for it, -1 none */
-    int waiting;          /* Mission Mode's: the mission accepted, the group waits for it (the game's
+    int day;                         /* the story's day (the game state's field 9) */
+    int difficulty;                  /* the story's (the game state's 0x40a, two bits: 0-2 Beginner, Standard, Proud) */
+    int language;                    /* the game's (1-5) */
+    int16_t master;                  /* the game's fade: its brightness, -16 black to 16 white */
+    int selected;                    /* the option selected, 0 on (the game's entry - 101); -1 none (waiting) */
+    int description;                 /* the record of root_&.s the game shows for it, -1 none */
+    int waiting;                     /* Mission Mode's: the mission accepted, the group waits for it (the game's
                            * entry 9): no option selected, all dimmed */
-    int notice;           /* Mission Mode's: the line the DS shows over its menu, a root_&.s record
+    int notice;                      /* Mission Mode's: the line the DS shows over its menu, a root_&.s record
                            * (0x16-0x1c: Ov008_Menu_UpdateDirectionalPrompt -- whether the host is
                            * choosing a mission, START to join or to begin, ...), -1 none */
-    int question;         /* Title Screen's question open (quit the game?): its answers Yes and No */
+    int question;                    /* Title Screen's question open (quit the game?): its answers Yes and No */
     int locked[KHDAYS_CAMP_OPTIONS]; /* the rows shown the game has locked (it shows them dimmed and
                                       * its cursor passes them) */
-    int yes;              /* the answer the cursor is on: 1 Yes, 0 No */
-    int config;           /* the Preferences page is on (screen 5): `page` instead of the menu's */
+    int yes;                         /* the answer the cursor is on: 1 Yes, 0 No */
+    int config;                      /* the Preferences page is on (screen 5): `page` instead of the menu's */
     KhdaysCampPage page;
     uint32_t munny, hearts;
-    int self;             /* this copy's place */
-    int character;        /* its character, 0-18 (mlt_&.s's order), -1 unknown */
+    int self;      /* this copy's place */
+    int character; /* its character, 0-18 (mlt_&.s's order), -1 unknown */
     KhdaysCampField field[KHDAYS_CAMP_FIELDS];
     KhdaysCampMember member[KHDAYS_CAMP_PLACES];
 } KhdaysCampView;

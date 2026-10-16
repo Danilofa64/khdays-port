@@ -30,40 +30,43 @@ extern int GetLanguage(void);
 
 namespace {
 
-constexpr int kCyan = 22;               // the cyan 0's character, the others every other one after it
+constexpr int kCyan = 22;                   // the cyan 0's character, the others every other one after it
 constexpr int kWhite[4] = {44, 42, 46, 48}; // the white 0, 1, 2 and 3
-constexpr int kUnitsFromTens = 8;       // the units' sprite at most this right of the tens' (title list: x 34 and 40)
+constexpr int kUnitsFromTens = 8; // the units' sprite at most this right of the tens' (title list: x 34 and 40)
 
 using Glyph = std::array<std::uint8_t, 64>;
 
 struct Digits {
-    int tried = 0;   // the language last read
+    int tried = 0; // the language last read
     bool ok = false;
     std::array<Glyph, 4> white{};  // as the game draws them, to find its sprites
-    std::array<Glyph, 10> drawn{};  // 0-9 in the white digits' colours
-    std::array<int, 10> image{};    // each one's element image, at `scale`
+    std::array<Glyph, 10> drawn{}; // 0-9 in the white digits' colours
+    std::array<int, 10> image{};   // each one's element image, at `scale`
     int scale = 0;
 };
 Digits digits;
-KhdaysRomReader* reader;  // its own: this runs at VBlank, maybe inside the game's own reading
+KhdaysRomReader *reader; // its own: this runs at VBlank, maybe inside the game's own reading
 
-std::uint32_t le16(const std::uint8_t* p) {
+std::uint32_t le16(const std::uint8_t *p)
+{
     return static_cast<std::uint32_t>(p[0] | p[1] << 8);
 }
 
-std::uint32_t le32(const std::uint8_t* p) {
+std::uint32_t le32(const std::uint8_t *p)
+{
     return le16(p) | le16(p + 2) << 16;
 }
 
 // The 8-bit characters of an NCGR at `d` (its CHAR block after the header, the pixels 8 + the offset at
 // +0x1c into it), their count in *tiles; NULL when it is not one.
-const std::uint8_t* characters(const std::uint8_t* d, std::uint32_t size, int* tiles) {
+const std::uint8_t *characters(const std::uint8_t *d, std::uint32_t size, int *tiles)
+{
     if (size < 0x10 || std::memcmp(d, "RGCN", 4) != 0) {
         return nullptr;
     }
     const std::uint32_t block = le16(d + 0xc);
     if (block + 0x20 > size || std::memcmp(d + block, "RAHC", 4) != 0 || le32(d + block + 0xc) != 4) {
-        return nullptr;  // 4: 8 bits a pixel
+        return nullptr; // 4: 8 bits a pixel
     }
     const std::uint32_t bytes = le32(d + block + 0x18), at = block + 8 + le32(d + block + 0x1c);
     if (at > size || bytes > size - at) {
@@ -73,10 +76,11 @@ const std::uint8_t* characters(const std::uint8_t* d, std::uint32_t size, int* t
     return d + at;
 }
 
-bool read_digits(int language) {
-    static const char* const codes[] = {"", "en", "fr", "de", "it", "es"};  // the firmware's numbering
+bool read_digits(int language)
+{
+    static const char *const codes[] = {"", "en", "fr", "de", "it", "es"}; // the firmware's numbering
     char path[64];
-    std::uint8_t* data = nullptr;
+    std::uint8_t *data = nullptr;
     std::uint32_t size = 0;
     if (language < 1 || language > 5) {
         return false;
@@ -93,7 +97,7 @@ bool read_digits(int language) {
     // the pack's character sheets (D2KP: each resource found by its magic)
     for (std::uint32_t o = 0; !ok && o + 0x10 <= size; o += 4) {
         int tile_count = 0;
-        const std::uint8_t* sheet = characters(data + o, size - o, &tile_count);
+        const std::uint8_t *sheet = characters(data + o, size - o, &tile_count);
         if (sheet == nullptr || tile_count <= kWhite[3]) {
             continue;
         }
@@ -127,7 +131,7 @@ bool read_digits(int language) {
             }
             for (int d = 0; d < 4; ++d) {
                 digits.white[d] = tile(kWhite[d]);
-                same = same && digits.white[d] == digits.drawn[d];  // the white 1, 2 and 3 as made
+                same = same && digits.white[d] == digits.drawn[d]; // the white 1, 2 and 3 as made
             }
             ok = same;
         }
@@ -142,7 +146,7 @@ bool read_digits(int language) {
 
 // The tag over the autosave's number: its image at `scale`, in the white digits' fill and outline.
 constexpr int kAutosaveFile = 99;
-constexpr int kTagGap = 2;  // dots between the tag and the number below it
+constexpr int kTagGap = 2; // dots between the tag and the number below it
 struct Tag {
     int image = -1, scale = 0, language = -1, w = 0, h = 0;
 };
@@ -150,7 +154,8 @@ Tag tag;
 std::optional<khdays::assets::Font> font;
 bool font_tried;
 
-const khdays::assets::Font* the_font() {
+const khdays::assets::Font *the_font()
+{
     if (!font_tried) {
         font_tried = true;
         const auto path = khdays::vfs::resolve("text/font_eu_08.nftr");
@@ -158,16 +163,17 @@ const khdays::assets::Font* the_font() {
             if (path) {
                 font = khdays::assets::decode_nftr(*path);
             }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             std::fprintf(stderr, "ui: the save list's tag font could not be read (%s)\n", e.what());
         }
     }
     return font ? &*font : nullptr;
 }
 
-std::u16string utf16(const char* s) {
+std::u16string utf16(const char *s)
+{
     std::u16string out;
-    for (const unsigned char* p = reinterpret_cast<const unsigned char*>(s); *p != 0;) {
+    for (const unsigned char *p = reinterpret_cast<const unsigned char *>(s); *p != 0;) {
         unsigned c = *p++;
         int more = c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
         c &= more == 3 ? 0x07u : more == 2 ? 0x0fu : more == 1 ? 0x1fu : 0x7fu;
@@ -179,8 +185,9 @@ std::u16string utf16(const char* s) {
     return out;
 }
 
-int tag_image(int language, int scale) {
-    const auto* f = the_font();
+int tag_image(int language, int scale)
+{
+    const auto *f = the_font();
     if (f == nullptr) {
         return -1;
     }
@@ -197,41 +204,47 @@ int tag_image(int language, int scale) {
     tag.scale = scale;
     tag.language = language;
     tag.image = khdays_ui_image_get(tag.w * scale, tag.h * scale);
-    std::uint32_t* texels = tag.image >= 0 ? khdays_ui_image_begin(tag.image) : nullptr;
+    std::uint32_t *texels = tag.image >= 0 ? khdays_ui_image_begin(tag.image) : nullptr;
     if (texels == nullptr) {
         return -1;
     }
     auto ink = [&](int x, int y) {
         return x >= 0 && y >= 0 && x < text.width && y < text.height &&
                text.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(text.width) +
-                          static_cast<std::size_t>(x)) * 4u + 3u] >= 128;
+                          static_cast<std::size_t>(x)) *
+                             4u +
+                         3u] >= 128;
     };
     for (int y = 0; y < tag.h * scale; ++y) {
         for (int x = 0; x < tag.w * scale; ++x) {
             const int dx = x / scale, dy = y / scale;
             // the letters, and their outline right of and below them
-            const std::uint32_t v = ink(dx, dy) ? fill : ink(dx - 1, dy - 1) || ink(dx - 1, dy) || ink(dx, dy - 1) ? outline : 0u;
-            texels[static_cast<std::size_t>(y) * static_cast<std::size_t>(tag.w * scale) + static_cast<std::size_t>(x)] =
-                v == 0 ? 0u : KET_OPAQUE | v;
+            const std::uint32_t v = ink(dx, dy)                                                 ? fill
+                                    : ink(dx - 1, dy - 1) || ink(dx - 1, dy) || ink(dx, dy - 1) ? outline
+                                                                                                : 0u;
+            texels[static_cast<std::size_t>(y) * static_cast<std::size_t>(tag.w * scale) +
+                   static_cast<std::size_t>(x)] = v == 0 ? 0u : KET_OPAQUE | v;
         }
     }
     khdays_ui_image_end(tag.image);
     return tag.image;
 }
 
-const std::uint8_t* obj_memory(int engine, std::uint32_t address) {
-    const KhdaysVramPages* pages = khdays_vram_pages();
+const std::uint8_t *obj_memory(int engine, std::uint32_t address)
+{
+    const KhdaysVramPages *pages = khdays_vram_pages();
     address %= engine ? 0x20000u : 0x40000u;
-    const std::uint8_t* page = pages->page[engine ? KHDAYS_AREA_BOBJ : KHDAYS_AREA_AOBJ][address / KHDAYS_VRAM_PAGE];
+    const std::uint8_t *page = pages->page[engine ? KHDAYS_AREA_BOBJ : KHDAYS_AREA_AOBJ][address / KHDAYS_VRAM_PAGE];
     return page != nullptr ? page + address % KHDAYS_VRAM_PAGE : nullptr;
 }
 
 // Which white digit an 8x8 256-colour sprite of `engine` draws (its tile at `tile`), or -1.
-int digit_of(int engine, std::uint32_t dispcnt, std::uint32_t tile) {
+int digit_of(int engine, std::uint32_t dispcnt, std::uint32_t tile)
+{
     Glyph g{};
     const std::uint32_t base = (dispcnt & 0x10u) ? tile * (32u << ((dispcnt >> 20) & 3u)) : (tile & ~1u) * 32u;
     for (int p = 0; p < 64; ++p) {
-        const std::uint8_t* b = obj_memory(engine, base + static_cast<std::uint32_t>(p));
+        const std::uint8_t *b = obj_memory(engine, base + static_cast<std::uint32_t>(p));
         g[p] = b != nullptr ? *b : 0;
     }
     for (int d = 0; d < 4; ++d) {
@@ -242,9 +255,10 @@ int digit_of(int engine, std::uint32_t dispcnt, std::uint32_t tile) {
     return -1;
 }
 
-int image_of(int d, int scale) {
+int image_of(int d, int scale)
+{
     if (digits.scale != scale) {
-        for (int& im : digits.image) {
+        for (int &im : digits.image) {
             khdays_ui_image_put(im);
             im = -1;
         }
@@ -252,15 +266,15 @@ int image_of(int d, int scale) {
     }
     if (digits.image[d] < 0) {
         digits.image[d] = khdays_ui_image_get(8 * scale, 8 * scale);
-        std::uint32_t* texels = digits.image[d] >= 0 ? khdays_ui_image_begin(digits.image[d]) : nullptr;
+        std::uint32_t *texels = digits.image[d] >= 0 ? khdays_ui_image_begin(digits.image[d]) : nullptr;
         if (texels == nullptr) {
             return -1;
         }
         for (int y = 0; y < 8 * scale; ++y) {
             for (int x = 0; x < 8 * scale; ++x) {
                 const std::uint8_t v = digits.drawn[d][(y / scale) * 8 + x / scale];
-                texels[static_cast<std::size_t>(y) * static_cast<std::size_t>(8 * scale) + static_cast<std::size_t>(x)] =
-                    v == 0 ? 0u : KET_OPAQUE | v;
+                texels[static_cast<std::size_t>(y) * static_cast<std::size_t>(8 * scale) +
+                       static_cast<std::size_t>(x)] = v == 0 ? 0u : KET_OPAQUE | v;
             }
         }
         khdays_ui_image_end(digits.image[d]);
@@ -269,12 +283,14 @@ int image_of(int d, int scale) {
 }
 
 // One engine's rows: the game's digits found, the file's drawn in their place.
-void emit_engine(int engine, int top) {
+void emit_engine(int engine, int top)
+{
     const std::uint32_t dispcnt = IO32(engine ? 0x1000u : 0u);
     if (!(dispcnt & 0x1000u)) {
-        return;  // no sprites shown
+        return; // no sprites shown
     }
-    const std::uint8_t* oam = static_cast<const std::uint8_t*>(KHDAYS_W(0x07000000u + 0x400u * static_cast<std::uint32_t>(engine)));
+    const std::uint8_t *oam =
+        static_cast<const std::uint8_t *>(KHDAYS_W(0x07000000u + 0x400u * static_cast<std::uint32_t>(engine)));
     struct Found {
         int index, x, y, digit;
         std::uint32_t slot;
@@ -315,7 +331,7 @@ void emit_engine(int engine, int top) {
         if (t < 0) {
             continue;
         }
-        const int file = top + found[u].digit;  // the row's file, counted from 1
+        const int file = top + found[u].digit; // the row's file, counted from 1
         if (file == kAutosaveFile) {
             const int image = tag_image(GetLanguage(), scale);
             if (image >= 0) {
@@ -333,7 +349,7 @@ void emit_engine(int engine, int top) {
             }
         }
         const int shown[2] = {file / 10, file % 10};
-        const Found* at[2] = {&found[t], &found[u]};
+        const Found *at[2] = {&found[t], &found[u]};
         for (int k = 0; k < 2; ++k) {
             const int image = image_of(shown[k], scale);
             if (image < 0) {
@@ -354,26 +370,27 @@ void emit_engine(int engine, int top) {
     }
 }
 
-}  // namespace
+} // namespace
 
-extern "C" void khdays_ui_save_numbers_emit(void) {
+extern "C" void khdays_ui_save_numbers_emit(void)
+{
     const int top = khdays_slots_page();
     if (top <= 0 || khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON) {
-        return;  // the first page's are the game's own numbers
+        return; // the first page's are the game's own numbers
     }
     const int language = GetLanguage();
     if (language != digits.tried) {
         digits.tried = language;
-        for (int& im : digits.image) {
+        for (int &im : digits.image) {
             if (digits.scale != 0) {
-                khdays_ui_image_put(im);  /* the digits are the new language's */
+                khdays_ui_image_put(im); /* the digits are the new language's */
             }
             im = -1;
         }
         digits.ok = read_digits(language);
     }
     if (digits.ok) {
-        emit_engine(0, top);  // the camps' lists (the upper screen)
-        emit_engine(1, top);  // the title's (the lower)
+        emit_engine(0, top); // the camps' lists (the upper screen)
+        emit_engine(1, top); // the title's (the lower)
     }
 }

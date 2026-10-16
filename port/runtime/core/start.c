@@ -34,15 +34,15 @@
 #define change_folder chdir
 #endif
 
-extern void khdays_NitroMain(void);  /* the decomp's main, renamed at build */
+extern void khdays_NitroMain(void); /* the decomp's main, renamed at build */
 extern void _fp_init(void);
 extern void NitroStartUp(void);
 extern void __call_static_initializers(void);
 extern void AutoloadCallback(void);
 /* the game's: its pointer a reference (window.h) */
 extern void MIi_UncompressBackward(KhdaysRef bottom);
-extern void khdays_itcm_keep(void);  /* overlays.c */
-extern void khdays_overlays_reset(void);  /* overlays.c */
+extern void khdays_itcm_keep(void);      /* overlays.c */
+extern void khdays_overlays_reset(void); /* overlays.c */
 
 /* _start_ModuleParams in the static module's image: autoload list and its end, autoload data, static
  * BSS start and end, end of the compressed module (0: not compressed). */
@@ -134,7 +134,6 @@ void khdays_reset_system(u32 parameter)
     khdays_hal_unimplemented("a thread of the game that reset ran again");
 }
 
-
 /* Which folder the port works in, said again in the session log once it is open. */
 static char working_folder_note[1024];
 
@@ -173,9 +172,12 @@ static void attach_parent_console(void)
               in = std_handle_free(STD_INPUT_HANDLE);
     if ((out || err || in) && AttachConsole(ATTACH_PARENT_PROCESS)) {
         FILE *f;
-        if (out) (void)freopen_s(&f, "CONOUT$", "w", stdout);
-        if (err) (void)freopen_s(&f, "CONOUT$", "w", stderr);
-        if (in) (void)freopen_s(&f, "CONIN$", "r", stdin);
+        if (out)
+            (void)freopen_s(&f, "CONOUT$", "w", stdout);
+        if (err)
+            (void)freopen_s(&f, "CONOUT$", "w", stderr);
+        if (in)
+            (void)freopen_s(&f, "CONIN$", "r", stdin);
     }
 }
 

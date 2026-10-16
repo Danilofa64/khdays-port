@@ -109,11 +109,39 @@ static int take_list(uint32_t *list)
 /* --- The commands ------------------------------------------------------------------- */
 
 enum {
-    START_SEQ, STOP_SEQ, PREPARE_SEQ, START_PREPARED_SEQ, PAUSE_SEQ, SKIP_SEQ, PLAYER_PARAM, TRACK_PARAM,
-    MUTE_TRACK, ALLOCATABLE_CHANNEL, PLAYER_LOCAL_VAR, PLAYER_GLOBAL_VAR, START_TIMER, STOP_TIMER,
-    SETUP_CHANNEL_PCM, SETUP_CHANNEL_PSG, SETUP_CHANNEL_NOISE, SETUP_CAPTURE, SETUP_ALARM, CHANNEL_TIMER,
-    CHANNEL_VOLUME, CHANNEL_PAN, SURROUND_DECAY, MASTER_VOLUME, MASTER_PAN, OUTPUT_SELECTOR, LOCK_CHANNEL,
-    UNLOCK_CHANNEL, STOP_UNLOCKED_CHANNEL, SHARED_WORK, INVALIDATE_SEQ, INVALIDATE_BANK, INVALIDATE_WAVE,
+    START_SEQ,
+    STOP_SEQ,
+    PREPARE_SEQ,
+    START_PREPARED_SEQ,
+    PAUSE_SEQ,
+    SKIP_SEQ,
+    PLAYER_PARAM,
+    TRACK_PARAM,
+    MUTE_TRACK,
+    ALLOCATABLE_CHANNEL,
+    PLAYER_LOCAL_VAR,
+    PLAYER_GLOBAL_VAR,
+    START_TIMER,
+    STOP_TIMER,
+    SETUP_CHANNEL_PCM,
+    SETUP_CHANNEL_PSG,
+    SETUP_CHANNEL_NOISE,
+    SETUP_CAPTURE,
+    SETUP_ALARM,
+    CHANNEL_TIMER,
+    CHANNEL_VOLUME,
+    CHANNEL_PAN,
+    SURROUND_DECAY,
+    MASTER_VOLUME,
+    MASTER_PAN,
+    OUTPUT_SELECTOR,
+    LOCK_CHANNEL,
+    UNLOCK_CHANNEL,
+    STOP_UNLOCKED_CHANNEL,
+    SHARED_WORK,
+    INVALIDATE_SEQ,
+    INVALIDATE_BANK,
+    INVALIDATE_WAVE,
     READ_DRIVER_INFO
 };
 
@@ -195,114 +223,57 @@ static void set_pan(int n, uint32_t pan, uint32_t unused)
 static void run_command(uint32_t id, const uint32_t arg[4])
 {
     switch (id) {
-    case START_SEQ:
-        snd7_seq_start((int)arg[0], arg[1], arg[2], arg[3]);
-        break;
-    case STOP_SEQ:
-        snd7_seq_stop((int)arg[0]);
-        break;
-    case PREPARE_SEQ:
-        snd7_seq_prepare((int)arg[0], arg[1], arg[2], arg[3]);
-        break;
-    case START_PREPARED_SEQ:
-        snd7_seq_start_prepared((int)arg[0]);
-        break;
-    case PAUSE_SEQ:
-        snd7_seq_pause((int)arg[0], (int)arg[1]);
-        break;
-    case SKIP_SEQ:
-        snd7_seq_skip((int)arg[0], arg[1]);
-        break;
-    case PLAYER_PARAM:
-        snd7_seq_player_param((int)arg[0], arg[1], arg[2], (int)arg[3]);
-        break;
+    case START_SEQ: snd7_seq_start((int)arg[0], arg[1], arg[2], arg[3]); break;
+    case STOP_SEQ: snd7_seq_stop((int)arg[0]); break;
+    case PREPARE_SEQ: snd7_seq_prepare((int)arg[0], arg[1], arg[2], arg[3]); break;
+    case START_PREPARED_SEQ: snd7_seq_start_prepared((int)arg[0]); break;
+    case PAUSE_SEQ: snd7_seq_pause((int)arg[0], (int)arg[1]); break;
+    case SKIP_SEQ: snd7_seq_skip((int)arg[0], arg[1]); break;
+    case PLAYER_PARAM: snd7_seq_player_param((int)arg[0], arg[1], arg[2], (int)arg[3]); break;
     case TRACK_PARAM:
         snd7_seq_track_param((int)(arg[0] & 0x00ffffffu), arg[1], arg[2], arg[3], (int)(arg[0] >> 24));
         break;
-    case MUTE_TRACK:
-        snd7_seq_mute_track((int)arg[0], arg[1], (int)arg[2]);
-        break;
-    case ALLOCATABLE_CHANNEL:
-        snd7_seq_allocatable_channels((int)arg[0], arg[1], arg[2]);
-        break;
-    case PLAYER_LOCAL_VAR:
-        snd7_seq_set_local_variable((int)arg[0], (int)arg[1], (int16_t)arg[2]);
-        break;
-    case PLAYER_GLOBAL_VAR:
-        snd7_seq_set_global_variable((int)arg[0], (int16_t)arg[1]);
-        break;
-    case START_TIMER:
-        start_timer(arg[0], arg[1], arg[2]);
-        break;
-    case STOP_TIMER:
-        stop_timer(arg[0], arg[1], arg[2], (int)arg[3]);
-        break;
+    case MUTE_TRACK: snd7_seq_mute_track((int)arg[0], arg[1], (int)arg[2]); break;
+    case ALLOCATABLE_CHANNEL: snd7_seq_allocatable_channels((int)arg[0], arg[1], arg[2]); break;
+    case PLAYER_LOCAL_VAR: snd7_seq_set_local_variable((int)arg[0], (int)arg[1], (int16_t)arg[2]); break;
+    case PLAYER_GLOBAL_VAR: snd7_seq_set_global_variable((int)arg[0], (int16_t)arg[1]); break;
+    case START_TIMER: start_timer(arg[0], arg[1], arg[2]); break;
+    case STOP_TIMER: stop_timer(arg[0], arg[1], arg[2], (int)arg[3]); break;
     case SETUP_CHANNEL_PCM:
         /* the data's whole address: the ARM7 kept its 27 bits (a DS channel's
          * source register's width), and SND_SetupChannelPcm puts nothing but
          * the address there -- the game's heaps lie above 27 bits */
-        snd7_hw_setup_pcm((int)(arg[0] & 0xffff), arg[1], (int)((arg[3] >> 24) & 3),
-                          (int)((arg[3] >> 26) & 3), (int)(arg[3] & 0xffff), arg[2] & 0x3fffff,
-                          (int)((arg[2] >> 24) & 0x7f), (int)((arg[2] >> 22) & 3), (int)(arg[0] >> 16),
-                          (int)((arg[3] >> 16) & 0x7f));
+        snd7_hw_setup_pcm((int)(arg[0] & 0xffff), arg[1], (int)((arg[3] >> 24) & 3), (int)((arg[3] >> 26) & 3),
+                          (int)(arg[3] & 0xffff), arg[2] & 0x3fffff, (int)((arg[2] >> 24) & 0x7f),
+                          (int)((arg[2] >> 22) & 3), (int)(arg[0] >> 16), (int)((arg[3] >> 16) & 0x7f));
         break;
     case SETUP_CHANNEL_PSG:
         snd7_hw_setup_psg((int)arg[0], (int)arg[3], (int)(arg[1] & 0x7f), (int)((arg[1] >> 8) & 3),
                           (int)((arg[2] >> 8) & 0xffff), (int)(arg[2] & 0x7f));
         break;
     case SETUP_CHANNEL_NOISE:
-        snd7_hw_setup_noise((int)arg[0], (int)(arg[1] & 0x7f), (int)((arg[1] >> 8) & 3),
-                            (int)((arg[2] >> 8) & 0xffff), (int)(arg[2] & 0x7f));
+        snd7_hw_setup_noise((int)arg[0], (int)(arg[1] & 0x7f), (int)((arg[1] >> 8) & 3), (int)((arg[2] >> 8) & 0xffff),
+                            (int)(arg[2] & 0x7f));
         break;
     case SETUP_CAPTURE:
         snd7_capture_setup((int)((arg[2] >> 31) & 1), (int)((arg[2] >> 30) & 1), arg[0], (int)arg[1],
                            (int)((arg[2] >> 29) & 1), (int)((arg[2] >> 28) & 1), (int)((arg[2] >> 27) & 1));
         break;
-    case SETUP_ALARM:
-        snd7_alarm_setup((int)arg[0], arg[1], arg[2], (int)arg[3]);
-        break;
-    case CHANNEL_TIMER:
-        each_channel(arg[0], set_timer, arg[1], 0);
-        break;
-    case CHANNEL_VOLUME:
-        each_channel(arg[0], set_volume, arg[1], arg[2]);
-        break;
-    case CHANNEL_PAN:
-        each_channel(arg[0], set_pan, arg[1], 0);
-        break;
-    case SURROUND_DECAY:
-        snd7_hw_set_surround_decay((int)arg[0]);
-        break;
-    case MASTER_VOLUME:
-        snd7_hw_set_master_volume((int)arg[0]);
-        break;
-    case MASTER_PAN:
-        snd7_hw_set_master_pan((int)arg[0]);
-        break;
-    case OUTPUT_SELECTOR:
-        snd7_hw_set_output_selector((int)arg[0], (int)arg[1], (int)arg[2], (int)arg[3]);
-        break;
-    case LOCK_CHANNEL:
-        snd7_channel_lock(arg[0], (int)arg[1]);
-        break;
-    case UNLOCK_CHANNEL:
-        snd7_channel_unlock(arg[0], (int)arg[1]);
-        break;
-    case STOP_UNLOCKED_CHANNEL:
-        snd7_channel_free(arg[0]);
-        break;
-    case SHARED_WORK:
-        snd7_shared_work = arg[0];
-        break;
-    case INVALIDATE_SEQ:
-        snd7_seq_invalidate(arg[0], arg[1]);
-        break;
-    case INVALIDATE_BANK:
-        snd7_seq_invalidate_bank(arg[0], arg[1]);
-        break;
-    case INVALIDATE_WAVE:
-        snd7_channel_invalidate_wave(arg[0], arg[1]);
-        break;
+    case SETUP_ALARM: snd7_alarm_setup((int)arg[0], arg[1], arg[2], (int)arg[3]); break;
+    case CHANNEL_TIMER: each_channel(arg[0], set_timer, arg[1], 0); break;
+    case CHANNEL_VOLUME: each_channel(arg[0], set_volume, arg[1], arg[2]); break;
+    case CHANNEL_PAN: each_channel(arg[0], set_pan, arg[1], 0); break;
+    case SURROUND_DECAY: snd7_hw_set_surround_decay((int)arg[0]); break;
+    case MASTER_VOLUME: snd7_hw_set_master_volume((int)arg[0]); break;
+    case MASTER_PAN: snd7_hw_set_master_pan((int)arg[0]); break;
+    case OUTPUT_SELECTOR: snd7_hw_set_output_selector((int)arg[0], (int)arg[1], (int)arg[2], (int)arg[3]); break;
+    case LOCK_CHANNEL: snd7_channel_lock(arg[0], (int)arg[1]); break;
+    case UNLOCK_CHANNEL: snd7_channel_unlock(arg[0], (int)arg[1]); break;
+    case STOP_UNLOCKED_CHANNEL: snd7_channel_free(arg[0]); break;
+    case SHARED_WORK: snd7_shared_work = arg[0]; break;
+    case INVALIDATE_SEQ: snd7_seq_invalidate(arg[0], arg[1]); break;
+    case INVALIDATE_BANK: snd7_seq_invalidate_bank(arg[0], arg[1]); break;
+    case INVALIDATE_WAVE: snd7_channel_invalidate_wave(arg[0], arg[1]); break;
     case READ_DRIVER_INFO:
         /* 0x03802520 copies the ARM7's own records (0x1180 bytes from
          * 0x03807d18: channels, players, tracks, alarms) and the channels'

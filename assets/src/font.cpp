@@ -31,10 +31,8 @@ std::uint32_t read_u32(const ByteVector& d, const std::size_t o) {
     if (o + 4U > d.size()) {
         throw std::runtime_error("NFTR: read past end of file");
     }
-    return static_cast<std::uint32_t>(d[o])
-        | (static_cast<std::uint32_t>(d[o + 1U]) << 8U)
-        | (static_cast<std::uint32_t>(d[o + 2U]) << 16U)
-        | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
+    return static_cast<std::uint32_t>(d[o]) | (static_cast<std::uint32_t>(d[o + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(d[o + 2U]) << 16U) | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
 }
 
 ByteVector load_resource(const std::filesystem::path& path) {
@@ -47,9 +45,7 @@ ByteVector load_resource(const std::filesystem::path& path) {
     ByteVector data(end > 0 ? static_cast<std::size_t>(end) : 0U);
     stream.seekg(0, std::ios::beg);
     if (!data.empty()) {
-        stream.read(
-            reinterpret_cast<char*>(data.data()),
-            static_cast<std::streamsize>(data.size()));
+        stream.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(data.size()));
     }
     if (!data.empty() && (data[0] == 0x10U || data[0] == 0x11U)) {
         data = lz_decompress(data);
@@ -61,8 +57,7 @@ ByteVector load_resource(const std::filesystem::path& path) {
 
 Font decode_nftr(const std::filesystem::path& path) {
     const auto d = load_resource(path);
-    if (d.size() < 0x20U || d[0] != 'R' || d[1] != 'T' || d[2] != 'F'
-        || d[3] != 'N') {
+    if (d.size() < 0x20U || d[0] != 'R' || d[1] != 'T' || d[2] != 'F' || d[3] != 'N') {
         throw std::runtime_error("not an NFTR font: " + path.string());
     }
 
@@ -78,11 +73,9 @@ Font decode_nftr(const std::filesystem::path& path) {
     font.cell_height = d[cglp + 1U];
     const auto cell_size = static_cast<std::size_t>(read_u16(d, cglp + 2U));
     font.bpp = d[cglp + 6U];
-    const std::size_t glyph_count = cell_size > 0U
-        ? (static_cast<std::size_t>(read_u32(d, cglp - 4U)) - 0x10U) / cell_size
-        : 0U;
-    const std::size_t pixels =
-        static_cast<std::size_t>(font.cell_width) * font.cell_height;
+    const std::size_t glyph_count =
+        cell_size > 0U ? (static_cast<std::size_t>(read_u32(d, cglp - 4U)) - 0x10U) / cell_size : 0U;
+    const std::size_t pixels = static_cast<std::size_t>(font.cell_width) * font.cell_height;
 
     font.glyphs.resize(glyph_count);
     const std::size_t bitmaps = cglp + 8U;
@@ -97,12 +90,11 @@ Font decode_nftr(const std::filesystem::path& path) {
             for (int b = 0; b < font.bpp; ++b) {
                 const std::size_t byte = base + (bit + static_cast<std::size_t>(b)) / 8U;
                 const int shift = 7 - static_cast<int>((bit + static_cast<std::size_t>(b)) % 8U);
-                const std::uint32_t v =
-                    byte < d.size() ? ((d[byte] >> shift) & 1U) : 0U;
+                const std::uint32_t v = byte < d.size() ? ((d[byte] >> shift) & 1U) : 0U;
                 value = (value << 1U) | v;
             }
-            glyph.alpha[p] = static_cast<std::uint8_t>(
-                levels > 0 ? value * 255U / static_cast<std::uint32_t>(levels) : 0U);
+            glyph.alpha[p] =
+                static_cast<std::uint8_t>(levels > 0 ? value * 255U / static_cast<std::uint32_t>(levels) : 0U);
         }
     }
 
@@ -114,10 +106,8 @@ Font decode_nftr(const std::filesystem::path& path) {
         const auto next = read_u32(d, widths_off + 4U);
         std::size_t entry = widths_off + 8U;
         for (int g = first; g <= last; ++g) {
-            if (g >= 0 && static_cast<std::size_t>(g) < font.glyphs.size()
-                && entry + 3U <= d.size()) {
-                font.glyphs[static_cast<std::size_t>(g)].left =
-                    static_cast<std::int8_t>(d[entry]);
+            if (g >= 0 && static_cast<std::size_t>(g) < font.glyphs.size() && entry + 3U <= d.size()) {
+                font.glyphs[static_cast<std::size_t>(g)].left = static_cast<std::int8_t>(d[entry]);
                 font.glyphs[static_cast<std::size_t>(g)].width = d[entry + 1U];
                 font.glyphs[static_cast<std::size_t>(g)].advance = d[entry + 2U];
             }
@@ -141,8 +131,7 @@ Font decode_nftr(const std::filesystem::path& path) {
         if (method == 0U) {  // direct
             const auto first_glyph = read_u16(d, data);
             for (int c = first_char; c <= last_char; ++c) {
-                font.char_to_glyph[static_cast<char16_t>(c)] =
-                    first_glyph + (c - first_char);
+                font.char_to_glyph[static_cast<char16_t>(c)] = first_glyph + (c - first_char);
             }
         } else if (method == 1U) {  // table
             std::size_t entry = data;
@@ -163,8 +152,7 @@ Font decode_nftr(const std::filesystem::path& path) {
                 if (entry + 4U > d.size()) {
                     break;
                 }
-                font.char_to_glyph[static_cast<char16_t>(read_u16(d, entry))] =
-                    read_u16(d, entry + 2U);
+                font.char_to_glyph[static_cast<char16_t>(read_u16(d, entry))] = read_u16(d, entry + 2U);
             }
         }
         if (next == 0U) {
@@ -190,8 +178,7 @@ DecodedTexture render_text(const Font& font, const std::u16string& text) {
             continue;
         }
         const int g = font.glyph_of(c);
-        line_width += g >= 0 ? font.glyphs[static_cast<std::size_t>(g)].advance
-                             : font.cell_width / 2;
+        line_width += g >= 0 ? font.glyphs[static_cast<std::size_t>(g)].advance : font.cell_width / 2;
     }
     width = std::max(width, line_width);
 
@@ -201,8 +188,7 @@ DecodedTexture render_text(const Font& font, const std::u16string& text) {
     image.color_zero_transparent = true;
     image.width = std::max(width, 1);
     image.height = std::max(lines * line_height, 1);
-    image.rgba.assign(
-        static_cast<std::size_t>(image.width) * image.height * 4U, 0U);
+    image.rgba.assign(static_cast<std::size_t>(image.width) * image.height * 4U, 0U);
 
     int pen_x = 0;
     int pen_y = 0;
@@ -220,9 +206,8 @@ DecodedTexture render_text(const Font& font, const std::u16string& text) {
         const auto& glyph = font.glyphs[static_cast<std::size_t>(g)];
         for (int gy = 0; gy < font.cell_height; ++gy) {
             for (int gx = 0; gx < font.cell_width; ++gx) {
-                const auto a = glyph.alpha[
-                    static_cast<std::size_t>(gy) * font.cell_width
-                    + static_cast<std::size_t>(gx)];
+                const auto a =
+                    glyph.alpha[static_cast<std::size_t>(gy) * font.cell_width + static_cast<std::size_t>(gx)];
                 if (a == 0) {
                     continue;
                 }
@@ -231,8 +216,7 @@ DecodedTexture render_text(const Font& font, const std::u16string& text) {
                 if (x < 0 || x >= image.width || y < 0 || y >= image.height) {
                     continue;
                 }
-                const std::size_t dst =
-                    (static_cast<std::size_t>(y) * image.width + x) * 4U;
+                const std::size_t dst = (static_cast<std::size_t>(y) * image.width + x) * 4U;
                 image.rgba[dst] = 255U;
                 image.rgba[dst + 1U] = 255U;
                 image.rgba[dst + 2U] = 255U;

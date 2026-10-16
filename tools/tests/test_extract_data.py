@@ -13,6 +13,7 @@ SPEC = importlib.util.spec_from_file_location("extract_data", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 extract_data = importlib.util.module_from_spec(SPEC)
 import sys
+
 sys.modules[SPEC.name] = extract_data
 SPEC.loader.exec_module(extract_data)
 
@@ -42,9 +43,9 @@ class ExtractDataTests(unittest.TestCase):
 
             struct.pack_into("<II", image, 0x40, fnt_offset, len(fnt))
             struct.pack_into("<II", image, 0x48, fat_offset, len(fat))
-            image[fnt_offset:fnt_offset + len(fnt)] = fnt
-            image[fat_offset:fat_offset + len(fat)] = fat
-            image[file_start:file_start + len(file_data)] = file_data
+            image[fnt_offset : fnt_offset + len(fnt)] = fnt
+            image[fat_offset : fat_offset + len(fat)] = fat
+            image[file_start : file_start + len(file_data)] = file_data
             rom.write_bytes(image)
 
             database.write_text(
@@ -63,9 +64,7 @@ class ExtractDataTests(unittest.TestCase):
             extracted = result / "nitrofs" / "test.bin"
             self.assertEqual(extracted.read_bytes(), file_data)
 
-            manifest = json.loads(
-                (result / "manifest.json").read_text(encoding="utf-8")
-            )
+            manifest = json.loads((result / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["files"][0]["path"], "nitrofs/test.bin")
             self.assertEqual(manifest["files"][0]["size"], len(file_data))
 

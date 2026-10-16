@@ -4,6 +4,7 @@ flags, not linked) and lists every finding; exit 0 only with none. A finding tha
 suppressed at its line: `#pragma warning(suppress: 6387) /* why */` (docs/BUILD.md, "The tools").
     python port/tools/analyze.py [--tree build/port/obj-release-x64]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,10 +28,21 @@ def main() -> int:
         sys.exit(f"{args.tree} is not a configured build tree (port/build.py)")
     env = build.msvc_env()
     # every object again: a finding is said only when its file is compiled
-    subprocess.run(["cmake", "--build", str(args.tree), "--", "-t", "clean", "khdays-analyze"], env=env,
-                   capture_output=True, text=True, errors="replace")
-    run = subprocess.run(["cmake", "--build", str(args.tree), "--target", "khdays-analyze", "--", "-k", "0"],
-                         env=env, capture_output=True, text=True, encoding="cp850", errors="replace")
+    subprocess.run(
+        ["cmake", "--build", str(args.tree), "--", "-t", "clean", "khdays-analyze"],
+        env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    run = subprocess.run(
+        ["cmake", "--build", str(args.tree), "--target", "khdays-analyze", "--", "-k", "0"],
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="cp850",
+        errors="replace",
+    )
     out = run.stdout + run.stderr
     findings: dict[tuple[str, int, str], str] = {}
     others = 0

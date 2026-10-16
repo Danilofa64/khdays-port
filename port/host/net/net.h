@@ -72,8 +72,8 @@ unsigned long long khdays_host_net_clock_ms(void);
  * asks its router for a port, server/portmap.c): connects to `to`, sends `request`, reads until the
  * other side closes or `room` is full, all within `ms`. The bytes read, or -1; *local this machine's
  * address on that connection. */
-long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply,
-                              size_t room, int ms, unsigned int *local);
+long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply, size_t room,
+                              int ms, unsigned int *local);
 
 /* The default gateway (the router to the internet). Returns 1 with its IPv4
  * address in *ip, or 0 if there is none or it is not known. */

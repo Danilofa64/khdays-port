@@ -30,7 +30,7 @@ typedef struct KhdaysShape {
  * menu's frame, which the port draws larger elsewhere). */
 enum { KHDAYS_SHAPE3D_HUD, KHDAYS_SHAPE3D_ALL };
 typedef struct KhdaysShape3d {
-    int group;      /* KHDAYS_SHAPE3D_* */
+    int group; /* KHDAYS_SHAPE3D_* */
     int hide;
     float x, y, scale;
     float src_x, src_y, src_w, src_h;
@@ -78,7 +78,7 @@ typedef struct KhdaysComposition {
     float backdrop_ax, backdrop_ay;
     int backdrop_fit; /* 1: inside the picture, its aspect kept, instead of covering it (`backdrop ...
                        * fit`; a screen of the port's laid out over it: host/screens/camp_screen.c) */
-    int hide3d_all; /* `hide3d all`: the 3D not drawn */
+    int hide3d_all;   /* `hide3d all`: the 3D not drawn */
     /* an animated picture's: its size (the one that covers the picture; a picture's own size
      * otherwise), its ground (8-bit RGB, red in the low byte) and this frame's pieces, drawn in
      * order on it from the atlas `backdrop` is then; none for a picture */

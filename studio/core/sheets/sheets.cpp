@@ -48,7 +48,8 @@ std::uint32_t rgba(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t 
 
 // The palette a picture is drawn with: the chosen one, or greys.
 assets::Palette2D effective(const SheetSource& s, const assets::Palette2D& p) {
-    if (!p.colors.empty()) return p;
+    if (!p.colors.empty())
+        return p;
     assets::Palette2D greys;
     const int n = s.bpp() == 8 ? 256 : 16;
     greys.colors_per_palette = n;
@@ -66,7 +67,8 @@ assets::Palette2D effective(const SheetSource& s, const assets::Palette2D& p) {
 std::array<std::uint8_t, 4> colour(const SheetSource& s, const assets::Palette2D& p, int row, int i) {
     const int per = s.bpp() == 8 ? 256 : 16;
     std::size_t at = static_cast<std::size_t>(row) * static_cast<std::size_t>(per) + static_cast<std::size_t>(i);
-    if (per == 256 && at >= p.colors.size()) at = static_cast<std::size_t>(i);
+    if (per == 256 && at >= p.colors.size())
+        at = static_cast<std::size_t>(i);
     return at < p.colors.size() ? p.colors[at] : std::array<std::uint8_t, 4>{0, 0, 0, 255};
 }
 
@@ -82,11 +84,14 @@ void place_tile(Assembly& a, int x0, int y0, int tile, int row, bool fh, bool fv
     for (int py = 0; py < 8; ++py) {
         for (int px = 0; px < 8; ++px) {
             const int x = x0 + px, y = y0 + py;
-            if (x < 0 || y < 0 || x >= a.width || y >= a.height) continue;
-            Place& p = a.places[static_cast<std::size_t>(y) * static_cast<std::size_t>(a.width) + static_cast<std::size_t>(x)];
+            if (x < 0 || y < 0 || x >= a.width || y >= a.height)
+                continue;
+            Place& p =
+                a.places[static_cast<std::size_t>(y) * static_cast<std::size_t>(a.width) + static_cast<std::size_t>(x)];
             if (p.tile >= 0) {
                 ++a.overlaps;
-                if (front_wins) continue;
+                if (front_wins)
+                    continue;
             }
             p.tile = tile;
             p.x = static_cast<std::uint8_t>(fh ? 7 - px : px);
@@ -99,9 +104,12 @@ void place_tile(Assembly& a, int x0, int y0, int tile, int row, bool fh, bool fv
     const auto t = static_cast<std::size_t>(tile);
     a.spots.push_back({x0, y0, tile});
     ++a.uses[t];
-    if (fh || fv) a.flipped[t] = true;
-    if (a.row_of[t] < 0) a.row_of[t] = row;
-    else if (a.row_of[t] != row) a.several_rows[t] = true;
+    if (fh || fv)
+        a.flipped[t] = true;
+    if (a.row_of[t] < 0)
+        a.row_of[t] = row;
+    else if (a.row_of[t] != row)
+        a.several_rows[t] = true;
 }
 
 // Where a screen's entry for the place (cx, cy) is: a screen more than 32
@@ -136,15 +144,18 @@ bool sheet_source(std::vector<std::uint8_t> data, const std::string& label, int 
     for (std::size_t at = 0; at + 0x18 <= data.size(); at += 4) {
         // names.cpp names_of / read_sheet, lines 212-238
         if (std::memcmp(&data[at], "RGCN", 4) == 0 && le32(data, at + 8) <= data.size() - at) {
-            if (at + 0x30 > data.size() || le16(data, at + 4) != 0xfeff || std::memcmp(&data[at + 0x10], "RAHC", 4) != 0) {
+            if (at + 0x30 > data.size() || le16(data, at + 4) != 0xfeff ||
+                std::memcmp(&data[at + 0x10], "RAHC", 4) != 0) {
                 continue;
             }
             const std::uint32_t bytes = le32(data, at + 0x28);
             const std::uint32_t start = static_cast<std::uint32_t>(at + 0x18 + le32(data, at + 0x2c));
             const std::uint32_t tile_bytes = le32(data, at + 0x1c) == 4 ? 64 : 32;
-            if (bytes < tile_bytes || start > data.size() || bytes > data.size() - start) continue;
+            if (bytes < tile_bytes || start > data.size() || bytes > data.size() - start)
+                continue;
             ++s.sheets_in_data;
-            if (found++ != number) continue;
+            if (found++ != number)
+                continue;
             have = true;
             s.tiles_at = start;
             s.tile_bytes = static_cast<int>(tile_bytes);
@@ -153,12 +164,16 @@ bool sheet_source(std::vector<std::uint8_t> data, const std::string& label, int 
             s.shaped = w != 0xffff && h != 0xffff && w > 0 && w <= 128 && w * h == bytes / tile_bytes;
             s.columns = static_cast<int>(s.shaped ? w : s.tiles < 16 ? static_cast<std::uint32_t>(s.tiles) : 16u);
         }
-        if (nitro_at(data, at, "RCSN")) s.screens.push_back({at, le32(data, at + 8)});
-        if (nitro_at(data, at, "RECN")) s.cell_banks.push_back({at, le32(data, at + 8)});
-        if (nitro_at(data, at, "RLCN")) s.palettes.push_back({at, le32(data, at + 8)});
+        if (nitro_at(data, at, "RCSN"))
+            s.screens.push_back({at, le32(data, at + 8)});
+        if (nitro_at(data, at, "RECN"))
+            s.cell_banks.push_back({at, le32(data, at + 8)});
+        if (nitro_at(data, at, "RLCN"))
+            s.palettes.push_back({at, le32(data, at + 8)});
     }
     if (!have) {
-        if (why != nullptr) *why = "no sheet " + std::to_string(number) + " in " + label;
+        if (why != nullptr)
+            *why = "no sheet " + std::to_string(number) + " in " + label;
         return false;
     }
     s.data = std::move(data);
@@ -196,7 +211,8 @@ std::vector<std::string> base_files(const fs::path& nitrofs, const std::string& 
     const auto up = dir.rfind('/');
     const std::string last = up == std::string::npos ? dir : dir.substr(up + 1);
     for (const char* language : {"de", "en", "es", "fr", "it"}) {
-        if (last == language) add((up == std::string::npos ? std::string() : dir.substr(0, up) + "/") + name);
+        if (last == language)
+            add((up == std::string::npos ? std::string() : dir.substr(0, up) + "/") + name);
     }
     return out;
 }
@@ -209,7 +225,8 @@ int entry_of(const std::string& label) {
 // A copy of `from`'s bytes [r.at, r.at + r.size) at the end of the sheet's
 // data, 4-aligned (the sheet's own tiles stay where they are).
 Resource append_resource(SheetSource* s, const std::vector<std::uint8_t>& from, const Resource& r) {
-    while (s->data.size() % 4 != 0) s->data.push_back(0);
+    while (s->data.size() % 4 != 0)
+        s->data.push_back(0);
     const Resource out{s->data.size(), r.size};
     s->data.insert(s->data.end(), from.begin() + static_cast<std::ptrdiff_t>(r.at),
                    from.begin() + static_cast<std::ptrdiff_t>(r.at + r.size));
@@ -241,12 +258,14 @@ std::size_t same_tiles(const SheetSource& a, const SheetSource& b) {
 // columns, the most drawn tiles byte for byte its own), or for a file of its own its folder's screen
 // and cell files, the name most like its own first (docs/STUDIO.md, "2D sheets").
 static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
-    if (!s->screens.empty() || !s->cell_banks.empty()) return;
+    if (!s->screens.empty() || !s->cell_banks.empty())
+        return;
     const auto hash = s->label.rfind('#');
     const std::string file = hash == std::string::npos ? s->label : s->label.substr(0, hash);
     const int entry = entry_of(s->label);
     std::size_t drawn = 0;
-    for (int t = 0; t < s->tiles; ++t) drawn += tile_drawn(*s, t) ? 1 : 0;
+    for (int t = 0; t < s->tiles; ++t)
+        drawn += tile_drawn(*s, t) ? 1 : 0;
     SheetSource twin;
     std::size_t best = 0;
     std::vector<std::string> looked;
@@ -256,33 +275,46 @@ static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
             return std::abs(entry_of(a.label) - around) < std::abs(entry_of(b.label) - around);
         });
         for (const auto& d : all) {
-            if (d.label == s->label || (only_same && entry_of(d.label) != around)) continue;
-            if (std::find(looked.begin(), looked.end(), d.label) != looked.end()) continue;
+            if (d.label == s->label || (only_same && entry_of(d.label) != around))
+                continue;
+            if (std::find(looked.begin(), looked.end(), d.label) != looked.end())
+                continue;
             looked.push_back(d.label);
             for (int n = 0;; ++n) {
                 SheetSource t;
-                if (!sheet_source(d.bytes, d.label, n, &t, nullptr)) break;
-                if (t.screens.empty() && t.cell_banks.empty()) break;  // the data's, whichever sheet
-                if (t.tile_bytes != s->tile_bytes || t.tiles != s->tiles || t.columns != s->columns) continue;
+                if (!sheet_source(d.bytes, d.label, n, &t, nullptr))
+                    break;
+                if (t.screens.empty() && t.cell_banks.empty())
+                    break;  // the data's, whichever sheet
+                if (t.tile_bytes != s->tile_bytes || t.tiles != s->tiles || t.columns != s->columns)
+                    continue;
                 const std::size_t same = same_tiles(*s, t);
-                if (same > best && same * 8 >= drawn) twin = std::move(t), best = same;
+                if (same > best && same * 8 >= drawn)
+                    twin = std::move(t), best = same;
             }
         }
     };
     const auto bases = base_files(nitrofs, file);
-    for (const auto& b : bases) search(b, entry, true);
-    if (hash != std::string::npos) search(file, entry, false);
-    for (const auto& b : bases) search(b, entry, false);
+    for (const auto& b : bases)
+        search(b, entry, true);
+    if (hash != std::string::npos)
+        search(file, entry, false);
+    for (const auto& b : bases)
+        search(b, entry, false);
     if (best > 0) {
         s->borrowed = twin.label + "/chr/" + std::to_string(twin.number);
-        for (const auto& r : twin.screens) s->screens.push_back(append_resource(s, twin.data, r));
-        for (const auto& r : twin.cell_banks) s->cell_banks.push_back(append_resource(s, twin.data, r));
+        for (const auto& r : twin.screens)
+            s->screens.push_back(append_resource(s, twin.data, r));
+        for (const auto& r : twin.cell_banks)
+            s->cell_banks.push_back(append_resource(s, twin.data, r));
         const auto twin_fits = fitting_arrangements(twin);
         const int drawn_with = twin_fits.empty() ? -1 : twin_fits.front().palette;
         std::vector<std::size_t> order;
-        if (drawn_with >= 0) order.push_back(static_cast<std::size_t>(drawn_with));
+        if (drawn_with >= 0)
+            order.push_back(static_cast<std::size_t>(drawn_with));
         for (std::size_t k = 0; k < twin.palettes.size(); ++k) {
-            if (static_cast<int>(k) != drawn_with) order.push_back(k);
+            if (static_cast<int>(k) != drawn_with)
+                order.push_back(k);
         }
         for (const std::size_t k : order) {
             const Resource& r = twin.palettes[k];
@@ -294,7 +326,8 @@ static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
         }
         return;
     }
-    if (hash != std::string::npos) return;
+    if (hash != std::string::npos)
+        return;
     const auto slash = file.rfind('/');
     const std::string dir = slash == std::string::npos ? std::string() : file.substr(0, slash);
     const std::string name = slash == std::string::npos ? file : file.substr(slash + 1);
@@ -303,9 +336,11 @@ static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
     for (const auto& e : fs::directory_iterator(nitrofs / path_u8(dir), ec)) {
         const std::string other = u8(e.path().filename());
         const std::string low = lower(other);
-        if (low.find(".nscr") == std::string::npos && low.find(".ncer") == std::string::npos) continue;
+        if (low.find(".nscr") == std::string::npos && low.find(".ncer") == std::string::npos)
+            continue;
         std::size_t common = 0;
-        while (common < other.size() && common < name.size() && other[common] == name[common]) ++common;
+        while (common < other.size() && common < name.size() && other[common] == name[common])
+            ++common;
         files.emplace_back(common, (dir.empty() ? "" : dir + "/") + other);
     }
     std::stable_sort(files.begin(), files.end(), [](const auto& a, const auto& b) {
@@ -316,10 +351,13 @@ static void borrow_arrangements(const fs::path& nitrofs, SheetSource* s) {
             const std::size_t had = s->screens.size() + s->cell_banks.size();
             for (std::size_t at = 0; at + 0x18 <= d.bytes.size(); at += 4) {
                 const Resource r{at, le32(d.bytes, at + 8)};
-                if (nitro_at(d.bytes, at, "RCSN")) s->screens.push_back(append_resource(s, d.bytes, r));
-                if (nitro_at(d.bytes, at, "RECN")) s->cell_banks.push_back(append_resource(s, d.bytes, r));
+                if (nitro_at(d.bytes, at, "RCSN"))
+                    s->screens.push_back(append_resource(s, d.bytes, r));
+                if (nitro_at(d.bytes, at, "RECN"))
+                    s->cell_banks.push_back(append_resource(s, d.bytes, r));
             }
-            if (s->screens.size() + s->cell_banks.size() > had) s->borrowed += (s->borrowed.empty() ? "" : ", ") + d.label;
+            if (s->screens.size() + s->cell_banks.size() > had)
+                s->borrowed += (s->borrowed.empty() ? "" : ", ") + d.label;
         }
     }
 }
@@ -330,13 +368,16 @@ static void gather_nearby(const fs::path& nitrofs, SheetSource* s) {
     const int entry = entry_of(s->label);
     std::vector<std::string> seen{s->label};
     // a twin's data: its palettes are in already
-    if (const auto chr = s->borrowed.rfind("/chr/"); chr != std::string::npos) seen.push_back(s->borrowed.substr(0, chr));
+    if (const auto chr = s->borrowed.rfind("/chr/"); chr != std::string::npos)
+        seen.push_back(s->borrowed.substr(0, chr));
     auto take = [&](const GameData& d) {
-        if (std::find(seen.begin(), seen.end(), d.label) != seen.end()) return;
+        if (std::find(seen.begin(), seen.end(), d.label) != seen.end())
+            return;
         seen.push_back(d.label);
         std::vector<Resource> found;
         for (std::size_t at = 0; at + 0x18 <= d.bytes.size(); at += 4) {
-            if (nitro_at(d.bytes, at, "RLCN")) found.push_back({at, le32(d.bytes, at + 8)});
+            if (nitro_at(d.bytes, at, "RLCN"))
+                found.push_back({at, le32(d.bytes, at + 8)});
         }
         for (std::size_t k = 0; k < found.size(); ++k) {
             SheetSource::NearbyPalette p;
@@ -353,14 +394,17 @@ static void gather_nearby(const fs::path& nitrofs, SheetSource* s) {
             return std::abs(entry_of(a.label) - around) < std::abs(entry_of(b.label) - around);
         });
         for (const auto& d : all) {
-            if (only_same && entry_of(d.label) != around) continue;
+            if (only_same && entry_of(d.label) != around)
+                continue;
             take(d);
         }
     };
     const auto bases = base_files(nitrofs, file);
-    for (const auto& b : bases) by_distance(b, entry, true);
+    for (const auto& b : bases)
+        by_distance(b, entry, true);
     by_distance(file, entry, false);
-    for (const auto& b : bases) by_distance(b, entry, false);
+    for (const auto& b : bases)
+        by_distance(b, entry, false);
     // the folder's palette files, the name most like the sheet's first
     const auto slash = file.rfind('/');
     const std::string dir = slash == std::string::npos ? std::string() : file.substr(0, slash);
@@ -369,37 +413,45 @@ static void gather_nearby(const fs::path& nitrofs, SheetSource* s) {
     std::error_code ec;
     for (const auto& e : fs::directory_iterator(nitrofs / path_u8(dir), ec)) {
         const std::string other = u8(e.path().filename());
-        if (lower(other).find(".nclr") == std::string::npos) continue;
+        if (lower(other).find(".nclr") == std::string::npos)
+            continue;
         std::size_t common = 0;
-        while (common < other.size() && common < name.size() && other[common] == name[common]) ++common;
+        while (common < other.size() && common < name.size() && other[common] == name[common])
+            ++common;
         files.emplace_back(common, (dir.empty() ? "" : dir + "/") + other);
     }
     std::stable_sort(files.begin(), files.end(), [](const auto& a, const auto& b) {
         return a.first != b.first ? a.first > b.first : a.second < b.second;
     });
     for (const auto& f : files) {
-        for (const auto& d : game_file_data(nitrofs, f.second)) take(d);
+        for (const auto& d : game_file_data(nitrofs, f.second))
+            take(d);
     }
     // still none: the folder's other files, and a language folder's parent's
     // (`UI/btl/es/bl000.NCGR.z`: `UI/btl/es/main.p2`, `UI/btl/main.p2`, ...)
-    if (!s->nearby.empty() || !s->palettes.empty()) return;
+    if (!s->nearby.empty() || !s->palettes.empty())
+        return;
     std::vector<std::string> dirs{dir};
     const auto up = dir.rfind('/');
     const std::string last = up == std::string::npos ? dir : dir.substr(up + 1);
     for (const char* language : {"de", "en", "es", "fr", "it"}) {
-        if (last == language && up != std::string::npos) dirs.push_back(dir.substr(0, up));
+        if (last == language && up != std::string::npos)
+            dirs.push_back(dir.substr(0, up));
     }
     for (const auto& d : dirs) {
         std::vector<std::string> others;
         for (const auto& e : fs::directory_iterator(nitrofs / path_u8(d), ec)) {
             std::error_code type_ec;
-            if (!e.is_regular_file(type_ec)) continue;
+            if (!e.is_regular_file(type_ec))
+                continue;
             const std::string path = d + "/" + u8(e.path().filename());
-            if (path != file) others.push_back(path);
+            if (path != file)
+                others.push_back(path);
         }
         std::sort(others.begin(), others.end());
         for (const auto& o : others) {
-            for (const auto& g : game_file_data(nitrofs, o)) take(g);
+            for (const auto& g : game_file_data(nitrofs, o))
+                take(g);
         }
     }
 }
@@ -407,26 +459,31 @@ static void gather_nearby(const fs::path& nitrofs, SheetSource* s) {
 bool load_sheet_source(const fs::path& nitrofs, const std::string& key, SheetSource* out, std::string* why) {
     const auto chr = key.rfind("/chr/");
     if (chr == std::string::npos) {
-        if (why != nullptr) *why = "not a sheet's name: " + key;
+        if (why != nullptr)
+            *why = "not a sheet's name: " + key;
         return false;
     }
     const std::string label = key.substr(0, chr);
     std::vector<std::uint8_t> data = game_label_data(nitrofs, label);
     if (data.empty()) {
-        if (why != nullptr) *why = "no data for " + label;
+        if (why != nullptr)
+            *why = "no data for " + label;
         return false;
     }
-    if (!sheet_source(std::move(data), label, std::atoi(key.c_str() + chr + 5), out, why)) return false;
+    if (!sheet_source(std::move(data), label, std::atoi(key.c_str() + chr + 5), out, why))
+        return false;
     borrow_arrangements(nitrofs, out);
     gather_nearby(nitrofs, out);
     return true;
 }
 
 bool take_seen_colours(const fs::path& dump, const std::string& key, SheetSource* s) {
-    if (dump.empty() || s->tiles <= 0 || s->seen_palette >= 0) return false;
+    if (dump.empty() || s->tiles <= 0 || s->seen_palette >= 0)
+        return false;
     const fs::path file = dump / path_u8(key + ".colours");
     std::ifstream in(file);
-    if (!in) return false;
+    if (!in)
+        return false;
     // a row's colours: 16, or 256 for a sheet of 8-bit tiles
     const std::size_t per = s->bpp() == 8 ? 256 : 16;
     std::map<int, std::vector<std::uint16_t>> rows;
@@ -442,28 +499,37 @@ bool take_seen_colours(const fs::path& dump, const std::string& key, SheetSource
             words >> r;
             std::vector<std::uint16_t> c;
             unsigned v = 0;
-            while (words >> std::hex >> v) c.push_back(static_cast<std::uint16_t>(v & 0x7fffu));
+            while (words >> std::hex >> v)
+                c.push_back(static_cast<std::uint16_t>(v & 0x7fffu));
             // a row of the game (0-15), or one of its own for colours the same row had for other
             // tiles (from 17: 16 is the greys of the tiles never seen)
-            if (r >= 0 && r != kUnseenRow && c.size() == per) rows[r] = std::move(c);
+            if (r >= 0 && r != kUnseenRow && c.size() == per)
+                rows[r] = std::move(c);
             continue;
         }
         // `<first>-<last> <row>`
         const auto dash = first.find('-');
-        if (dash == std::string::npos || first.empty() || first[0] == '#') continue;
-        const long from = std::strtol(first.c_str(), nullptr, 10), to = std::strtol(first.c_str() + dash + 1, nullptr, 10);
+        if (dash == std::string::npos || first.empty() || first[0] == '#')
+            continue;
+        const long from = std::strtol(first.c_str(), nullptr, 10),
+                   to = std::strtol(first.c_str() + dash + 1, nullptr, 10);
         int r = -1;
         words >> r;
-        if (!words || from < 0 || to < from || r < 0 || r == kUnseenRow) continue;
-        for (long t = from; t <= to && t < s->tiles; ++t) tile_rows[static_cast<std::size_t>(t)] = r;
+        if (!words || from < 0 || to < from || r < 0 || r == kUnseenRow)
+            continue;
+        for (long t = from; t <= to && t < s->tiles; ++t)
+            tile_rows[static_cast<std::size_t>(t)] = r;
     }
     // the tiles seen in a row whose colours are known
     int seen_tiles = 0;
     for (auto& r : tile_rows) {
-        if (r >= 0 && rows.count(r) == 0) r = -1;
-        if (r >= 0) ++seen_tiles;
+        if (r >= 0 && rows.count(r) == 0)
+            r = -1;
+        if (r >= 0)
+            ++seen_tiles;
     }
-    if (seen_tiles == 0) return false;
+    if (seen_tiles == 0)
+        return false;
     // the palette it would be coloured with, the rows seen put in
     Arrangement base;
     const auto fits = fitting_arrangements(*s);
@@ -478,12 +544,15 @@ bool take_seen_colours(const fs::path& dump, const std::string& key, SheetSource
         p.colors.push_back({grey, grey, grey, 255});
     }
     const int last = rows.empty() ? 0 : rows.rbegin()->first;
-    if (last > kUnseenRow) p.colors.resize(static_cast<std::size_t>(last + 1) * per, {0, 0, 0, 255});
+    if (last > kUnseenRow)
+        p.colors.resize(static_cast<std::size_t>(last + 1) * per, {0, 0, 0, 255});
     for (const auto& [r, c] : rows) {
         for (std::size_t k = 0; k < per; ++k) {
-            const auto r5 = static_cast<std::uint8_t>(c[k] & 0x1fu), g5 = static_cast<std::uint8_t>((c[k] >> 5) & 0x1fu),
+            const auto r5 = static_cast<std::uint8_t>(c[k] & 0x1fu),
+                       g5 = static_cast<std::uint8_t>((c[k] >> 5) & 0x1fu),
                        b5 = static_cast<std::uint8_t>((c[k] >> 10) & 0x1fu);
-            p.colors[static_cast<std::size_t>(r) * per + k] = {static_cast<std::uint8_t>(r5 << 3 | r5 >> 2), static_cast<std::uint8_t>(g5 << 3 | g5 >> 2),
+            p.colors[static_cast<std::size_t>(r) * per + k] = {static_cast<std::uint8_t>(r5 << 3 | r5 >> 2),
+                                                               static_cast<std::uint8_t>(g5 << 3 | g5 >> 2),
                                                                static_cast<std::uint8_t>(b5 << 3 | b5 >> 2), 255};
         }
     }
@@ -497,16 +566,19 @@ bool take_seen_colours(const fs::path& dump, const std::string& key, SheetSource
     // those never seen that draw something (an empty tile shows nothing in any row)
     s->unseen_tiles = 0;
     for (int t = 0; t < s->tiles; ++t) {
-        if (s->seen_rows[static_cast<std::size_t>(t)] < 0 && tile_draws(*s, t)) ++s->unseen_tiles;
+        if (s->seen_rows[static_cast<std::size_t>(t)] < 0 && tile_draws(*s, t))
+            ++s->unseen_tiles;
     }
     return true;
 }
 
 bool tile_draws(const SheetSource& s, int tile) {
-    const std::size_t bytes = static_cast<std::size_t>(s.tile_bytes), at = s.tiles_at + static_cast<std::size_t>(tile) * bytes;
-    if (tile < 0 || at + bytes > s.data.size()) return false;
-    return std::any_of(s.data.begin() + static_cast<std::ptrdiff_t>(at), s.data.begin() + static_cast<std::ptrdiff_t>(at + bytes),
-                       [](std::uint8_t b) { return b != 0; });
+    const std::size_t bytes = static_cast<std::size_t>(s.tile_bytes),
+                      at = s.tiles_at + static_cast<std::size_t>(tile) * bytes;
+    if (tile < 0 || at + bytes > s.data.size())
+        return false;
+    return std::any_of(s.data.begin() + static_cast<std::ptrdiff_t>(at),
+                       s.data.begin() + static_cast<std::ptrdiff_t>(at + bytes), [](std::uint8_t b) { return b != 0; });
 }
 
 int palette_count(const SheetSource& s) {
@@ -514,7 +586,8 @@ int palette_count(const SheetSource& s) {
 }
 
 std::string palette_from(const SheetSource& s, int i) {
-    if (i < static_cast<int>(s.palettes.size()) || i >= palette_count(s)) return {};
+    if (i < static_cast<int>(s.palettes.size()) || i >= palette_count(s))
+        return {};
     return s.nearby[static_cast<std::size_t>(i) - s.palettes.size()].from;
 }
 
@@ -524,11 +597,14 @@ SheetPixels game_sheet_pixels(const SheetSource& s) {
     p.height = s.height();
     p.px.assign(static_cast<std::size_t>(p.width) * static_cast<std::size_t>(p.height), 0);
     for (int t = 0; t < s.tiles; ++t) {
-        const std::uint8_t* src = &s.data[s.tiles_at + static_cast<std::size_t>(t) * static_cast<std::size_t>(s.tile_bytes)];
+        const std::uint8_t* src =
+            &s.data[s.tiles_at + static_cast<std::size_t>(t) * static_cast<std::size_t>(s.tile_bytes)];
         const int x0 = t % s.columns * 8, y0 = t / s.columns * 8;
         for (int i = 0; i < 64; ++i) {
-            const std::uint32_t v = s.tile_bytes == 64 ? src[i] : static_cast<std::uint32_t>((src[i / 2] >> ((i & 1) * 4)) & 15);
-            p.px[static_cast<std::size_t>(y0 + i / 8) * static_cast<std::size_t>(p.width) + static_cast<std::size_t>(x0 + i % 8)] = v;
+            const std::uint32_t v =
+                s.tile_bytes == 64 ? src[i] : static_cast<std::uint32_t>((src[i / 2] >> ((i & 1) * 4)) & 15);
+            p.px[static_cast<std::size_t>(y0 + i / 8) * static_cast<std::size_t>(p.width) +
+                 static_cast<std::size_t>(x0 + i % 8)] = v;
         }
     }
     return p;
@@ -540,16 +616,19 @@ bool read_sheet_png(const fs::path& png, const SheetSource& s, SheetPixels* out,
     int w = 0, h = 0;
     std::uint8_t* px = khdays_png_read_indexed(path.c_str(), &w, &h, nullptr, &error);
     const bool indexed = px != nullptr;
-    if (px == nullptr && error != nullptr && std::strcmp(error, "not indexed") == 0) px = khdays_png_read(path.c_str(), &w, &h, &error);
+    if (px == nullptr && error != nullptr && std::strcmp(error, "not indexed") == 0)
+        px = khdays_png_read(path.c_str(), &w, &h, &error);
     if (px == nullptr) {
-        if (why != nullptr) *why = error != nullptr ? error : "unreadable";
+        if (why != nullptr)
+            *why = error != nullptr ? error : "unreadable";
         return false;
     }
     // tiles2d.c lines 98-104: a whole multiple wide, at least as many times high
     const int scale = w / s.width();
     if (scale < 1 || scale > 255 || w != scale * s.width() || h < scale * s.height()) {
         khdays_png_free(px);
-        if (why != nullptr) *why = "not a whole multiple of the sheet's size";
+        if (why != nullptr)
+            *why = "not a whole multiple of the sheet's size";
         return false;
     }
     SheetPixels p;
@@ -559,8 +638,7 @@ bool read_sheet_png(const fs::path& png, const SheetSource& s, SheetPixels* out,
     p.height = scale * s.height();
     p.px.resize(static_cast<std::size_t>(p.width) * static_cast<std::size_t>(p.height));
     for (std::size_t i = 0; i < p.px.size(); ++i) {
-        p.px[i] = indexed ? px[i]
-                          : rgba(px[4 * i], px[4 * i + 1], px[4 * i + 2], px[4 * i + 3]);
+        p.px[i] = indexed ? px[i] : rgba(px[4 * i], px[4 * i + 1], px[4 * i + 2], px[4 * i + 3]);
     }
     khdays_png_free(px);
     *out = std::move(p);
@@ -573,17 +651,21 @@ std::string write_sheet_png(const fs::path& png, const SheetPixels& p,
     const char* error = nullptr;
     if (p.indexed) {
         std::vector<std::uint8_t> indices(p.px.size());
-        for (std::size_t i = 0; i < p.px.size(); ++i) indices[i] = static_cast<std::uint8_t>(p.px[i]);
+        for (std::size_t i = 0; i < p.px.size(); ++i)
+            indices[i] = static_cast<std::uint8_t>(p.px[i]);
         const int n = std::clamp(static_cast<int>(display.size()), 2, 256);
         std::vector<std::uint8_t> rgb(static_cast<std::size_t>(n) * 3, 0);
         for (int i = 0; i < n && static_cast<std::size_t>(i) < display.size(); ++i) {
-            for (int c = 0; c < 3; ++c) rgb[static_cast<std::size_t>(i) * 3 + static_cast<std::size_t>(c)] = display[static_cast<std::size_t>(i)][static_cast<std::size_t>(c)];
+            for (int c = 0; c < 3; ++c)
+                rgb[static_cast<std::size_t>(i) * 3 + static_cast<std::size_t>(c)] =
+                    display[static_cast<std::size_t>(i)][static_cast<std::size_t>(c)];
         }
         error = khdays_png_write_indexed(path.c_str(), indices.data(), p.width, p.height, rgb.data(), n, 1);
     } else {
         std::vector<std::uint8_t> bytes(p.px.size() * 4);
         for (std::size_t i = 0; i < p.px.size(); ++i) {
-            for (int c = 0; c < 4; ++c) bytes[4 * i + static_cast<std::size_t>(c)] = static_cast<std::uint8_t>(p.px[i] >> (8 * c));
+            for (int c = 0; c < 4; ++c)
+                bytes[4 * i + static_cast<std::size_t>(c)] = static_cast<std::uint8_t>(p.px[i] >> (8 * c));
         }
         error = khdays_png_write(path.c_str(), bytes.data(), p.width, p.height);
     }
@@ -603,17 +685,20 @@ std::vector<Arrangement> fitting_arrangements(const SheetSource& s) {
             Arrangement probe;
             probe.palette = static_cast<int>(i);
             const auto p = arrangement_palette(s, probe);
-            if (p.colors.size() < (s.bpp() == 8 ? 256u : 16u)) continue;
+            if (p.colors.size() < (s.bpp() == 8 ? 256u : 16u))
+                continue;
             const int lively = liveliness(s, p);
             if ((p.colors_per_palette == 256) == (s.bpp() == 8)) {
-                if (lively > palette_lively) palette = static_cast<int>(i), palette_lively = lively;
+                if (lively > palette_lively)
+                    palette = static_cast<int>(i), palette_lively = lively;
             } else if (lively > enough_lively) {
                 enough = static_cast<int>(i), enough_lively = lively;
             }
         } catch (const std::exception&) {
         }
     }
-    if (palette < 0) palette = enough;
+    if (palette < 0)
+        palette = enough;
     // none of its own: the first nearby one giving at least half the colours of the liveliest
     if (palette < 0 && !s.nearby.empty()) {
         std::vector<int> lively(s.nearby.size(), 0);
@@ -622,27 +707,34 @@ std::vector<Arrangement> fitting_arrangements(const SheetSource& s) {
             Arrangement probe;
             probe.palette = static_cast<int>(s.palettes.size() + i);
             const auto p = arrangement_palette(s, probe);
-            if (p.colors.size() < (s.bpp() == 8 ? 256u : 16u)) continue;
+            if (p.colors.size() < (s.bpp() == 8 ? 256u : 16u))
+                continue;
             lively[i] = liveliness(s, p);
             most = std::max(most, lively[i]);
         }
         for (std::size_t i = 0; i < s.nearby.size() && palette < 0; ++i) {
-            if (lively[i] > 0 && lively[i] * 2 >= most) palette = static_cast<int>(s.palettes.size() + i);
+            if (lively[i] > 0 && lively[i] * 2 >= most)
+                palette = static_cast<int>(s.palettes.size() + i);
         }
     }
     // data with as many palettes as sheets: each sheet's own
-    if (s.sheets_in_data > 1 && static_cast<int>(s.palettes.size()) == s.sheets_in_data) palette = s.number;
+    if (s.sheets_in_data > 1 && static_cast<int>(s.palettes.size()) == s.sheets_in_data)
+        palette = s.number;
     // the colours the game was seen drawing it with, above all
-    if (s.seen_palette >= 0) palette = s.seen_palette;
+    if (s.seen_palette >= 0)
+        palette = s.seen_palette;
     for (std::size_t i = 0; i < s.screens.size(); ++i) {
         const auto& r = s.screens[i];
         // the screen's colour mode (+0x1c: 0 16 colours, 1 256) is the sheet's depth
-        if ((le16(s.data, r.at + 0x1c) == 1) != (s.bpp() == 8)) continue;
+        if ((le16(s.data, r.at + 0x1c) == 1) != (s.bpp() == 8))
+            continue;
         try {
             const auto map = assets::decode_nscr(&s.data[r.at], r.size);
             bool fits = !map.cells.empty();
-            for (const auto& c : map.cells) fits = fits && c.tile < s.tiles;
-            if (fits) out.push_back({false, static_cast<int>(i), palette});
+            for (const auto& c : map.cells)
+                fits = fits && c.tile < s.tiles;
+            if (fits)
+                out.push_back({false, static_cast<int>(i), palette});
         } catch (const std::exception&) {
         }
     }
@@ -657,7 +749,8 @@ std::vector<Arrangement> fitting_arrangements(const SheetSource& s) {
                     fits = fits && t.first + t.wide * t.high <= s.tiles;
                 }
             }
-            if (fits) out.push_back({true, static_cast<int>(i), palette});
+            if (fits)
+                out.push_back({true, static_cast<int>(i), palette});
         } catch (const std::exception&) {
         }
     }
@@ -684,20 +777,24 @@ namespace {
 // Per row of `palette`, how many different colours it gives the indices the sheet uses.
 std::vector<int> row_colours(const SheetSource& s, const assets::Palette2D& palette) {
     std::vector<int> out;
-    if (palette.colors.empty()) return out;
+    if (palette.colors.empty())
+        return out;
     const SheetPixels p = game_sheet_pixels(s);
     std::vector<bool> used(s.bpp() == 8 ? 256 : 16, false);
     for (const std::uint32_t v : p.px) {
-        if (v != 0 && v < used.size()) used[v] = true;
+        if (v != 0 && v < used.size())
+            used[v] = true;
     }
     for (int row = 0; row < palette_rows(s, palette); ++row) {
         std::vector<std::uint32_t> seen;
         for (std::size_t i = 1; i < used.size(); ++i) {
-            if (!used[i]) continue;
+            if (!used[i])
+                continue;
             const auto c = colour(s, palette, row, static_cast<int>(i));
             const std::uint32_t k = static_cast<std::uint32_t>(c[0] >> 3) | static_cast<std::uint32_t>(c[1] >> 3) << 5 |
                                     static_cast<std::uint32_t>(c[2] >> 3) << 10;
-            if (std::find(seen.begin(), seen.end(), k) == seen.end()) seen.push_back(k);
+            if (std::find(seen.begin(), seen.end(), k) == seen.end())
+                seen.push_back(k);
         }
         out.push_back(static_cast<int>(seen.size()));
     }
@@ -718,7 +815,8 @@ int liveliest_row(const SheetSource& s, const assets::Palette2D& palette) {
 
 bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
     Assembly a;
@@ -736,26 +834,32 @@ bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::
             // the sheet as it is: its tiles in its rows, one palette row for all
             start(s.width(), s.height());
             for (int t = 0; t < s.tiles; ++t) {
-                const int own = static_cast<std::size_t>(t) < arr.rows.size() ? arr.rows[static_cast<std::size_t>(t)] : -1;
+                const int own =
+                    static_cast<std::size_t>(t) < arr.rows.size() ? arr.rows[static_cast<std::size_t>(t)] : -1;
                 place_tile(a, t % s.columns * 8, t / s.columns * 8, t, own >= 0 ? own : arr.row, false, false, true);
             }
         } else if (!arr.cells) {
-            if (arr.resource < 0 || static_cast<std::size_t>(arr.resource) >= s.screens.size()) return fail("no such screen");
+            if (arr.resource < 0 || static_cast<std::size_t>(arr.resource) >= s.screens.size())
+                return fail("no such screen");
             const auto& r = s.screens[static_cast<std::size_t>(arr.resource)];
             const auto map = assets::decode_nscr(&s.data[r.at], r.size);
-            if (map.width_tiles <= 0 || map.height_tiles <= 0) return fail("an empty screen");
+            if (map.width_tiles <= 0 || map.height_tiles <= 0)
+                return fail("an empty screen");
             start(map.width_tiles * 8, map.height_tiles * 8);
             for (int cy = 0; cy < map.height_tiles; ++cy) {
                 for (int cx = 0; cx < map.width_tiles; ++cx) {
                     const std::size_t i = screen_entry(map.width_tiles, map.height_tiles, cx, cy);
-                    if (i >= map.cells.size()) continue;
+                    if (i >= map.cells.size())
+                        continue;
                     const auto& c = map.cells[i];
-                    if (c.tile >= s.tiles) continue;
+                    if (c.tile >= s.tiles)
+                        continue;
                     place_tile(a, cx * 8, cy * 8, c.tile, c.palette, c.flip_h, c.flip_v, true);
                 }
             }
         } else {
-            if (arr.resource < 0 || static_cast<std::size_t>(arr.resource) >= s.cell_banks.size()) return fail("no such cell bank");
+            if (arr.resource < 0 || static_cast<std::size_t>(arr.resource) >= s.cell_banks.size())
+                return fail("no such cell bank");
             const auto& r = s.cell_banks[static_cast<std::size_t>(arr.resource)];
             const auto bank = assets::decode_ncer(&s.data[r.at], r.size);
             // each cell in its own box, side by side, rows no wider than 256 (or the widest cell)
@@ -785,7 +889,8 @@ bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::
             const int row_width = std::max(256, widest), gap = 4;
             int x = 0, y = 0, row_h = 0, total_w = 0;
             for (auto& b : boxes) {
-                if (b.w == 0) continue;
+                if (b.w == 0)
+                    continue;
                 if (x > 0 && x + b.w > row_width) {
                     x = 0;
                     y += row_h + gap;
@@ -797,7 +902,8 @@ bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::
                 row_h = std::max(row_h, b.h);
                 total_w = std::max(total_w, b.at_x + b.w);
             }
-            if (total_w == 0) return fail("a cell bank with no pieces");
+            if (total_w == 0)
+                return fail("a cell bank with no pieces");
             start(total_w, y + row_h);
             for (std::size_t c = 0; c < bank.cells.size(); ++c) {
                 const auto& cell = bank.cells[c];
@@ -809,7 +915,8 @@ bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::
                     for (int ty = 0; ty < t.high; ++ty) {
                         for (int tx = 0; tx < t.wide; ++tx) {
                             const int tile = t.first + ty * t.wide + tx;
-                            if (tile < 0 || tile >= s.tiles) continue;
+                            if (tile < 0 || tile >= s.tiles)
+                                continue;
                             // a flipped piece mirrors where each of its tiles goes, and the tile itself
                             const int ox = p.flip_h ? t.wide - 1 - tx : tx;
                             const int oy = p.flip_v ? t.high - 1 - ty : ty;
@@ -830,13 +937,15 @@ bool assemble(const SheetSource& s, const Arrangement& arr, Assembly* out, std::
 bool assemble_stack(const SheetSource& s, const std::vector<Arrangement>& list, Assembly* out, std::vector<int>* tops,
                     std::string* why) {
     if (list.empty()) {
-        if (why != nullptr) *why = "nothing chosen";
+        if (why != nullptr)
+            *why = "nothing chosen";
         return false;
     }
     std::vector<Assembly> parts(list.size());
     int width = 0, height = 0;
     for (std::size_t i = 0; i < list.size(); ++i) {
-        if (!assemble(s, list[i], &parts[i], why)) return false;
+        if (!assemble(s, list[i], &parts[i], why))
+            return false;
         width = std::max(width, parts[i].width);
         height += parts[i].height + (i > 0 ? 8 : 0);
     }
@@ -862,25 +971,31 @@ bool assemble_stack(const SheetSource& s, const std::vector<Arrangement>& list, 
             a.flipped[t] = a.flipped[t] || p.flipped[t];
             a.several_rows[t] = a.several_rows[t] || p.several_rows[t];
             if (p.row_of[t] >= 0) {
-                if (a.row_of[t] < 0) a.row_of[t] = p.row_of[t];
-                else if (a.row_of[t] != p.row_of[t]) a.several_rows[t] = true;
+                if (a.row_of[t] < 0)
+                    a.row_of[t] = p.row_of[t];
+                else if (a.row_of[t] != p.row_of[t])
+                    a.several_rows[t] = true;
             }
         }
-        for (const auto& spot : p.spots) a.spots.push_back({spot.x, spot.y + y0, spot.tile});
+        for (const auto& spot : p.spots)
+            a.spots.push_back({spot.x, spot.y + y0, spot.tile});
         a.overlaps += p.overlaps;
         y0 += p.height + 8;
     }
-    if (tops != nullptr) *tops = std::move(starts);
+    if (tops != nullptr)
+        *tops = std::move(starts);
     *out = std::move(a);
     return true;
 }
 
 assets::Palette2D arrangement_palette(const SheetSource& s, const Arrangement& a) {
-    if (a.palette < 0 || a.palette >= palette_count(s)) return {};
+    if (a.palette < 0 || a.palette >= palette_count(s))
+        return {};
     try {
         if (static_cast<std::size_t>(a.palette) >= s.palettes.size()) {
             const auto& n = s.nearby[static_cast<std::size_t>(a.palette) - s.palettes.size()];
-            if (n.bytes.empty()) return n.colours;
+            if (n.bytes.empty())
+                return n.colours;
             return assets::decode_nclr(n.bytes.data(), n.bytes.size());
         }
         const auto& r = s.palettes[static_cast<std::size_t>(a.palette)];
@@ -895,15 +1010,21 @@ float border_jump(const std::vector<std::uint8_t>& rgba, int width, int height) 
     long nb = 0, ni = 0;
     for (int y = 0; y < height; ++y) {
         for (int x = 1; x < width; ++x) {
-            const std::uint8_t* a = &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(width) + static_cast<std::size_t>(x) - 1) * 4];
+            const std::uint8_t* a = &rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+                                           static_cast<std::size_t>(x) - 1) *
+                                          4];
             const std::uint8_t* b = a + 4;
-            if (a[3] == 0 || b[3] == 0) continue;
+            if (a[3] == 0 || b[3] == 0)
+                continue;
             const int d = std::abs(a[0] - b[0]) + std::abs(a[1] - b[1]) + std::abs(a[2] - b[2]);
-            if (x % 8 == 0) border += d, ++nb;
-            else inside += d, ++ni;
+            if (x % 8 == 0)
+                border += d, ++nb;
+            else
+                inside += d, ++ni;
         }
     }
-    if (nb == 0 || ni == 0) return -1.0f;
+    if (nb == 0 || ni == 0)
+        return -1.0f;
     return static_cast<float>((border / static_cast<double>(nb)) / std::max(inside / static_cast<double>(ni), 1e-3));
 }
 
@@ -914,8 +1035,10 @@ std::vector<ArrangementScore> score_arrangements(const SheetSource& s, const std
     std::vector<bool> drawn(static_cast<std::size_t>(s.tiles), false);
     int drawn_count = 0;
     for (int t = 0; t < s.tiles; ++t) {
-        const std::uint8_t* src = &s.data[s.tiles_at + static_cast<std::size_t>(t) * static_cast<std::size_t>(s.tile_bytes)];
-        drawn[static_cast<std::size_t>(t)] = std::any_of(src, src + s.tile_bytes, [](std::uint8_t b) { return b != 0; });
+        const std::uint8_t* src =
+            &s.data[s.tiles_at + static_cast<std::size_t>(t) * static_cast<std::size_t>(s.tile_bytes)];
+        drawn[static_cast<std::size_t>(t)] =
+            std::any_of(src, src + s.tile_bytes, [](std::uint8_t b) { return b != 0; });
         drawn_count += drawn[static_cast<std::size_t>(t)] ? 1 : 0;
     }
     std::vector<ArrangementScore> out;
@@ -926,7 +1049,8 @@ std::vector<ArrangementScore> score_arrangements(const SheetSource& s, const std
         if (assemble(s, f, &one, nullptr)) {
             sc.jump = border_jump(render_assembly(s, one, small, arrangement_palette(s, f)), one.width, one.height);
             for (std::size_t t = 0; t < drawn.size(); ++t) {
-                if (drawn[t] && one.uses[t] > 0) sc.tiles.push_back(static_cast<int>(t));
+                if (drawn[t] && one.uses[t] > 0)
+                    sc.tiles.push_back(static_cast<int>(t));
             }
             sc.shown = drawn_count > 0 ? static_cast<float>(sc.tiles.size()) / static_cast<float>(drawn_count) : 0.0f;
         }
@@ -940,7 +1064,8 @@ std::vector<ArrangementScore> score_arrangements(const SheetSource& s, const std
                 for (int cy = 0; cy < map.height_tiles; ++cy) {
                     for (int cx = 0; cx < map.width_tiles; ++cx) {
                         const std::size_t i = screen_entry(map.width_tiles, map.height_tiles, cx, cy);
-                        if (i >= map.cells.size()) continue;
+                        if (i >= map.cells.size())
+                            continue;
                         const auto& c = map.cells[i];
                         const int k = cy * map.width_tiles + cx;
                         in_order += c.tile == k % 1024 && !c.flip_h && !c.flip_v ? 1 : 0;
@@ -969,29 +1094,37 @@ Ranked rank_arrangements(const SheetSource& s, const std::vector<Arrangement>& f
     std::vector<const ArrangementScore*> candidates;
     const ArrangementScore* standing = nullptr;
     for (const auto& sc : scores) {
-        if (sc.arrangement.whole || !joined(sc) || (sc.in_order && !sc.as_sheet)) continue;
-        if (!sc.as_sheet || sc.shown < 0.5f) candidates.push_back(&sc);
-        else if (standing == nullptr || sc.shown > standing->shown) standing = &sc;
+        if (sc.arrangement.whole || !joined(sc) || (sc.in_order && !sc.as_sheet))
+            continue;
+        if (!sc.as_sheet || sc.shown < 0.5f)
+            candidates.push_back(&sc);
+        else if (standing == nullptr || sc.shown > standing->shown)
+            standing = &sc;
     }
     if (standing != nullptr && whole != scores.end()) {
         Assembly by_screen;
-        if (s.bpp() == 4 && whole->arrangement.rows.empty() && assemble(s, standing->arrangement, &by_screen, nullptr)) {
+        if (s.bpp() == 4 && whole->arrangement.rows.empty() &&
+            assemble(s, standing->arrangement, &by_screen, nullptr)) {
             whole->arrangement.row = standing->row;
             whole->arrangement.rows = by_screen.row_of;
             Assembly one;
             if (assemble(s, whole->arrangement, &one, nullptr)) {
-                whole->jump = border_jump(render_assembly(s, one, rescale(current, 1), arrangement_palette(s, whole->arrangement)),
-                                          one.width, one.height);
+                whole->jump = border_jump(
+                    render_assembly(s, one, rescale(current, 1), arrangement_palette(s, whole->arrangement)), one.width,
+                    one.height);
             }
         }
-        if (joined(*whole)) candidates.push_back(&*whole);
+        if (joined(*whole))
+            candidates.push_back(&*whole);
     }
-    std::stable_sort(candidates.begin(), candidates.end(), [&](const auto* a, const auto* b) { return score(*a) > score(*b); });
+    std::stable_sort(candidates.begin(), candidates.end(),
+                     [&](const auto* a, const auto* b) { return score(*a) > score(*b); });
     // data with as many screens (cell banks) as sheets: the sheet's own first,
     // unless it draws far less of it than the best
     for (const bool cells : {true, false}) {
         const std::size_t count = cells ? s.cell_banks.size() : s.screens.size();
-        if (s.sheets_in_data < 2 || static_cast<int>(count) != s.sheets_in_data || candidates.empty()) continue;
+        if (s.sheets_in_data < 2 || static_cast<int>(count) != s.sheets_in_data || candidates.empty())
+            continue;
         const auto own = std::find_if(candidates.begin(), candidates.end(), [&](const auto* c) {
             return !c->arrangement.whole && c->arrangement.cells == cells && c->arrangement.resource == s.number;
         });
@@ -1005,16 +1138,21 @@ Ranked rank_arrangements(const SheetSource& s, const std::vector<Arrangement>& f
     std::vector<const ArrangementScore*> together;
     std::vector<bool> covered(static_cast<std::size_t>(s.tiles), false);
     std::size_t covered_count = 0, drawn_count = 0;
-    if (whole != scores.end()) drawn_count = whole->tiles.size();
+    if (whole != scores.end())
+        drawn_count = whole->tiles.size();
     for (const auto* c : candidates) {
         std::size_t again = 0;
-        for (const int t : c->tiles) again += covered[static_cast<std::size_t>(t)] ? 1 : 0;
-        if (!together.empty() && (c->arrangement.whole || again * 4 > c->tiles.size())) continue;
+        for (const int t : c->tiles)
+            again += covered[static_cast<std::size_t>(t)] ? 1 : 0;
+        if (!together.empty() && (c->arrangement.whole || again * 4 > c->tiles.size()))
+            continue;
         together.push_back(c);
         for (const int t : c->tiles) {
-            if (!covered[static_cast<std::size_t>(t)]) covered[static_cast<std::size_t>(t)] = true, ++covered_count;
+            if (!covered[static_cast<std::size_t>(t)])
+                covered[static_cast<std::size_t>(t)] = true, ++covered_count;
         }
-        if (c->arrangement.whole) break;
+        if (c->arrangement.whole)
+            break;
     }
     // together they show under half the sheet and the sheet as it is joins up
     // better: the sheet as it is (with none joining up, the order below: a
@@ -1024,27 +1162,33 @@ Ranked rank_arrangements(const SheetSource& s, const std::vector<Arrangement>& f
         together.assign(1, &*whole);
     }
     Ranked out;
-    for (const auto* c : together) out.order.push_back(c->arrangement);
+    for (const auto* c : together)
+        out.order.push_back(c->arrangement);
     out.together = std::max<std::size_t>(1, together.size());
     // the rest: those that join up best, those that draw nothing last, the
     // sheet as it is after them (first when none draws anything)
     std::vector<const ArrangementScore*> rest;
     for (const auto& sc : scores) {
-        if (std::find(together.begin(), together.end(), &sc) == together.end()) rest.push_back(&sc);
+        if (std::find(together.begin(), together.end(), &sc) == together.end())
+            rest.push_back(&sc);
     }
     bool any_drawn = false;
-    for (const auto* r : rest) any_drawn = any_drawn || (!r->arrangement.whole && r->jump >= 0);
+    for (const auto* r : rest)
+        any_drawn = any_drawn || (!r->arrangement.whole && r->jump >= 0);
     auto key = [&](const ArrangementScore* r) {
-        if (r->arrangement.whole) return any_drawn ? 1e30f : -1.0f;
+        if (r->arrangement.whole)
+            return any_drawn ? 1e30f : -1.0f;
         return r->jump < 0 ? 2e30f : r->jump;
     };
     std::stable_sort(rest.begin(), rest.end(), [&](const auto* a, const auto* b) { return key(a) < key(b); });
-    for (const auto* r : rest) out.order.push_back(r->arrangement);
+    for (const auto* r : rest)
+        out.order.push_back(r->arrangement);
     return out;
 }
 
 SheetPixels rescale(const SheetPixels& p, int scale) {
-    if (scale == p.scale) return p;
+    if (scale == p.scale)
+        return p;
     SheetPixels o;
     o.scale = scale;
     o.indexed = p.indexed;
@@ -1070,16 +1214,21 @@ std::vector<std::uint8_t> render_assembly(const SheetSource& s, const Assembly& 
     std::vector<std::uint8_t> out(static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4, 0);
     for (int Y = 0; Y < h; ++Y) {
         for (int X = 0; X < w; ++X) {
-            const Place& pl = a.places[static_cast<std::size_t>(Y / k) * static_cast<std::size_t>(a.width) + static_cast<std::size_t>(X / k)];
-            if (pl.tile < 0) continue;
+            const Place& pl = a.places[static_cast<std::size_t>(Y / k) * static_cast<std::size_t>(a.width) +
+                                       static_cast<std::size_t>(X / k)];
+            if (pl.tile < 0)
+                continue;
             const std::uint32_t v = p.px[sheet_index(s, pl, X, Y, k, p.width)];
-            std::uint8_t* o = &out[(static_cast<std::size_t>(Y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(X)) * 4];
+            std::uint8_t* o =
+                &out[(static_cast<std::size_t>(Y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(X)) * 4];
             if (p.indexed) {
-                if (v == 0) continue;  // transparent
+                if (v == 0)
+                    continue;  // transparent
                 const auto c = colour(s, palette, pl.row, static_cast<int>(v));
                 o[0] = c[0], o[1] = c[1], o[2] = c[2], o[3] = 255;
             } else {
-                for (int c = 0; c < 4; ++c) o[c] = static_cast<std::uint8_t>(v >> (8 * c));
+                for (int c = 0; c < 4; ++c)
+                    o[c] = static_cast<std::uint8_t>(v >> (8 * c));
             }
         }
     }
@@ -1090,13 +1239,17 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
                const std::vector<std::uint8_t>& edited, int w, int h, Colours colours, bool all_changed, TakeBack* out,
                std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
-    if (a.width <= 0 || w % a.width != 0) return fail("the picture is not the assembled picture's size times a whole number");
+    if (a.width <= 0 || w % a.width != 0)
+        return fail("the picture is not the assembled picture's size times a whole number");
     const int k = w / a.width;
-    if (k < 1 || k > 255 || h != k * a.height) return fail("the picture is not the assembled picture's size times a whole number");
-    if (edited.size() != static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4) return fail("the picture's pixels are missing");
+    if (k < 1 || k > 255 || h != k * a.height)
+        return fail("the picture is not the assembled picture's size times a whole number");
+    if (edited.size() != static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4)
+        return fail("the picture's pixels are missing");
 
     const assets::Palette2D palette = effective(s, chosen);
     const int per = s.bpp() == 8 ? 256 : 16;
@@ -1111,7 +1264,8 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
     };
     auto row_map = [&](int row) -> const std::unordered_map<std::uint32_t, int>& {
         auto it = exact.find(row);
-        if (it != exact.end()) return it->second;
+        if (it != exact.end())
+            return it->second;
         std::unordered_map<std::uint32_t, int> m;
         for (int i = per - 1; i >= 1; --i) {  // index 0 is transparent: never an opaque pixel's
             const auto c = colour(s, palette, row, i);
@@ -1129,7 +1283,8 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
                 const long e = static_cast<long>(p[static_cast<std::size_t>(ch)]) - static_cast<long>(c[ch]);
                 d += e * e;
             }
-            if (best_d < 0 || d < best_d) best_d = d, best = i;
+            if (best_d < 0 || d < best_d)
+                best_d = d, best = i;
         }
         return best;
     };
@@ -1145,24 +1300,31 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
     std::vector<Change> changes;
     for (int Y = 0; Y < h; ++Y) {
         for (int X = 0; X < w; ++X) {
-            const std::size_t i = (static_cast<std::size_t>(Y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(X)) * 4;
+            const std::size_t i =
+                (static_cast<std::size_t>(Y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(X)) * 4;
             const bool differs = std::memcmp(&edited[i], &before[i], 4) != 0 &&
                                  !(edited[i + 3] < 128 && before[i + 3] < 128);  // transparent either way
-            const Place& pl = a.places[static_cast<std::size_t>(Y / k) * static_cast<std::size_t>(a.width) + static_cast<std::size_t>(X / k)];
+            const Place& pl = a.places[static_cast<std::size_t>(Y / k) * static_cast<std::size_t>(a.width) +
+                                       static_cast<std::size_t>(X / k)];
             if (pl.tile < 0) {
-                if (differs) ++t.outside;
+                if (differs)
+                    ++t.outside;
                 continue;
             }
-            if (!differs && !all_changed) continue;
-            if (differs) ++t.changed;
+            if (!differs && !all_changed)
+                continue;
+            if (differs)
+                ++t.changed;
             const std::uint32_t c = edited[i + 3] < 128 ? 0u : rgba(edited[i], edited[i + 1], edited[i + 2], 255);
-            if (c != 0 && row_map(pl.row).count(key5(&edited[i])) == 0) ++t.off_palette;
+            if (c != 0 && row_map(pl.row).count(key5(&edited[i])) == 0)
+                ++t.off_palette;
             changes.push_back({sheet_index(s, pl, X, Y, k, base.width), c, pl.row, pl.tile});
         }
     }
 
     // the sheet's form: the game's palettes when every change is one of them (or fitted), else its own colours
-    const bool indexed = base.indexed && (colours == Colours::fit || (colours == Colours::automatic && t.off_palette == 0));
+    const bool indexed =
+        base.indexed && (colours == Colours::fit || (colours == Colours::automatic && t.off_palette == 0));
     SheetPixels sheet = base;
     if (base.indexed && !indexed) {
         // its own colours: each tile with the palette row its first place here has
@@ -1173,39 +1335,49 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
             const int tx = tile % s.columns * 8 * k, ty = tile / s.columns * 8 * k;
             for (int y = 0; y < 8 * k; ++y) {
                 for (int x = 0; x < 8 * k; ++x) {
-                    std::uint32_t& v = sheet.px[static_cast<std::size_t>(ty + y) * static_cast<std::size_t>(sheet.width) + static_cast<std::size_t>(tx + x)];
-                    if (v == 0) continue;
+                    std::uint32_t& v =
+                        sheet.px[static_cast<std::size_t>(ty + y) * static_cast<std::size_t>(sheet.width) +
+                                 static_cast<std::size_t>(tx + x)];
+                    if (v == 0)
+                        continue;
                     any = true;
                     const auto c = colour(s, palette, row < 0 ? 0 : row, static_cast<int>(v));
                     v = rgba(c[0], c[1], c[2], 255);
                 }
             }
-            if (row < 0 && any) ++t.unplaced_coloured;
-            if (a.several_rows[static_cast<std::size_t>(tile)]) t.several_rows.push_back(tile);
+            if (row < 0 && any)
+                ++t.unplaced_coloured;
+            if (a.several_rows[static_cast<std::size_t>(tile)])
+                t.several_rows.push_back(tile);
         }
     }
     std::unordered_map<std::size_t, std::uint32_t> written;
-    std::vector<bool> conflict(static_cast<std::size_t>(s.tiles), false), touched(static_cast<std::size_t>(s.tiles), false);
+    std::vector<bool> conflict(static_cast<std::size_t>(s.tiles), false),
+        touched(static_cast<std::size_t>(s.tiles), false);
     for (const Change& ch : changes) {
         std::uint32_t v = ch.rgba;
         if (indexed && v != 0) {
-            const std::uint8_t c[3] = {static_cast<std::uint8_t>(v), static_cast<std::uint8_t>(v >> 8), static_cast<std::uint8_t>(v >> 16)};
+            const std::uint8_t c[3] = {static_cast<std::uint8_t>(v), static_cast<std::uint8_t>(v >> 8),
+                                       static_cast<std::uint8_t>(v >> 16)};
             // the index there when it already has that colour (a palette may hold a colour twice, and
             // the tile may be drawn with other rows too); else the colour's first index, else the nearest
             const std::uint32_t was = base.px[ch.at];
             const auto now = colour(s, palette, ch.row, static_cast<int>(was));
             const auto& m = row_map(ch.row);
             const auto found = m.find(key5(c));
-            v = was != 0 && key5(now.data()) == key5(c) ? was
-                : static_cast<std::uint32_t>(found != m.end() ? found->second : nearest(ch.row, c));
+            v = was != 0 && key5(now.data()) == key5(c)
+                    ? was
+                    : static_cast<std::uint32_t>(found != m.end() ? found->second : nearest(ch.row, c));
         } else if (!indexed && v != 0 && colours == Colours::fit) {
-            const std::uint8_t c[3] = {static_cast<std::uint8_t>(v), static_cast<std::uint8_t>(v >> 8), static_cast<std::uint8_t>(v >> 16)};
+            const std::uint8_t c[3] = {static_cast<std::uint8_t>(v), static_cast<std::uint8_t>(v >> 8),
+                                       static_cast<std::uint8_t>(v >> 16)};
             const auto p = colour(s, palette, ch.row, nearest(ch.row, c));
             v = rgba(p[0], p[1], p[2], 255);
         }
         const auto [it, inserted] = written.emplace(ch.at, v);
         if (!inserted) {
-            if (it->second != v) conflict[static_cast<std::size_t>(ch.tile)] = true;
+            if (it->second != v)
+                conflict[static_cast<std::size_t>(ch.tile)] = true;
             continue;  // the first change there stays
         }
         sheet.px[ch.at] = v;
@@ -1213,10 +1385,14 @@ bool take_back(const SheetSource& s, const Assembly& a, const SheetPixels& curre
     }
     for (int tile = 0; tile < s.tiles; ++tile) {
         const auto i = static_cast<std::size_t>(tile);
-        if (conflict[i]) t.conflicts.push_back(tile);
-        if (!touched[i] || all_changed) continue;
-        if (a.uses[i] > 1) t.repeated.push_back(tile);
-        if (a.flipped[i]) t.flipped.push_back(tile);
+        if (conflict[i])
+            t.conflicts.push_back(tile);
+        if (!touched[i] || all_changed)
+            continue;
+        if (a.uses[i] > 1)
+            t.repeated.push_back(tile);
+        if (a.flipped[i])
+            t.flipped.push_back(tile);
     }
     t.sheet = std::move(sheet);
     *out = std::move(t);
@@ -1228,10 +1404,12 @@ SheetPixels current_sheet(const fs::path& mod_dir, const std::string& key, const
     std::error_code ec;
     SheetPixels p;
     if (!mod_dir.empty() && fs::is_regular_file(file, ec) && read_sheet_png(file, s, &p, nullptr)) {
-        if (from != nullptr) *from = file;
+        if (from != nullptr)
+            *from = file;
         return p;
     }
-    if (from != nullptr) from->clear();
+    if (from != nullptr)
+        from->clear();
     return game_sheet_pixels(s);
 }
 
@@ -1240,15 +1418,18 @@ std::vector<std::array<std::uint8_t, 4>> display_colours(const SheetSource& s, c
     const assets::Palette2D palette = effective(s, chosen);
     std::map<int, int> rows;
     for (const int r : a.row_of) {
-        if (r >= 0) ++rows[r];
+        if (r >= 0)
+            ++rows[r];
     }
     int row = 0, most = 0;
     for (const auto& [r, n] : rows) {
-        if (n > most) row = r, most = n;
+        if (n > most)
+            row = r, most = n;
     }
     const int per = s.bpp() == 8 ? 256 : 16;
     std::vector<std::array<std::uint8_t, 4>> out;
-    for (int i = 0; i < per; ++i) out.push_back(colour(s, palette, row, i));
+    for (int i = 0; i < per; ++i)
+        out.push_back(colour(s, palette, row, i));
     return out;
 }
 
@@ -1260,17 +1441,20 @@ bool save_sheet(const fs::path& mod_dir, const std::string& key, const SheetSour
         [&](const fs::path& temporary) -> std::string {
             SheetPixels back;
             std::string problem;
-            if (!read_sheet_png(temporary, s, &back, &problem)) return "the port would not draw it: " + problem;
+            if (!read_sheet_png(temporary, s, &back, &problem))
+                return "the port would not draw it: " + problem;
             if (back.indexed != sheet.indexed || back.scale != sheet.scale || back.px != sheet.px) {
                 return "it does not read back as written";
             }
             return {};
         });
     if (!r.ok) {
-        if (why != nullptr) *why = r.why;
+        if (why != nullptr)
+            *why = r.why;
         return false;
     }
-    if (written != nullptr) *written = destination;
+    if (written != nullptr)
+        *written = destination;
     return true;
 }
 
@@ -1284,7 +1468,8 @@ fs::path tile_rows_file(const fs::path& mod_dir, const std::string& key) {
 
 std::vector<int> read_tile_rows(const fs::path& mod_dir, const std::string& key, int tiles) {
     std::vector<int> rows;
-    if (mod_dir.empty() || tiles <= 0) return rows;
+    if (mod_dir.empty() || tiles <= 0)
+        return rows;
     std::ifstream in(tile_rows_file(mod_dir, key));
     std::string line;
     while (std::getline(in, line)) {
@@ -1292,15 +1477,20 @@ std::vector<int> read_tile_rows(const fs::path& mod_dir, const std::string& key,
         char* at = line.data();
         char* end = nullptr;
         const long first = std::strtol(at, &end, 10);
-        if (end == at || *end != '-') continue;
+        if (end == at || *end != '-')
+            continue;
         at = end + 1;
         const long last = std::strtol(at, &end, 10);
-        if (end == at) continue;
+        if (end == at)
+            continue;
         at = end;
         const long row = std::strtol(at, &end, 10);
-        if (end == at || first < 0 || last < first || row < 0 || row > 255) continue;
-        if (rows.empty()) rows.assign(static_cast<std::size_t>(tiles), -1);
-        for (long t = first; t <= last && t < tiles; ++t) rows[static_cast<std::size_t>(t)] = static_cast<int>(row);
+        if (end == at || first < 0 || last < first || row < 0 || row > 255)
+            continue;
+        if (rows.empty())
+            rows.assign(static_cast<std::size_t>(tiles), -1);
+        for (long t = first; t <= last && t < tiles; ++t)
+            rows[static_cast<std::size_t>(t)] = static_cast<int>(row);
     }
     return rows;
 }
@@ -1310,8 +1500,10 @@ std::string write_tile_rows(const fs::path& mod_dir, const std::string& key, con
     std::string text;
     for (std::size_t t = 0; t < rows.size();) {
         std::size_t end = t;
-        while (end + 1 < rows.size() && rows[end + 1] == rows[t]) ++end;
-        if (rows[t] >= 0) text += std::to_string(t) + "-" + std::to_string(end) + " " + std::to_string(rows[t]) + "\n";
+        while (end + 1 < rows.size() && rows[end + 1] == rows[t])
+            ++end;
+        if (rows[t] >= 0)
+            text += std::to_string(t) + "-" + std::to_string(end) + " " + std::to_string(rows[t]) + "\n";
         t = end + 1;
     }
     std::error_code ec;
@@ -1339,7 +1531,8 @@ bool check_all_sheets(const fs::path& nitrofs, const std::function<void(const st
     std::error_code ec;
     for (fs::recursive_directory_iterator it(nitrofs, ec), end; !ec && it != end; it.increment(ec)) {
         std::error_code type_ec;
-        if (it->is_regular_file(type_ec)) files.push_back(u8(it->path().lexically_relative(nitrofs)));
+        if (it->is_regular_file(type_ec))
+            files.push_back(u8(it->path().lexically_relative(nitrofs)));
     }
     std::sort(files.begin(), files.end());
     int sheets = 0, arranged = 0, screens = 0, banks = 0, wholes = 0, problems = 0, overlapping = 0, conflicts = 0;
@@ -1348,19 +1541,23 @@ bool check_all_sheets(const fs::path& nitrofs, const std::function<void(const st
             // the sheets as names.cpp numbers them
             int count = 0;
             for (std::size_t at = 0; at + 0x18 <= data.bytes.size(); at += 4) {
-                if (std::memcmp(&data.bytes[at], "RGCN", 4) == 0) ++count;
+                if (std::memcmp(&data.bytes[at], "RGCN", 4) == 0)
+                    ++count;
             }
             for (int n = 0; n < count; ++n) {
                 SheetSource s;
-                if (!sheet_source(data.bytes, data.label, n, &s, nullptr)) break;
+                if (!sheet_source(data.bytes, data.label, n, &s, nullptr))
+                    break;
                 borrow_arrangements(nitrofs, &s);
                 ++sheets;
                 const auto arrangements = fitting_arrangements(s);
-                if (arrangements.size() > 1) ++arranged;  // besides the sheet as it is
+                if (arrangements.size() > 1)
+                    ++arranged;  // besides the sheet as it is
                 const SheetPixels game = game_sheet_pixels(s);
                 for (const auto& arr : arrangements) {
-                    const std::string where = data.label + "/chr/" + std::to_string(n) +
-                                              (arr.whole ? " as it is" : (arr.cells ? " cells " : " screen ") + std::to_string(arr.resource));
+                    const std::string where =
+                        data.label + "/chr/" + std::to_string(n) +
+                        (arr.whole ? " as it is" : (arr.cells ? " cells " : " screen ") + std::to_string(arr.resource));
                     (arr.whole ? wholes : arr.cells ? banks : screens) += 1;
                     Assembly a;
                     std::string why;
@@ -1369,21 +1566,24 @@ bool check_all_sheets(const fs::path& nitrofs, const std::function<void(const st
                         line(where + ": not assembled: " + why);
                         continue;
                     }
-                    if (a.overlaps > 0) ++overlapping;
+                    if (a.overlaps > 0)
+                        ++overlapping;
                     const auto palette = arrangement_palette(s, arr);
                     // at 1x and 2x: the picture taken back whole draws the same picture
                     for (const int k : {1, 2}) {
                         const SheetPixels from = rescale(game, k);
                         const auto picture = render_assembly(s, a, from, palette);
                         TakeBack t;
-                        if (!take_back(s, a, from, palette, picture, a.width * k, a.height * k, Colours::automatic, true, &t,
-                                       &why)) {
+                        if (!take_back(s, a, from, palette, picture, a.width * k, a.height * k, Colours::automatic,
+                                       true, &t, &why)) {
                             ++problems;
                             line(where + ": not taken back: " + why);
                             break;
                         }
-                        if (!t.conflicts.empty()) ++conflicts;
-                        if (!t.sheet.indexed || t.off_palette != 0 || render_assembly(s, a, t.sheet, palette) != picture) {
+                        if (!t.conflicts.empty())
+                            ++conflicts;
+                        if (!t.sheet.indexed || t.off_palette != 0 ||
+                            render_assembly(s, a, t.sheet, palette) != picture) {
                             ++problems;
                             line(where + " at " + std::to_string(k) + "x: taken back, it draws differently (" +
                                  std::to_string(t.off_palette) + " pixels off its palette)");
@@ -1396,16 +1596,17 @@ bool check_all_sheets(const fs::path& nitrofs, const std::function<void(const st
     }
     line(std::to_string(sheets) + " sheets, " + std::to_string(arranged) + " with a screen or cells that fit; " +
          std::to_string(screens) + " screens, " + std::to_string(banks) + " cell banks and " + std::to_string(wholes) +
-         " sheets as they are assembled, " +
-         std::to_string(overlapping) + " with overlapping pieces, " + std::to_string(conflicts) +
-         " with one sheet pixel drawn in two colours; " + std::to_string(problems) + " problems");
+         " sheets as they are assembled, " + std::to_string(overlapping) + " with overlapping pieces, " +
+         std::to_string(conflicts) + " with one sheet pixel drawn in two colours; " + std::to_string(problems) +
+         " problems");
     return problems == 0;
 }
 
 SheetChoice default_choice(const SheetSource& s, const SheetPixels& current) {
     SheetChoice c;
     const auto fits = fitting_arrangements(s);
-    if (fits.empty()) return c;
+    if (fits.empty())
+        return c;
     c.palette = fits.front().palette;
     // those that show the sheet joined up first, the ones sharing out its
     // tiles chosen together
@@ -1413,7 +1614,8 @@ SheetChoice default_choice(const SheetSource& s, const SheetPixels& current) {
     c.order = std::move(ranked.order);
     c.together = std::min(ranked.together, c.order.size());
     for (const auto& f : c.order) {
-        if (f.whole) c.row = f.row, c.screen_rows = f.rows;
+        if (f.whole)
+            c.row = f.row, c.screen_rows = f.rows;
     }
     return c;
 }
@@ -1421,25 +1623,30 @@ SheetChoice default_choice(const SheetSource& s, const SheetPixels& current) {
 Arrangement coloured_as(Arrangement a, int palette, int row, const std::vector<int>& tile_rows) {
     a.palette = palette;
     a.row = row;
-    if (a.whole) a.rows = tile_rows;
+    if (a.whole)
+        a.rows = tile_rows;
     return a;
 }
 
-bool default_sheet_picture(const SheetSource& s, const fs::path& mod_dir, const std::string& key, std::vector<std::uint8_t>* rgba,
-                           int* w, int* h, std::string* why) {
+bool default_sheet_picture(const SheetSource& s, const fs::path& mod_dir, const std::string& key,
+                           std::vector<std::uint8_t>* rgba, int* w, int* h, std::string* why) {
     const SheetPixels current = current_sheet(mod_dir, key, s, nullptr);
     const SheetChoice c = default_choice(s, current);
     // the rows the modder gave its tiles, else those of the screen standing for it
     std::vector<int> rows = read_tile_rows(mod_dir, key, s.tiles);
-    if (rows.empty()) rows = c.screen_rows;
+    if (rows.empty())
+        rows = c.screen_rows;
     std::vector<Arrangement> list;
-    for (std::size_t i = 0; i < c.together; ++i) list.push_back(coloured_as(c.order[i], c.palette, c.row, rows));
+    for (std::size_t i = 0; i < c.together; ++i)
+        list.push_back(coloured_as(c.order[i], c.palette, c.row, rows));
     if (list.empty()) {
-        if (why != nullptr) *why = "nothing to assemble it with";
+        if (why != nullptr)
+            *why = "nothing to assemble it with";
         return false;
     }
     Assembly a;
-    if (!assemble_stack(s, list, &a, nullptr, why)) return false;
+    if (!assemble_stack(s, list, &a, nullptr, why))
+        return false;
     Arrangement with_palette;
     with_palette.palette = c.palette;
     *rgba = render_assembly(s, a, current, arrangement_palette(s, with_palette));
@@ -1449,28 +1656,33 @@ bool default_sheet_picture(const SheetSource& s, const fs::path& mod_dir, const 
 }
 
 int export_sheets(const fs::path& nitrofs, const fs::path& dump, const fs::path& mod_dir, const fs::path& folder,
-                  const std::function<bool(std::size_t, std::size_t, const std::string&)>& each, std::vector<std::string>* failed) {
+                  const std::function<bool(std::size_t, std::size_t, const std::string&)>& each,
+                  std::vector<std::string>* failed) {
     std::vector<std::string> files;
     std::error_code ec;
     for (fs::recursive_directory_iterator it(nitrofs, ec), end; !ec && it != end; it.increment(ec)) {
         std::error_code type_ec;
-        if (it->is_regular_file(type_ec)) files.push_back(u8(it->path().lexically_relative(nitrofs)));
+        if (it->is_regular_file(type_ec))
+            files.push_back(u8(it->path().lexically_relative(nitrofs)));
     }
     std::sort(files.begin(), files.end());
     int written = 0;
     for (std::size_t f = 0; f < files.size(); ++f) {
-        if (!each(f, files.size(), std::string())) return written;
+        if (!each(f, files.size(), std::string()))
+            return written;
         for (auto& data : game_file_data(nitrofs, files[f])) {
             // the sheets as names.cpp numbers them
             int count = 0;
             for (std::size_t at = 0; at + 0x18 <= data.bytes.size(); at += 4) {
-                if (std::memcmp(&data.bytes[at], "RGCN", 4) == 0) ++count;
+                if (std::memcmp(&data.bytes[at], "RGCN", 4) == 0)
+                    ++count;
             }
             for (int n = 0; n < count; ++n) {
                 const std::string key = data.label + "/chr/" + std::to_string(n);
                 SheetSource s;
                 std::string why;
-                if (!sheet_source(data.bytes, data.label, n, &s, nullptr)) break;
+                if (!sheet_source(data.bytes, data.label, n, &s, nullptr))
+                    break;
                 borrow_arrangements(nitrofs, &s);
                 gather_nearby(nitrofs, &s);
                 take_seen_colours(dump, key, &s);
@@ -1478,16 +1690,19 @@ int export_sheets(const fs::path& nitrofs, const fs::path& dump, const fs::path&
                 int w = 0, h = 0;
                 const fs::path out = folder / path_u8(key + ".png");
                 if (!default_sheet_picture(s, mod_dir, key, &rgba, &w, &h, &why)) {
-                    if (failed != nullptr) failed->push_back(key + ": " + why);
+                    if (failed != nullptr)
+                        failed->push_back(key + ": " + why);
                     continue;
                 }
                 fs::create_directories(out.parent_path(), ec);
                 if (const char* e = khdays_png_write(u8(out).c_str(), rgba.data(), w, h)) {
-                    if (failed != nullptr) failed->push_back(key + ": " + e);
+                    if (failed != nullptr)
+                        failed->push_back(key + ": " + e);
                     continue;
                 }
                 ++written;
-                if (!each(f, files.size(), key)) return written;
+                if (!each(f, files.size(), key))
+                    return written;
             }
         }
     }

@@ -3,6 +3,7 @@ own code reads them, from our own reverse engineering (installer/README.md, "How
   python collection_archive.py <archive without .hed/.pkg> <out folder> <kh2 exe> <path> [<path> ...]
 writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -15,7 +16,7 @@ from pathlib import Path
 # The game's S-box, recognised by its digest (its bytes stay in the player's executable).
 TABLE_SHA256 = "759b2f22f7e0bfd257063a01f3de0c0835905217aa926df6def134a14313672d"
 TABLE_OFFSETS = (0x710940,)  # where Steam's KINGDOM HEARTS II FINAL MIX.exe has it (8,659,216 bytes)
-RCON = (0, 1, 2, 4, 8, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36)
+RCON = (0, 1, 2, 4, 8, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36)
 ENTRY = struct.Struct("<16sqii")
 HEADER = struct.Struct("<iiii")
 ASSET = struct.Struct("<32siiii")
@@ -31,11 +32,11 @@ def load_table(exe: Path) -> bytes:
     whose 256 bytes have its digest."""
     data = exe.read_bytes()
     for offset in TABLE_OFFSETS:
-        window = data[offset:offset + 256]
+        window = data[offset : offset + 256]
         if hashlib.sha256(window).hexdigest() == TABLE_SHA256:
             return window
     for offset in range(0, len(data) - 255, 16):
-        window = data[offset:offset + 256]
+        window = data[offset : offset + 256]
         if hashlib.sha256(window).hexdigest() == TABLE_SHA256:
             return window
     raise ArchiveError(f"{exe} does not hold the collections' archive table")
@@ -57,8 +58,8 @@ class Cipher:
         for i in range(4, 44):
             t = w[i - 1]
             if i % 4 == 0:
-                t = ((t >> 8) | (t << 24)) & 0xffffffff  # RotWord: bytes b1 b2 b3 b0
-                t = t_[t & 0xff] | t_[(t >> 8) & 0xff] << 8 | t_[(t >> 16) & 0xff] << 16 | t_[t >> 24] << 24
+                t = ((t >> 8) | (t << 24)) & 0xFFFFFFFF  # RotWord: bytes b1 b2 b3 b0
+                t = t_[t & 0xFF] | t_[(t >> 8) & 0xFF] << 8 | t_[(t >> 16) & 0xFF] << 16 | t_[t >> 24] << 24
                 t ^= RCON[i // 4]
             w.append(w[i - 4] ^ t)
         m = [0, 0, 0, 0]
@@ -159,8 +160,9 @@ class Archive:
         at = data_at + (stored if stored > 0 else (length + 15) & ~15)
         for name, _f20, _f24, alength, astored in records:
             self.pkg.seek(at)
-            entry.assets.append((name.split(b"\0", 1)[0].decode("ascii", "replace"),
-                                 self._payload(header, alength, astored)))
+            entry.assets.append(
+                (name.split(b"\0", 1)[0].decode("ascii", "replace"), self._payload(header, alength, astored))
+            )
             at += astored if astored > 0 else (alength + 15) & ~15
         return entry
 

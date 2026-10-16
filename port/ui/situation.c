@@ -4,14 +4,14 @@
 #include <string.h>
 
 static const char *const scene_names[KHDAYS_SITUATIONS] = {
-    "intro", "title", "load-menu", "save-menu", "settings", "day-counter", "movie",
-    "field", "camp-menu", "pause", "tutorial", "field-3d-both", "mission-review", "shop",
-    "thoughts", "world-selector", "game-over", "the-end", "unknown",
+    "intro",    "title",          "load-menu", "save-menu", "settings",      "day-counter",    "movie",
+    "field",    "camp-menu",      "pause",     "tutorial",  "field-3d-both", "mission-review", "shop",
+    "thoughts", "world-selector", "game-over", "the-end",   "unknown",
 };
 
 static const char *const state_names[KHDAYS_STATES] = {
-    "hud", "dialog", "challenge", "info-upper", "info-lower", "lower-3d",
-    "party-4", "info-new", "mission-panel", "title-lit", "event",
+    "hud",     "dialog",   "challenge",     "info-upper", "info-lower", "lower-3d",
+    "party-4", "info-new", "mission-panel", "title-lit",  "event",
 };
 
 const char *khdays_situation_name(int scene)
@@ -43,4 +43,3 @@ int khdays_situation_state_named(const char *name, int length)
 {
     return named(state_names, KHDAYS_STATES, name, length);
 }
-

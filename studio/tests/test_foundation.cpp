@@ -25,7 +25,8 @@ std::string read(const fs::path& file) {
 
 const Item* find(const Catalog& c, Kind kind, const std::string& key) {
     for (const auto& item : c.items) {
-        if (item.kind == kind && item.key == key) return &item;
+        if (item.kind == kind && item.key == key)
+            return &item;
     }
     return nullptr;
 }
@@ -73,8 +74,8 @@ TEST(settings_defaults_and_bad_file) {
 TEST(catalog_from_dumps_and_game_files) {
     const fs::path root = studio_test::scratch("catalog");
     const fs::path g = root / "graphics", s = root / "sounds", n = root / "nitrofs";
-    for (const char* f : {"a/b.p.z/tex/t1@p1.png", "a/b.p.z/tex/t1@p2.png", "a/b.p.z/chr/0.png",
-                          "c/d.p2#0/mdl/m.gltf", "a/b.p.z/mdl/notes.txt"}) {
+    for (const char* f : {"a/b.p.z/tex/t1@p1.png", "a/b.p.z/tex/t1@p2.png", "a/b.p.z/chr/0.png", "c/d.p2#0/mdl/m.gltf",
+                          "a/b.p.z/mdl/notes.txt"}) {
         studio_test::write(g / path_u8(f), "x");
     }
     for (const char* f : {"seq/BGM_01.wav", "seqarc/ARC/3.wav", "strm/S.wav", "wave/W/0.wav", "other/x.wav"}) {
@@ -194,7 +195,8 @@ TEST(model_removed_with_its_companions) {
     const fs::path mdl = mod / "graphics/x/mdl";
     auto gltf = [](const std::vector<std::string>& images) {
         std::string s = R"({"asset":{"version":"2.0"},"images":[)";
-        for (std::size_t i = 0; i < images.size(); ++i) s += (i ? "," : "") + std::string(R"({"uri":")") + images[i] + "\"}";
+        for (std::size_t i = 0; i < images.size(); ++i)
+            s += (i ? "," : "") + std::string(R"({"uri":")") + images[i] + "\"}";
         return s + "]}";
     };
     studio_test::write(mdl / "m.gltf", gltf({"m.png", "shared.png"}));
@@ -209,7 +211,7 @@ TEST(model_removed_with_its_companions) {
     m.kind = Kind::model;
     m.key = "x/mdl/m";
     CHECK(remove_replacement(mod, m, nullptr));
-    CHECK(!fs::exists(mdl / "m.gltf") && !fs::exists(mdl / "m.png"));  // its own texture went with it
+    CHECK(!fs::exists(mdl / "m.gltf") && !fs::exists(mdl / "m.png"));     // its own texture went with it
     CHECK(fs::exists(mdl / "shared.png") && fs::exists(mdl / "n.gltf"));  // n still names it
     CHECK(remove_mod_file(mod, mdl / "old.png", nullptr) && !fs::exists(mdl / "old.png"));
     CHECK(!remove_mod_file(mod, mod.parent_path() / "outside.png", nullptr));
@@ -296,7 +298,8 @@ TEST(the_catalog_as_folders) {
     // kinds mixed: the model is the def.p.z folder's own item, its textures inside
     t = build_catalog_tree(c, all, false);
     const int model = t.node_of_item[0];
-    CHECK(t.nodes[static_cast<std::size_t>(model)].item == 0 && t.nodes[static_cast<std::size_t>(model)].name == "def.p.z");
+    CHECK(t.nodes[static_cast<std::size_t>(model)].item == 0 &&
+          t.nodes[static_cast<std::size_t>(model)].name == "def.p.z");
     CHECK(t.nodes[static_cast<std::size_t>(model)].count == 3);
     CHECK(leaf_name("seqarc/COMMON_SYS/3") == "3");
 }

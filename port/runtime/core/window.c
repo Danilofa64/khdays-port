@@ -39,12 +39,11 @@ KhdaysRef khdays_reference(const void *host)
 {
     unsigned long long offset;
     if (host == NULL) {
-        return 0;  /* NULL, the game's 0 */
+        return 0; /* NULL, the game's 0 */
     }
     offset = (unsigned long long)((const unsigned char *)host - khdays_window);
     if ((const unsigned char *)host < khdays_window) {
-        stop("a host address below the game's memory, as a reference:", (unsigned long long)(size_t)host,
-             CALLER());
+        stop("a host address below the game's memory, as a reference:", (unsigned long long)(size_t)host, CALLER());
     }
     if (offset > 0xffffffffull) {
         stop("a host address past the game's memory, as a reference:", (unsigned long long)(size_t)host, CALLER());
@@ -96,7 +95,7 @@ extern void *khdays_native_at(u32 address);
 /* The native functions last found, by reference. A new overlay load moves the generation on
  * (overlays.c); the ITCM's are never kept (the MobiClip decoder goes over it). The game's threads,
  * the only callers, run one at a time. */
-#define CACHED 4096u  /* a power of two */
+#define CACHED 4096u /* a power of two */
 #define ITCM_BASE 0x01ff8000u
 #define ITCM_END 0x02000000u
 static struct {

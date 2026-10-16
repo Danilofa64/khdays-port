@@ -20,19 +20,37 @@ KD_FN uint kd_obj_mask(KD_VOID)
     return (KD_DESC(KD_FLAGS) & KDF_ENGINE_B) ? 0x1ffffu : 0x3ffffu;
 }
 
-KD_FN uint kd_bg8(uint a) { return KD_BG8(a & kd_bg_mask()); }
-KD_FN uint kd_bg16(uint a) { return KD_BG16(a & kd_bg_mask() & ~1u); }
-KD_FN uint kd_obj8(uint a) { return KD_OBJ8(a & kd_obj_mask()); }
-KD_FN uint kd_obj16(uint a) { return KD_OBJ16(a & kd_obj_mask() & ~1u); }
+KD_FN uint kd_bg8(uint a)
+{
+    return KD_BG8(a & kd_bg_mask());
+}
+KD_FN uint kd_bg16(uint a)
+{
+    return KD_BG16(a & kd_bg_mask() & ~1u);
+}
+KD_FN uint kd_obj8(uint a)
+{
+    return KD_OBJ8(a & kd_obj_mask());
+}
+KD_FN uint kd_obj16(uint a)
+{
+    return KD_OBJ16(a & kd_obj_mask() & ~1u);
+}
 
 /* --- Tiles drawn instead (HD 2D from mods; not the DS) ----------------------------------
  * A layer's or a sprite's colour is KD_OPAQUE | BGR555, or, from a replaced
  * tile in its own colours, KD_HD | RGB888 (red in bits 0-7). */
-#define KD_HD       0x80000000u
+#define KD_HD 0x80000000u
 #define KD_HD_INDEX 0x40000000u /* from kd_hd: a palette index whose colour is still to be looked up */
 
-KD_FN uint kd_shown(uint c) { return (c & (KD_OPAQUE | KD_HD)) != 0u ? 1u : 0u; }
-KD_FN uint kd_keep(uint c) { return (c & KD_HD) != 0u ? c : (c & 0x7fffu); }
+KD_FN uint kd_shown(uint c)
+{
+    return (c & (KD_OPAQUE | KD_HD)) != 0u ? 1u : 0u;
+}
+KD_FN uint kd_keep(uint c)
+{
+    return (c & KD_HD) != 0u ? c : (c & 0x7fffu);
+}
 
 /* The texel of replaced tile `entry` (a KD_HD_BG or KD_HD_OBJ word) at (u, v),
  * the place inside the 8x8 tile in fractional DS pixels, read at the
@@ -553,7 +571,7 @@ KD_FN uint kd_bright8(uint color, uint master)
     return acc;
 }
 
-#define KD_LAYER_SPRITE   4u
+#define KD_LAYER_SPRITE 4u
 #define KD_LAYER_BACKDROP 5u
 
 /* What the windows let show at (x, row): layers 0-3 in bits 0-3, the sprites
@@ -630,9 +648,12 @@ KD_FN uint kd_compose(uint color[4], KdSprite spr, uint mask, uint alpha3d, uint
                 return kd_blend8(f0, f1, eva, evb);
             }
             if (blendw & (1u << layer0)) {
-                if (effect == 1u && second != 0u) return kd_blend8(f0, f1, eva, evb);
-                if (effect == 2u) return kd_brighten8(f0, evy);
-                if (effect == 3u) return kd_darken8(f0, evy);
+                if (effect == 1u && second != 0u)
+                    return kd_blend8(f0, f1, eva, evb);
+                if (effect == 2u)
+                    return kd_brighten8(f0, evy);
+                if (effect == 3u)
+                    return kd_darken8(f0, evy);
             }
         }
         return f0;
@@ -871,7 +892,11 @@ KD_FN uint kd_element_layer(int b, int x, int row, uint color)
         /* nothing of the layer under them: their own colour, and how much shows through */
         const float k = 1.0f / (1.0f - through);
         const uint seen = (uint)(through * 127.0f + 0.5f);
-        return KD_HD | (seen < 1u ? 0u : seen > 127u ? 127u : seen) << 24 |
+        return KD_HD |
+               (seen < 1u     ? 0u
+                : seen > 127u ? 127u
+                              : seen)
+                   << 24 |
                (uint)(r * k + 0.5f) | ((uint)(g * k + 0.5f) << 8) | ((uint)(bl * k + 0.5f) << 16);
     }
 }
@@ -896,7 +921,7 @@ KD_FN KdSprite kd_element_sprites(int x, int row, KdSprite spr)
         }
         if (t != 0u) {
             spr.color = (slot & KES_DIRECT) != 0u ? (KD_HD | (t & 0xffffffu))
-                                                   : (KD_OPAQUE | (KD_PAL16(256u + (t & 0xffu)) & 0x7fffu));
+                                                  : (KD_OPAQUE | (KD_PAL16(256u + (t & 0xffu)) & 0x7fffu));
             spr.prio = prio;
             spr.mode = (slot >> KES_SEMI_SHIFT) & 1u;
             return spr;
@@ -974,7 +999,8 @@ KD_FN uint kd_pixel(int x, int row)
         if ((flags & KDF_SPLIT) != 0u) {
             return kd_fine(result) | 0x01000000u;
         }
-        if (fine != 0u) result = kd_fine(result);
+        if (fine != 0u)
+            result = kd_fine(result);
     } else if (display == 3u) {
         if ((flags & KDF_SPLIT) != 0u) {
             return 0x01000000u;

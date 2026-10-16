@@ -8,8 +8,16 @@
 #include <stddef.h>
 
 /* The scenes (RUNTIME_MAP section 1). */
-enum { SCENE_TITLE = 1, SCENE_FIELD = 2, SCENE_DAY_CARD = 5, SCENE_RESULTS = 6, SCENE_SELECT = 7,
-       SCENE_MONOLOGUE = 10, SCENE_OPENING = 11, SCENE_CAMP = 19 };
+enum {
+    SCENE_TITLE = 1,
+    SCENE_FIELD = 2,
+    SCENE_DAY_CARD = 5,
+    SCENE_RESULTS = 6,
+    SCENE_SELECT = 7,
+    SCENE_MONOLOGUE = 10,
+    SCENE_OPENING = 11,
+    SCENE_CAMP = 19
+};
 
 /* The camp's screens (runtime/menus/camp.h khdays_camp_screen; KHDAYS_TRACE_CAMP): 0 the menu and
  * -1 for a frame between two (play walk f2475-2879, f3741 on); Mission Mode's 1 Holo-Missions (play
@@ -66,18 +74,13 @@ static int camp_screens(const KhdaysSituationInputs *in)
         return KHDAYS_SIT_SHOP;
     }
     switch (in->camp_screen) {
-    case CAMP_MENU:
-        return KHDAYS_SIT_CAMP_MENU;
-    case CAMP_HOLO_MISSIONS:
-        return KHDAYS_SIT_WORLD_SELECTOR;
-    case CAMP_PREFERENCES:
-        return KHDAYS_SIT_SETTINGS;
-    case CAMP_STORY_SAVE:
-        return in->camp_story ? KHDAYS_SIT_SAVE_MENU : KHDAYS_SIT_CAMP_MENU;
+    case CAMP_MENU: return KHDAYS_SIT_CAMP_MENU;
+    case CAMP_HOLO_MISSIONS: return KHDAYS_SIT_WORLD_SELECTOR;
+    case CAMP_PREFERENCES: return KHDAYS_SIT_SETTINGS;
+    case CAMP_STORY_SAVE: return in->camp_story ? KHDAYS_SIT_SAVE_MENU : KHDAYS_SIT_CAMP_MENU;
     case CAMP_BETWEEN:
         return previous; /* the camp's first frames keep the screen before it (multiplayer walk f5675-5701) */
-    default:
-        return KHDAYS_SIT_CAMP_MENU;
+    default: return KHDAYS_SIT_CAMP_MENU;
     }
 }
 
@@ -91,7 +94,8 @@ static int mission_start_info(const KhdaysSituationInputs *in)
 
 /* The overlays the rules name (RUNTIME_MAP section 1). */
 #define OV_GAME_OVER 27 /* ov027_game_over: Ov027_GameOverFadeIn .. Ov027_GameOverIdle (mission walk f5571-6539) */
-#define OV_CREDITS 11   /* ov011: the credits (Ov011_CreateScene .. Ov011_StartTitleExit, khdays_movie_hd_credits' hooks) */
+#define OV_CREDITS                                                                                                     \
+    11 /* ov011: the credits (Ov011_CreateScene .. Ov011_StartTitleExit, khdays_movie_hd_credits' hooks) */
 
 static int loaded(const KhdaysSituationInputs *in, int overlay)
 {
@@ -140,24 +144,18 @@ static int situation_of(const KhdaysSituationInputs *in)
         /* no scene: the boot, before the logos' (the intro), or a scene's end before the next
          * (mission walk f6555-6560, the field to the results): the screen before it stays */
         return previous == KHDAYS_SIT_UNKNOWN ? KHDAYS_SIT_INTRO : previous;
-    case SCENE_TITLE:
-        return title_screens(in);
+    case SCENE_TITLE: return title_screens(in);
     case SCENE_SELECT:
         /* Mission Mode's character select: the title's two screens (today's layout) */
         return KHDAYS_SIT_TITLE;
-    case SCENE_DAY_CARD:
-        return KHDAYS_SIT_DAY_COUNTER;
-    case SCENE_MONOLOGUE:
-        return KHDAYS_SIT_THOUGHTS;
+    case SCENE_DAY_CARD: return KHDAYS_SIT_DAY_COUNTER;
+    case SCENE_MONOLOGUE: return KHDAYS_SIT_THOUGHTS;
     case SCENE_RESULTS:
         /* a mission's results (ov005: mission walk f6561-7730) */
         return KHDAYS_SIT_MISSION_REVIEW;
-    case SCENE_OPENING:
-        return KHDAYS_SIT_MOVIE;
-    case SCENE_FIELD:
-        return field_screens(in);
-    default:
-        return KHDAYS_SIT_UNKNOWN;
+    case SCENE_OPENING: return KHDAYS_SIT_MOVIE;
+    case SCENE_FIELD: return field_screens(in);
+    default: return KHDAYS_SIT_UNKNOWN;
     }
 }
 

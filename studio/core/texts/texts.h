@@ -15,9 +15,9 @@ namespace studio {
 struct TextFile {
     bool database = false;
     std::vector<std::vector<std::u16string>> lists;  // a string table: one list
-    std::uint8_t lz = 0;          // a string table's LZ type (0x10, 0x11), 0 when stored plain
-    std::size_t header_size = 8;  // a string table's header
-    P2File p2;                    // a database's container: its head and each entry's LZ kept
+    std::uint8_t lz = 0;                             // a string table's LZ type (0x10, 0x11), 0 when stored plain
+    std::size_t header_size = 8;                     // a string table's header
+    P2File p2;                                       // a database's container: its head and each entry's LZ kept
 };
 
 bool parse_text_file(const std::vector<std::uint8_t>& bytes, bool database, TextFile* out, std::string* why);

@@ -1,6 +1,7 @@
 """Where Steam keeps the KINGDOM HEARTS collections on this computer: Steam's own folder, its
 libraries (`steamapps/libraryfolders.vdf`) and each app's install folder (`appmanifest_<id>.acf`).
 Read only."""
+
 from __future__ import annotations
 
 import re
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 APP_1525 = 2552430  # KINGDOM HEARTS -HD 1.5+2.5 ReMIX-
-APP_28 = 2552440    # KINGDOM HEARTS HD 2.8 Final Chapter Prologue
+APP_28 = 2552440  # KINGDOM HEARTS HD 2.8 Final Chapter Prologue
 
 _TOKEN = re.compile(r'"((?:[^"\\]|\\.)*)"|([{}])')
 
@@ -47,6 +48,7 @@ def steam_folder() -> Path | None:
         return None
     try:
         import winreg
+
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
             value, _ = winreg.QueryValueEx(key, "SteamPath")
     except OSError:

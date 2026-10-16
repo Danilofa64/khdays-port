@@ -25,18 +25,16 @@ std::uint32_t u32(const std::uint8_t* d, std::size_t size, std::size_t o) {
     if (o + 4U > size) {
         throw std::runtime_error("cell: read past end");
     }
-    return static_cast<std::uint32_t>(d[o])
-        | (static_cast<std::uint32_t>(d[o + 1U]) << 8U)
-        | (static_cast<std::uint32_t>(d[o + 2U]) << 16U)
-        | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
+    return static_cast<std::uint32_t>(d[o]) | (static_cast<std::uint32_t>(d[o + 1U]) << 8U) |
+           (static_cast<std::uint32_t>(d[o + 2U]) << 16U) | (static_cast<std::uint32_t>(d[o + 3U]) << 24U);
 }
 
 // OBJ (shape, size) → (width, height) in pixels.
 std::array<int, 2> oam_dimensions(int shape, int size) {
     static const int table[3][4][2] = {
-        {{8, 8}, {16, 16}, {32, 32}, {64, 64}},   // square
-        {{16, 8}, {32, 8}, {32, 16}, {64, 32}},   // wide
-        {{8, 16}, {8, 32}, {16, 32}, {32, 64}},   // tall
+        {{8, 8}, {16, 16}, {32, 32}, {64, 64}},  // square
+        {{16, 8}, {32, 8}, {32, 16}, {64, 32}},  // wide
+        {{8, 16}, {8, 32}, {16, 32}, {32, 64}},  // tall
     };
     if (shape < 0 || shape > 2 || size < 0 || size > 3) {
         return {8, 8};
@@ -47,8 +45,7 @@ std::array<int, 2> oam_dimensions(int shape, int size) {
 }  // namespace
 
 CellBank decode_ncer(const std::uint8_t* data, const std::size_t size) {
-    if (size < 0x30U || data[0] != 'R' || data[1] != 'E' || data[2] != 'C'
-        || data[3] != 'N') {
+    if (size < 0x30U || data[0] != 'R' || data[1] != 'E' || data[2] != 'C' || data[3] != 'N') {
         throw std::runtime_error("not an NCER cell bank");
     }
     constexpr std::size_t kb = 0x10U;  // KBEC section

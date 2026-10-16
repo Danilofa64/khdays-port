@@ -20,9 +20,9 @@
 /* the port's look, as the mock-up the maintainer chose */
 #define PANEL_ALPHA 0.6f
 #define TILE_ALPHA 0.8f
-#define GREY_LIGHT 140      /* the grey faces' light: the characters nobody is on */
-#define RING 3.0f           /* the white ring around a place's circle */
-#define EDGE 2.0f           /* a panel's edge */
+#define GREY_LIGHT 140 /* the grey faces' light: the characters nobody is on */
+#define RING 3.0f      /* the white ring around a place's circle */
+#define EDGE 2.0f      /* a panel's edge */
 static const Uint8 BLACK[3] = {0, 0, 0}, WHITE[3] = {255, 255, 255}, EDGE_GREY[3] = {110, 110, 110},
                    BAR_OFF[3] = {40, 40, 40}, OTHERS_GREY[3] = {80, 80, 80};
 
@@ -187,12 +187,11 @@ static void draw_chosen(const KhdaysLayoutFrame *fr, const KhdaysSelectView *v)
     for (int i = 0; i < KHDAYS_SELECT_STATS; ++i) {
         const float y = row[1] + (float)i * s.stat_pitch;
         khdays_layout_fill_rounded(s.layout.renderer, fr, row[0], y, row[2], row[3], row[3] / 2, BLACK, PANEL_ALPHA);
-        khdays_layout_ring_rounded(s.layout.renderer, fr, row[0], y, row[2], row[3], row[3] / 2, EDGE, EDGE_GREY,
-                                   1.0f);
+        khdays_layout_ring_rounded(s.layout.renderer, fr, row[0], y, row[2], row[3], row[3] / 2, EDGE, EDGE_GREY, 1.0f);
         line(fr, "stat", khdays_layout_string(&s.strings, v->stat_label[i]), row[0], y);
         for (int k = 0; k < s.bar_count; ++k) {
-            const SDL_FRect r = khdays_layout_to_window(fr, row[0] + bar[0] + (float)k * s.gauge_pitch, y + bar[1],
-                                                        bar[2], bar[3]);
+            const SDL_FRect r =
+                khdays_layout_to_window(fr, row[0] + bar[0] + (float)k * s.gauge_pitch, y + bar[1], bar[2], bar[3]);
             const Uint8 *colour = k < v->stat[i] ? s.bars[k] : BAR_OFF;
             SDL_SetRenderDrawColor(s.layout.renderer, colour[0], colour[1], colour[2], 255);
             SDL_RenderFillRect(s.layout.renderer, &r);

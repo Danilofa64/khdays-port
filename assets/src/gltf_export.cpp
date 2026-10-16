@@ -25,7 +25,8 @@ Matrix multiply(const Matrix& a, const Matrix& b) {
     for (int c = 0; c < 4; ++c) {
         for (int row = 0; row < 4; ++row) {
             float sum = 0.0F;
-            for (int k = 0; k < 4; ++k) sum += a[k * 4 + row] * b[c * 4 + k];
+            for (int k = 0; k < 4; ++k)
+                sum += a[k * 4 + row] * b[c * 4 + k];
             r[c * 4 + row] = sum;
         }
     }
@@ -65,11 +66,13 @@ Matrix inverse(const Matrix& m) {
              m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
     inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] -
               m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
-    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] +
-              m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] -
+              m[8] * m[2] * m[5];
     const float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-    if (std::fabs(det) < 1e-12F) return identity();
-    for (auto& v : inv) v /= det;
+    if (std::fabs(det) < 1e-12F)
+        return identity();
+    for (auto& v : inv)
+        v /= det;
     return inv;
 }
 
@@ -95,7 +98,8 @@ Trs decompose(const Matrix& m) {
         c[k] = {m[4 * k], m[4 * k + 1], m[4 * k + 2]};
         o.s[k] = std::sqrt(c[k][0] * c[k][0] + c[k][1] * c[k][1] + c[k][2] * c[k][2]);
         if (o.s[k] > 1e-12F) {
-            for (auto& v : c[k]) v /= o.s[k];
+            for (auto& v : c[k])
+                v /= o.s[k];
         }
     }
     const float det = c[0][0] * (c[1][1] * c[2][2] - c[1][2] * c[2][1]) -
@@ -103,7 +107,8 @@ Trs decompose(const Matrix& m) {
                       c[2][0] * (c[0][1] * c[1][2] - c[0][2] * c[1][1]);
     if (det < 0.0F) {
         o.s[0] = -o.s[0];
-        for (auto& v : c[0]) v = -v;
+        for (auto& v : c[0])
+            v = -v;
     }
     // c[col][row]
     const float trace = c[0][0] + c[1][1] + c[2][2];
@@ -123,7 +128,8 @@ Trs decompose(const Matrix& m) {
     }
     const float len = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
     if (len > 1e-12F) {
-        for (auto& v : q) v /= len;
+        for (auto& v : q)
+            v /= len;
         o.r = q;
     }
     return o;
@@ -159,8 +165,10 @@ std::string base64(const std::vector<std::uint8_t>& bytes) {
 std::string json_string(const std::string& s) {
     std::string out = "\"";
     for (const char c : s) {
-        if (c == '"' || c == '\\') out += '\\';
-        if (static_cast<unsigned char>(c) < 0x20) continue;
+        if (c == '"' || c == '\\')
+            out += '\\';
+        if (static_cast<unsigned char>(c) < 0x20)
+            continue;
         out += c;
     }
     return out + "\"";
@@ -175,23 +183,29 @@ struct Writer final {
     template <typename T>
     int add(const std::vector<T>& data, int components, int component_type, const char* type, int target,
             bool normalized = false, const std::vector<float>* min = nullptr, const std::vector<float>* max = nullptr) {
-        while (buffer.size() % 4 != 0) buffer.push_back(0);
+        while (buffer.size() % 4 != 0)
+            buffer.push_back(0);
         const std::size_t offset = buffer.size();
         const std::size_t bytes = data.size() * sizeof(T);
         buffer.resize(offset + bytes);
-        if (bytes != 0) std::memcpy(buffer.data() + offset, data.data(), bytes);
+        if (bytes != 0)
+            std::memcpy(buffer.data() + offset, data.data(), bytes);
         views << (nviews ? "," : "") << "{\"buffer\":0,\"byteOffset\":" << offset << ",\"byteLength\":" << bytes;
-        if (target) views << ",\"target\":" << target;
+        if (target)
+            views << ",\"target\":" << target;
         views << "}";
         accessors << (naccessors ? "," : "") << "{\"bufferView\":" << nviews << ",\"componentType\":" << component_type
                   << ",\"count\":" << data.size() / static_cast<std::size_t>(components) << ",\"type\":\"" << type
                   << "\"";
-        if (normalized) accessors << ",\"normalized\":true";
+        if (normalized)
+            accessors << ",\"normalized\":true";
         if (min != nullptr && max != nullptr) {
             accessors << ",\"min\":[";
-            for (std::size_t i = 0; i < min->size(); ++i) accessors << (i ? "," : "") << (*min)[i];
+            for (std::size_t i = 0; i < min->size(); ++i)
+                accessors << (i ? "," : "") << (*min)[i];
             accessors << "],\"max\":[";
-            for (std::size_t i = 0; i < max->size(); ++i) accessors << (i ? "," : "") << (*max)[i];
+            for (std::size_t i = 0; i < max->size(); ++i)
+                accessors << (i ? "," : "") << (*max)[i];
             accessors << "]";
         }
         accessors << "}";
@@ -227,24 +241,27 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
     const std::vector<Matrix> rest_local = locals(world, parents);
     // a node an animation moves holds its rest as translation, rotation and
     // scale (glTF 2.0: an animated node has no matrix); else its matrix
-    const bool animated = nbones != 0 && model.skinning != nullptr && frames_per_second > 0.0F &&
-                          std::any_of(animations.begin(), animations.end(), [](const GltfAnimation& a) { return !a.frames.empty(); });
+    const bool animated =
+        nbones != 0 && model.skinning != nullptr && frames_per_second > 0.0F &&
+        std::any_of(animations.begin(), animations.end(), [](const GltfAnimation& a) { return !a.frames.empty(); });
     for (std::size_t b = 0; b < nbones; ++b) {
         const Matrix& local = rest_local[b];
         nodes << (b ? "," : "") << "{\"name\":" << json_string(model.object_names[b]);
         if (animated) {
             const Trs rest = decompose(local);
             nodes << ",\"translation\":[" << rest.t[0] << "," << rest.t[1] << "," << rest.t[2] << "],\"rotation\":["
-                  << rest.r[0] << "," << rest.r[1] << "," << rest.r[2] << "," << rest.r[3] << "],\"scale\":[" << rest.s[0]
-                  << "," << rest.s[1] << "," << rest.s[2] << "]";
+                  << rest.r[0] << "," << rest.r[1] << "," << rest.r[2] << "," << rest.r[3] << "],\"scale\":["
+                  << rest.s[0] << "," << rest.s[1] << "," << rest.s[2] << "]";
         } else {
             nodes << ",\"matrix\":[";
-            for (int k = 0; k < 16; ++k) nodes << (k ? "," : "") << local[static_cast<std::size_t>(k)];
+            for (int k = 0; k < 16; ++k)
+                nodes << (k ? "," : "") << local[static_cast<std::size_t>(k)];
             nodes << "]";
         }
         if (!children[b].empty()) {
             nodes << ",\"children\":[";
-            for (std::size_t c = 0; c < children[b].size(); ++c) nodes << (c ? "," : "") << children[b][c];
+            for (std::size_t c = 0; c < children[b].size(); ++c)
+                nodes << (c ? "," : "") << children[b][c];
             nodes << "]";
         }
         nodes << "}";
@@ -273,11 +290,13 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
         std::ostringstream key;
         key << texture << '\n' << mode << '\n' << cutoff << '\n' << mesh.double_sided;
         const auto it = material_of.find(key.str());
-        if (it != material_of.end()) return it->second;
+        if (it != material_of.end())
+            return it->second;
         const auto ref = textures.find(texture);
         materials << (nmaterials ? "," : "") << "{\"name\":" << json_string(texture.empty() ? "untextured" : texture)
                   << (mesh.double_sided ? ",\"doubleSided\":true" : "") << ",\"alphaMode\":\"" << mode << "\"";
-        if (std::strcmp(mode, "MASK") == 0) materials << ",\"alphaCutoff\":" << cutoff;
+        if (std::strcmp(mode, "MASK") == 0)
+            materials << ",\"alphaCutoff\":" << cutoff;
         materials << ",\"pbrMetallicRoughness\":{\"metallicFactor\":0,\"roughnessFactor\":1";
         if (ref != textures.end()) {
             auto image = image_of.find(texture);
@@ -296,10 +315,12 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
     // the meshes, in their rest pose
     int nprimitives = 0;
     for (const auto& mesh : model.meshes) {
-        if (mesh.vertices.empty() || mesh.indices.empty()) continue;
+        if (mesh.vertices.empty() || mesh.indices.empty())
+            continue;
         const auto ref = textures.find(mesh.texture_name);
         const float tw = ref != textures.end() && ref->second.width > 0 ? static_cast<float>(ref->second.width) : 1.0F;
-        const float th = ref != textures.end() && ref->second.height > 0 ? static_cast<float>(ref->second.height) : 1.0F;
+        const float th =
+            ref != textures.end() && ref->second.height > 0 ? static_cast<float>(ref->second.height) : 1.0F;
         std::vector<float> positions, normals, uvs, weights;
         std::vector<std::uint8_t> colors;
         std::vector<std::uint16_t> joints;
@@ -311,14 +332,17 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
             const auto p = apply(palette, v.position, 1.0F);
             for (int k = 0; k < 3; ++k) {
                 positions.push_back(p[static_cast<std::size_t>(k)]);
-                lo[static_cast<std::size_t>(k)] = std::min(lo[static_cast<std::size_t>(k)], p[static_cast<std::size_t>(k)]);
-                hi[static_cast<std::size_t>(k)] = std::max(hi[static_cast<std::size_t>(k)], p[static_cast<std::size_t>(k)]);
+                lo[static_cast<std::size_t>(k)] =
+                    std::min(lo[static_cast<std::size_t>(k)], p[static_cast<std::size_t>(k)]);
+                hi[static_cast<std::size_t>(k)] =
+                    std::max(hi[static_cast<std::size_t>(k)], p[static_cast<std::size_t>(k)]);
             }
             auto n = apply(palette, v.normal, 0.0F);
             const float len = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
             if (len > 1e-6F) {
                 any_normal = true;
-                for (auto& c : n) c /= len;
+                for (auto& c : n)
+                    c /= len;
             } else {
                 n = {0.0F, 1.0F, 0.0F};
             }
@@ -328,15 +352,19 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
             colors.insert(colors.end(), v.color.begin(), v.color.end());
             // the bones this vertex's palette entry is made of: the four heaviest
             std::vector<std::pair<std::uint32_t, float>> bones;
-            if (slot < model.palette_bones.size()) bones = model.palette_bones[slot];
+            if (slot < model.palette_bones.size())
+                bones = model.palette_bones[slot];
             std::sort(bones.begin(), bones.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
-            if (bones.size() > 4) bones.resize(4);
+            if (bones.size() > 4)
+                bones.resize(4);
             float sum = 0.0F;
-            for (const auto& b : bones) sum += b.second;
+            for (const auto& b : bones)
+                sum += b.second;
             for (std::size_t k = 0; k < 4; ++k) {
                 const bool used = k < bones.size() && bones[k].first < nbones && sum > 0.0F;
                 joints.push_back(used ? static_cast<std::uint16_t>(bones[k].first) : 0);
-                weights.push_back(used ? bones[k].second / sum : (k == 0 && (bones.empty() || sum <= 0.0F) ? 1.0F : 0.0F));
+                weights.push_back(used ? bones[k].second / sum
+                                       : (k == 0 && (bones.empty() || sum <= 0.0F) ? 1.0F : 0.0F));
             }
         }
         const int pos = w.add(positions, 3, 5126, "VEC3", 34962, false, &lo, &hi);
@@ -348,9 +376,11 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
         const int idx = w.add(mesh.indices, 1, 5125, "SCALAR", 34963);
         const int material = material_for(ref != textures.end() ? mesh.texture_name : std::string(), mesh);
         primitives << (nprimitives ? "," : "") << "{\"attributes\":{\"POSITION\":" << pos;
-        if (nor >= 0) primitives << ",\"NORMAL\":" << nor;
+        if (nor >= 0)
+            primitives << ",\"NORMAL\":" << nor;
         primitives << ",\"TEXCOORD_0\":" << uv << ",\"COLOR_0\":" << col;
-        if (jnt >= 0) primitives << ",\"JOINTS_0\":" << jnt << ",\"WEIGHTS_0\":" << wgt;
+        if (jnt >= 0)
+            primitives << ",\"JOINTS_0\":" << jnt << ",\"WEIGHTS_0\":" << wgt;
         primitives << "},\"indices\":" << idx << ",\"material\":" << material << "}";
         ++nprimitives;
     }
@@ -361,25 +391,30 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
     int nanims = 0;
     int one_key = -1;  // the time of a track that keeps one value
     for (const auto& a : animations) {
-        if (!animated) break;
-        if (a.frames.empty()) continue;
+        if (!animated)
+            break;
+        if (a.frames.empty())
+            continue;
         const std::size_t frames = a.frames.size();
         std::vector<std::vector<Trs>> pose(frames);
         for (std::size_t f = 0; f < frames; ++f) {
             std::vector<Matrix> posed = compute_bone_world_matrices(*model.skinning, a.frames[f]);
             posed.resize(nbones, identity());
-            for (const auto& m : locals(posed, parents)) pose[f].push_back(decompose(m));
+            for (const auto& m : locals(posed, parents))
+                pose[f].push_back(decompose(m));
             // each rotation on the side of the one before, so that the keys turn the short way
             for (std::size_t b = 0; f > 0 && b < nbones; ++b) {
                 const auto& was = pose[f - 1][b].r;
                 auto& r = pose[f][b].r;
                 if (was[0] * r[0] + was[1] * r[1] + was[2] * r[2] + was[3] * r[3] < 0.0F) {
-                    for (auto& v : r) v = -v;
+                    for (auto& v : r)
+                        v = -v;
                 }
             }
         }
         std::vector<float> times(frames);
-        for (std::size_t f = 0; f < frames; ++f) times[f] = static_cast<float>(f) / frames_per_second;
+        for (std::size_t f = 0; f < frames; ++f)
+            times[f] = static_cast<float>(f) / frames_per_second;
         int all_keys = -1;
         std::ostringstream samplers, channels;
         int nchannels = 0;
@@ -392,13 +427,17 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
                 for (std::size_t f = 0; f < frames; ++f) {
                     const Trs& p = pose[f][b];
                     const float* v = path == 0 ? p.t.data() : path == 1 ? p.r.data() : p.s.data();
-                    const float* first = path == 0 ? pose[0][b].t.data() : path == 1 ? pose[0][b].r.data() : pose[0][b].s.data();
+                    const float* first = path == 0   ? pose[0][b].t.data()
+                                         : path == 1 ? pose[0][b].r.data()
+                                                     : pose[0][b].s.data();
                     for (std::size_t k = 0; k < n; ++k) {
-                        constant = constant && std::fabs(v[k] - first[k]) <= 1e-6F * std::max(1.0F, std::fabs(first[k]));
+                        constant =
+                            constant && std::fabs(v[k] - first[k]) <= 1e-6F * std::max(1.0F, std::fabs(first[k]));
                     }
                     values.insert(values.end(), v, v + n);
                 }
-                if (constant) values.resize(n);
+                if (constant)
+                    values.resize(n);
                 int input = -1;
                 if (constant) {
                     if (one_key < 0) {
@@ -428,7 +467,8 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
 
     // the mesh's node, and the scene: the root bones and the mesh
     const std::size_t mesh_node = nbones;
-    if (nbones) nodes << ",";
+    if (nbones)
+        nodes << ",";
     nodes << "{\"name\":" << json_string(model.name) << (nprimitives ? ",\"mesh\":0" : "")
           << (nbones && nprimitives ? ",\"skin\":0" : "") << "}";
     std::ostringstream out;
@@ -446,13 +486,16 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
         out << ",\"meshes\":[{\"name\":" << json_string(model.name) << ",\"primitives\":[" << primitives.str() << "]}]";
     }
     if (nbones && nprimitives) {
-        out << ",\"skins\":[{\"name\":" << json_string(model.name) << ",\"inverseBindMatrices\":" << inverse_bind_accessor
-            << ",\"joints\":[";
-        for (std::size_t b = 0; b < nbones; ++b) out << (b ? "," : "") << b;
+        out << ",\"skins\":[{\"name\":" << json_string(model.name)
+            << ",\"inverseBindMatrices\":" << inverse_bind_accessor << ",\"joints\":[";
+        for (std::size_t b = 0; b < nbones; ++b)
+            out << (b ? "," : "") << b;
         out << "]}]";
     }
-    if (nanims) out << ",\"animations\":[" << anims.str() << "]";
-    if (nmaterials) out << ",\"materials\":[" << materials.str() << "]";
+    if (nanims)
+        out << ",\"animations\":[" << anims.str() << "]";
+    if (nmaterials)
+        out << ",\"materials\":[" << materials.str() << "]";
     if (nimages) {
         // nearest, as the DS samples
         out << ",\"samplers\":[{\"magFilter\":9728,\"minFilter\":9728}],\"images\":[" << images.str()

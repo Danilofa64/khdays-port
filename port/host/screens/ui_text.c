@@ -134,8 +134,8 @@ static const char *const texts[TXT_COUNT][5] = {
                            "Menú de comandos abajo"},
     [TXT_ACT_MENU_LEFT] = {"Command menu left", "Commandes : gauche", "Befehlsmenü links", "Menu comandi sinistra",
                            "Menú de comandos izquierda"},
-    [TXT_ACT_MENU_RIGHT] = {"Command menu right", "Commandes : droite", "Befehlsmenü rechts",
-                            "Menu comandi destra", "Menú de comandos derecha"},
+    [TXT_ACT_MENU_RIGHT] = {"Command menu right", "Commandes : droite", "Befehlsmenü rechts", "Menu comandi destra",
+                            "Menú de comandos derecha"},
     [TXT_ACT_OPEN_SETTINGS] = {"Open settings", "Ouvrir les réglages", "Einstellungen öffnen", "Apri impostazioni",
                                "Abrir ajustes"},
     [TXT_ACT_HUD_MODE] = {"HUD mode (one screen)", "Mode du HUD (un écran)", "HUD-Modus (ein Bildschirm)",
@@ -166,11 +166,10 @@ static const char *const texts[TXT_COUNT][5] = {
                                   "Befehlsmenü (im Feld; sonst Steuerkreuz)",
                                   "Menu comandi (sul campo; altrove la croce)",
                                   "Menú de comandos (en el campo; fuera, cruceta)"},
-    [TXT_PRESET_DS] = {"Use the DS layout (the default)", "Disposition de la DS (par défaut)",
-                       "DS-Belegung (Standard)", "Schema del DS (predefinito)", "Esquema de la DS (por defecto)"},
+    [TXT_PRESET_DS] = {"Use the DS layout (the default)", "Disposition de la DS (par défaut)", "DS-Belegung (Standard)",
+                       "Schema del DS (predefinito)", "Esquema de la DS (por defecto)"},
     [TXT_PRESET_KH2] = {"Use the Kingdom Hearts II layout", "Disposition de Kingdom Hearts II",
-                        "Kingdom Hearts II-Belegung", "Schema di Kingdom Hearts II",
-                        "Esquema de Kingdom Hearts II"},
+                        "Kingdom Hearts II-Belegung", "Schema di Kingdom Hearts II", "Esquema de Kingdom Hearts II"},
     [TXT_KH2_TITLE] = {"The Kingdom Hearts II layout:", "La disposition de Kingdom Hearts II :",
                        "Die Kingdom Hearts II-Belegung:", "Lo schema di Kingdom Hearts II:",
                        "El esquema de Kingdom Hearts II:"},
@@ -203,8 +202,7 @@ static const char *const texts[TXT_COUNT][5] = {
                             "%s > %s: %s (wie im neuen Spiel).", "%s > %s: %s (nuova partita).",
                             "%s > %s: %s (como en partida nueva)."},
     [TXT_KEYBOARD_UNCHANGED] = {"The keyboard is not changed.", "Le clavier ne change pas.",
-                                "Die Tastatur bleibt unverändert.", "La tastiera non cambia.",
-                                "El teclado no cambia."},
+                                "Die Tastatur bleibt unverändert.", "La tastiera non cambia.", "El teclado no cambia."},
     [TXT_ENH_CAMERA] = {"Analog camera", "Caméra analogique", "Analoge Kamera", "Telecamera analogica",
                         "Cámara analógica"},
     [TXT_ENH_CAMERA_NOTE] = {"The right stick turns the camera, as the game's own camera controls do.",
@@ -246,16 +244,14 @@ static const char *const texts[TXT_COUNT][5] = {
                             "Zona morta lev. sinistra (%)", "Zona muerta pal. izquierda (%)"},
     [TXT_RIGHT_DEAD_ZONE] = {"Right stick dead zone (%)", "Zone morte stick droit (%)", "Totzone rechter Stick (%)",
                              "Zona morta lev. destra (%)", "Zona muerta pal. derecha (%)"},
-    [TXT_LEFT_HYSTERESIS] = {"Left stick hysteresis (%)", "Hystérésis stick gauche (%)",
-                             "Hysterese linker Stick (%)", "Isteresi lev. sinistra (%)",
-                             "Histéresis pal. izquierda (%)"},
-    [TXT_RIGHT_HYSTERESIS] = {"Right stick hysteresis (%)", "Hystérésis stick droit (%)",
-                              "Hysterese rechter Stick (%)", "Isteresi lev. destra (%)",
-                              "Histéresis pal. derecha (%)"},
-    [TXT_CAMERA_SPEED] = {"Camera speed (%)", "Vitesse de la caméra (%)", "Kameratempo (%)",
-                          "Velocità telecamera (%)", "Velocidad de la cámara (%)"},
-    [TXT_CAMERA_X] = {"Camera left/right", "Caméra gauche/droite", "Kamera links/rechts",
-                      "Telecamera sinistra/destra", "Cámara izquierda/derecha"},
+    [TXT_LEFT_HYSTERESIS] = {"Left stick hysteresis (%)", "Hystérésis stick gauche (%)", "Hysterese linker Stick (%)",
+                             "Isteresi lev. sinistra (%)", "Histéresis pal. izquierda (%)"},
+    [TXT_RIGHT_HYSTERESIS] = {"Right stick hysteresis (%)", "Hystérésis stick droit (%)", "Hysterese rechter Stick (%)",
+                              "Isteresi lev. destra (%)", "Histéresis pal. derecha (%)"},
+    [TXT_CAMERA_SPEED] = {"Camera speed (%)", "Vitesse de la caméra (%)", "Kameratempo (%)", "Velocità telecamera (%)",
+                          "Velocidad de la cámara (%)"},
+    [TXT_CAMERA_X] = {"Camera left/right", "Caméra gauche/droite", "Kamera links/rechts", "Telecamera sinistra/destra",
+                      "Cámara izquierda/derecha"},
     [TXT_CAMERA_Y] = {"Camera up/down", "Caméra haut/bas", "Kamera hoch/runter", "Telecamera su/giù",
                       "Cámara arriba/abajo"},
     [TXT_RUN_FROM] = {"Run from (% of the stick)", "Courir dès (% du stick)", "Laufen ab (% des Sticks)",
@@ -287,8 +283,7 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_PRESS_KEY] = {"Press a key", "Appuyez sur une touche", "Drücke eine Taste", "Premi un tasto",
                        "Pulsa una tecla"},
     [TXT_PRESS_BUTTON] = {"Press a gamepad button", "Appuyez sur un bouton de la manette",
-                          "Drücke eine Controller-Taste", "Premi un tasto del controller",
-                          "Pulsa un botón del mando"},
+                          "Drücke eine Controller-Taste", "Premi un tasto del controller", "Pulsa un botón del mando"},
     /* %s: "Press a key" or "Press a gamepad button"; %s: what it is for. */
     [TXT_PRESS_FOR] = {"%s for \"%s\"", "%s pour \"%s\"", "%s für \"%s\"", "%s per \"%s\"", "%s para \"%s\""},
     /* %s: how to cancel; %d: the seconds left. */
@@ -302,8 +297,7 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_ALREADY_DOES] = {"%s already does \"%s\". Use it for \"%s\" instead?",
                           "%s fait déjà \"%s\". L'utiliser plutôt pour \"%s\" ?",
                           "%s macht schon \"%s\". Stattdessen für \"%s\" nutzen?",
-                          "%s fa già \"%s\". Usarlo invece per \"%s\"?",
-                          "%s ya hace \"%s\". ¿Usarlo para \"%s\"?"},
+                          "%s fa già \"%s\". Usarlo invece per \"%s\"?", "%s ya hace \"%s\". ¿Usarlo para \"%s\"?"},
     [TXT_MOVE_IT_HERE] = {"Move it here", "Le déplacer ici", "Verschieben", "Spostalo qui", "Moverlo aquí"},
     [TXT_CANCEL] = {"Cancel", "Annuler", "Abbrechen", "Annulla", "Cancelar"},
     /* %s: the layout's name. */
@@ -353,8 +347,7 @@ static const char *const texts[TXT_COUNT][5] = {
     /* %s: why. */
     [TXT_GAMEPAD_NOT_OPENED] = {"a gamepad could not be opened: %s", "une manette n'a pas pu être ouverte : %s",
                                 "ein Controller konnte nicht geöffnet werden: %s",
-                                "non è stato possibile aprire un controller: %s",
-                                "no se pudo abrir un mando: %s"},
+                                "non è stato possibile aprire un controller: %s", "no se pudo abrir un mando: %s"},
     /* %s: the renderer used instead (SDL's name for it). */
     [TXT_NEEDS_GRAPHICS_CARD] = {"The port needs a graphics card it can use through Direct3D 12 or Vulkan, and "
                                  "could not use one: %s",
@@ -379,8 +372,8 @@ static const char *const texts[TXT_COUNT][5] = {
                            "Cierra otros programas y vuelve a intentarlo."},
     /* The Video page. */
     [TXT_VIDEO] = {"Video", "Vidéo", "Video", "Video", "Vídeo"},
-    [TXT_VIDEO_RESOLUTION] = {"Internal resolution", "Résolution interne", "Interne Auflösung",
-                              "Risoluzione interna", "Resolución interna"},
+    [TXT_VIDEO_RESOLUTION] = {"Internal resolution", "Résolution interne", "Interne Auflösung", "Risoluzione interna",
+                              "Resolución interna"},
     [TXT_VIDEO_RESOLUTION_NOTE] = {"The 3D is drawn at this many times the DS's pixels; menus and text keep theirs.",
                                    "La 3D est dessinée à ce multiple des pixels de la DS ; menus et textes gardent "
                                    "les leurs.",
@@ -411,16 +404,17 @@ static const char *const texts[TXT_COUNT][5] = {
                                 "Un'unica immagine: gli elementi dello schermo inferiore vi sono portati.",
                                 "Una sola imagen: las piezas de la pantalla de abajo se colocan en ella."},
     [TXT_VIDEO_HUD_SIZE] = {"HUD size", "Taille du HUD", "HUD-Größe", "Dimensione HUD", "Tamaño del HUD"},
-    [TXT_VIDEO_HUD_SIZE_NOTE] = {"One screen: how big the HUD's pieces are, 1 to 8 (4 by default); the dialogs keep "
-                                 "their size.",
-                                 "Un écran : la taille des éléments du HUD, de 1 à 8 (4 par défaut) ; les dialogues "
-                                 "gardent la leur.",
-                                 "Ein Bildschirm: wie groß die HUD-Teile sind, 1 bis 8 (Standard 4); Dialoge behalten "
-                                 "ihre Größe.",
-                                 "Uno schermo: quanto sono grandi i pezzi dell'HUD, da 1 a 8 (4 di base); i dialoghi "
-                                 "restano uguali.",
-                                 "Una pantalla: el tamaño de las piezas del HUD, de 1 a 8 (4 por defecto); los diálogos "
-                                 "conservan el suyo."},
+    [TXT_VIDEO_HUD_SIZE_NOTE] =
+        {"One screen: how big the HUD's pieces are, 1 to 8 (4 by default); the dialogs keep "
+         "their size.",
+         "Un écran : la taille des éléments du HUD, de 1 à 8 (4 par défaut) ; les dialogues "
+         "gardent la leur.",
+         "Ein Bildschirm: wie groß die HUD-Teile sind, 1 bis 8 (Standard 4); Dialoge behalten "
+         "ihre Größe.",
+         "Uno schermo: quanto sono grandi i pezzi dell'HUD, da 1 a 8 (4 di base); i dialoghi "
+         "restano uguali.",
+         "Una pantalla: el tamaño de las piezas del HUD, de 1 a 8 (4 por defecto); los diálogos "
+         "conservan el suyo."},
     [TXT_VIDEO_ASPECT] = {"Aspect ratio", "Format d'image", "Seitenverhältnis", "Proporzioni", "Proporción"},
     [TXT_VIDEO_ASPECT_NOTE] = {"The 3D view widens; the HUD keeps to the corners, the menus stay in the middle.",
                                "La vue 3D s'élargit ; l'interface reste dans les coins, les menus au milieu.",
@@ -429,8 +423,7 @@ static const char *const texts[TXT_COUNT][5] = {
                                "La vista 3D se ensancha; el HUD sigue en las esquinas y los menús en el centro."},
     [TXT_VIDEO_ASPECT_WINDOW] = {"As the window", "Comme la fenêtre", "Wie das Fenster", "Come la finestra",
                                  "La de la ventana"},
-    [TXT_VIDEO_SCALING] = {"Screen scaling", "Mise à l'échelle", "Bildskalierung", "Ridimensionamento",
-                           "Escalado"},
+    [TXT_VIDEO_SCALING] = {"Screen scaling", "Mise à l'échelle", "Bildskalierung", "Ridimensionamento", "Escalado"},
     [TXT_VIDEO_SCALING_NOTE] = {"How the screens are stretched to the window.",
                                 "Comment les écrans s'étirent à la taille de la fenêtre.",
                                 "Wie die Bildschirme auf das Fenster gestreckt werden.",
@@ -438,12 +431,10 @@ static const char *const texts[TXT_COUNT][5] = {
                                 "Cómo se estiran las pantallas a la ventana."},
     [TXT_VIDEO_SHARP] = {"Sharp (DS)", "Net (DS)", "Scharf (DS)", "Nitido (DS)", "Nítido (DS)"},
     [TXT_VIDEO_SMOOTH] = {"Smooth", "Lissé", "Weich", "Morbido", "Suave"},
-    [TXT_VIDEO_TEXTURES] = {"3D texture smoothing", "Lissage des textures 3D", "3D-Texturglättung",
-                            "Filtro texture 3D", "Suavizado de texturas 3D"},
-    [TXT_VIDEO_TEXTURES_NOTE] = {"The DS draws textures without smoothing.",
-                                 "La DS dessine les textures sans lissage.",
-                                 "Der DS zeichnet Texturen ohne Glättung.",
-                                 "Il DS disegna le texture senza filtro.",
+    [TXT_VIDEO_TEXTURES] = {"3D texture smoothing", "Lissage des textures 3D", "3D-Texturglättung", "Filtro texture 3D",
+                            "Suavizado de texturas 3D"},
+    [TXT_VIDEO_TEXTURES_NOTE] = {"The DS draws textures without smoothing.", "La DS dessine les textures sans lissage.",
+                                 "Der DS zeichnet Texturen ohne Glättung.", "Il DS disegna le texture senza filtro.",
                                  "La DS dibuja las texturas sin suavizado."},
     [TXT_VIDEO_HD] = {"HD graphics", "Graphismes HD", "HD-Grafiken", "Grafica HD", "Gráficos HD"},
     [TXT_VIDEO_HD_NOTE] = {"Uses the replacements in your mods' folders.",
@@ -480,8 +471,7 @@ static const char *const texts[TXT_COUNT][5] = {
                                "(hd802.mp4 y los demás), los otros vídeos a color completo. La DS muestra sus "
                                "vídeos en color de 15 bits, tramado."},
     [TXT_VIDEO_MOVIES_HD] = {"HD", "HD", "HD", "HD", "HD"},
-    [TXT_VIDEO_MOVIES_PC] = {"Full colour", "Couleurs complètes", "Volle Farben", "Colori pieni",
-                             "Color completo"},
+    [TXT_VIDEO_MOVIES_PC] = {"Full colour", "Couleurs complètes", "Volle Farben", "Colori pieni", "Color completo"},
     [TXT_VIDEO_MOVIES_DS] = {"As on the DS", "Comme sur DS", "Wie auf dem DS", "Come sul DS", "Como en la DS"},
     [TXT_VIDEO_PACE] = {"Picture pace", "Rythme de l'image", "Bildrate", "Ritmo dell'immagine", "Ritmo de imagen"},
     [TXT_VIDEO_PACE_NOTE] = {"Smooth draws the 3D at the monitor's rate, up to a game frame behind; the DS shows 30 "
@@ -496,19 +486,20 @@ static const char *const texts[TXT_COUNT][5] = {
                              "la DS muestra 30 imágenes por segundo."},
     [TXT_VIDEO_PACE_SMOOTH] = {"Smooth", "Fluide", "Flüssig", "Fluido", "Fluido"},
     [TXT_VIDEO_PACE_DS] = {"As on the DS", "Comme sur DS", "Wie auf dem DS", "Come sul DS", "Como en la DS"},
-    [TXT_VIDEO_PACE_WARNING] = {"Away from the DS's pace the picture can show errors (a scene's camera gliding between "
-                                "shots, some effects). If something looks wrong, choose As on the DS.",
-                                "Hors du rythme de la DS, l'image peut avoir des erreurs (la caméra d'une scène qui "
-                                "glisse entre deux plans, certains effets). Si quelque chose semble faux, choisissez "
-                                "Comme sur DS.",
-                                "Abseits der DS-Bildrate kann das Bild Fehler zeigen (die Kamera einer Szene gleitet "
-                                "zwischen zwei Einstellungen, manche Effekte). Wenn etwas falsch aussieht, wähle Wie "
-                                "auf dem DS.",
-                                "Fuori dal ritmo del DS l'immagine può avere errori (la telecamera di una scena che "
-                                "scivola tra due inquadrature, alcuni effetti). Se qualcosa sembra sbagliato, scegli "
-                                "Come sul DS.",
-                                "Fuera del ritmo de la DS la imagen puede tener errores (la cámara de una escena que "
-                                "se desliza entre dos planos, algunos efectos). Si ves algo raro, elige Como en la DS."},
+    [TXT_VIDEO_PACE_WARNING] =
+        {"Away from the DS's pace the picture can show errors (a scene's camera gliding between "
+         "shots, some effects). If something looks wrong, choose As on the DS.",
+         "Hors du rythme de la DS, l'image peut avoir des erreurs (la caméra d'une scène qui "
+         "glisse entre deux plans, certains effets). Si quelque chose semble faux, choisissez "
+         "Comme sur DS.",
+         "Abseits der DS-Bildrate kann das Bild Fehler zeigen (die Kamera einer Szene gleitet "
+         "zwischen zwei Einstellungen, manche Effekte). Wenn etwas falsch aussieht, wähle Wie "
+         "auf dem DS.",
+         "Fuori dal ritmo del DS l'immagine può avere errori (la telecamera di una scena che "
+         "scivola tra due inquadrature, alcuni effetti). Se qualcosa sembra sbagliato, scegli "
+         "Come sul DS.",
+         "Fuera del ritmo de la DS la imagen puede tener errores (la cámara de una escena que "
+         "se desliza entre dos planos, algunos efectos). Si ves algo raro, elige Como en la DS."},
     [TXT_VIDEO_SHOW_FPS] = {"Show FPS", "Afficher les IPS", "FPS anzeigen", "Mostra FPS", "Mostrar FPS"},
     [TXT_VIDEO_SHOW_FPS_NOTE] = {"The pictures drawn a second, and the game's own frames a second.",
                                  "Les images affichées par seconde, et les images du jeu par seconde.",
@@ -520,17 +511,18 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_VIDEO_DISPLAY_BORDERLESS] = {"Borderless window", "Fenêtre sans bordure", "Randloses Fenster",
                                       "Finestra senza bordi", "Ventana sin bordes"},
     [TXT_VIDEO_DISPLAY_FULLSCREEN] = {"Full screen", "Plein écran", "Vollbild", "Schermo intero", "Pantalla completa"},
-    [TXT_VIDEO_DISPLAY_NOTE] = {"Window: one you can move and resize. Borderless window: one without borders over the "
-                                "whole screen. Full screen: the screen for the game alone, at the desktop's resolution.",
-                                "Fenêtre : déplaçable et redimensionnable. Fenêtre sans bordure : sans bordure, sur tout "
-                                "l'écran. Plein écran : l'écran pour le jeu seul, à la résolution du bureau.",
-                                "Fenster: verschieb- und skalierbar. Randloses Fenster: ohne Rand über den ganzen "
-                                "Bildschirm. Vollbild: der Bildschirm nur für das Spiel, in der Auflösung des Desktops.",
-                                "Finestra: si può spostare e ridimensionare. Finestra senza bordi: senza bordi su tutto lo "
-                                "schermo. Schermo intero: lo schermo solo per il gioco, alla risoluzione del desktop.",
-                                "Ventana: se puede mover y cambiar de tamaño. Ventana sin bordes: sin bordes, ocupando "
-                                "toda la pantalla. Pantalla completa: la pantalla solo para el juego, a la resolución del "
-                                "escritorio."},
+    [TXT_VIDEO_DISPLAY_NOTE] =
+        {"Window: one you can move and resize. Borderless window: one without borders over the "
+         "whole screen. Full screen: the screen for the game alone, at the desktop's resolution.",
+         "Fenêtre : déplaçable et redimensionnable. Fenêtre sans bordure : sans bordure, sur tout "
+         "l'écran. Plein écran : l'écran pour le jeu seul, à la résolution du bureau.",
+         "Fenster: verschieb- und skalierbar. Randloses Fenster: ohne Rand über den ganzen "
+         "Bildschirm. Vollbild: der Bildschirm nur für das Spiel, in der Auflösung des Desktops.",
+         "Finestra: si può spostare e ridimensionare. Finestra senza bordi: senza bordi su tutto lo "
+         "schermo. Schermo intero: lo schermo solo per il gioco, alla risoluzione del desktop.",
+         "Ventana: se puede mover y cambiar de tamaño. Ventana sin bordes: sin bordes, ocupando "
+         "toda la pantalla. Pantalla completa: la pantalla solo para el juego, a la resolución del "
+         "escritorio."},
     [TXT_VIDEO_SUBTITLES] = {"Subtitles", "Sous-titres", "Untertitel", "Sottotitoli", "Subtítulos"},
     [TXT_VIDEO_SUBTITLES_NOTE] = {"The subtitles over the game's movies. A new game asks for it too.",
                                   "Les sous-titres des cinématiques du jeu. Une nouvelle partie le demande aussi.",
@@ -555,11 +547,9 @@ static const char *const texts[TXT_COUNT][5] = {
                              "l'API grafica %s non può funzionare qui (%s); si usa la scelta del sistema",
                              "la API gráfica %s no puede funcionar aquí (%s); se usa la elección del sistema"},
     /* the corner's line: the pictures a second, then the game's frames a second */
-    [TXT_FPS_LINE] = {"%d FPS  game %d", "%d IPS  jeu %d", "%d FPS  Spiel %d", "%d FPS  gioco %d",
-                      "%d FPS  juego %d"},
-    [TXT_VIDEO_NEEDS_GPU] = {"Needs the graphics card.", "Nécessite la carte graphique.",
-                             "Braucht die Grafikkarte.", "Richiede la scheda grafica.",
-                             "Necesita la tarjeta gráfica."},
+    [TXT_FPS_LINE] = {"%d FPS  game %d", "%d IPS  jeu %d", "%d FPS  Spiel %d", "%d FPS  gioco %d", "%d FPS  juego %d"},
+    [TXT_VIDEO_NEEDS_GPU] = {"Needs the graphics card.", "Nécessite la carte graphique.", "Braucht die Grafikkarte.",
+                             "Richiede la scheda grafica.", "Necesita la tarjeta gráfica."},
     [TXT_RESTORE_VIDEO] = {"Restore the video settings", "Rétablir la vidéo", "Video zurücksetzen",
                            "Ripristina il video", "Restablecer el vídeo"},
     [TXT_SOUND] = {"Sound", "Son", "Ton", "Audio", "Sonido"},
@@ -570,10 +560,8 @@ static const char *const texts[TXT_COUNT][5] = {
                                "Il volume di tutto ciò che il gioco riproduce.",
                                "El volumen de todo lo que suena en el juego."},
     [TXT_SOUND_MUSIC] = {"Music", "Musique", "Musik", "Musica", "Música"},
-    [TXT_SOUND_MUSIC_NOTE] = {"The music, streamed and sequenced.",
-                              "La musique, en flux comme séquencée.",
-                              "Die Musik, gestreamt wie sequenziert.",
-                              "La musica, in streaming e sequenziata.",
+    [TXT_SOUND_MUSIC_NOTE] = {"The music, streamed and sequenced.", "La musique, en flux comme séquencée.",
+                              "Die Musik, gestreamt wie sequenziert.", "La musica, in streaming e sequenziata.",
                               "La música, en streaming y secuenciada."},
     [TXT_SOUND_EFFECTS] = {"Effects", "Effets", "Effekte", "Effetti", "Efectos"},
     [TXT_SOUND_EFFECTS_NOTE] = {"Sound effects, magic, weapons and the world around.",
@@ -595,8 +583,8 @@ static const char *const texts[TXT_COUNT][5] = {
                                  "Die Ausgabe des DS: 32.728 Hz und 10 Bit, wie das Handheld sie erzeugte.",
                                  "L'uscita del DS: 32.728 Hz e 10 bit, come la produceva la console.",
                                  "La salida de la DS: 32.728 Hz y 10 bits, tal como la producía la consola."},
-    [TXT_RESTORE_SOUND] = {"Restore the sound settings", "Rétablir le son", "Ton zurücksetzen",
-                           "Ripristina l'audio", "Restablecer el sonido"},
+    [TXT_RESTORE_SOUND] = {"Restore the sound settings", "Rétablir le son", "Ton zurücksetzen", "Ripristina l'audio",
+                           "Restablecer el sonido"},
     /* %d: the internal resolution asked for; %s: why it cannot be made. */
     [TXT_SCALE_REFUSED] = {"the graphics card cannot draw at internal resolution %d (%s); the picture stays as it was",
                            "la carte graphique ne peut pas dessiner en résolution interne %d (%s) ; l'image reste "
@@ -636,15 +624,16 @@ static const char *const texts[TXT_COUNT][5] = {
     /* Mission Mode's multiplayer. */
     [TXT_MULTIPLAYER] = {"Multiplayer", "Multijoueur", "Mehrspieler", "Multigiocatore", "Multijugador"},
     [TXT_NICKNAME] = {"Nickname", "Pseudo", "Spitzname", "Soprannome", "Apodo"},
-    [TXT_NICKNAME_NOTE] = {"The name the other players see in multiplayer, up to 10 characters. Empty: an automatic one.",
-                           "Le nom que voient les autres joueurs en multijoueur, 10 caractères au plus. Vide : un nom "
-                           "automatique.",
-                           "Der Name, den die anderen Spieler im Mehrspielermodus sehen, höchstens 10 Zeichen. Leer: "
-                           "ein automatischer.",
-                           "Il nome che vedono gli altri giocatori in multigiocatore, fino a 10 caratteri. Vuoto: uno "
-                           "automatico.",
-                           "El nombre que ven los demás jugadores en multijugador, hasta 10 caracteres. Vacío: uno "
-                           "automático."},
+    [TXT_NICKNAME_NOTE] =
+        {"The name the other players see in multiplayer, up to 10 characters. Empty: an automatic one.",
+         "Le nom que voient les autres joueurs en multijoueur, 10 caractères au plus. Vide : un nom "
+         "automatique.",
+         "Der Name, den die anderen Spieler im Mehrspielermodus sehen, höchstens 10 Zeichen. Leer: "
+         "ein automatischer.",
+         "Il nome che vedono gli altri giocatori in multigiocatore, fino a 10 caratteri. Vuoto: uno "
+         "automatico.",
+         "El nombre que ven los demás jugadores en multijugador, hasta 10 caracteres. Vacío: uno "
+         "automático."},
     [TXT_ONLINE] = {"Online play", "Jeu en ligne", "Online-Spiel", "Gioco online", "Juego en línea"},
     [TXT_ONLINE_NOTE] = {"Play with others anywhere, through the server; on this PC and the local network no server is "
                          "needed.",
@@ -697,16 +686,17 @@ static const char *const texts[TXT_COUNT][5] = {
                          "Für diese Version nicht mehr erinnern", "Non ricordarmelo per questa versione",
                          "No avisar de esta versión"},
     [TXT_SHOW_PING] = {"Show ping", "Afficher le ping", "Ping anzeigen", "Mostra ping", "Mostrar ping"},
-    [TXT_SHOW_PING_NOTE] = {"In a multiplayer session, the round trip to each other player in milliseconds, in a "
-                            "corner.",
-                            "En partie multijoueur, l'aller-retour vers chaque autre joueur en millisecondes, dans un "
-                            "coin.",
-                            "In einer Mehrspielersitzung die Umlaufzeit zu jedem anderen Spieler in Millisekunden, in "
-                            "einer Ecke.",
-                            "In una sessione multigiocatore, il tempo di andata e ritorno verso ogni altro giocatore in "
-                            "millisecondi, in un angolo.",
-                            "En una partida multijugador, el tiempo de ida y vuelta con cada otro jugador en "
-                            "milisegundos, en una esquina."},
+    [TXT_SHOW_PING_NOTE] =
+        {"In a multiplayer session, the round trip to each other player in milliseconds, in a "
+         "corner.",
+         "En partie multijoueur, l'aller-retour vers chaque autre joueur en millisecondes, dans un "
+         "coin.",
+         "In einer Mehrspielersitzung die Umlaufzeit zu jedem anderen Spieler in Millisekunden, in "
+         "einer Ecke.",
+         "In una sessione multigiocatore, il tempo di andata e ritorno verso ogni altro giocatore in "
+         "millisecondi, in un angolo.",
+         "En una partida multijugador, el tiempo de ida y vuelta con cada otro jugador en "
+         "milisegundos, en una esquina."},
     /* the numbers (each member's, "-" while not measured), then "ms" */
     [TXT_PING_LINE] = {"Ping %s ms", "Ping %s ms", "Ping %s ms", "Ping %s ms", "Ping %s ms"},
     [TXT_ROOM_SEARCH] = {"Search by name", "Rechercher par nom", "Nach Namen suchen", "Cerca per nome",
@@ -724,13 +714,12 @@ static const char *const texts[TXT_COUNT][5] = {
                                 "Mit einem Passwort kommt nur herein, wer es kennt: Sag es, wem du willst.",
                                 "Con una password entra solo chi la conosce: dilla a chi vuoi.",
                                 "Con contraseña solo entra quien la sepa: díselo a quien quieras."},
-    [TXT_ROOM_WRONG_PASSWORD] = {"Wrong password.", "Mot de passe incorrect.", "Falsches Passwort.",
-                                 "Password errata.", "Contraseña incorrecta."},
+    [TXT_ROOM_WRONG_PASSWORD] = {"Wrong password.", "Mot de passe incorrect.", "Falsches Passwort.", "Password errata.",
+                                 "Contraseña incorrecta."},
     [TXT_ROOM_NONE] = {"No rooms.", "Aucun salon.", "Keine Räume.", "Nessuna stanza.", "No hay salas."},
     [TXT_ROOM_JOIN] = {"Join", "Rejoindre", "Beitreten", "Unisciti", "Unirse"},
     [TXT_ROOM_HOST] = {"Host: %s", "Hôte : %s", "Host: %s", "Host: %s", "Anfitrión: %s"},
-    [TXT_ROOM_PLAYERS] = {"%d/%d players", "%d/%d joueurs", "%d/%d Spieler", "%d/%d giocatori",
-                          "%d/%d jugadores"},
+    [TXT_ROOM_PLAYERS] = {"%d/%d players", "%d/%d joueurs", "%d/%d Spieler", "%d/%d giocatori", "%d/%d jugadores"},
     [TXT_ROOM_HOST_TAG] = {"Host", "Hôte", "Host", "Host", "Anfitrión"},
     /* a group's places as the game's own bars label them (UI/mlt/res_&.p2) */
     [TXT_ROOM_PLACE] = {"%dP", "J%d", "S%d", "G%d", "J%d"},
@@ -807,7 +796,7 @@ static const char *const texts[TXT_COUNT][5] = {
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;
-static int chosen;  /* 0 until a language is set: the system's is taken at first use */
+static int chosen; /* 0 until a language is set: the system's is taken at first use */
 
 void khdays_ui_set_language(int language)
 {

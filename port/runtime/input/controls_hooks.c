@@ -161,8 +161,7 @@ void *khdays_trace_pointer(const char *what, void *result)
  * frame; `inverted` its horizontal inversion, Config 0x37c3): returns the right stick's share of the
  * game's rate to add to the yaw target. Right on the stick turns as every "right" of the game's does
  * (bit 4). */
-int khdays_controls_camera_turn(int rate, int inverted, int bits, int flags, int flags2, int yaw, int target,
-                                int pitch)
+int khdays_controls_camera_turn(int rate, int inverted, int bits, int flags, int flags2, int yaw, int target, int pitch)
 {
     static int last_target = -1, last_pitch = -1, last_bits = -1;
     const KhdaysInputSnapshot *in = khdays_input_snapshot();
@@ -174,8 +173,8 @@ int khdays_controls_camera_turn(int rate, int inverted, int bits, int flags, int
         }
     }
     if (bits != 0 || turn != 0 || bits != last_bits || target != last_target || pitch != last_pitch) {
-        trace("camera: bits %x flags %08x flags2 %08x yaw %04x target %04x rate %x pitch %d inverted %d stick %d",
-              bits, flags, flags2, yaw & 0xffff, target & 0xffff, rate, pitch, inverted, turn);
+        trace("camera: bits %x flags %08x flags2 %08x yaw %04x target %04x rate %x pitch %d inverted %d stick %d", bits,
+              flags, flags2, yaw & 0xffff, target & 0xffff, rate, pitch, inverted, turn);
     }
     last_target = target;
     last_pitch = pitch;
@@ -293,8 +292,8 @@ void khdays_trace_steer(int actor, int aim, int bias, int angle, int step, int r
         return;
     }
     if (aim != last_aim || bias != last_bias || step != last_step || rate != last_rate) {
-        trace("steer: aim %04x bias %04x angle %04x step %x rate %x", aim & 0xffff, bias & 0xffff, angle & 0xffff,
-              step, rate);
+        trace("steer: aim %04x bias %04x angle %04x step %x rate %x", aim & 0xffff, bias & 0xffff, angle & 0xffff, step,
+              rate);
     }
     last_aim = aim;
     last_bias = bias;

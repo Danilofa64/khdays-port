@@ -32,12 +32,14 @@ void expect(bool ok, const char* what) {
 }  // namespace
 
 int main() {
-    const auto path =
-        std::filesystem::temp_directory_path() / "khdays_test.nftr";
+    const auto path = std::filesystem::temp_directory_path() / "khdays_test.nftr";
     try {
         // Minimal NFTR: one 2x2 1bpp glyph mapped from 'A', advance 3.
         Bytes d(0x80, 0U);
-        d[0] = 'R'; d[1] = 'T'; d[2] = 'F'; d[3] = 'N';
+        d[0] = 'R';
+        d[1] = 'T';
+        d[2] = 'F';
+        d[3] = 'N';
         d[0x19] = 2;               // line feed
         set_u32(d, 0x20U, 0x40U);  // CGLP data pointer
         set_u32(d, 0x24U, 0x60U);  // CWDH data pointer
@@ -50,12 +52,12 @@ int main() {
         d[0x46U] = 1;              // bpp
         d[0x48U] = 0xA0U;          // glyph 0: pixels 1,0,1,0 (MSB first)
 
-        set_u16(d, 0x60U, 0U);     // CWDH first glyph
-        set_u16(d, 0x62U, 0U);     // CWDH last glyph
-        set_u32(d, 0x64U, 0U);     // next
-        d[0x68U] = 0;              // left
-        d[0x69U] = 2;              // width
-        d[0x6AU] = 3;              // advance
+        set_u16(d, 0x60U, 0U);  // CWDH first glyph
+        set_u16(d, 0x62U, 0U);  // CWDH last glyph
+        set_u32(d, 0x64U, 0U);  // next
+        d[0x68U] = 0;           // left
+        d[0x69U] = 2;           // width
+        d[0x6AU] = 3;           // advance
 
         set_u16(d, 0x70U, 0x41U);  // CMAP first char 'A'
         set_u16(d, 0x72U, 0x41U);  // CMAP last char 'A'
@@ -65,9 +67,7 @@ int main() {
 
         {
             std::ofstream out{path, std::ios::binary};
-            out.write(
-                reinterpret_cast<const char*>(d.data()),
-                static_cast<std::streamsize>(d.size()));
+            out.write(reinterpret_cast<const char*>(d.data()), static_cast<std::streamsize>(d.size()));
         }
 
         const auto font = khdays::assets::decode_nftr(path);
@@ -77,13 +77,12 @@ int main() {
         expect(font.glyph_of(u'A') == 0, "char map");
         expect(font.glyph_of(u'B') == -1, "unmapped char");
         expect(font.glyphs[0].advance == 3, "advance");
-        expect(font.glyphs[0].alpha[0] == 255 && font.glyphs[0].alpha[1] == 0
-                   && font.glyphs[0].alpha[2] == 255,
+        expect(font.glyphs[0].alpha[0] == 255 && font.glyphs[0].alpha[1] == 0 && font.glyphs[0].alpha[2] == 255,
                "glyph bitmap");
 
         const auto image = khdays::assets::render_text(font, u"A");
         expect(image.width == 3 && image.height == 2, "text image size");
-        expect(image.rgba[3] == 255, "pixel (0,0) opaque");   // alpha
+        expect(image.rgba[3] == 255, "pixel (0,0) opaque");  // alpha
         expect(image.rgba[4 + 3] == 0, "pixel (1,0) transparent");
 
         const auto two = khdays::assets::render_text(font, u"AA");

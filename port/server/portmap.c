@@ -8,10 +8,10 @@
 #include <string.h>
 
 #define NATPMP_PORT 5351
-#define NATPMP_LIFETIME 7200 /* seconds: RFC 6886's recommendation */
+#define NATPMP_LIFETIME 7200   /* seconds: RFC 6886's recommendation */
 #define SSDP_GROUP 0xeffffffau /* 239.255.255.250 */
 #define SSDP_PORT 1900
-#define UPNP_LEASE 3600      /* seconds; renewed halfway through */
+#define UPNP_LEASE 3600 /* seconds; renewed halfway through */
 #define HTTP_MS 3000
 #define REPLY_BYTES 65536
 
@@ -97,8 +97,8 @@ static int natpmp(KhdaysPortmap *m)
         ask[0] = 0; /* version */
         ask[1] = 0; /* opcode: the external address */
         khdays_host_udp_send(u, &m->gateway, ask, 2);
-        if (receive_from(u, &m->gateway, answer, sizeof(answer), wait) >= 12 && answer[0] == 0 &&
-            answer[1] == 128 && get16be(answer + 2) == 0) {
+        if (receive_from(u, &m->gateway, answer, sizeof(answer), wait) >= 12 && answer[0] == 0 && answer[1] == 128 &&
+            get16be(answer + 2) == 0) {
             m->external = get32be(answer + 8);
             known = 1;
         }
@@ -111,8 +111,8 @@ static int natpmp(KhdaysPortmap *m)
         put16be(ask + 6, m->internal_port); /* the same port outside, if it can */
         put32be(ask + 8, NATPMP_LIFETIME);
         khdays_host_udp_send(u, &m->gateway, ask, 12);
-        if (receive_from(u, &m->gateway, answer, sizeof(answer), wait) >= 16 && answer[0] == 0 &&
-            answer[1] == 129 && get16be(answer + 2) == 0 && get16be(answer + 8) == m->internal_port) {
+        if (receive_from(u, &m->gateway, answer, sizeof(answer), wait) >= 16 && answer[0] == 0 && answer[1] == 129 &&
+            get16be(answer + 2) == 0 && get16be(answer + 8) == m->internal_port) {
             m->port = (unsigned short)get16be(answer + 10);
             m->lifetime = get32be(answer + 12);
             mapped = 1;
@@ -253,8 +253,8 @@ static int soap(KhdaysPortmap *m, const char *action, const char *arguments, cha
     snprintf(request, sizeof(request),
              "POST %s HTTP/1.1\r\nHost: %u.%u.%u.%u:%u\r\nContent-Type: text/xml; charset=\"utf-8\"\r\n"
              "SOAPAction: \"%s#%s\"\r\nContent-Length: %u\r\nConnection: close\r\n\r\n%s",
-             m->control_path, ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, m->control.port,
-             m->service, action, (unsigned int)strlen(envelope), envelope);
+             m->control_path, ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, m->control.port, m->service,
+             action, (unsigned int)strlen(envelope), envelope);
     return http(&m->control, request, body, &m->internal_ip);
 }
 
@@ -364,9 +364,10 @@ static int upnp(KhdaysPortmap *m)
     address_from("KHDAYS_SERVER_SSDP", &group);
     for (size_t t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
         char search[256];
-        snprintf(search, sizeof(search),
-                 "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: %s\r\n\r\n",
-                 targets[t]);
+        snprintf(
+            search, sizeof(search),
+            "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: %s\r\n\r\n",
+            targets[t]);
         khdays_host_udp_send(u, &group, search, strlen(search));
     }
     until = khdays_host_net_clock_ms() + 2500;

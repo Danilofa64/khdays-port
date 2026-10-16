@@ -29,10 +29,11 @@ extern void Ov006_MissionBuildOptionRows(void);
 extern void Ov008_MissionMenuWaitReady(void);
 #undef PlaySound /* windows.h's (winmm's), not the game's */
 extern int PlaySound(int bank, int sound);
-int khdays_language_wanted(void);  /* language.c */
+int khdays_language_wanted(void); /* language.c */
 u32 khdays_events_vblank_count(void);
 
-#define SEEN_FRAMES 2u      /* the game's list is gone when its update did not run for longer (the game's
+#define SEEN_FRAMES                                                                                                    \
+    2u /* the game's list is gone when its update did not run for longer (the game's
                              * frames: a frame the PC held up is not one without the list) */
 #define ROWS_COUNT 0x100u
 #define ROWS 0x104u
@@ -42,29 +43,34 @@ u32 khdays_events_vblank_count(void);
 #define MENU_HOST 0x20u
 #define MEMBERS_PRESENT 0x434u
 #define MEMBERS_NAMES 0x436u
-#define MEMBER_NAME 11u     /* UTF-16 characters a name takes (the game's) */
-#define PLACES 4            /* the game's group: its host and three guests */
-#define JOIN_WAIT 300u      /* VBlanks a chosen room may take to reach the game's list (it is told
+#define MEMBER_NAME 11u /* UTF-16 characters a name takes (the game's) */
+#define PLACES 4        /* the game's group: its host and three guests */
+#define JOIN_WAIT                                                                                                      \
+    300u                     /* VBlanks a chosen room may take to reach the game's list (it is told
                              * of it at once on the local network, within a second online) */
-#define REPEAT_AFTER 20u    /* a held direction moves again after this many VBlanks, */
-#define REPEAT_EVERY 5u     /* then every this many (the port's) */
+#define REPEAT_AFTER 20u     /* a held direction moves again after this many VBlanks, */
+#define REPEAT_EVERY 5u      /* then every this many (the port's) */
 #define GAME_REPEAT_AFTER 6u /* the same on the game's own screens: its list's */
 #define GAME_REPEAT_EVERY 2u /* (Ov006_UpdateMissionMenuCursor) */
-#define PLATES 4            /* the game's list's plates, its button below them */
+#define PLATES 4             /* the game's list's plates, its button below them */
 
 static const struct {
     void (*update)(void), (*members[4])(void); /* the members' screen, and the states before it */
-    void (*after)(void);                      /* the state after it, the character select's first */
+    void (*after)(void);                       /* the state after it, the character select's first */
     u32 session, menu;
 } screens[] = {
     {Ov006_UpdateMissionMenuOptionScreen,
      {Ov006_UpdateMissionMenuSelectionScreen, func_ov006_020505b0, Ov006_CheckMissionMenuConfirmInput,
       Ov006_UpdateMissionMenuConfirmScreen},
-     Ov006_MissionBuildOptionRows, 0x020565e4u, 0x02056660u},
+     Ov006_MissionBuildOptionRows,
+     0x020565e4u,
+     0x02056660u},
     {Ov008_UpdateMissionMenuOptionScreen,
      {Ov008_UpdateMissionMenuSelectionScreen, func_ov008_0207c498, Ov008_CheckMissionMenuConfirmInput,
       Ov008_UpdateMissionMenuConfirmScreen},
-     Ov008_MissionMenuWaitReady, 0x02090f24u, 0x02090fa0u},
+     Ov008_MissionMenuWaitReady,
+     0x02090f24u,
+     0x02090fa0u},
 };
 #define SCREENS ((int)(sizeof(screens) / sizeof(screens[0])))
 
@@ -74,11 +80,11 @@ typedef struct Text {
     size_t n, room;
 } Text;
 
-static int on = -1;              /* screens' index whose update ran last, -1 none */
+static int on = -1;         /* screens' index whose update ran last, -1 none */
 static u32 frames, seen_at; /* the game's frames (khdays_roomlist_buttons), the last with the list */
-static int members_on = -1;      /* the same for the members' screen */
+static int members_on = -1; /* the same for the members' screen */
 static u32 members_seen;
-static Text session_name;        /* the room's name, as chosen or joined here */
+static Text session_name; /* the room's name, as chosen or joined here */
 static int host_view, self_view, proceed_view;
 static int mode = KHDAYS_ROOMS_NONE, cursor, editing, wrong_password;
 /* Without the HD screens' pieces the game's own screens draw the list (ui/rooms2d.c): its rows in
@@ -87,7 +93,7 @@ static int look_game, top;
 static int cursor_kind = -1, cursor_which; /* the cursor's row when it is not a room, kept there */
 static Text search, room_name, password;
 static unsigned char selected[8], target[8];
-static int selected_room;        /* the cursor's row is a room: `selected` its id */
+static int selected_room; /* the cursor's row is a room: `selected` its id */
 static int join_pending, create_pending;
 static u32 join_since;
 static u16 held;
@@ -119,7 +125,7 @@ static void wr32(u32 address, u32 value)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 static int language(void)
@@ -549,8 +555,9 @@ static void test_typing(Text *t)
 /* The window thread's typing, applied to the field being edited. */
 static void take_typing(void)
 {
-    Text *t = editing && selectable(cursor) && rows[cursor].kind == KHDAYS_ROOMROW_FIELD ? field_text(rows[cursor].which)
-                                                                                         : NULL;
+    Text *t = editing && selectable(cursor) && rows[cursor].kind == KHDAYS_ROOMROW_FIELD
+                  ? field_text(rows[cursor].which)
+                  : NULL;
     if (t != NULL) {
         test_typing(t);
     }
@@ -675,7 +682,8 @@ void khdays_roomlist_release(void)
 static int repeated(u16 buttons, u16 key, int dir)
 {
     const u32 now = khdays_events_vblank_count();
-    const u32 after = look_game ? GAME_REPEAT_AFTER : REPEAT_AFTER, every = look_game ? GAME_REPEAT_EVERY : REPEAT_EVERY;
+    const u32 after = look_game ? GAME_REPEAT_AFTER : REPEAT_AFTER,
+              every = look_game ? GAME_REPEAT_EVERY : REPEAT_EVERY;
     if ((buttons & key) && !(held & key)) {
         repeat_dir = dir;
         repeat_from = now;
@@ -813,7 +821,8 @@ uint16_t khdays_roomlist_buttons(uint16_t buttons)
                 }
             } else if (r->kind == KHDAYS_ROOMROW_ROOM) {
                 text_clear(&session_name);
-                text_append(&session_name, names.s + ((uintptr_t)r->text - 1), strlen(names.s + ((uintptr_t)r->text - 1)));
+                text_append(&session_name, names.s + ((uintptr_t)r->text - 1),
+                            strlen(names.s + ((uintptr_t)r->text - 1)));
                 if (r->room.locked) {
                     memcpy(target, r->room.id, 6);
                     text_clear(&password);

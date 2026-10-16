@@ -24,10 +24,12 @@ void add16(Bytes& d, std::uint32_t v) {
     d.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
 }
 void add32(Bytes& d, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
+    for (int i = 0; i < 4; ++i)
+        d.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
 }
 void put32(Bytes& d, std::size_t at, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+    for (int i = 0; i < 4; ++i)
+        d[at + static_cast<std::size_t>(i)] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
 }
 
 constexpr std::int32_t kUnit = 4096;  // 1.0 in 20.12
@@ -36,7 +38,9 @@ constexpr std::int32_t kUnit = 4096;  // 1.0 in 20.12
 RoomFace face(int x0, int z0, int x1, int z1, int y0 = 0, int y1 = 0) {
     RoomFace f;
     f.corners = 4;
-    f.v = {{{x0 * kUnit, y0 * kUnit, z0 * kUnit}, {x1 * kUnit, y0 * kUnit, z0 * kUnit}, {x1 * kUnit, y1 * kUnit, z1 * kUnit},
+    f.v = {{{x0 * kUnit, y0 * kUnit, z0 * kUnit},
+            {x1 * kUnit, y0 * kUnit, z0 * kUnit},
+            {x1 * kUnit, y1 * kUnit, z1 * kUnit},
             {x0 * kUnit, y1 * kUnit, z1 * kUnit}}};
     f.bounds = {std::min(x0, x1) * kUnit, std::min(z0, z1) * kUnit, std::max(x0, x1) * kUnit, std::max(z0, z1) * kUnit};
     f.planes[0] = 7;  // stored planes are kept as they are
@@ -45,7 +49,8 @@ RoomFace face(int x0, int z0, int x1, int z1, int y0 = 0, int y1 = 0) {
 
 NamedRecord named(const char* text) {
     NamedRecord r;
-    for (std::size_t i = 0; i < 8 && text[i] != '\0'; ++i) r.name[i] = text[i];
+    for (std::size_t i = 0; i < 8 && text[i] != '\0'; ++i)
+        r.name[i] = text[i];
     return r;
 }
 
@@ -98,19 +103,24 @@ Bytes room_table() {
     add32(t, 0x0c);
     add32(t, 0x0c + 0x30);
     // room 0 at 0x0c: header, then its object at +0x24 and its link row at +0x28 (offsets from the room)
-    for (const std::uint8_t b : {std::uint8_t{7}, std::uint8_t{1}, std::uint8_t{1}, std::uint8_t{2}}) t.push_back(b);
-    for (int k = 0; k < 4; ++k) add32(t, 0);
+    for (const std::uint8_t b : {std::uint8_t{7}, std::uint8_t{1}, std::uint8_t{1}, std::uint8_t{2}})
+        t.push_back(b);
+    for (int k = 0; k < 4; ++k)
+        add32(t, 0);
     add32(t, 0xa000);
     add32(t, 0x32000);
     add32(t, 0x28);  // link rows
     add32(t, 0x24);  // object 0
     add32(t, 0x0380);
-    for (const std::uint8_t b : {std::uint8_t{3}, std::uint8_t{1}, std::uint8_t{0}, std::uint8_t{0xff}}) t.push_back(b);
+    for (const std::uint8_t b : {std::uint8_t{3}, std::uint8_t{1}, std::uint8_t{0}, std::uint8_t{0xff}})
+        t.push_back(b);
     add16(t, 0x0003);
     add16(t, 0x0100);
     // room 1 at 0x3c
-    for (const std::uint8_t b : {std::uint8_t{9}, std::uint8_t{0}, std::uint8_t{1}, std::uint8_t{4}}) t.push_back(b);
-    for (int k = 0; k < 4; ++k) add32(t, 0);
+    for (const std::uint8_t b : {std::uint8_t{9}, std::uint8_t{0}, std::uint8_t{1}, std::uint8_t{4}})
+        t.push_back(b);
+    for (int k = 0; k < 4; ++k)
+        add32(t, 0);
     add32(t, 0);
     add32(t, 0);
     add32(t, 0x24);
@@ -131,7 +141,8 @@ Bytes gate_models() {
         g.push_back(1);
         add16(g, 0x7fff);
         add32(g, 0);
-        for (int b = 0; b < 8; ++b) g.push_back(0);
+        for (int b = 0; b < 8; ++b)
+            g.push_back(0);
         add32(g, static_cast<std::uint32_t>(part * kUnit));
         add32(g, 0);
         add32(g, static_cast<std::uint32_t>(-part * kUnit));
@@ -150,7 +161,8 @@ TEST(a_room_collision_reads_back_byte_for_byte) {
     CHECK(parse_collision(data, &back, &why));
     CHECK(back.faces[kGround].size() == 1 && back.faces[kWall].size() == 2 && back.faces[kCeiling].size() == 1);
     CHECK(back.named.size() == 2 && back.named[1].text() == "gate01" && back.records18.size() == 0x18);
-    CHECK(back.faces[kGround][0].extra == 0x00137fff && back.faces[kGround][0].planes[0] == 7 && back.header[0x70] == 2);
+    CHECK(back.faces[kGround][0].extra == 0x00137fff && back.faces[kGround][0].planes[0] == 7 &&
+          back.header[0x70] == 2);
     CHECK(back.root(2) == 32 * kUnit && back.root(3) == 2 * kUnit);
     CHECK(write_collision(back) == data);
     // the sections as the game lays them: the 0x18 records at 0xb0, the (empty) pointer table and the tree after them
@@ -172,13 +184,15 @@ TEST(a_world_archive_reads_back_entry_for_entry) {
     const WorldRoom& r1 = w.rooms[1];
     CHECK(r1.id == 9 && r1.collision_member == 4 && r1.objects.size() == 1 && r1.objects[0].member == 4);
     CHECK(w.archive.entries[4].data.empty());
-    CHECK(w.gate_models[0].key == 3 && w.gate_models[0].parts[2].member == 1 && w.gate_models[0].parts[2].turn == 0x7fff);
+    CHECK(w.gate_models[0].key == 3 && w.gate_models[0].parts[2].member == 1 &&
+          w.gate_models[0].parts[2].turn == 0x7fff);
     CHECK(w.gate_models[0].parts[2].scale[0] == 2 * kUnit && w.gate_models[0].parts[2].scale[2] == -2 * kUnit);
     // nothing changed: every entry the same
     P2File back;
     CHECK(parse_p2(write_world(w, {}), &back, &why));
     CHECK(back.entries.size() == 5);
-    for (std::size_t e = 0; e < back.entries.size(); ++e) CHECK(back.entries[e].data == w.archive.entries[e].data);
+    for (std::size_t e = 0; e < back.entries.size(); ++e)
+        CHECK(back.entries[e].data == w.archive.entries[e].data);
     // a collision replaced: only that entry differs
     RoomCollision other = room();
     other.faces[kGround][0].slots[0] = 0;
@@ -192,16 +206,19 @@ TEST(a_tree_is_built_from_faces_and_walked_as_the_game_walks_it) {
     RoomCollision flat;
     flat.header.assign(0xb0, 0);
     for (int i = 0; i < 8; ++i) {
-        for (int j = 0; j < 5; ++j) flat.faces[kGround].push_back(face(-16 + 4 * i, -10 + 4 * j, -13 + 4 * i, -7 + 4 * j));
+        for (int j = 0; j < 5; ++j)
+            flat.faces[kGround].push_back(face(-16 + 4 * i, -10 + 4 * j, -13 + 4 * i, -7 + 4 * j));
     }
-    for (int i = 0; i < 6; ++i) flat.faces[kWall].push_back(face(-15 + 5 * i, 0, -12 + 5 * i, 0, 0, 2));
+    for (int i = 0; i < 6; ++i)
+        flat.faces[kWall].push_back(face(-15 + 5 * i, 0, -12 + 5 * i, 0, 0, 2));
     flat.faces[kCeiling].push_back(face(-30, -30, 30, 30, 4, 4));  // across the whole room: stays at the root
     RoomCollision one = flat;
     one.set_root(0, 0, 64 * kUnit, 2 * kUnit);
     RoomNode root;
     root.first = {0, 0, 0};
     one.nodes = {root};
-    for (auto& list : one.faces) list.back().flags = 0x8000;
+    for (auto& list : one.faces)
+        list.back().flags = 0x8000;
     CHECK(check_tree(one).empty());
     RoomCollision built = flat;
     build_tree(&built, 0, 0, 64 * kUnit, 2 * kUnit);
@@ -211,7 +228,8 @@ TEST(a_tree_is_built_from_faces_and_walked_as_the_game_walks_it) {
     CHECK(compare_walks(one, built).empty());
     // a broken tree is told: a run not closed, a face outside its node, flags wrong
     RoomCollision open = built;
-    for (auto& f : open.faces[kGround]) f.flags = 0;
+    for (auto& f : open.faces[kGround])
+        f.flags = 0;
     CHECK(!check_tree(open).empty());
     RoomCollision flags = built;
     flags.nodes[0].flags = 0;
@@ -265,7 +283,8 @@ TEST(a_collision_is_made_from_a_model_as_the_game_reads_it) {
     CHECK(built.faces[kGround][0].extra == 0x00137fff);
     // gate01 is on no face now: said
     bool told = false;
-    for (const auto& w : report.warnings) told = told || (w.kind == RoomWarning::gate_unplaced && w.args[0] == "gate01");
+    for (const auto& w : report.warnings)
+        told = told || (w.kind == RoomWarning::gate_unplaced && w.args[0] == "gate01");
     CHECK(told);
 
     // a box seen from outside: its top a ground, its bottom a ceiling, four walls
@@ -279,7 +298,8 @@ TEST(a_collision_is_made_from_a_model_as_the_game_reads_it) {
     CHECK(build_collision(box, original, rules, &built, &report, &why));
     CHECK(built.faces[kGround].size() == 1 && built.faces[kWall].size() == 4 && built.faces[kCeiling].size() == 1);
     for (const auto& list : built.faces) {
-        for (const auto& f : list) CHECK(f.corners == 4);
+        for (const auto& f : list)
+            CHECK(f.corners == 4);
     }
     CHECK(check_collision(built, original).empty());
 
@@ -298,13 +318,15 @@ TEST(a_collision_is_made_from_a_model_as_the_game_reads_it) {
     CHECK(built.faces[kWall].empty() && built.faces[kCeiling].empty());
     CHECK(built.faces[kGround].size() == 2);
     double total = 0;
-    for (const auto& f : built.faces[kGround]) total += area(f);
+    for (const auto& f : built.faces[kGround])
+        total += area(f);
     CHECK(std::abs(total - 6 * 16 * std::sqrt(3.0) / 4) < 0.01);
     CHECK(check_collision(built, original).empty());
 
     // a slope past the ground limit is a wall, one below it a ground
     CollisionSource steep, gentle;
-    const float rise80 = 4.0f * std::tan(80.0f * 3.14159265f / 180.0f), rise70 = 4.0f * std::tan(70.0f * 3.14159265f / 180.0f);
+    const float rise80 = 4.0f * std::tan(80.0f * 3.14159265f / 180.0f),
+                rise70 = 4.0f * std::tan(70.0f * 3.14159265f / 180.0f);
     quad(&steep, {0, 0, -2}, {0, 0, 2}, {4, rise80, 2}, {4, rise80, -2});
     quad(&gentle, {0, 0, -2}, {0, 0, 2}, {4, rise70, 2}, {4, rise70, -2});
     CHECK(build_collision(steep, original, rules, &built, &report, &why));
@@ -336,7 +358,8 @@ TEST(the_original_gates_stay_where_no_new_face_takes_them) {
     }
     CHECK(kept == 1);
     bool said = false;
-    for (const auto& w : report.warnings) said = said || (w.kind == RoomWarning::name_kept && w.args[0] == "gate01");
+    for (const auto& w : report.warnings)
+        said = said || (w.kind == RoomWarning::name_kept && w.args[0] == "gate01");
     CHECK(said);
     CHECK(check_collision(built, original).empty());
     // a marker moved lands where it was put
@@ -347,8 +370,10 @@ TEST(the_original_gates_stay_where_no_new_face_takes_them) {
     rules.markers[before[0].name] = {kUnit, 0, -kUnit, 16384};
     CHECK(build_collision(floor, original, rules, &built, &report, &why));
     const auto after = markers(built);
-    CHECK((after.size() == 1 && after[0].place == std::array<std::int32_t, 3>{kUnit, 0, -kUnit} && after[0].extra == 16384));
-    for (const auto& w : report.warnings) CHECK(w.kind != RoomWarning::marker_floating);  // over the new floor
+    CHECK((after.size() == 1 && after[0].place == std::array<std::int32_t, 3>{kUnit, 0, -kUnit} &&
+           after[0].extra == 16384));
+    for (const auto& w : report.warnings)
+        CHECK(w.kind != RoomWarning::marker_floating);  // over the new floor
 }
 
 TEST(names_given_to_a_model_land_in_their_slots) {
@@ -369,11 +394,14 @@ TEST(names_given_to_a_model_land_in_their_slots) {
     CHECK(built.named.size() == 3 && built.named[2].text() == "slide");
     int gates = 0, slides = 0;
     for (const auto& f : built.faces[kGround]) {
-        if (f.slots[0] == 1) ++gates;  // gate01 is the room's second record
-        if (f.slots[1] == 2) ++slides;
+        if (f.slots[0] == 1)
+            ++gates;  // gate01 is the room's second record
+        if (f.slots[1] == 2)
+            ++slides;
     }
     CHECK(gates == 1 && slides == 2);
-    for (const auto& w : report.warnings) CHECK(w.kind != RoomWarning::gate_unplaced);
+    for (const auto& w : report.warnings)
+        CHECK(w.kind != RoomWarning::gate_unplaced);
     CHECK(check_collision(built, original).empty());
     // a face given three names besides a gate is refused, the triangle named
     rules.names_by_material["stone"] = {"slide", "nohit", "nocam"};
@@ -399,7 +427,8 @@ TEST(a_wide_room_keeps_its_tree_within_the_walk) {
     CHECK(check_collision(built, room()).empty());
     // more than the game's largest room: said, not refused
     bool told = false;
-    for (const auto& w : report.warnings) told = told || w.kind == RoomWarning::too_big;
+    for (const auto& w : report.warnings)
+        told = told || w.kind == RoomWarning::too_big;
     CHECK(told == (report.bytes > kLargestShippedCollision));
 }
 
@@ -428,7 +457,8 @@ TEST(a_room_change_reads_back_as_written) {
     std::string why;
     CHECK(read_change(file, &back, &why));
     CHECK(back.world == "tt" && back.room == 3 && back.model == "my room.glb" && back.collision == "walls.gltf");
-    CHECK(back.place.scale == 2.5f && back.place.turn[1] == 90 && back.place.move[0] == 1.5f && back.place.move[1] == -2);
+    CHECK(back.place.scale == 2.5f && back.place.turn[1] == 90 && back.place.move[0] == 1.5f &&
+          back.place.move[1] == -2);
     CHECK(back.ground_limit == 0.5f && back.objects.size() == 2 && back.objects[8] == ObjectUse::hide);
     CHECK(back.names_by_material["Stone Floor"] == std::vector<std::string>({"slide", "nocam"}));
     CHECK(back.names_by_triangle[12] == std::vector<std::string>({"gate01"}));
@@ -459,7 +489,8 @@ TEST(a_model_is_placed_scaled_turned_then_moved) {
     p.move = {1, 0, 0};
     place_model(&m, p);
     const auto& q = m.model.meshes[0].vertices[0];
-    CHECK(std::abs(q.position[0] - 1) < 1e-5f && std::abs(q.position[1]) < 1e-5f && std::abs(q.position[2] + 2) < 1e-5f);
+    CHECK(std::abs(q.position[0] - 1) < 1e-5f && std::abs(q.position[1]) < 1e-5f &&
+          std::abs(q.position[2] + 2) < 1e-5f);
     CHECK(std::abs(q.normal[2] + 2) < 1e-5f);  // turned as the point (its length comes back in the importer's units)
     // a mesh drawn both sides: a steep face stands both ways, a floor one way
     m.model.meshes[0].double_sided = true;
@@ -508,7 +539,8 @@ TEST(a_room_is_saved_into_a_mod_and_given_back) {
     std::string why;
     CHECK(save_change(dir / "nitrofs", dir / "dump", mod, r, dir / "in" / "floor.gltf", {}, &o, &why));
     std::error_code ec;
-    CHECK(fs::exists(mod / "studio" / "rooms" / "zz" / "0.txt", ec) && fs::exists(mod / "studio" / "rooms" / "zz" / "0" / "floor.gltf", ec));
+    CHECK(fs::exists(mod / "studio" / "rooms" / "zz" / "0.txt", ec) &&
+          fs::exists(mod / "studio" / "rooms" / "zz" / "0" / "floor.gltf", ec));
     CHECK(fs::exists(mod / "graphics" / "mi" / "wd" / "wd_zz#3" / "mdl" / "zz_room.gltf", ec));
     World w;
     CHECK(load_world(mod / "files", "zz", &w, &why));
@@ -518,7 +550,8 @@ TEST(a_room_is_saved_into_a_mod_and_given_back) {
     CHECK(check_collision(made, before).empty());
     CHECK(w.archive.entries[3].data == Bytes(64, 0x11) && w.rooms.size() == 2);
     CHECK((w.gate_models[0].parts[2].position == std::array<std::int32_t, 3>{5 * kUnit, kUnit, 6 * kUnit}));
-    CHECK(w.gate_models[0].parts[2].scale[0] == 2 * kUnit && w.gate_models[0].parts[1].scale[0] == kUnit);  // the rest as it was
+    CHECK(w.gate_models[0].parts[2].scale[0] == 2 * kUnit &&
+          w.gate_models[0].parts[1].scale[0] == kUnit);  // the rest as it was
     // saved again from what the mod holds: the same archive
     std::ifstream first(mod / "files" / "mi" / "wd" / "wd_zz", std::ios::binary);
     const std::string once((std::istreambuf_iterator<char>(first)), std::istreambuf_iterator<char>());
@@ -567,7 +600,8 @@ TEST(a_model_made_from_the_room_lines_up_with_it_again) {
     }
     model.model.meshes.push_back(mesh);
     const RoomAlignment a = align_with_room(room, model);
-    CHECK(a.share > 0.99 && a.verdict == RoomAlignment::turned && a.as_is < 0.05);  // as it is, only the origin falls on the room
+    CHECK(a.share > 0.99 && a.verdict == RoomAlignment::turned &&
+          a.as_is < 0.05);  // as it is, only the origin falls on the room
     CHECK(std::fabs(a.place.scale - 0.01f) < 1e-6f);
     // under that placement the model's points are the room's
     khdays::assets::ImportedModel placed = model;

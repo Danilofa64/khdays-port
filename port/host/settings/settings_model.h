@@ -134,18 +134,18 @@ typedef struct KhdaysRow {
     int *value;          /* switch, number, choice: in the working profile */
     int low, high, step; /* number; for a choice, high is the last choice */
     const char *const *choices;
-    const int *values;   /* choice: what *value holds for each choice (NULL: its index) */
-    int layer, action;   /* binding */
-    unsigned cells;      /* binding: the cells it has (bit n = cell n) */
-    char *text;          /* text: the string it edits, `text_size` bytes including the end */
+    const int *values; /* choice: what *value holds for each choice (NULL: its index) */
+    int layer, action; /* binding */
+    unsigned cells;    /* binding: the cells it has (bit n = cell n) */
+    char *text;        /* text: the string it edits, `text_size` bytes including the end */
     int text_size;
     int (*accepts)(int c);
     const char *placeholder; /* text: shown while it is empty, or NULL */
-    int command;         /* KhdaysCommand */
-    int available;       /* 0: shown greyed out; `note` says why */
-    int apply;           /* KhdaysApply */
-    int takes;           /* a TXT_* id saying when the change takes effect, or -1 */
-    const char *warning; /* shown under the note in the warning colour while *value is not `safe`, or
+    int command;             /* KhdaysCommand */
+    int available;           /* 0: shown greyed out; `note` says why */
+    int apply;               /* KhdaysApply */
+    int takes;               /* a TXT_* id saying when the change takes effect, or -1 */
+    const char *warning;     /* shown under the note in the warning colour while *value is not `safe`, or
                           * NULL */
     int safe;
 } KhdaysRow;
@@ -153,19 +153,19 @@ typedef struct KhdaysRow {
 /* The gamepad's family (from SDL_GetGamepadType): which picture and icons the
  * Controls section shows. */
 enum KhdaysPadFamily {
-    KHDAYS_PAD_GENERIC,     /* none connected, or one SDL does not name: shown as an Xbox pad */
+    KHDAYS_PAD_GENERIC, /* none connected, or one SDL does not name: shown as an Xbox pad */
     KHDAYS_PAD_XBOX,
     KHDAYS_PAD_PLAYSTATION,
-    KHDAYS_PAD_NINTENDO     /* its face buttons are lettered the other way round from Xbox's */
+    KHDAYS_PAD_NINTENDO /* its face buttons are lettered the other way round from Xbox's */
 };
 
 /* What the rows depend on besides the profile. */
 typedef struct KhdaysModelContext {
-    int graphics_card;      /* the picture is drawn by the graphics card */
-    int in_session;         /* a multiplayer session is open */
-    int hd_videos;          /* the HD videos are installed (the movies' volume has a sample) */
-    const char *gamepad;    /* the gamepad's name, or NULL */
-    int pad_family;         /* KhdaysPadFamily */
+    int graphics_card;   /* the picture is drawn by the graphics card */
+    int in_session;      /* a multiplayer session is open */
+    int hd_videos;       /* the HD videos are installed (the movies' volume has a sample) */
+    const char *gamepad; /* the gamepad's name, or NULL */
+    int pad_family;      /* KhdaysPadFamily */
 } KhdaysModelContext;
 
 /* The most rows a section can have: one binding per action, plus the

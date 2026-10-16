@@ -2,6 +2,7 @@
 reuses): studio/shaders/<name>.hlsl into studio/app/generated/ (committed); run after changing a
 shader, with the Vulkan SDK installed.
     python studio/tools/build_shaders.py [name ...]"""
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -23,8 +24,11 @@ if __name__ == "__main__":
             header = port.OUT / f"{source.stem}_{stage}.h"
             if header.exists():
                 text = header.read_text(encoding="utf-8")
-                text = text.replace("port/tools/build_shaders.py from port/shaders/",
-                                    "studio/tools/build_shaders.py from studio/shaders/", 1)
+                text = text.replace(
+                    "port/tools/build_shaders.py from port/shaders/",
+                    "studio/tools/build_shaders.py from studio/shaders/",
+                    1,
+                )
                 header.write_text(text, encoding="utf-8", newline="\n")
 
     port.build = build

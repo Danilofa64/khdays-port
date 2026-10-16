@@ -67,15 +67,15 @@ enum {
 #define ENGINE_PORT 12
 
 typedef struct WMGameInfo {
-    u16 magicNumber;            /* 0x00 */
-    u8 ver;                     /* 0x02 */
-    u8 platform;                /* 0x03 */
-    u32 ggid;                   /* 0x04 */
-    u16 tgid;                   /* 0x08 */
-    u8 userGameInfoLength;      /* 0x0a */
-    u8 attribute;               /* 0x0b */
-    u16 parentMaxSize;          /* 0x0c */
-    u16 childMaxSize;           /* 0x0e */
+    u16 magicNumber;                    /* 0x00 */
+    u8 ver;                             /* 0x02 */
+    u8 platform;                        /* 0x03 */
+    u32 ggid;                           /* 0x04 */
+    u16 tgid;                           /* 0x08 */
+    u8 userGameInfoLength;              /* 0x0a */
+    u8 attribute;                       /* 0x0b */
+    u16 parentMaxSize;                  /* 0x0c */
+    u16 childMaxSize;                   /* 0x0e */
     u8 userGameInfo[USER_GAMEINFO_MAX]; /* 0x10 */
 } WMGameInfo;
 
@@ -83,61 +83,61 @@ typedef struct WMGameInfo {
  * MissionRecord (0xc0 bytes): the host's id at +4 is the row's key, the game
  * information at +0x40 (its user game information at +0x50 the row's label). */
 typedef struct WMBssDesc {
-    u16 length;                 /* 0x00: in halfwords */
-    u16 rssi;                   /* 0x02 */
-    u8 bssid[6];                /* 0x04 */
-    u16 ssidLength;             /* 0x0a */
-    u8 ssid[32];                /* 0x0c */
-    u16 capaInfo;               /* 0x2c */
-    u16 rateBasic;              /* 0x2e */
-    u16 rateSupport;            /* 0x30 */
-    u16 beaconPeriod;           /* 0x32 */
-    u16 dtimPeriod;             /* 0x34 */
-    u16 channel;                /* 0x36 */
-    u16 cfpPeriod;              /* 0x38 */
-    u16 cfpMaxDuration;         /* 0x3a */
-    u16 gameInfoLength;         /* 0x3c */
-    u16 otherElementCount;      /* 0x3e */
-    WMGameInfo gameInfo;        /* 0x40 */
+    u16 length;            /* 0x00: in halfwords */
+    u16 rssi;              /* 0x02 */
+    u8 bssid[6];           /* 0x04 */
+    u16 ssidLength;        /* 0x0a */
+    u8 ssid[32];           /* 0x0c */
+    u16 capaInfo;          /* 0x2c */
+    u16 rateBasic;         /* 0x2e */
+    u16 rateSupport;       /* 0x30 */
+    u16 beaconPeriod;      /* 0x32 */
+    u16 dtimPeriod;        /* 0x34 */
+    u16 channel;           /* 0x36 */
+    u16 cfpPeriod;         /* 0x38 */
+    u16 cfpMaxDuration;    /* 0x3a */
+    u16 gameInfoLength;    /* 0x3c */
+    u16 otherElementCount; /* 0x3e */
+    WMGameInfo gameInfo;   /* 0x40 */
 } WMBssDesc;
 
 /* The parent's connect record its judge reads (Ov006_MatchMissionStartPacket:
  * +2 error, +8 state). */
 typedef struct WMStartParentCallback {
-    u16 apiid;                  /* 0x00 */
-    u16 errcode;                /* 0x02 */
-    u16 wlCmdID;                /* 0x04 */
-    u16 wlResult;               /* 0x06 */
-    u16 state;                  /* 0x08 */
-    u8 macAddress[6];           /* 0x0a */
-    u16 aid;                    /* 0x10 */
-    u16 reason;                 /* 0x12 */
-    u8 ssid[24];                /* 0x14 */
-    u16 parentSize;             /* 0x2c */
-    u16 childSize;              /* 0x2e */
+    u16 apiid;        /* 0x00 */
+    u16 errcode;      /* 0x02 */
+    u16 wlCmdID;      /* 0x04 */
+    u16 wlResult;     /* 0x06 */
+    u16 state;        /* 0x08 */
+    u8 macAddress[6]; /* 0x0a */
+    u16 aid;          /* 0x10 */
+    u16 reason;       /* 0x12 */
+    u8 ssid[24];      /* 0x14 */
+    u16 parentSize;   /* 0x2c */
+    u16 childSize;    /* 0x2e */
 } WMStartParentCallback;
 
 /* A port record (the engine's port-12 handlers read +2 error, +0xc data,
  * +0x10 length, +0x12 aid). */
 typedef struct WMPortRecvCallback {
-    u16 apiid;                  /* 0x00 */
-    u16 errcode;                /* 0x02 */
-    u16 state;                  /* 0x04 */
-    u16 port;                   /* 0x06 */
-    u16 *recvBuf;               /* 0x08 */
-    u16 *data;                  /* 0x0c */
-    u16 length;                 /* 0x10 */
-    u16 aid;                    /* 0x12 */
-    u8 macAddress[6];           /* 0x14 */
-    u16 seqNo;                  /* 0x1a */
-    void *arg;                  /* 0x1c */
-    u16 myAid;                  /* 0x20 */
-    u16 connectedAidBitmap;     /* 0x22 */
-    u8 ssid[24];                /* 0x24 */
-    u16 reason;                 /* 0x3c */
-    u16 reserved;               /* 0x3e */
-    u16 maxSendDataSize;        /* 0x40 */
-    u16 maxRecvDataSize;        /* 0x42 */
+    u16 apiid;              /* 0x00 */
+    u16 errcode;            /* 0x02 */
+    u16 state;              /* 0x04 */
+    u16 port;               /* 0x06 */
+    u16 *recvBuf;           /* 0x08 */
+    u16 *data;              /* 0x0c */
+    u16 length;             /* 0x10 */
+    u16 aid;                /* 0x12 */
+    u8 macAddress[6];       /* 0x14 */
+    u16 seqNo;              /* 0x1a */
+    void *arg;              /* 0x1c */
+    u16 myAid;              /* 0x20 */
+    u16 connectedAidBitmap; /* 0x22 */
+    u8 ssid[24];            /* 0x24 */
+    u16 reason;             /* 0x3c */
+    u16 reserved;           /* 0x3e */
+    u16 maxSendDataSize;    /* 0x40 */
+    u16 maxRecvDataSize;    /* 0x42 */
 } WMPortRecvCallback;
 
 /* A send's completion as the game reads it: +2 error (wh.c's send callback,
@@ -145,21 +145,21 @@ typedef struct WMPortRecvCallback {
  * engine's AsyncMessage_OnSendDone -- the decompilation's wm.h has it at
  * +0x10, which the engine's read contradicts), the arg at +0x20. */
 typedef struct WMPortSendCallback {
-    u16 apiid;                  /* 0x00 */
-    u16 errcode;                /* 0x02 */
-    u16 wlCmdID;                /* 0x04 */
-    u16 wlResult;               /* 0x06 */
-    u16 state;                  /* 0x08 */
-    u16 port;                   /* 0x0a */
-    u16 destBitmap;             /* 0x0c */
-    u16 restBitmap;             /* 0x0e */
-    u16 sentBitmap;             /* 0x10 */
-    u16 reserved;               /* 0x12 */
-    const u16 *data;            /* 0x14 */
-    u16 length;                 /* 0x18 */
-    u16 seqNo;                  /* 0x1a */
-    void (*callback)(void *);   /* 0x1c */
-    void *arg;                  /* 0x20 */
+    u16 apiid;                /* 0x00 */
+    u16 errcode;              /* 0x02 */
+    u16 wlCmdID;              /* 0x04 */
+    u16 wlResult;             /* 0x06 */
+    u16 state;                /* 0x08 */
+    u16 port;                 /* 0x0a */
+    u16 destBitmap;           /* 0x0c */
+    u16 restBitmap;           /* 0x0e */
+    u16 sentBitmap;           /* 0x10 */
+    u16 reserved;             /* 0x12 */
+    const u16 *data;          /* 0x14 */
+    u16 length;               /* 0x18 */
+    u16 seqNo;                /* 0x1a */
+    void (*callback)(void *); /* 0x1c */
+    void *arg;                /* 0x20 */
 } WMPortSendCallback;
 
 typedef struct WMCallback {
@@ -186,16 +186,7 @@ extern u32 khdays_events_vblank_count(void);
 
 /* --- the layer's state -------------------------------------------------- */
 
-enum {
-    PEND_NONE,
-    PEND_INIT,
-    PEND_MEASURE,
-    PEND_PARENT,
-    PEND_END_SCAN,
-    PEND_RESET,
-    PEND_END,
-    PEND_JOIN_FAILED
-};
+enum { PEND_NONE, PEND_INIT, PEND_MEASURE, PEND_PARENT, PEND_END_SCAN, PEND_RESET, PEND_END, PEND_JOIN_FAILED };
 
 static int sSysState;
 static int sErrCode;
@@ -558,8 +549,7 @@ int Ov105_WH_GetLinkLevel(void)
 
 /* WM_SetMPDataToPortEx: to `destBitmap` on `port`; completed at the next
  * delivery, the transport delivering it. */
-int Ov105_WM_SetMPDataToPortEx(void *callback, void *arg, const u16 *data, u16 size, u16 destBitmap, u16 port,
-                               u16 prio)
+int Ov105_WM_SetMPDataToPortEx(void *callback, void *arg, const u16 *data, u16 size, u16 destBitmap, u16 port, u16 prio)
 {
     (void)prio;
     if (!connected()) {
@@ -661,9 +651,7 @@ static void finish_pending(void)
             sSysState = WH_SYSSTATE_FATAL;
         }
         break;
-    case PEND_MEASURE:
-        sSysState = WH_SYSSTATE_MEASURECHANNEL;
-        break;
+    case PEND_MEASURE: sSysState = WH_SYSSTATE_MEASURECHANNEL; break;
     case PEND_PARENT:
         clear(&sOwnGameInfo, sizeof(sOwnGameInfo));
         sOwnGameInfo.magicNumber = WM_GAMEINFO_MAGIC_NUMBER;
@@ -689,9 +677,7 @@ static void finish_pending(void)
             sSysState = WH_SYSSTATE_ERROR;
         }
         break;
-    case PEND_END_SCAN:
-        sSysState = WH_SYSSTATE_IDLE;
-        break;
+    case PEND_END_SCAN: sSysState = WH_SYSSTATE_IDLE; break;
     case PEND_RESET:
         sIsParent = 0;
         data_027e0064 = 0;
@@ -708,8 +694,7 @@ static void finish_pending(void)
         WH_SetError(WM_ERRCODE_FAILED);
         sSysState = WH_SYSSTATE_CONNECT_FAIL;
         break;
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -803,8 +788,7 @@ static void on_event(const KhdaysNetEvent *e)
             sSysState = WH_SYSSTATE_ERROR;
         }
         break;
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -839,8 +823,7 @@ static void complete(const KhdaysNetOwed *o)
             ((WMCallbackFunc)o->callback)(&sPlainCb);
         }
         break;
-    default:
-        break;
+    default: break;
     }
 }
 

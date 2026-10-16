@@ -44,11 +44,11 @@ static struct {
     int scene_count;
     Art *arts;
     int art_count;
-    int *order;          /* the arts in the order the thread reads them */
+    int *order; /* the arts in the order the thread reads them */
     SDL_Thread *reader;
     SDL_AtomicInt stop;
     int art_now, art_before; /* arts' indices, -1 none */
-    Uint64 art_since;    /* when art_now came in */
+    Uint64 art_since;        /* when art_now came in */
 } s;
 
 /* ---- The artworks ----------------------------------------------------------------------------- */

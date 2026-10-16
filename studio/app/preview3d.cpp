@@ -14,7 +14,7 @@ namespace studio {
 
 namespace {
 
-constexpr int kScale = 2;          // the picture is drawn at twice its shown size
+constexpr int kScale = 2;              // the picture is drawn at twice its shown size
 constexpr std::uint32_t kFloats = 12;  // a vertex: position 3, normal 3, uv 2, colour 4
 
 struct Clip {
@@ -29,7 +29,8 @@ Clip to_clip(const Mat& m, const std::array<float, 3>& p) {
 std::array<float, 3> normalized(std::array<float, 3> v) {
     const float l = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
     if (l > 1e-8f) {
-        for (auto& c : v) c /= l;
+        for (auto& c : v)
+            c /= l;
     }
     return v;
 }
@@ -65,7 +66,8 @@ SDL_GPUShader* shader(SDL_GPUDevice* d, SDL_GPUShaderStage stage, const unsigned
     } else if (formats & SDL_GPU_SHADERFORMAT_SPIRV) {
         info.code = spirv, info.code_size = spirv_size, info.format = SDL_GPU_SHADERFORMAT_SPIRV;
     } else if (formats & SDL_GPU_SHADERFORMAT_MSL) {
-        info.code = msl, info.code_size = msl_size - 1, info.format = SDL_GPU_SHADERFORMAT_MSL;  // the text, no terminator
+        info.code = msl, info.code_size = msl_size - 1,
+        info.format = SDL_GPU_SHADERFORMAT_MSL;  // the text, no terminator
     } else {
         return nullptr;
     }
@@ -77,7 +79,8 @@ SDL_GPUShader* shader(SDL_GPUDevice* d, SDL_GPUShaderStage stage, const unsigned
 }
 
 bool make_shared(SDL_GPUDevice* d) {
-    if (g.tried) return g.ok;
+    if (g.tried)
+        return g.ok;
     g.tried = true;
     g.device = d;
     g.depth = SDL_GPUTextureSupportsFormat(d, SDL_GPU_TEXTUREFORMAT_D32_FLOAT, SDL_GPU_TEXTURETYPE_2D,
@@ -90,8 +93,10 @@ bool make_shared(SDL_GPUDevice* d) {
                                preview_ps_spirv_size, preview_ps_msl, preview_ps_msl_size, PREVIEW_PS_ENTRY, 1, 1);
     if (vs == nullptr || ps == nullptr) {
         SDL_Log("preview: shaders not made: %s", SDL_GetError());
-        if (vs != nullptr) SDL_ReleaseGPUShader(d, vs);
-        if (ps != nullptr) SDL_ReleaseGPUShader(d, ps);
+        if (vs != nullptr)
+            SDL_ReleaseGPUShader(d, vs);
+        if (ps != nullptr)
+            SDL_ReleaseGPUShader(d, ps);
         return false;
     }
     SDL_GPUVertexBufferDescription buffer{};
@@ -99,8 +104,9 @@ bool make_shared(SDL_GPUDevice* d) {
     buffer.pitch = kFloats * sizeof(float);
     buffer.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
     SDL_GPUVertexAttribute attributes[4]{};
-    const SDL_GPUVertexElementFormat formats[4] = {SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                                                   SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4};
+    const SDL_GPUVertexElementFormat formats[4] = {
+        SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+        SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4};
     const Uint32 offsets[4] = {0, 3 * sizeof(float), 6 * sizeof(float), 8 * sizeof(float)};
     for (Uint32 i = 0; i < 4; ++i) {
         attributes[i].location = i;
@@ -140,12 +146,14 @@ bool make_shared(SDL_GPUDevice* d) {
             info.target_info.depth_stencil_format = g.depth;
             info.target_info.has_depth_stencil_target = true;
             g.pipeline[cull][blend] = SDL_CreateGPUGraphicsPipeline(d, &info);
-            if (g.pipeline[cull][blend] == nullptr) SDL_Log("preview: pipeline not made: %s", SDL_GetError());
+            if (g.pipeline[cull][blend] == nullptr)
+                SDL_Log("preview: pipeline not made: %s", SDL_GetError());
         }
     }
     SDL_ReleaseGPUShader(d, vs);
     SDL_ReleaseGPUShader(d, ps);
-    const SDL_GPUSamplerAddressMode modes[3] = {SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE, SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+    const SDL_GPUSamplerAddressMode modes[3] = {SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+                                                SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
                                                 SDL_GPU_SAMPLERADDRESSMODE_MIRRORED_REPEAT};
     for (int s = 0; s < 3; ++s) {
         for (int t = 0; t < 3; ++t) {
@@ -160,22 +168,28 @@ bool make_shared(SDL_GPUDevice* d) {
         }
     }
     g.ok = g.pipeline[0][0] != nullptr && g.pipeline[0][1] != nullptr && g.pipeline[1][0] != nullptr &&
-           g.pipeline[1][1] != nullptr && std::all_of(std::begin(g.sampler), std::end(g.sampler), [](SDL_GPUSampler* s) { return s != nullptr; });
+           g.pipeline[1][1] != nullptr &&
+           std::all_of(std::begin(g.sampler), std::end(g.sampler), [](SDL_GPUSampler* s) { return s != nullptr; });
     return g.ok;
 }
 
 int sampler_of(const PreviewImage& image) {
-    auto mode = [&](int axis) { return !image.repeat[static_cast<std::size_t>(axis)] ? 0 : image.mirror[static_cast<std::size_t>(axis)] ? 2 : 1; };
+    auto mode = [&](int axis) {
+        return !image.repeat[static_cast<std::size_t>(axis)] ? 0 : image.mirror[static_cast<std::size_t>(axis)] ? 2 : 1;
+    };
     return mode(0) * 3 + mode(1);
 }
 
 std::uint64_t mark_of(const PreviewImage& image) {
     // the size and a few bytes from the start and the end: enough to tell
     // another picture now at the address of one forgotten
-    std::uint64_t h = 1469598103934665603ull ^ (static_cast<std::uint64_t>(image.width) << 32) ^ static_cast<std::uint64_t>(image.height);
+    std::uint64_t h = 1469598103934665603ull ^ (static_cast<std::uint64_t>(image.width) << 32) ^
+                      static_cast<std::uint64_t>(image.height);
     const std::size_t bytes = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) * 4;
-    for (std::size_t i = 0; i < std::min<std::size_t>(64, bytes); ++i) h = (h ^ image.rgba[i]) * 1099511628211ull;
-    for (std::size_t i = bytes > 64 ? bytes - 64 : 0; i < bytes; ++i) h = (h ^ image.rgba[i]) * 1099511628211ull;
+    for (std::size_t i = 0; i < std::min<std::size_t>(64, bytes); ++i)
+        h = (h ^ image.rgba[i]) * 1099511628211ull;
+    for (std::size_t i = bytes > 64 ? bytes - 64 : 0; i < bytes; ++i)
+        h = (h ^ image.rgba[i]) * 1099511628211ull;
     return h;
 }
 
@@ -184,20 +198,26 @@ std::uint64_t mark_of(const PreviewImage& image) {
 Preview::~Preview() {
     collect();
     for (auto& [key, image] : images_) {
-        if (image.texture != nullptr) SDL_ReleaseGPUTexture(device_, image.texture);
+        if (image.texture != nullptr)
+            SDL_ReleaseGPUTexture(device_, image.texture);
     }
-    if (colour_ != nullptr) SDL_ReleaseGPUTexture(device_, colour_);
-    if (depth_ != nullptr) SDL_ReleaseGPUTexture(device_, depth_);
-    if (vertices_ != nullptr) SDL_ReleaseGPUBuffer(device_, vertices_);
+    if (colour_ != nullptr)
+        SDL_ReleaseGPUTexture(device_, colour_);
+    if (depth_ != nullptr)
+        SDL_ReleaseGPUTexture(device_, depth_);
+    if (vertices_ != nullptr)
+        SDL_ReleaseGPUBuffer(device_, vertices_);
 }
 
 void Preview::collect() {
-    for (SDL_GPUTexture* t : released_) SDL_ReleaseGPUTexture(device_, t);
+    for (SDL_GPUTexture* t : released_)
+        SDL_ReleaseGPUTexture(device_, t);
     released_.clear();
 }
 
 bool Preview::ready() {
-    if (failed_) return false;
+    if (failed_)
+        return false;
     if (!make_shared(device_)) {
         failed_ = true;
         return false;
@@ -217,9 +237,11 @@ bool Preview::ready() {
 }
 
 Preview::Image* Preview::image_of(const PreviewImage& image) {
-    if (image.rgba == nullptr || image.width <= 0 || image.height <= 0) return nullptr;
+    if (image.rgba == nullptr || image.width <= 0 || image.height <= 0)
+        return nullptr;
     auto found = images_.find(image.rgba);
-    if (found != images_.end()) return &found->second;
+    if (found != images_.end())
+        return &found->second;
     Image made;
     made.mark = mark_of(image);
     const std::size_t pixels = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height);
@@ -237,7 +259,8 @@ Preview::Image* Preview::image_of(const PreviewImage& image) {
     info.height = static_cast<Uint32>(image.height);
     info.layer_count_or_depth = info.num_levels = 1;
     made.texture = SDL_CreateGPUTexture(device_, &info);
-    if (made.texture == nullptr) return nullptr;
+    if (made.texture == nullptr)
+        return nullptr;
     made.seen = frame_;
     new_images_.push_back({image.rgba, image});
     return &images_.emplace(image.rgba, made).first->second;
@@ -252,8 +275,8 @@ void Preview::begin(int width, int height, const Mat& view_projection, std::arra
     ++frame_;
     // pictures no frame has drawn for a while (another model shown): let go
     for (auto it = images_.begin(); it != images_.end();) {
-        if (it->second.seen + 120 < frame_ && std::none_of(new_images_.begin(), new_images_.end(),
-                                                           [&](const auto& n) { return n.first == it->first; })) {
+        if (it->second.seen + 120 < frame_ &&
+            std::none_of(new_images_.begin(), new_images_.end(), [&](const auto& n) { return n.first == it->first; })) {
             released_.push_back(it->second.texture);
             it = images_.erase(it);
         } else {
@@ -264,15 +287,17 @@ void Preview::begin(int width, int height, const Mat& view_projection, std::arra
 
 bool Preview::project(const std::array<float, 3>& p, float* x, float* y) const {
     const Clip c = to_clip(vp_, p);
-    if (c.w <= 1e-6f) return false;
+    if (c.w <= 1e-6f)
+        return false;
     *x = (c.x / c.w * 0.5f + 0.5f) * static_cast<float>(width_);
     *y = (0.5f - c.y / c.w * 0.5f) * static_cast<float>(height_);
     return true;
 }
 
-void Preview::triangle(const PreviewVertex& a, const PreviewVertex& b, const PreviewVertex& c, const PreviewImage& image,
-                       bool cull, std::array<float, 3> tint) {
-    if (!ready()) return;
+void Preview::triangle(const PreviewVertex& a, const PreviewVertex& b, const PreviewVertex& c,
+                       const PreviewImage& image, bool cull, std::array<float, 3> tint) {
+    if (!ready())
+        return;
     Batch key;
     Image* img = image_of(image);
     if (img != nullptr && img->seen != frame_) {
@@ -282,12 +307,14 @@ void Preview::triangle(const PreviewVertex& a, const PreviewVertex& b, const Pre
             images_.erase(image.rgba);
             img = image_of(image);
         }
-        if (img != nullptr) img->seen = frame_;
+        if (img != nullptr)
+            img->seen = frame_;
     }
     key.image = img != nullptr ? image.rgba : nullptr;
     key.sampler = img != nullptr ? sampler_of(image) : 0;
     key.cull = cull;
-    key.blend = (img != nullptr && img->partial_alpha) || a.colour[3] < 0.999f || b.colour[3] < 0.999f || c.colour[3] < 0.999f;
+    key.blend =
+        (img != nullptr && img->partial_alpha) || a.colour[3] < 0.999f || b.colour[3] < 0.999f || c.colour[3] < 0.999f;
     auto& out = batches_[key];
     for (const PreviewVertex* v : {&a, &b, &c}) {
         out.insert(out.end(), v->position.begin(), v->position.end());
@@ -301,11 +328,14 @@ void Preview::triangle(const PreviewVertex& a, const PreviewVertex& b, const Pre
 }
 
 SDL_GPUTexture* Preview::finish() {
-    if (!ready()) return nullptr;
+    if (!ready())
+        return nullptr;
     const int w = width_ * kScale, h = height_ * kScale;
     if (colour_ == nullptr || target_w_ != w || target_h_ != h) {
-        if (colour_ != nullptr) released_.push_back(colour_);
-        if (depth_ != nullptr) released_.push_back(depth_);
+        if (colour_ != nullptr)
+            released_.push_back(colour_);
+        if (depth_ != nullptr)
+            released_.push_back(depth_);
         SDL_GPUTextureCreateInfo info{};
         info.type = SDL_GPU_TEXTURETYPE_2D;
         info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
@@ -319,30 +349,36 @@ SDL_GPUTexture* Preview::finish() {
         depth_ = SDL_CreateGPUTexture(device_, &info);
         target_w_ = w;
         target_h_ = h;
-        if (colour_ == nullptr || depth_ == nullptr) return nullptr;
+        if (colour_ == nullptr || depth_ == nullptr)
+            return nullptr;
     }
     // every batch's vertices one after another
     std::uint32_t floats = 0;
-    for (const auto& [key, v] : batches_) floats += static_cast<std::uint32_t>(v.size());
+    for (const auto& [key, v] : batches_)
+        floats += static_cast<std::uint32_t>(v.size());
     const std::uint32_t vertex_bytes = floats * sizeof(float);
     if (vertex_bytes > vertex_capacity_) {
-        if (vertices_ != nullptr) SDL_ReleaseGPUBuffer(device_, vertices_);
+        if (vertices_ != nullptr)
+            SDL_ReleaseGPUBuffer(device_, vertices_);
         SDL_GPUBufferCreateInfo info{};
         info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
         info.size = std::max<std::uint32_t>(vertex_bytes * 2, 1u << 16);
         vertices_ = SDL_CreateGPUBuffer(device_, &info);
         vertex_capacity_ = vertices_ != nullptr ? info.size : 0;
-        if (vertices_ == nullptr) return nullptr;
+        if (vertices_ == nullptr)
+            return nullptr;
     }
     std::uint32_t image_bytes = 0;
-    for (const auto& [rgba, image] : new_images_) image_bytes += static_cast<std::uint32_t>(image.width * image.height * 4);
+    for (const auto& [rgba, image] : new_images_)
+        image_bytes += static_cast<std::uint32_t>(image.width * image.height * 4);
     SDL_GPUTransferBuffer* transfer = nullptr;
     if (vertex_bytes + image_bytes > 0) {
         SDL_GPUTransferBufferCreateInfo tinfo{};
         tinfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         tinfo.size = vertex_bytes + image_bytes;
         transfer = SDL_CreateGPUTransferBuffer(device_, &tinfo);
-        if (transfer == nullptr) return nullptr;
+        if (transfer == nullptr)
+            return nullptr;
         auto* map = static_cast<std::uint8_t*>(SDL_MapGPUTransferBuffer(device_, transfer, false));
         if (map == nullptr) {
             SDL_ReleaseGPUTransferBuffer(device_, transfer);
@@ -362,7 +398,8 @@ SDL_GPUTexture* Preview::finish() {
     }
     SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(device_);
     if (cmd == nullptr) {
-        if (transfer != nullptr) SDL_ReleaseGPUTransferBuffer(device_, transfer);
+        if (transfer != nullptr)
+            SDL_ReleaseGPUTransferBuffer(device_, transfer);
         return nullptr;
     }
     if (transfer != nullptr) {
@@ -375,7 +412,9 @@ SDL_GPUTexture* Preview::finish() {
         std::uint32_t at = vertex_bytes;
         for (const auto& [rgba, image] : new_images_) {
             const auto found = images_.find(rgba);
-            SDL_GPUTexture* texture = rgba == nullptr ? g.white : found != images_.end() ? found->second.texture : nullptr;
+            SDL_GPUTexture* texture = rgba == nullptr          ? g.white
+                                      : found != images_.end() ? found->second.texture
+                                                               : nullptr;
             if (texture == nullptr) {
                 at += static_cast<std::uint32_t>(image.width * image.height * 4);
                 continue;
@@ -420,7 +459,8 @@ SDL_GPUTexture* Preview::finish() {
     if (vertices_ == nullptr || vertex_bytes == 0) {
         SDL_EndGPURenderPass(pass);
         SDL_SubmitGPUCommandBuffer(cmd);
-        if (transfer != nullptr) SDL_ReleaseGPUTransferBuffer(device_, transfer);
+        if (transfer != nullptr)
+            SDL_ReleaseGPUTransferBuffer(device_, transfer);
         return colour_;
     }
     SDL_GPUBufferBinding binding{vertices_, 0};
@@ -442,15 +482,19 @@ SDL_GPUTexture* Preview::finish() {
         std::uint32_t first = 0;
         for (const auto& [key, v] : batches_) {
             const std::uint32_t count = static_cast<std::uint32_t>(v.size() / kFloats);
-            if (step == 0 && !key.blend) draw(key, first, count, false, 0.5f);
-            if (step == 1 && key.blend) draw(key, first, count, false, 248.0f / 255.0f);
-            if (step == 2 && key.blend) draw(key, first, count, true, 8.0f / 255.0f);
+            if (step == 0 && !key.blend)
+                draw(key, first, count, false, 0.5f);
+            if (step == 1 && key.blend)
+                draw(key, first, count, false, 248.0f / 255.0f);
+            if (step == 2 && key.blend)
+                draw(key, first, count, true, 8.0f / 255.0f);
             first += count;
         }
     }
     SDL_EndGPURenderPass(pass);
     SDL_SubmitGPUCommandBuffer(cmd);
-    if (transfer != nullptr) SDL_ReleaseGPUTransferBuffer(device_, transfer);
+    if (transfer != nullptr)
+        SDL_ReleaseGPUTransferBuffer(device_, transfer);
     return colour_;
 }
 
@@ -460,14 +504,16 @@ std::array<float, 3> orbit_eye_direction(float yaw, float pitch) {
 }
 
 void orbit_move(std::array<float, 3>& target, float yaw, float pitch, float distance, float view_height, bool hovered) {
-    if (!hovered || view_height <= 0.0f) return;
+    if (!hovered || view_height <= 0.0f)
+        return;
     // the camera's own axes, as orbit_view_projection makes them
     const auto dir = orbit_eye_direction(yaw, pitch);
     const std::array<float, 3> forward{-dir[0], -dir[1], -dir[2]};
     const auto right = normalized(cross(forward, {0, 1, 0}));
     const auto up = cross(right, forward);
     auto add = [&](const std::array<float, 3>& v, float k) {
-        for (std::size_t c = 0; c < 3; ++c) target[c] += v[c] * k;
+        for (std::size_t c = 0; c < 3; ++c)
+            target[c] += v[c] * k;
     };
     const ImGuiIO& io = ImGui::GetIO();
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) || ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
@@ -476,14 +522,21 @@ void orbit_move(std::array<float, 3>& target, float yaw, float pitch, float dist
         add(right, -io.MouseDelta.x * per_pixel);
         add(up, io.MouseDelta.y * per_pixel);
     }
-    if (io.WantTextInput) return;  // typing in a field, not moving
+    if (io.WantTextInput)
+        return;  // typing in a field, not moving
     const float step = distance * 0.5f * io.DeltaTime * (io.KeyShift ? 4.0f : 1.0f);
-    if (ImGui::IsKeyDown(ImGuiKey_W)) add(forward, step);
-    if (ImGui::IsKeyDown(ImGuiKey_S)) add(forward, -step);
-    if (ImGui::IsKeyDown(ImGuiKey_D)) add(right, step);
-    if (ImGui::IsKeyDown(ImGuiKey_A)) add(right, -step);
-    if (ImGui::IsKeyDown(ImGuiKey_E)) add({0, 1, 0}, step);
-    if (ImGui::IsKeyDown(ImGuiKey_Q)) add({0, 1, 0}, -step);
+    if (ImGui::IsKeyDown(ImGuiKey_W))
+        add(forward, step);
+    if (ImGui::IsKeyDown(ImGuiKey_S))
+        add(forward, -step);
+    if (ImGui::IsKeyDown(ImGuiKey_D))
+        add(right, step);
+    if (ImGui::IsKeyDown(ImGuiKey_A))
+        add(right, -step);
+    if (ImGui::IsKeyDown(ImGuiKey_E))
+        add({0, 1, 0}, step);
+    if (ImGui::IsKeyDown(ImGuiKey_Q))
+        add({0, 1, 0}, -step);
 }
 
 Mat orbit_view_projection(std::array<float, 3> target, float yaw, float pitch, float distance, float aspect) {
@@ -494,8 +547,8 @@ Mat orbit_view_projection(std::array<float, 3> target, float yaw, float pitch, f
     const auto f = normalized({target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]});
     const auto s = normalized(cross(f, {0, 1, 0}));
     const auto u = cross(s, f);
-    const Mat view{s[0], u[0], -f[0], 0, s[1], u[1], -f[1], 0, s[2], u[2], -f[2], 0,
-                   -dot(s, eye), -dot(u, eye), dot(f, eye), 1};
+    const Mat view{s[0], u[0], -f[0], 0, s[1],         u[1],         -f[1],       0,
+                   s[2], u[2], -f[2], 0, -dot(s, eye), -dot(u, eye), dot(f, eye), 1};
     const float fovy = 35.0f * 0.0174532925f, n = std::max(1e-3f, distance * 0.01f), fz = distance * 20.0f;
     const float k = 1.0f / std::tan(fovy * 0.5f);
     const Mat proj{k / aspect, 0, 0, 0, 0, k, 0, 0, 0, 0, (fz + n) / (n - fz), -1, 0, 0, 2 * fz * n / (n - fz), 0};

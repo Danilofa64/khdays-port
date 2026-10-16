@@ -98,8 +98,8 @@ int khdays_host_net_addresses(unsigned int *ips, int room)
         if (list == NULL) {
             return 0;
         }
-        result = GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
-                                      NULL, list, &size);
+        result = GetAdaptersAddresses(
+            AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, NULL, list, &size);
         if (result != ERROR_BUFFER_OVERFLOW) {
             break;
         }
@@ -295,8 +295,8 @@ static int ready(SOCKET s, int write, unsigned long long until)
     return select(0, write ? NULL : &set, write ? &set : NULL, &errors, &timeout) > 0 && FD_ISSET(s, &set);
 }
 
-long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply,
-                              size_t room, int ms, unsigned int *local)
+long khdays_host_tcp_exchange(const KhdaysNetAddress *to, const void *request, size_t size, void *reply, size_t room,
+                              int ms, unsigned int *local)
 {
     const unsigned long long until = GetTickCount64() + (unsigned long long)ms;
     struct sockaddr_in address;

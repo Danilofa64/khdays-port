@@ -29,10 +29,13 @@ void walk(const fs::path& dir, std::atomic<int>* progress, const std::atomic<boo
     std::error_code ec;
     fs::recursive_directory_iterator it(dir, fs::directory_options::skip_permission_denied, ec);
     for (; !ec && it != fs::recursive_directory_iterator(); it.increment(ec)) {
-        if (cancel != nullptr && cancel->load()) return;
+        if (cancel != nullptr && cancel->load())
+            return;
         std::error_code type_ec;
-        if (!it->is_regular_file(type_ec)) continue;
-        if (progress != nullptr) progress->fetch_add(1);
+        if (!it->is_regular_file(type_ec))
+            continue;
+        if (progress != nullptr)
+            progress->fetch_add(1);
         each(it->path(), u8(it->path().lexically_relative(dir)));
     }
 }
@@ -61,18 +64,22 @@ std::string text_language(std::string_view game_path) {
     std::size_t start = 0;
     while (slash != std::string_view::npos && start < slash) {
         const auto end = game_path.find('/', start);
-        if (end == std::string_view::npos || end > slash) break;
-        if (is_language(game_path.substr(start, end - start))) return std::string(game_path.substr(start, end - start));
+        if (end == std::string_view::npos || end > slash)
+            break;
+        if (is_language(game_path.substr(start, end - start)))
+            return std::string(game_path.substr(start, end - start));
         start = end + 1;
     }
     return {};
 }
 
 std::string any_palette_key(const Item& item) {
-    if (item.kind != Kind::texture) return {};
+    if (item.kind != Kind::texture)
+        return {};
     const auto tex = item.key.rfind("/tex/");
     const auto at = item.key.rfind('@');
-    if (tex == std::string::npos || at == std::string::npos || at < tex) return {};
+    if (tex == std::string::npos || at == std::string::npos || at < tex)
+        return {};
     return item.key.substr(0, at);
 }
 
@@ -90,16 +97,21 @@ Catalog build_catalog(const CatalogSources& sources, std::atomic<int>* progress,
         c.graphics_dump_found = true;
         walk(sources.graphics_dump, progress, cancel, [&](const fs::path& path, const std::string& rel) {
             const auto slash = rel.find_last_of('/');
-            if (slash == std::string::npos) return;
+            if (slash == std::string::npos)
+                return;
             const auto folder_at = rel.find_last_of('/', slash - 1);
-            if (folder_at == std::string::npos) return;
+            if (folder_at == std::string::npos)
+                return;
             const std::string folder = rel.substr(folder_at + 1, slash - folder_at - 1);
             const std::string group = rel.substr(0, folder_at);
             const std::string ext = lower(u8(path.extension()));
             const std::string key = rel.substr(0, rel.size() - ext.size());
-            if (folder == "tex" && ext == ".png") c.items.push_back(make(Kind::texture, key, group, path));
-            else if (folder == "chr" && ext == ".png") c.items.push_back(make(Kind::sheet, key, group, path));
-            else if (folder == "mdl" && ext == ".gltf") c.items.push_back(make(Kind::model, key, group, path));
+            if (folder == "tex" && ext == ".png")
+                c.items.push_back(make(Kind::texture, key, group, path));
+            else if (folder == "chr" && ext == ".png")
+                c.items.push_back(make(Kind::sheet, key, group, path));
+            else if (folder == "mdl" && ext == ".gltf")
+                c.items.push_back(make(Kind::model, key, group, path));
         });
     }
 
@@ -108,11 +120,14 @@ Catalog build_catalog(const CatalogSources& sources, std::atomic<int>* progress,
         c.sounds_dump_found = true;
         walk(sources.sounds_dump, progress, cancel, [&](const fs::path& path, const std::string& rel) {
             const std::string ext = lower(u8(path.extension()));
-            if (ext != ".wav") return;
+            if (ext != ".wav")
+                return;
             const auto first = rel.find('/');
-            if (first == std::string::npos) return;
+            if (first == std::string::npos)
+                return;
             const std::string kind = rel.substr(0, first);
-            if (kind != "seq" && kind != "seqarc" && kind != "strm" && kind != "wave") return;
+            if (kind != "seq" && kind != "seqarc" && kind != "strm" && kind != "wave")
+                return;
             const auto slash = rel.find_last_of('/');
             c.items.push_back(make(Kind::sound, rel.substr(0, rel.size() - ext.size()), rel.substr(0, slash), path));
         });
@@ -133,7 +148,8 @@ Catalog build_catalog(const CatalogSources& sources, std::atomic<int>* progress,
                 c.items.push_back(make(Kind::text_file, rel, group, path, name.substr(3, 2)));
             } else if (group == "mv" && ends_with(name, ".mods")) {
                 c.items.push_back(make(Kind::movie, name.substr(0, name.size() - 5), group, path));
-            } else if (group == "mi/mi" && !name.empty() && std::all_of(name.begin(), name.end(), [](char ch) { return ch >= '0' && ch <= '9'; })) {
+            } else if (group == "mi/mi" && !name.empty() &&
+                       std::all_of(name.begin(), name.end(), [](char ch) { return ch >= '0' && ch <= '9'; })) {
                 // a mission's file: its scripts
                 c.items.push_back(make(Kind::mission, rel, group, path));
             } else if (group == "mi/wd" && name.rfind("wd_", 0) == 0) {
@@ -149,7 +165,8 @@ Catalog build_catalog(const CatalogSources& sources, std::atomic<int>* progress,
     }
 
     std::sort(c.items.begin(), c.items.end(), [](const Item& a, const Item& b) {
-        if (a.kind != b.kind) return a.kind < b.kind;
+        if (a.kind != b.kind)
+            return a.kind < b.kind;
         return a.key < b.key;
     });
     return c;
@@ -160,12 +177,14 @@ std::vector<int> Catalog::search(std::string_view query, unsigned kinds) const {
     {
         std::istringstream in{lower(query)};
         std::string w;
-        while (in >> w) words.push_back(w);
+        while (in >> w)
+            words.push_back(w);
     }
     std::vector<int> out;
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         const Item& item = items[static_cast<std::size_t>(i)];
-        if ((kinds & (1u << static_cast<unsigned>(item.kind))) == 0) continue;
+        if ((kinds & (1u << static_cast<unsigned>(item.kind))) == 0)
+            continue;
         bool all = true;
         for (const auto& w : words) {
             if (item.folded.find(w) == std::string::npos) {
@@ -173,7 +192,8 @@ std::vector<int> Catalog::search(std::string_view query, unsigned kinds) const {
                 break;
             }
         }
-        if (all) out.push_back(i);
+        if (all)
+            out.push_back(i);
     }
     return out;
 }

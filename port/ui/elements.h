@@ -11,11 +11,11 @@
 
 /* One element of a part this frame. */
 typedef struct KhdaysUiElement {
-    const char *id;     /* "<part>.<name>", the layout's key (static storage) */
-    int screen;         /* 0 engine A's, 1 engine B's */
-    uint32_t slot;      /* KE_SLOT: KES_* */
-    float x, y, w, h;   /* its DS place: where the game's drawing of it is, DS pixels */
-    int image;          /* from khdays_ui_image_get: its texels cover the place */
+    const char *id;   /* "<part>.<name>", the layout's key (static storage) */
+    int screen;       /* 0 engine A's, 1 engine B's */
+    uint32_t slot;    /* KE_SLOT: KES_* */
+    float x, y, w, h; /* its DS place: where the game's drawing of it is, DS pixels */
+    int image;        /* from khdays_ui_image_get: its texels cover the place */
 } KhdaysUiElement;
 
 /* A part's elements are asked for at each VBlank whose frame is drawn (and

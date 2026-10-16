@@ -15,10 +15,10 @@ extern "C" {
 
 typedef struct KhdaysCineView {
     int shown;
-    int language;     /* the game's (1-5), the one the player just chose while it applies */
-    int first;        /* the first row of the page shown (Ov000_DrawListScene's ten) */
-    int cursor;       /* the scene selected */
-    int16_t master;   /* the game's fade: its brightness, -16 black to 16 white */
+    int language;                        /* the game's (1-5), the one the player just chose while it applies */
+    int first;                           /* the first row of the page shown (Ov000_DrawListScene's ten) */
+    int cursor;                          /* the scene selected */
+    int16_t master;                      /* the game's fade: its brightness, -16 black to 16 white */
     uint16_t movies[KHDAYS_CINE_SCENES]; /* each row's movie (its number: <n>.z in UI/thr/m.p2) */
 } KhdaysCineView;
 

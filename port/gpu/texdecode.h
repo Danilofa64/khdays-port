@@ -67,15 +67,9 @@ static inline uint32_t khdays_tex_texel(const KhdaysVramPages *vram, uint32_t pa
         const unsigned a3 = v >> 5;
         return (khdays_pal16(vram, pal + (v & 31) * 2) & 0x7fff) | (a3 * 4 + a3 / 2) << 16;
     }
-    case 2:
-        index = (khdays_tex8(vram, base + (uint32_t)(t * ss + s) / 4) >> (2 * (s & 3))) & 3;
-        break;
-    case 3:
-        index = (khdays_tex8(vram, base + (uint32_t)(t * ss + s) / 2) >> (4 * (s & 1))) & 15;
-        break;
-    case 4:
-        index = khdays_tex8(vram, base + (uint32_t)(t * ss + s));
-        break;
+    case 2: index = (khdays_tex8(vram, base + (uint32_t)(t * ss + s) / 4) >> (2 * (s & 3))) & 3; break;
+    case 3: index = (khdays_tex8(vram, base + (uint32_t)(t * ss + s) / 2) >> (4 * (s & 1))) & 15; break;
+    case 4: index = khdays_tex8(vram, base + (uint32_t)(t * ss + s)); break;
     case 5: {
         const uint32_t block = base + (uint32_t)((t / 4) * (ss / 4) + s / 4) * 4;
         const uint32_t bits = (uint32_t)khdays_tex8(vram, block + (t & 3)) >> (2 * (s & 3)) & 3;
@@ -97,9 +91,12 @@ static inline uint32_t khdays_tex_texel(const KhdaysVramPages *vram, uint32_t pa
             for (int sh = 0; sh < 15; sh += 5) {
                 const unsigned a = (c0 >> sh) & 31, b = (c1 >> sh) & 31;
                 unsigned v;
-                if (mode == 1) v = (a + b) / 2;
-                else if (bits == 2) v = (a * 5 + b * 3) / 8;
-                else v = (a * 3 + b * 5) / 8;
+                if (mode == 1)
+                    v = (a + b) / 2;
+                else if (bits == 2)
+                    v = (a * 5 + b * 3) / 8;
+                else
+                    v = (a * 3 + b * 5) / 8;
                 out |= v << sh;
             }
             return out | 31u << 16;
@@ -113,8 +110,7 @@ static inline uint32_t khdays_tex_texel(const KhdaysVramPages *vram, uint32_t pa
         const uint16_t v = khdays_tex16(vram, base + (uint32_t)(t * ss + s) * 2);
         return (v & 0x7fff) | (v & 0x8000 ? 31u << 16 : 0);
     }
-    default:
-        return 0x7fff | 31u << 16;
+    default: return 0x7fff | 31u << 16;
     }
     if (index == 0 && zero_transparent) {
         return 0;

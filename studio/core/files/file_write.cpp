@@ -13,17 +13,22 @@ namespace studio {
 
 std::string copy_bytes(const fs::path& from, const fs::path& to) {
     std::ifstream in(from, std::ios::binary);
-    if (!in) return "cannot read " + u8(from);
+    if (!in)
+        return "cannot read " + u8(from);
     std::ofstream out(to, std::ios::binary | std::ios::trunc);
-    if (!out) return "cannot write " + u8(to);
+    if (!out)
+        return "cannot write " + u8(to);
     std::vector<char> buffer(1 << 20);
     while (in) {
         in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const std::streamsize n = in.gcount();
-        if (n > 0) out.write(buffer.data(), n);
-        if (!out) return "cannot write " + u8(to);
+        if (n > 0)
+            out.write(buffer.data(), n);
+        if (!out)
+            return "cannot write " + u8(to);
     }
-    if (in.bad()) return "cannot read " + u8(from);
+    if (in.bad())
+        return "cannot read " + u8(from);
     return {};
 }
 

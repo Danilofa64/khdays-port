@@ -3,6 +3,7 @@
 is dereferenced). Variadic and mis-declared functions take their arguments in a block as the DS laid
 them out; declarations from the port's own headers keep host pointers (docs/BUILD.md).
 """
+
 from __future__ import annotations
 
 import copy
@@ -11,11 +12,25 @@ from dataclasses import dataclass, field
 
 from pycparser import c_ast, c_generator
 
-from .types import (DOUBLE, INT, Array, Arithmetic, CType, Enumeration, Function, Pointer, Record, Symbol,
-                    TypeFailure, TypePass, Void, decayed)
+from .types import (
+    DOUBLE,
+    INT,
+    Array,
+    Arithmetic,
+    CType,
+    Enumeration,
+    Function,
+    Pointer,
+    Record,
+    Symbol,
+    TypeFailure,
+    TypePass,
+    Void,
+    decayed,
+)
 
 REF = "khdays_ref"
-PRELUDE = f"""/* Rewritten by port/tools/references (specs/010): every pointer of the
+PRELUDE = """/* Rewritten by port/tools/references (specs/010): every pointer of the
  * game's side a 4-byte reference, the DS address it had. */
 #include "khdays_references.h"
 #pragma section(".khdi$m", read, write)
@@ -55,10 +70,11 @@ def is_host_file(path: str | None) -> bool:
 @dataclass
 class Index:
     """What a file's emission needs to know of the whole program."""
-    ds_objects: dict[str, int] = field(default_factory=dict)   # game objects at DS addresses
-    game_objects: set[str] | None = None   # external objects the game's side defines (None: unknown)
-    functions: dict[str, int] = field(default_factory=dict)    # function references known as numbers
-    game_functions: set[str] | None = None                      # defined on the game's side (None: all but host)
+
+    ds_objects: dict[str, int] = field(default_factory=dict)  # game objects at DS addresses
+    game_objects: set[str] | None = None  # external objects the game's side defines (None: unknown)
+    functions: dict[str, int] = field(default_factory=dict)  # function references known as numbers
+    game_functions: set[str] | None = None  # defined on the game's side (None: all but host)
     # functions a direct call reaches through their DS address, as the game's
     # function references (prepare.py's thunks: the overlay loaded there; the
     # ROM's code with no native form: a stop) -- no symbol at a DS address
@@ -84,6 +100,7 @@ class Emitter(c_generator.CGenerator):
         self.data_defined: dict[str, tuple[int, int]] = {}  # the data-area objects this file defines
         self.static_keys: dict[int, str] = {}  # a static local's symbol -> its key
         from .layout import Layout
+
         self.layout = Layout(tp)
         self.plain = c_generator.CGenerator()  # for the port's declarations, as written
         self.line = None
@@ -238,8 +255,11 @@ class Emitter(c_generator.CGenerator):
             if node.type == "->":
                 base_t = decayed(self.type(node.name))
                 return f"(({self.pointer_to(base_t.target)})KHDAYS_W({self.rv(node.name)}))->{node.field.name}"
-            return f"{self.lv(node.name)}.{node.field.name}" if self.is_lvalue(node.name) else \
-                f"({self.rv(node.name)}).{node.field.name}"
+            return (
+                f"{self.lv(node.name)}.{node.field.name}"
+                if self.is_lvalue(node.name)
+                else f"({self.rv(node.name)}).{node.field.name}"
+            )
         if isinstance(node, c_ast.ArrayRef):
             a, b = node.name, node.subscript
             ta, tb = self.type(a), self.type(b)
@@ -248,8 +268,10 @@ class Emitter(c_generator.CGenerator):
             if isinstance(ta, Array) and self.is_lvalue(a):
                 return f"{self.lv(a)}[{self.rv(b)}]"
             target = decayed(ta).target
-            return (f"(*({self.pointer_to(target)})KHDAYS_W(({REF})({self.rv(a)} + ({self.rv(b)}) * "
-                    f"{self.size_of(target)})))")
+            return (
+                f"(*({self.pointer_to(target)})KHDAYS_W(({REF})({self.rv(a)} + ({self.rv(b)}) * "
+                f"{self.size_of(target)})))"
+            )
         if isinstance(node, c_ast.CompoundLiteral):
             return self.rv_CompoundLiteral(node)
         if isinstance(node, c_ast.Constant) and node.type == "string":
@@ -259,9 +281,11 @@ class Emitter(c_generator.CGenerator):
         raise EmitFailure(node, f"not an lvalue: {type(node).__name__}")
 
     def is_lvalue(self, node) -> bool:
-        return isinstance(node, (c_ast.ID, c_ast.StructRef, c_ast.ArrayRef, c_ast.CompoundLiteral)) or \
-            (isinstance(node, c_ast.UnaryOp) and node.op == "*") or \
-            (isinstance(node, c_ast.Constant) and node.type == "string")
+        return (
+            isinstance(node, (c_ast.ID, c_ast.StructRef, c_ast.ArrayRef, c_ast.CompoundLiteral))
+            or (isinstance(node, c_ast.UnaryOp) and node.op == "*")
+            or (isinstance(node, c_ast.Constant) and node.type == "string")
+        )
 
     def lv_ID(self, node: c_ast.ID) -> str:
         s = self.symbol(node)
@@ -341,6 +365,7 @@ class Emitter(c_generator.CGenerator):
 
     def literal(self, node: c_ast.Constant) -> str:
         from .layout import literal_bytes
+
         key = f"{self.file_key}_lit{len(self.literals)}"
         self.literals.append(node.value)
         self.data_objects[key] = self.data_defined[key] = (literal_bytes(node.value), 1)
@@ -353,13 +378,15 @@ class Emitter(c_generator.CGenerator):
             key = f"{self.file_key}_lit{n}"
             out.append(f"static const char khdays_image_{key}[] = {value};\n")
             out.append(self.record(key, f"khdays_image_{key}") + ";\n")
-            out.append(f"_Static_assert(sizeof(khdays_image_{key}) == KHDAYS_DATA_SIZE_{key}, \"{key}\");\n")
+            out.append(f'_Static_assert(sizeof(khdays_image_{key}) == KHDAYS_DATA_SIZE_{key}, "{key}");\n')
         return "".join(out)
 
     @staticmethod
     def record(key: str, image: str) -> str:
-        return (f"__declspec(allocate(\".khdi$m\")) struct khdays_data_init khdays_place_{key} = "
-                f"{{KHDAYS_DATA({key}), &{image}, sizeof({image}), {DATA_AREA_MODULE}}}")
+        return (
+            f'__declspec(allocate(".khdi$m")) struct khdays_data_init khdays_place_{key} = '
+            f"{{KHDAYS_DATA({key}), &{image}, sizeof({image}), {DATA_AREA_MODULE}}}"
+        )
 
     def decayed_value(self, node, t: CType) -> str:
         """An array or function lvalue used as a value."""
@@ -519,8 +546,11 @@ class Emitter(c_generator.CGenerator):
         args = node.args.exprs if node.args is not None else []
         if id(node) in self.va_calls:
             return self.va_call(node, callee, args)
-        if isinstance(callee, c_ast.ID) and self.is_function_designator(callee) and \
-                callee.name in self.index.dispatched:
+        if (
+            isinstance(callee, c_ast.ID)
+            and self.is_function_designator(callee)
+            and callee.name in self.index.dispatched
+        ):
             f = self.symbol(callee).type
             fn = f"(({self.pointer_to(f)})KHDAYS_FN(0x{self.index.dispatched[callee.name]:08x}u))"
             return f"{fn}({', '.join(self.value(a) for a in args)})"
@@ -583,8 +613,11 @@ class Emitter(c_generator.CGenerator):
             if callee.name in self.index.variadic:
                 return f  # its arguments by the caller's own prototype, laid out as words
         else:
-            target = callee.expr if isinstance(callee, c_ast.UnaryOp) and callee.op == "*" and \
-                isinstance(self.type(callee), Function) else callee
+            target = (
+                callee.expr
+                if isinstance(callee, c_ast.UnaryOp) and callee.op == "*" and isinstance(self.type(callee), Function)
+                else callee
+            )
             t = decayed(self.type(target))
             if not (isinstance(t, Pointer) and isinstance(t.target, Function)):
                 return None
@@ -595,7 +628,7 @@ class Emitter(c_generator.CGenerator):
         """The arguments' types as the block holds them: those the caller's
         prototype names converted to them, the rest promoted."""
         named = [decayed(p) for p in f.params] if f.params is not None else []
-        return named[:len(args)] + [self.va_slot(self.type(a)) for a in args[len(named):]]
+        return named[: len(args)] + [self.va_slot(self.type(a)) for a in args[len(named) :]]
 
     def plan_va_calls(self, body) -> list[str]:
         """The variable-argument calls in a function's body, each given its
@@ -633,8 +666,11 @@ class Emitter(c_generator.CGenerator):
             else:
                 fn = callee.name
         else:
-            target = callee.expr if isinstance(callee, c_ast.UnaryOp) and callee.op == "*" and \
-                isinstance(self.type(callee), Function) else callee
+            target = (
+                callee.expr
+                if isinstance(callee, c_ast.UnaryOp) and callee.op == "*" and isinstance(self.type(callee), Function)
+                else callee
+            )
             ft = decayed(self.type(target))
             fn = f"(({self.pointer_to(ft.target)})KHDAYS_FN({self.value(target)}))"
         return "(" + ", ".join(stores + [f"{fn}(KHDAYS_REF({name}))"]) + ")"
@@ -666,8 +702,9 @@ class Emitter(c_generator.CGenerator):
             parts = []
             for e in init.exprs:
                 if isinstance(e, c_ast.NamedInitializer):
-                    designators = "".join(f".{d.name}" if isinstance(d, c_ast.ID) else f"[{self.rv(d)}]"
-                                          for d in e.name)
+                    designators = "".join(
+                        f".{d.name}" if isinstance(d, c_ast.ID) else f"[{self.rv(d)}]" for d in e.name
+                    )
                     parts.append(f"{designators} = {self.initializer(e.expr)}")
                 else:
                     parts.append(self.initializer(e))
@@ -740,16 +777,30 @@ class Emitter(c_generator.CGenerator):
                 params = []
                 if any(isinstance(p, c_ast.EllipsisParam) for p in node.args.params):
                     # a variable argument list: the block (the docstring)
-                    new.args = c_ast.ParamList([c_ast.Decl("khdays_va", [], [], [], [], c_ast.TypeDecl(
-                        "khdays_va", [], None, c_ast.IdentifierType([REF])), None, None)], node.args.coord)
+                    new.args = c_ast.ParamList(
+                        [
+                            c_ast.Decl(
+                                "khdays_va",
+                                [],
+                                [],
+                                [],
+                                [],
+                                c_ast.TypeDecl("khdays_va", [], None, c_ast.IdentifierType([REF])),
+                                None,
+                                None,
+                            )
+                        ],
+                        node.args.coord,
+                    )
                     return new
                 for p in node.args.params:
                     if isinstance(p, (c_ast.Decl, c_ast.Typename)):
                         q = copy.copy(p)
                         if self.adjusted_to_pointer(p.type):
                             # `u32 buffer[8]` is a pointer, so a reference
-                            q.type = c_ast.TypeDecl(getattr(p, "name", None), [], None,
-                                                    c_ast.IdentifierType([REF]), p.coord)
+                            q.type = c_ast.TypeDecl(
+                                getattr(p, "name", None), [], None, c_ast.IdentifierType([REF]), p.coord
+                            )
                         else:
                             q.type = self.game_declarators(p.type)
                         params.append(q)
@@ -832,8 +883,12 @@ class Emitter(c_generator.CGenerator):
                 n = copy.copy(n)
                 n.type = chain
         s_function = self.tp.declared.get(id(n))
-        if isinstance(n.type, c_ast.FuncDecl) and s_function is not None and s_function.kind == "function" and \
-                self.host_symbol(s_function):
+        if (
+            isinstance(n.type, c_ast.FuncDecl)
+            and s_function is not None
+            and s_function.kind == "function"
+            and self.host_symbol(s_function)
+        ):
             # a function of the port's, declared in the game's file (prepare.py's
             # hooks): as written, host pointers -- as its calls hand them
             return self.plain.visit_Decl(n, no_type)
@@ -881,7 +936,12 @@ class Emitter(c_generator.CGenerator):
         t = n.type
         while isinstance(t, (c_ast.TypeDecl, c_ast.PtrDecl, c_ast.ArrayDecl, c_ast.FuncDecl)):
             t = t.type
-        if isinstance(t, (c_ast.Struct, c_ast.Union)) and t.decls is not None or                 isinstance(t, c_ast.Enum) and t.values is not None:
+        if (
+            isinstance(t, (c_ast.Struct, c_ast.Union))
+            and t.decls is not None
+            or isinstance(t, c_ast.Enum)
+            and t.values is not None
+        ):
             return self.visit(t)
         return ""
 
@@ -905,7 +965,7 @@ class Emitter(c_generator.CGenerator):
             parts.append(text + " = " + self.initializer(n.init, t))
             parts.append(self.record(key, image))
         if not (isinstance(t, Array) and t.length is None):
-            parts.append(f"_Static_assert(sizeof({self.decl(t)}) == KHDAYS_DATA_SIZE_{key}, \"{key}\")")
+            parts.append(f'_Static_assert(sizeof({self.decl(t)}) == KHDAYS_DATA_SIZE_{key}, "{key}")')
         return "; ".join(parts)
 
     @staticmethod
@@ -919,8 +979,13 @@ class Emitter(c_generator.CGenerator):
     @staticmethod
     def is_data_init_record(n) -> bool:
         t = n.type
-        return (isinstance(t, c_ast.TypeDecl) and isinstance(t.type, c_ast.Struct) and
-                t.type.name == "khdays_data_init" and n.name is not None and n.init is not None)
+        return (
+            isinstance(t, c_ast.TypeDecl)
+            and isinstance(t.type, c_ast.Struct)
+            and t.type.name == "khdays_data_init"
+            and n.name is not None
+            and n.init is not None
+        )
 
     def data_init_record(self, n) -> str:
         """KHDAYS_DATA_INIT's record (compat/decomp_compat.h): the object's DS
@@ -935,8 +1000,7 @@ class Emitter(c_generator.CGenerator):
         if address is None:
             raise EmitFailure(n, "a data record for an object with no place")
         rest = ", ".join(self.plain.visit(e) for e in exprs[1:])
-        return (f"__declspec(allocate(\".khdi$m\")) struct khdays_data_init {n.name} = "
-                f"{{{address}, {rest}}}")
+        return f'__declspec(allocate(".khdi$m")) struct khdays_data_init {n.name} = {{{address}, {rest}}}'
 
     def visit_Typedef(self, n):
         chain = self.once(n.type, n.name)
@@ -962,8 +1026,7 @@ class Emitter(c_generator.CGenerator):
         saved = self.va_params, self.va_calls
         self.va_params, self.va_calls = {}, {}
         try:
-            if isinstance(f, Function) and f.params is not None and \
-                    (f.variadic or n.decl.name in self.index.variadic):
+            if isinstance(f, Function) and f.params is not None and (f.variadic or n.decl.name in self.index.variadic):
                 named = [p for p in n.decl.type.args.params if isinstance(p, c_ast.Decl) and p.name is not None]
                 offsets, _ = self.va_layout([decayed(t) for t in f.params])
                 self.va_params = {id(p): o for p, o in zip(named, offsets)}
@@ -1021,9 +1084,10 @@ class Emitter(c_generator.CGenerator):
         """The native function of each function reference the build numbers
         (runtime/core/window.c builds its table from these)."""
         return "".join(
-            f"__declspec(allocate(\".khfr$m\")) const struct khdays_function_record "
+            f'__declspec(allocate(".khfr$m")) const struct khdays_function_record '
             f"khdays_function_{key}_{self.file_key} = {{KHDAYS_FREF({key}), (khdays_function_pointer){name}}};\n"
-            for key, name in sorted(self.frefs.items()))
+            for key, name in sorted(self.frefs.items())
+        )
 
 
 def emit(ast: c_ast.FileAST, tp: TypePass, index: Index, file_key: str = "f") -> tuple[str, Emitter]:

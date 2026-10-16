@@ -26,9 +26,9 @@ extern "C" { // the host's C headers that say nothing of C++
 
 namespace {
 
-constexpr Uint64 kCaptureMs = 5000;    // how long a new binding waits for its key or button
-constexpr Uint64 kRepeatDelayMs = 400; // a held gamepad direction starts repeating after this,
-constexpr Uint64 kRepeatEveryMs = 100; // and then repeats this often
+constexpr Uint64 kCaptureMs = 5000;          // how long a new binding waits for its key or button
+constexpr Uint64 kRepeatDelayMs = 400;       // a held gamepad direction starts repeating after this,
+constexpr Uint64 kRepeatEveryMs = 100;       // and then repeats this often
 constexpr int kClose = KHDAYS_SECTION_COUNT; // the column's last entry
 
 enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT, MODE_UPDATE };
@@ -86,8 +86,8 @@ struct Menu {
     // ImGui.
     ImGuiContext *imgui = nullptr;
     ImFont *font = nullptr;
-    ImFont *skin_font = nullptr; // the HD menu's (settings_skin.h), when its pieces are there
-    bool skin = false;           // this frame is drawn in those pieces
+    ImFont *skin_font = nullptr;   // the HD menu's (settings_skin.h), when its pieces are there
+    bool skin = false;             // this frame is drawn in those pieces
     SDL_Renderer *bound = nullptr; // the renderer the backend draws with
     float styled_size = 0;
     Uint64 last_draw = 0;
@@ -106,10 +106,8 @@ bool selectable(const KhdaysRow &r)
     case KHDAYS_ROW_LINE:
     case KHDAYS_ROW_STICKS:
     case KHDAYS_ROW_PAD:
-    case KHDAYS_ROW_TEST:
-        return false;
-    default:
-        return true;
+    case KHDAYS_ROW_TEST: return false;
+    default: return true;
     }
 }
 
@@ -183,12 +181,44 @@ void pad_input_label(int input, char *text, size_t size)
 {
     // Names every controller family shares stay as they are.
     static const char *const names[KHDAYS_PAD_COUNT] = {
-        "", "", "", "", "", "", "", "", "L1 / LB", "R1 / RB", "L2 / LT", "R2 / RT", "L3", "R3",
-        "Start", "Select / View", "Guide / Home",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "L1 / LB",
+        "R1 / RB",
+        "L2 / LT",
+        "R2 / RT",
+        "L3",
+        "R3",
+        "Start",
+        "Select / View",
+        "Guide / Home",
     };
     static const int ids[KHDAYS_PAD_COUNT] = {
-        TXT_PAD_SOUTH, TXT_PAD_EAST, TXT_PAD_WEST, TXT_PAD_NORTH, TXT_PAD_DPUP, TXT_PAD_DPDOWN, TXT_PAD_DPLEFT,
-        TXT_PAD_DPRIGHT, 0, 0, 0, 0, 0, 0, 0, 0, 0, TXT_PAD_CAPTURE, TXT_PAD_TOUCHPAD,
+        TXT_PAD_SOUTH,
+        TXT_PAD_EAST,
+        TXT_PAD_WEST,
+        TXT_PAD_NORTH,
+        TXT_PAD_DPUP,
+        TXT_PAD_DPDOWN,
+        TXT_PAD_DPLEFT,
+        TXT_PAD_DPRIGHT,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        TXT_PAD_CAPTURE,
+        TXT_PAD_TOUCHPAD,
     };
     static const int positions[] = {TXT_POS_BOTTOM, TXT_POS_RIGHT, TXT_POS_LEFT, TXT_POS_TOP}; // south .. north
     SDL_Gamepad *pad = khdays_devices_gamepad();
@@ -514,15 +544,9 @@ bool activate()
     }
     switch (r->kind) {
     case KHDAYS_ROW_SWITCH:
-    case KHDAYS_ROW_CHOICE:
-        khdays_model_activate(&m.work, r);
-        break;
-    case KHDAYS_ROW_BINDING:
-        start_capture(*r);
-        break;
-    case KHDAYS_ROW_TEXT:
-        start_text(*r);
-        break;
+    case KHDAYS_ROW_CHOICE: khdays_model_activate(&m.work, r); break;
+    case KHDAYS_ROW_BINDING: start_capture(*r); break;
+    case KHDAYS_ROW_TEXT: start_text(*r); break;
     case KHDAYS_ROW_COMMAND:
         if (r->command == KHDAYS_CMD_PRESET_DS || r->command == KHDAYS_CMD_PRESET_KH2) {
             // say what it will do (and what it cannot do yet), then ask
@@ -535,8 +559,7 @@ bool activate()
             khdays_model_command(&m.work, r->command);
         }
         break;
-    default:
-        break;
+    default: break;
     }
     settle();
     return false;
@@ -747,11 +770,8 @@ void text_event(const SDL_Event *e)
             m.held_dir = 0;
         }
         break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        finish_text(e->button.button == SDL_BUTTON_LEFT);
-        break;
-    default:
-        break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN: finish_text(e->button.button == SDL_BUTTON_LEFT); break;
+    default: break;
     }
 }
 
@@ -909,7 +929,8 @@ void note_test_input(const SDL_Event *e)
         m.test_action = khdays_profile_owner(&m.work, KHDAYS_DEVICE_KEYBOARD, KHDAYS_LAYER_BASE, (int)e->key.scancode);
     } else if (e->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
         const int input = pad_input_of_button((SDL_GamepadButton)e->gbutton.button);
-        m.test_action = input >= 0 ? khdays_profile_owner(&m.work, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) : -1;
+        m.test_action =
+            input >= 0 ? khdays_profile_owner(&m.work, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) : -1;
     }
 }
 
@@ -975,7 +996,8 @@ std::string value_text(const KhdaysRow &r)
         if (r.values == nullptr || r.values[khdays_model_choice_of(&r)] == *r.value) {
             SDL_snprintf(s, sizeof(s), m.skin ? "%s" : "<  %s  >", r.choices[khdays_model_choice_of(&r)]);
         } else {
-            SDL_snprintf(s, sizeof(s), m.skin ? "%dx" : "<  %dx  >", *r.value); // a multiple from the file beyond the choices
+            SDL_snprintf(s, sizeof(s), m.skin ? "%dx" : "<  %dx  >",
+                         *r.value); // a multiple from the file beyond the choices
         }
         break;
     case KHDAYS_ROW_TEXT:
@@ -1123,7 +1145,8 @@ void draw_sticks(ImVec2 p, float w, float height)
         const float dz = radius * (float)m.work.stick[i].dead_zone / 100.0f;
         dl->AddCircle(c, radius, kGrey, 32);
         dl->AddCircle(c, dz, kGrey, 32);
-        const ImVec2 dot(c.x + radius * (float)s->stick[i][0] / 32767.0f, c.y + radius * (float)s->stick[i][1] / 32767.0f);
+        const ImVec2 dot(c.x + radius * (float)s->stick[i][0] / 32767.0f,
+                         c.y + radius * (float)s->stick[i][1] / 32767.0f);
         const float k = std::max(2.0f, radius * 0.08f);
         dl->AddRectFilled(ImVec2(dot.x - k, dot.y - k), ImVec2(dot.x + k, dot.y + k), kYellow);
         const char *label = khdays_text(i == 0 ? TXT_LEFT_STICK : TXT_RIGHT_STICK);
@@ -1195,10 +1218,10 @@ const char *icon_name(int input)
     static const Icons icons[] = {
         {KHDAYS_PAD_DPUP, "xbox_dpad_up", "playstation_dpad_up", "playstation_dpad_up", "playstation_dpad_up",
          "switch_dpad_up"},
-        {KHDAYS_PAD_DPDOWN, "xbox_dpad_down", "playstation_dpad_down", "playstation_dpad_down",
-         "playstation_dpad_down", "switch_dpad_down"},
-        {KHDAYS_PAD_DPLEFT, "xbox_dpad_left", "playstation_dpad_left", "playstation_dpad_left",
-         "playstation_dpad_left", "switch_dpad_left"},
+        {KHDAYS_PAD_DPDOWN, "xbox_dpad_down", "playstation_dpad_down", "playstation_dpad_down", "playstation_dpad_down",
+         "switch_dpad_down"},
+        {KHDAYS_PAD_DPLEFT, "xbox_dpad_left", "playstation_dpad_left", "playstation_dpad_left", "playstation_dpad_left",
+         "switch_dpad_left"},
         {KHDAYS_PAD_DPRIGHT, "xbox_dpad_right", "playstation_dpad_right", "playstation_dpad_right",
          "playstation_dpad_right", "switch_dpad_right"},
         {KHDAYS_PAD_LEFTSHOULDER, "xbox_lb", "playstation_trigger_l1", "playstation_trigger_l1",
@@ -1232,8 +1255,9 @@ const char *icon_name(int input)
                                                  {"xbox_button_color_x", "switch_button_x"},
                                                  {"xbox_button_color_y", "switch_button_y"}};
         SDL_Gamepad *pad = khdays_devices_gamepad();
-        const SDL_GamepadButtonLabel label =
-            pad != nullptr ? SDL_GetGamepadButtonLabel(pad, khdays_devices_sdl_button(input)) : SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN;
+        const SDL_GamepadButtonLabel label = pad != nullptr
+                                                 ? SDL_GetGamepadButtonLabel(pad, khdays_devices_sdl_button(input))
+                                                 : SDL_GAMEPAD_BUTTON_LABEL_UNKNOWN;
         switch (label) {
         case SDL_GAMEPAD_BUTTON_LABEL_CROSS: return "playstation_button_color_cross";
         case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE: return "playstation_button_color_circle";
@@ -1295,12 +1319,12 @@ struct PadPart {
 int pad_parts(int family, PadPart *out)
 {
     static const PadPart parts[] = {
-        {KHDAYS_PAD_LEFTTRIGGER, -1, 0},   {KHDAYS_PAD_LEFTSHOULDER, -1, 0}, {KHDAYS_PAD_DPUP, -1, 0},
-        {KHDAYS_PAD_DPLEFT, -1, 0},        {KHDAYS_PAD_DPRIGHT, -1, 0},      {KHDAYS_PAD_DPDOWN, -1, 0},
-        {KHDAYS_PAD_LEFTSTICK, 0, 0},      {KHDAYS_PAD_BACK, -1, 0},         {KHDAYS_PAD_MISC1, -1, 0},
-        {KHDAYS_PAD_RIGHTTRIGGER, -1, 1},  {KHDAYS_PAD_RIGHTSHOULDER, -1, 1}, {KHDAYS_PAD_NORTH, -1, 1},
-        {KHDAYS_PAD_WEST, -1, 1},          {KHDAYS_PAD_EAST, -1, 1},         {KHDAYS_PAD_SOUTH, -1, 1},
-        {KHDAYS_PAD_RIGHTSTICK, 1, 1},     {KHDAYS_PAD_START, -1, 1},        {KHDAYS_PAD_GUIDE, -1, 1},
+        {KHDAYS_PAD_LEFTTRIGGER, -1, 0},  {KHDAYS_PAD_LEFTSHOULDER, -1, 0},  {KHDAYS_PAD_DPUP, -1, 0},
+        {KHDAYS_PAD_DPLEFT, -1, 0},       {KHDAYS_PAD_DPRIGHT, -1, 0},       {KHDAYS_PAD_DPDOWN, -1, 0},
+        {KHDAYS_PAD_LEFTSTICK, 0, 0},     {KHDAYS_PAD_BACK, -1, 0},          {KHDAYS_PAD_MISC1, -1, 0},
+        {KHDAYS_PAD_RIGHTTRIGGER, -1, 1}, {KHDAYS_PAD_RIGHTSHOULDER, -1, 1}, {KHDAYS_PAD_NORTH, -1, 1},
+        {KHDAYS_PAD_WEST, -1, 1},         {KHDAYS_PAD_EAST, -1, 1},          {KHDAYS_PAD_SOUTH, -1, 1},
+        {KHDAYS_PAD_RIGHTSTICK, 1, 1},    {KHDAYS_PAD_START, -1, 1},         {KHDAYS_PAD_GUIDE, -1, 1},
         {KHDAYS_PAD_TOUCHPAD, -1, 1},
     };
     int n = 0;
@@ -1391,8 +1415,8 @@ void draw_pad(ImVec2 p, float w, float h)
         if (q.input == KHDAYS_PAD_LEFTTRIGGER || q.input == KHDAYS_PAD_RIGHTTRIGGER) {
             return state->trigger[q.input == KHDAYS_PAD_RIGHTTRIGGER] > 16384;
         }
-        if (q.stick >= 0 && (std::abs((int)state->stick[q.stick][0]) > 16384 ||
-                             std::abs((int)state->stick[q.stick][1]) > 16384)) {
+        if (q.stick >= 0 &&
+            (std::abs((int)state->stick[q.stick][0]) > 16384 || std::abs((int)state->stick[q.stick][1]) > 16384)) {
             return true; // a stick pushed counts as held
         }
         return state->pad[q.input] != 0;
@@ -1420,18 +1444,20 @@ void draw_pad(ImVec2 p, float w, float h)
                 SDL_Texture *texture = icon(icon_name(input));
                 char name[96];
                 pad_input_label(input, name, sizeof(name));
-                pieces.push_back({texture, texture != nullptr ? (does.empty() ? "-" : does)
-                                                              : std::string(name) + ": " + (does.empty() ? "-" : does)});
+                pieces.push_back({texture, texture != nullptr
+                                               ? (does.empty() ? "-" : does)
+                                               : std::string(name) + ": " + (does.empty() ? "-" : does)});
             };
             if (q.stick >= 0) {
                 static const int roles[] = {TXT_NOTHING, TXT_DPAD_MOVE, TXT_CAMERA};
                 const int role = m.work.stick[q.stick].role;
                 const std::string moving = khdays_text(roles[role >= 0 && role <= 2 ? role : 0]);
                 SDL_Texture *texture = icon(stick_icon(q.stick));
-                pieces.push_back({texture, texture != nullptr
-                                               ? moving
-                                               : std::string(khdays_text(q.stick == 0 ? TXT_LEFT_STICK : TXT_RIGHT_STICK)) +
-                                                     ": " + moving});
+                pieces.push_back(
+                    {texture,
+                     texture != nullptr
+                         ? moving
+                         : std::string(khdays_text(q.stick == 0 ? TXT_LEFT_STICK : TXT_RIGHT_STICK)) + ": " + moving});
             }
             add_input(q.input);
             float width = 0;
@@ -2051,11 +2077,8 @@ int khdays_settings_handle(const SDL_Event *e, SDL_Window *window)
             closed = mouse_click(e->button.x * m.density, e->button.y * m.density);
         }
         break;
-    case SDL_EVENT_MOUSE_WHEEL:
-        m.wheel += e->wheel.y;
-        break;
-    default:
-        break;
+    case SDL_EVENT_MOUSE_WHEEL: m.wheel += e->wheel.y; break;
+    default: break;
     }
     if (!closed) {
         settle();
@@ -2168,9 +2191,9 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         khdays_skin_screen(ImGui::GetBackgroundDrawList(), screen);
         // the faded picture of the section shown (the HD menu's own five, the port's choice of one
         // for each of its sections: KHDAYS_SECTION_*)
-        static const char *const emblems[KHDAYS_SECTION_COUNT] = {
-            "emblem_keyboard", "emblem_pad", "emblem_pad",  "emblem_screen",
-            "emblem_sound",    "emblem_pad", "emblem_film", "emblem_screen"};
+        static const char *const emblems[KHDAYS_SECTION_COUNT] = {"emblem_keyboard", "emblem_pad",   "emblem_pad",
+                                                                  "emblem_screen",   "emblem_sound", "emblem_pad",
+                                                                  "emblem_film",     "emblem_screen"};
         if (m.section >= 0 && m.section < KHDAYS_SECTION_COUNT) {
             khdays_skin_place(ImGui::GetBackgroundDrawList(), emblems[m.section], screen);
         }
@@ -2216,9 +2239,10 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         // their own bar, below)
         const std::string note = footer_note(), warning = footer_warning();
         const float spacing = ImGui::GetStyle().ItemSpacing.y;
-        const float footer = (note.empty() ? 0 : ImGui::CalcTextSize(note.c_str(), nullptr, false, inner).y + spacing) +
-                             (warning.empty() ? 0 : ImGui::CalcTextSize(warning.c_str(), nullptr, false, inner).y + spacing) +
-                             (m.skin ? 0 : ImGui::CalcTextSize(hints(), nullptr, false, inner).y) + 2 * spacing;
+        const float footer =
+            (note.empty() ? 0 : ImGui::CalcTextSize(note.c_str(), nullptr, false, inner).y + spacing) +
+            (warning.empty() ? 0 : ImGui::CalcTextSize(warning.c_str(), nullptr, false, inner).y + spacing) +
+            (m.skin ? 0 : ImGui::CalcTextSize(hints(), nullptr, false, inner).y) + 2 * spacing;
         const float body = std::max(row_h, ImGui::GetContentRegionAvail().y - footer);
 
         // the column: as wide as its longest entry

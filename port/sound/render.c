@@ -9,21 +9,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CLOCK_HZ     33513982u      /* the ARM7's clock: the driver's cycles */
-#define STEP_CYCLES  (0xaa8u * 64u) /* the driver's periodic step, 5.21 ms (snd7_driver.c) */
-#define PLAYER       0              /* the ARM7 sequence player it plays on */
-#define TAIL_SECONDS 30u            /* the most an ended sequence's notes may ring on */
+#define CLOCK_HZ 33513982u         /* the ARM7's clock: the driver's cycles */
+#define STEP_CYCLES (0xaa8u * 64u) /* the driver's periodic step, 5.21 ms (snd7_driver.c) */
+#define PLAYER 0                   /* the ARM7 sequence player it plays on */
+#define TAIL_SECONDS 30u           /* the most an ended sequence's notes may ring on */
 
 /* The commands it sends (the ARM7's numbers, snd7_command.c). */
 enum { PREPARE_SEQ = 2, START_PREPARED_SEQ = 3, PLAYER_PARAM = 6, ALLOCATABLE_CHANNEL = 9, SHARED_WORK = 29 };
 
 /* Where they go in the work: two lists, then the shared work. */
-#define FIRST_LIST  0x000u
+#define FIRST_LIST 0x000u
 #define SECOND_LIST 0x080u
-#define SHARED      0x100u
+#define SHARED 0x100u
 
 static KhdaysSoundHw hw;
-static uint64_t channels_at;  /* the cycle the channels have run to */
+static uint64_t channels_at; /* the cycle the channels have run to */
 
 static void run(void *context, uint64_t cycle)
 {
@@ -39,7 +39,7 @@ static void reply(void *context, uint32_t tag, uint32_t data, uint32_t err)
     (void)context;
     (void)tag;
     (void)data;
-    (void)err;  /* the replies are the ARM9's; nothing here waits for them */
+    (void)err; /* the replies are the ARM9's; nothing here waits for them */
 }
 
 static const KhdaysSnd7Host host = {NULL, run, reply};
@@ -195,11 +195,11 @@ int khdays_render_sequence(const KhdaysRenderRequest *q, KhdaysRendered *out)
     if (q->channels != 0) {
         at = command(q, at - 0x18, at, ALLOCATABLE_CHANNEL, PLAYER, 0xffff, q->channels, 0);
     }
-    command(q, at - 0x18, at, PLAYER_PARAM, PLAYER, 4, q->channel_priority, 1);  /* the player's priority, +4 */
+    command(q, at - 0x18, at, PLAYER_PARAM, PLAYER, 4, q->channel_priority, 1); /* the player's priority, +4 */
     command(q, ~0u, SECOND_LIST, START_PREPARED_SEQ, PLAYER, 0, 0, 0);
     driver->word(q->work + FIRST_LIST, 0);
     driver->word(q->work + SECOND_LIST, 0);
-    driver->word(0, 0);  /* the ARM9's wake-up (RequestCommandProc) */
+    driver->word(0, 0); /* the ARM9's wake-up (RequestCommandProc) */
 
     for (k = 0; k < stop_at; ++k) {
         const uint64_t now = start + k * (uint64_t)CLOCK_HZ / q->rate;
@@ -213,19 +213,20 @@ int khdays_render_sequence(const KhdaysRenderRequest *q, KhdaysRendered *out)
                 const uint8_t *player = khdays_snd7_native_player_record(PLAYER);
                 /* the ticks it has played (the shared work's +0x40 + 0x24 * n) */
                 const uint8_t *played = q->work_bytes + SHARED + 0x40 + 0x24 * PLAYER;
-                const uint32_t now_ticks =
-                    (uint32_t)played[0] | (uint32_t)played[1] << 8 | (uint32_t)played[2] << 16 | (uint32_t)played[3] << 24;
+                const uint32_t now_ticks = (uint32_t)played[0] | (uint32_t)played[1] << 8 | (uint32_t)played[2] << 16 |
+                                           (uint32_t)played[3] << 24;
                 uint64_t first;
                 int found;
                 if (!(player[0] & 1)) {
                     playing = 0;
                     out->ended = 1;
-                    stop_at = frame + (uint64_t)TAIL_SECONDS * q->rate < limit ? frame + (uint64_t)TAIL_SECONDS * q->rate
-                                                                             : limit;
+                    stop_at = frame + (uint64_t)TAIL_SECONDS * q->rate < limit
+                                  ? frame + (uint64_t)TAIL_SECONDS * q->rate
+                                  : limit;
                     continue;
                 }
                 if (now_ticks == ticks) {
-                    continue;  /* no tick this step: the state as it was */
+                    continue; /* no tick this step: the state as it was */
                 }
                 ticks = now_ticks;
                 found = seen_add(state_hash(), frame, &first);
@@ -240,10 +241,10 @@ int khdays_render_sequence(const KhdaysRenderRequest *q, KhdaysRendered *out)
                     playing = 0;
                     out->looped = 1;
                     if (frame + (frame - first) <= limit) {
-                        out->loop_start = frame;  /* the second time round */
+                        out->loop_start = frame; /* the second time round */
                         out->loop_end = frame + (frame - first);
                     } else {
-                        out->loop_start = first;  /* no room for it: the first */
+                        out->loop_start = first; /* no room for it: the first */
                         out->loop_end = frame;
                     }
                     stop_at = out->loop_end;
@@ -274,10 +275,10 @@ int khdays_render_sequence(const KhdaysRenderRequest *q, KhdaysRendered *out)
         }
         /* capacity >= 2 * k + 2: grown above whenever it was not */
         out->samples[2 * k] = to16(mixed[0]);
-#pragma warning(suppress: 6386)
+#pragma warning(suppress : 6386)
         out->samples[2 * k + 1] = to16(mixed[1]);
         if (!playing && out->ended && !any_playing()) {
-            ++k;  /* its last notes have died away */
+            ++k; /* its last notes have died away */
             break;
         }
     }

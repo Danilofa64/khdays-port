@@ -2,6 +2,7 @@
 does not -- a declaration whose specifiers name no type (`const n = 3;`) is
 an int, as C89 has it and the decomp's C relies on; a declaration of a
 typedef's name alone (`VecFx32;`) declares nothing (MSVC and mwcc warn)."""
+
 from __future__ import annotations
 
 from pycparser import c_ast, c_parser
@@ -9,10 +10,17 @@ from pycparser import c_ast, c_parser
 
 class GameCParser(c_parser.CParser):
     def _build_declarations(self, spec, decls, typedef_namespace=False):
-        if (decls and decls[0].get("decl") is None and decls[0].get("bitsize") is None and len(decls) == 1 and
-                len(spec["type"]) == 1 and isinstance(spec["type"][0], c_ast.IdentifierType) and
-                len(spec["type"][0].names) == 1 and self._is_type_in_scope(spec["type"][0].names[0]) and
-                "typedef" not in spec["storage"]):
+        if (
+            decls
+            and decls[0].get("decl") is None
+            and decls[0].get("bitsize") is None
+            and len(decls) == 1
+            and len(spec["type"]) == 1
+            and isinstance(spec["type"][0], c_ast.IdentifierType)
+            and len(spec["type"][0].names) == 1
+            and self._is_type_in_scope(spec["type"][0].names[0])
+            and "typedef" not in spec["storage"]
+        ):
             return []
         return super()._build_declarations(spec, decls, typedef_namespace)
 

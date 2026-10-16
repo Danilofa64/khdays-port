@@ -29,8 +29,8 @@ typedef struct KhdaysG3dPolygon {
     int32_t first, count;     /* in the vertex list */
     float ymin, ymax;
     int32_t translucent;
-    int32_t flags;            /* KHDAYS_G3D_HUD, KHDAYS_G3D_BEYOND_DS, KHDAYS_G3D_MOD */
-    int32_t replacement;      /* the texture drawn instead (runtime/mods/textures.h), or -1 */
+    int32_t flags;       /* KHDAYS_G3D_HUD, KHDAYS_G3D_BEYOND_DS, KHDAYS_G3D_MOD */
+    int32_t replacement; /* the texture drawn instead (runtime/mods/textures.h), or -1 */
 } KhdaysG3dPolygon;
 
 /* A polygon as the game sent it, before clipping, in a list's `pre` arrays: its vertices in clip space
@@ -41,35 +41,40 @@ typedef struct KhdaysG3dPreVertex {
 } KhdaysG3dPreVertex;
 
 typedef struct KhdaysG3dPreInfo {
-    uint64_t draw;        /* the model draw's resource, 0 for none (8 bytes
+    uint64_t draw;       /* the model draw's resource, 0 for none (8 bytes
                            * whatever the process's pointers: a frame package
                            * records it) */
-    uint32_t occurrence;  /* that resource's draws before this one in the list */
-    uint32_t ordinal;     /* the polygon's place in the draw (or among those outside draws) */
-    uint8_t viewport[4];  /* x1, y1, x2, y2 */
-    int32_t widen;        /* the clip factor, in 1/4096 */
+    uint32_t occurrence; /* that resource's draws before this one in the list */
+    uint32_t ordinal;    /* the polygon's place in the draw (or among those outside draws) */
+    uint8_t viewport[4]; /* x1, y1, x2, y2 */
+    int32_t widen;       /* the clip factor, in 1/4096 */
 } KhdaysG3dPreInfo;
 
-#define KHDAYS_G3D_HUD       0x1 /* sent by the HUD's own drawing (khdays_g3d_set_hud) */
+#define KHDAYS_G3D_HUD 0x1       /* sent by the HUD's own drawing (khdays_g3d_set_hud) */
 #define KHDAYS_G3D_BEYOND_DS 0x2 /* the DS's polygon or vertex RAM would not have held it */
-#define KHDAYS_G3D_MOD       0x4 /* a mod's model's, drawn instead of the game's (runtime/mods/models.h): no DS's */
-#define KHDAYS_G3D_OVER_2D   0x8 /* a HUD polygon the DS shows over all its 2D (its BG0 the top layer): the one
+#define KHDAYS_G3D_MOD 0x4       /* a mod's model's, drawn instead of the game's (runtime/mods/models.h): no DS's */
+#define KHDAYS_G3D_OVER_2D                                                                                             \
+    0x8 /* a HUD polygon the DS shows over all its 2D (its BG0 the top layer): the one
                                   * picture puts it in front of its shapes, widescreen leaves it in place (the
                                   * game over's floating orb, by the menu's line) */
 
 /* A pointer member in 8 bytes whatever the process's pointers are: a frame
  * package (runtime/display/frame_package.h) records the list as it is in memory,
  * and is read the same by any build that writes one. */
-#define KHDAYS_G3D_POINTER(type, name) union { type *name; uint64_t name##_slot; }
+#define KHDAYS_G3D_POINTER(type, name)                                                                                 \
+    union {                                                                                                            \
+        type *name;                                                                                                    \
+        uint64_t name##_slot;                                                                                          \
+    }
 
 /* A list in drawing order: the opaque polygons as submitted, then the
  * translucent ones, sorted by Y unless SwapBuffers asked for manual order.
  * It holds its polygons and vertices in memory of its own, as many as come. */
 typedef struct KhdaysG3dList {
     int32_t npolys, nverts;
-    uint32_t swap_params;     /* the SwapBuffers bits it is drawn with */
-    float widen;              /* its horizontal clip factor (1 at 4:3) */
-    int32_t beyond_ds;        /* how many of its polygons the DS would have dropped */
+    uint32_t swap_params; /* the SwapBuffers bits it is drawn with */
+    float widen;          /* its horizontal clip factor (1 at 4:3) */
+    int32_t beyond_ds;    /* how many of its polygons the DS would have dropped */
     KHDAYS_G3D_POINTER(KhdaysG3dPolygon, polys);
     KHDAYS_G3D_POINTER(KhdaysG3dVertex, verts);
     int32_t poly_capacity, vert_capacity; /* what `polys` and `verts` have room for */
@@ -186,9 +191,9 @@ void khdays_g3d_matrices(float position[16], float vector[16], float projection[
 /* What the next polygons would be drawn with: the material and the colour
  * as the game set them. */
 typedef struct KhdaysG3dMaterial {
-    uint32_t attr;      /* POLYGON_ATTR as set (latched at the next BEGIN_VTXS) */
-    uint32_t tex, pltt; /* TEXIMAGE_PARAM, PLTT_BASE */
-    int color[3];       /* the vertex colour, 5 bits each */
+    uint32_t attr;                                        /* POLYGON_ATTR as set (latched at the next BEGIN_VTXS) */
+    uint32_t tex, pltt;                                   /* TEXIMAGE_PARAM, PLTT_BASE */
+    int color[3];                                         /* the vertex colour, 5 bits each */
     int diffuse[3], ambient[3], specular[3], emission[3]; /* 5 bits each */
 } KhdaysG3dMaterial;
 void khdays_g3d_material(KhdaysG3dMaterial *out);

@@ -348,11 +348,12 @@ static void pad_button(SDL_JoystickID id, SDL_GamepadButton button, int down)
     }
     pad_in_use = pad_in_use || down;
     state.pad[input] = (uint8_t)down;
-    if (down && khdays_profile_owner(&profile, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) ==
-                    KHDAYS_ACT_OPEN_SETTINGS) {
+    if (down &&
+        khdays_profile_owner(&profile, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) == KHDAYS_ACT_OPEN_SETTINGS) {
         settings_request = 1;
     }
-    if (down && khdays_profile_owner(&profile, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) == KHDAYS_ACT_HUD_MODE) {
+    if (down &&
+        khdays_profile_owner(&profile, KHDAYS_DEVICE_GAMEPAD, KHDAYS_LAYER_BASE, input) == KHDAYS_ACT_HUD_MODE) {
         ++hud_mode_requests;
     }
 }
@@ -442,15 +443,9 @@ void khdays_devices_handle(const SDL_Event *event, SDL_Renderer *renderer)
         }
         read_mouse(renderer, event->motion.x, event->motion.y, 1);
         break;
-    case SDL_EVENT_GAMEPAD_ADDED:
-        gamepad_added(event->gdevice.which);
-        break;
-    case SDL_EVENT_GAMEPAD_REMOVED:
-        gamepad_removed(event->gdevice.which);
-        break;
-    case SDL_EVENT_JOYSTICK_ADDED:
-        joystick_added(event->jdevice.which);
-        return;
+    case SDL_EVENT_GAMEPAD_ADDED: gamepad_added(event->gdevice.which); break;
+    case SDL_EVENT_GAMEPAD_REMOVED: gamepad_removed(event->gdevice.which); break;
+    case SDL_EVENT_JOYSTICK_ADDED: joystick_added(event->jdevice.which); return;
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
     case SDL_EVENT_GAMEPAD_BUTTON_UP:
         pad_button(event->gbutton.which, (SDL_GamepadButton)event->gbutton.button,
@@ -479,8 +474,7 @@ void khdays_devices_handle(const SDL_Event *event, SDL_Renderer *renderer)
         read_active_pad();
         khdays_bindings_mask_held(&state);
         break;
-    default:
-        return;
+    default: return;
     }
     send();
 }

@@ -2,6 +2,7 @@
 bytes, members aligned to at most 4 (/Zp4), bit-fields as MSVC packs them. The emitted C checks every
 size it relies on with _Static_assert, so a wrong rule stops the build instead of misplacing an object.
 """
+
 from __future__ import annotations
 
 from pycparser import c_ast
@@ -11,10 +12,21 @@ from .types import Array, Arithmetic, CType, Enumeration, Function, Pointer, Rec
 PACK = 4  # /Zp4
 
 SCALARS = {
-    "_Bool": 1, "char": 1, "signed char": 1, "unsigned char": 1,
-    "short": 2, "unsigned short": 2,
-    "int": 4, "unsigned int": 4, "long": 4, "unsigned long": 4, "float": 4,
-    "long long": 8, "unsigned long long": 8, "double": 8, "long double": 8,
+    "_Bool": 1,
+    "char": 1,
+    "signed char": 1,
+    "unsigned char": 1,
+    "short": 2,
+    "unsigned short": 2,
+    "int": 4,
+    "unsigned int": 4,
+    "long": 4,
+    "unsigned long": 4,
+    "float": 4,
+    "long long": 8,
+    "unsigned long long": 8,
+    "double": 8,
+    "long double": 8,
 }
 
 
@@ -40,16 +52,34 @@ class Layout:
             return self.enumerator(s)
         if isinstance(node, c_ast.UnaryOp):
             if node.op == "sizeof":
-                t = (self.tp.type_of_declarator(node.expr) if isinstance(node.expr, c_ast.Typename)
-                     else self.tp.types[id(node.expr)])
+                t = (
+                    self.tp.type_of_declarator(node.expr)
+                    if isinstance(node.expr, c_ast.Typename)
+                    else self.tp.types[id(node.expr)]
+                )
                 return self.size(t)
             v = self.value(node.expr)
             return {"-": -v, "+": v, "~": ~v, "!": int(not v)}[node.op]
         if isinstance(node, c_ast.BinaryOp):
             a, b = self.value(node.left), self.value(node.right)
-            ops = {"+": a + b, "-": a - b, "*": a * b, "<<": a << b, ">>": a >> b, "&": a & b, "|": a | b,
-                   "^": a ^ b, "<": int(a < b), ">": int(a > b), "<=": int(a <= b), ">=": int(a >= b),
-                   "==": int(a == b), "!=": int(a != b), "&&": int(bool(a and b)), "||": int(bool(a or b))}
+            ops = {
+                "+": a + b,
+                "-": a - b,
+                "*": a * b,
+                "<<": a << b,
+                ">>": a >> b,
+                "&": a & b,
+                "|": a | b,
+                "^": a ^ b,
+                "<": int(a < b),
+                ">": int(a > b),
+                "<=": int(a <= b),
+                ">=": int(a >= b),
+                "==": int(a == b),
+                "!=": int(a != b),
+                "&&": int(bool(a and b)),
+                "||": int(bool(a or b)),
+            }
             if node.op in ("/", "%"):
                 if b == 0:
                     raise TypeFailure(node, "a division by zero in a constant")
@@ -186,7 +216,7 @@ def split_literals(value: str) -> list[str]:
             j = i + 1
             while value[j] != '"':
                 j += 2 if value[j] == "\\" else 1
-            parts.append(value[i:j + 1])
+            parts.append(value[i : j + 1])
             i = j + 1
         else:
             i += 1

@@ -1,6 +1,7 @@
 """Add the installed port to Steam as a non-Steam game, and take it out again, while Steam is closed:
 shortcuts.vdf changed only when its parse writes back the same bytes, the Proton mapping in
 config.vdf edited as text, nothing else of Steam's touched (installer/README.md, "How it works")."""
+
 from __future__ import annotations
 
 import shutil
@@ -22,14 +23,18 @@ EXE_NAME = "khdays-native.exe"
 
 # ---- Where Steam keeps a user's shortcuts, and whether it is running ---------------------------
 
+
 def user_configs(steam: Path) -> list[Path]:
     """Every local Steam user's `config` folder (userdata/<account>/config). The port's entry goes
     in each, since the installer does not know which account the player uses."""
     userdata = steam / "userdata"
     if not userdata.is_dir():
         return []
-    return [account / "config" for account in sorted(userdata.iterdir())
-            if account.is_dir() and account.name.isdigit() and account.name != "0"]
+    return [
+        account / "config"
+        for account in sorted(userdata.iterdir())
+        if account.is_dir() and account.name.isdigit() and account.name != "0"
+    ]
 
 
 def under_wine() -> bool:
@@ -40,6 +45,7 @@ def under_wine() -> bool:
         return False
     try:
         import ctypes
+
         return hasattr(ctypes.windll.ntdll, "wine_get_version")
     except OSError:
         return False
@@ -55,6 +61,7 @@ def steam_running() -> bool:
     try:
         import ctypes
         import winreg
+
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam\ActiveProcess") as key:
             pid, _ = winreg.QueryValueEx(key, "pid")
     except OSError:
@@ -71,6 +78,7 @@ def steam_running() -> bool:
 
 
 # ---- The binary KeyValues of shortcuts.vdf -----------------------------------------------------
+
 
 def _parse(data: bytes, i: int) -> tuple[list[Field], int]:
     """The fields of one map from `data` at `i`, up to its `END`; the index after the `END`."""
@@ -90,7 +98,7 @@ def _parse(data: bytes, i: int) -> tuple[list[Field], int]:
             value = data[i:end]
             i = end + 1
         elif kind == INT:
-            value = int.from_bytes(data[i:i + 4], "little")
+            value = int.from_bytes(data[i : i + 4], "little")
             i += 4
         else:
             raise ValueError(f"unknown field type {kind} at {i - 1}")
@@ -330,12 +338,14 @@ def _entry_indent(text: str, open_brace: int) -> str:
     key line."""
     line_start = text.rfind("\n", 0, open_brace) + 1
     key_line = text[line_start:open_brace]
-    return key_line[:len(key_line) - len(key_line.lstrip("\t"))] + "\t"
+    return key_line[: len(key_line) - len(key_line.lstrip("\t"))] + "\t"
 
 
 def _entry_text(app_id: int, name: str, indent: str, inner: str) -> str:
-    return (f'{indent}"{app_id}"\n{indent}{{\n'
-            f'{inner}"name"\t\t"{name}"\n'
-            f'{inner}"config"\t\t""\n'
-            f'{inner}"priority"\t\t"250"\n'
-            f'{indent}}}\n')
+    return (
+        f'{indent}"{app_id}"\n{indent}{{\n'
+        f'{inner}"name"\t\t"{name}"\n'
+        f'{inner}"config"\t\t""\n'
+        f'{inner}"priority"\t\t"250"\n'
+        f"{indent}}}\n"
+    )

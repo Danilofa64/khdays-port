@@ -9,12 +9,12 @@
 
 static int failures;
 
-#define CHECK(c)                                                                 \
-    do {                                                                         \
-        if (!(c)) {                                                              \
-            fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c);              \
-            ++failures;                                                          \
-        }                                                                        \
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c);                                                    \
+            ++failures;                                                                                                \
+        }                                                                                                              \
     } while (0)
 
 #define W 256
@@ -77,9 +77,9 @@ static void scene(void)
     /* engine B: its BG0 the same way */
     put32(io + 0x1000, 0x00010000u | 0x100u);
     put16(io + 0x1008, (1u << 2) | (31u << 8));
-    put16(palette + 0x400 + 2, 0x7c00);                /* engine B's colour 1: blue */
+    put16(palette + 0x400 + 2, 0x7c00); /* engine B's colour 1: blue */
     memset(bg_b + 0x4000 + 32, 0x11, 32);
-    put16(bg_b + 0xf800 + (5 * 32 + 4) * 2, 1);        /* cell (4, 5): 32-39 x 40-47 */
+    put16(bg_b + 0xf800 + (5 * 32 + 4) * 2, 1); /* cell (4, 5): 32-39 x 40-47 */
     for (int i = 0; i < 32; ++i) {
         pages.page[KHDAYS_AREA_ABG][i] = bg_a + i * KHDAYS_VRAM_PAGE;
     }
@@ -178,7 +178,7 @@ int main(void)
     element(r, 1, 100, 50, 8, 8, 1, 8, 8);
     compose(0, r, 1, left_tile, out);
     CHECK(differences_outside(out, base_out, 16, 24, 24, 32, 100, 50, 108, 58) == 0);
-    CHECK(out[24 * W + 16] == base_out[0]);          /* its old place: the backdrop */
+    CHECK(out[24 * W + 16] == base_out[0]);            /* its old place: the backdrop */
     CHECK(out[50 * W + 100] == base_out[24 * W + 16]); /* its new one: red */
 
     /* scaled twice over: 16x16 */

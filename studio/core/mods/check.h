@@ -14,18 +14,18 @@ enum class Verdict { accepted, warned, refused };
 
 // What a check found; the interface words each in its language.
 enum class Note {
-    not_image,             // {0}: the reader's reason
-    not_png,               // {0}: the reader's reason
-    converted_to_png,      // {0}: the source format's extension
-    texture_stretched,     // {0}x{1} is not a whole multiple of the original's {2}x{3}
-    texture_scale,         // {0}x{1}: {2} times the original
-    sheet_size,            // {0}x{1}: wants {2}x{3} times a whole number from 1 to 255, height at least that
-    sheet_scale,           // {0} times the sheet
-    sheet_indexed,         // drawn with the game's palettes
-    sheet_true_colour,     // drawn with its own colours
-    sound_unreadable,      // {0}: the port's reason
-    sound_decoded,         // {0} Hz, {1} channels, {2} frames
-    sound_looped,          // loop from {0} to {1}
+    not_image,          // {0}: the reader's reason
+    not_png,            // {0}: the reader's reason
+    converted_to_png,   // {0}: the source format's extension
+    texture_stretched,  // {0}x{1} is not a whole multiple of the original's {2}x{3}
+    texture_scale,      // {0}x{1}: {2} times the original
+    sheet_size,         // {0}x{1}: wants {2}x{3} times a whole number from 1 to 255, height at least that
+    sheet_scale,        // {0} times the sheet
+    sheet_indexed,      // drawn with the game's palettes
+    sheet_true_colour,  // drawn with its own colours
+    sound_unreadable,   // {0}: the port's reason
+    sound_decoded,      // {0} Hz, {1} channels, {2} frames
+    sound_looped,       // loop from {0} to {1}
     sound_plays_once,
 };
 
@@ -38,9 +38,12 @@ struct CheckResult {
     Verdict verdict = Verdict::accepted;
     std::vector<Finding> findings;
 
-    void info(Note n, std::vector<std::string> a = {}) { findings.push_back({n, std::move(a)}); }
+    void info(Note n, std::vector<std::string> a = {}) {
+        findings.push_back({n, std::move(a)});
+    }
     void warn(Note n, std::vector<std::string> a = {}) {
-        if (verdict == Verdict::accepted) verdict = Verdict::warned;
+        if (verdict == Verdict::accepted)
+            verdict = Verdict::warned;
         findings.push_back({n, std::move(a)});
     }
     void refuse(Note n, std::vector<std::string> a = {}) {

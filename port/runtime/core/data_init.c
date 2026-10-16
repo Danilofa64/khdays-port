@@ -18,7 +18,7 @@ void khdays_overlay_started(int id);
 void khdays_data_init(int module)
 {
     if (module >= 0) {
-        khdays_overlay_started(module);  /* an overlay: FS_StartOverlay (prepare.py HOOKS) */
+        khdays_overlay_started(module); /* an overlay: FS_StartOverlay (prepare.py HOOKS) */
     }
     for (const struct khdays_data_init *entry = &first_marker + 1; entry < &last_marker; ++entry) {
         if (entry->address != 0 && entry->module == module) {

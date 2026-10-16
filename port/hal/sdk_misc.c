@@ -18,8 +18,8 @@ void RtcWaitBusy(void)
  * static module decompressor. The native entry does what they do for the
  * native process; nothing else calls them. */
 KHDAYS_HAL_TODO(Entry)
-KHDAYS_HAL_TODO(func_020009fc)  /* do_autoload */
-KHDAYS_HAL_TODO(func_02000a78)  /* init_cp15 */
+KHDAYS_HAL_TODO(func_020009fc) /* do_autoload */
+KHDAYS_HAL_TODO(func_02000a78) /* init_cp15 */
 
 /* MIi_UncompressBackward: in-place backward LZ, used by crt0 for the static
  * module and by FS_StartOverlay for compressed overlays. `bottom` is the end

@@ -260,8 +260,10 @@ static void serve_http(SOCKET c)
         body = "<?xml version=\"1.0\"?><s:Envelope><s:Body><u:AddPortMappingResponse/></s:Body></s:Envelope>";
     }
     if (body != NULL) {
-        snprintf(answer, sizeof(answer), "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: %u\r\n"
-                 "Connection: close\r\n\r\n%s", (unsigned int)strlen(body), body);
+        snprintf(answer, sizeof(answer),
+                 "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: %u\r\n"
+                 "Connection: close\r\n\r\n%s",
+                 (unsigned int)strlen(body), body);
     } else {
         snprintf(answer, sizeof(answer), "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     }
@@ -304,7 +306,8 @@ static DWORD WINAPI router_thread(void *unused)
             if (strncmp((const char *)d, "M-SEARCH", 8) == 0) {
                 snprintf(answer, sizeof(answer),
                          "HTTP/1.1 200 OK\r\nST: urn:schemas-upnp-org:device:InternetGatewayDevice:1\r\n"
-                         "LOCATION: http://127.0.0.1:%u/desc.xml\r\n\r\n", router.http_port);
+                         "LOCATION: http://127.0.0.1:%u/desc.xml\r\n\r\n",
+                         router.http_port);
                 khdays_host_udp_send(router.ssdp, &from, answer, strlen(answer));
             }
         }

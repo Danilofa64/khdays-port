@@ -14,7 +14,7 @@
 #include <windows.h>
 
 extern int GetLanguage(void);
-int khdays_language_wanted(void);  /* language.c */
+int khdays_language_wanted(void); /* language.c */
 u32 khdays_events_vblank_count(void);
 int khdays_overlay_loaded(int id); /* overlays.c */
 
@@ -42,27 +42,28 @@ extern int Ov008_MissionScene_GetState(void);
 extern int Ov008_MissionIsEntryActive(void);
 extern int Ov008_CountPlayers(void);
 
-#define SEEN_FRAMES 2u      /* the game's screen is gone when its update did not run for longer */
-#define STATE_CHOOSING 5    /* the screen's state while the places move (Ov006_MissionScene_GetState) */
+#define SEEN_FRAMES 2u   /* the game's screen is gone when its update did not run for longer */
+#define STATE_CHOOSING 5 /* the screen's state while the places move (Ov006_MissionScene_GetState) */
 #define MENU_HOST 0x20u
 #define MENU_MESSAGE 0x32u
 #define MENU_BOUGHT 0x30u
-#define ROWS 0x4acu          /* the places' rows, six bytes each: */
-#define ROW_FLAGS 0x1u       /*   bit 0 a player there, bit 1 chosen */
+#define ROWS 0x4acu    /* the places' rows, six bytes each: */
+#define ROW_FLAGS 0x1u /*   bit 0 a player there, bit 1 chosen */
 #define ROW_CHARACTER 0x2u
 #define ROW_COUNT 0x4u
 #define ROW_SIZE 6u
-#define REQUEST 0x4e0u       /* a guest's request, as a row (its first byte the place) */
-#define LOCKED_OUT 0x4e8u    /* set: the request is place 0's whatever this copy's (the game's) */
+#define REQUEST 0x4e0u    /* a guest's request, as a row (its first byte the place) */
+#define LOCKED_OUT 0x4e8u /* set: the request is place 0's whatever this copy's (the game's) */
 #define NAMES_PRESENT 0x434u
 #define NAMES 0x436u
 #define NAME_LENGTH 11u
 #define STAT_ROW 9u
-#define ALWAYS 13           /* characters 0-12 are always there; 13 on are bought */
-#define ASK_WAIT 120u       /* VBlanks a move may take to be answered before the port lets it go (the
+#define ALWAYS 13 /* characters 0-12 are always there; 13 on are bought */
+#define ASK_WAIT                                                                                                       \
+    120u                 /* VBlanks a move may take to be answered before the port lets it go (the
                              * host's answer comes within a few frames) */
-#define REPEAT_AFTER 20u    /* a held direction moves again after this many VBlanks, */
-#define REPEAT_EVERY 6u     /* then every this many (the port's) */
+#define REPEAT_AFTER 20u /* a held direction moves again after this many VBlanks, */
+#define REPEAT_EVERY 6u  /* then every this many (the port's) */
 /* the game's messages (mlt_&.s) */
 #define MSG_CHOOSE 0x33
 #define MSG_WAIT 0x34
@@ -82,27 +83,27 @@ typedef struct Screen {
 } Screen;
 
 static const Screen screens[] = {
-    {6, Ov006_UpdateMissionMemberMenuScreen, Ov006_MemberMenuNextStateNoOp, Ov006_MissionGetCursorEntry, Ov006_MissionScene_IsFlagSet,
-     Ov006_CanConfirmMissionMenu, Ov006_MissionScene_GetState, Ov006_MissionIsEntryActive, Ov006_CountPlayers,
-     0x020565e4u, 0x02056660u, 0x020561d0u, 0x020561e0u},
-    {8, Ov008_LobbyStep, Ov008_LobbyNextStepNoOp, Ov008_GetLocalPlayerIndex, Ov008_MissionScene_IsFlagSet, Ov008_CanConfirmMissionMenu,
-     Ov008_MissionScene_GetState, Ov008_MissionIsEntryActive, Ov008_CountPlayers, 0x02090f24u, 0x02090fa0u,
-     0x0208fc8cu, 0x0208fc9cu},
+    {6, Ov006_UpdateMissionMemberMenuScreen, Ov006_MemberMenuNextStateNoOp, Ov006_MissionGetCursorEntry,
+     Ov006_MissionScene_IsFlagSet, Ov006_CanConfirmMissionMenu, Ov006_MissionScene_GetState, Ov006_MissionIsEntryActive,
+     Ov006_CountPlayers, 0x020565e4u, 0x02056660u, 0x020561d0u, 0x020561e0u},
+    {8, Ov008_LobbyStep, Ov008_LobbyNextStepNoOp, Ov008_GetLocalPlayerIndex, Ov008_MissionScene_IsFlagSet,
+     Ov008_CanConfirmMissionMenu, Ov008_MissionScene_GetState, Ov008_MissionIsEntryActive, Ov008_CountPlayers,
+     0x02090f24u, 0x02090fa0u, 0x0208fc8cu, 0x0208fc9cu},
 };
 #define SCREENS ((int)(sizeof(screens) / sizeof(screens[0])))
 
 static SRWLOCK lock = SRWLOCK_INIT;
 static KhdaysSelectView shown;
-static int on = -1;            /* screens' index whose update ran last */
+static int on = -1; /* screens' index whose update ran last */
 static u32 seen_at;
 static volatile LONG columns = 5;
 /* the game's thread's own */
-static KhdaysSelectView now;   /* as last read, after the game's update */
-static int want = -1;          /* the character the player moved to, until the game has it */
-static int asked;              /* the port's request for it is made */
+static KhdaysSelectView now; /* as last read, after the game's update */
+static int want = -1;        /* the character the player moved to, until the game has it */
+static int asked;            /* the port's request for it is made */
 static u32 asked_at;
-static int a_kept;             /* an A pressed while the move was unanswered */
-static int a_give;             /* ... to hand the game now that it is answered */
+static int a_kept; /* an A pressed while the move was unanswered */
+static int a_give; /* ... to hand the game now that it is answered */
 static u16 held;
 static int repeat_dir;
 static u32 repeat_from, repeat_count;
@@ -134,7 +135,7 @@ static void wr16(u32 address, u16 value)
 
 static int in_ram(u32 address)
 {
-    return khdays_game_ram(address);  /* main RAM or the game's heaps */
+    return khdays_game_ram(address); /* main RAM or the game's heaps */
 }
 
 static int language(void)
@@ -313,8 +314,7 @@ static int read_screen(const Screen *sc, GameRow rows[KHDAYS_SELECT_PLACES], Khd
         rows[i].character = (s8)rd8(at + ROW_CHARACTER);
         p->present = rows[i].present != 0;
         p->ready = rows[i].ready != 0;
-        p->character = rows[i].character >= 0 && rows[i].character < KHDAYS_SELECT_CHARACTERS ? rows[i].character
-                                                                                               : -1;
+        p->character = rows[i].character >= 0 && rows[i].character < KHDAYS_SELECT_CHARACTERS ? rows[i].character : -1;
         if ((present >> i) & 1u) {
             for (u32 k = 0; k < NAME_LENGTH; ++k) {
                 p->name[k] = rd16(session + NAMES + ((u32)i * NAME_LENGTH + k) * 2u);

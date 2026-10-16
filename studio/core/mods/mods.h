@@ -11,8 +11,8 @@
 namespace studio {
 
 struct Mod {
-    std::string name;            // its folder's name
-    std::filesystem::path dir;   // mods/<name>
+    std::string name;           // its folder's name
+    std::filesystem::path dir;  // mods/<name>
 };
 
 // The mods in the port's order (assets/src/filesystem.cpp find_in_mods: the
@@ -37,8 +37,8 @@ std::vector<std::string> lookup_paths(const Item& item);
 std::string replacement_path(const Item& item, const std::string& ext, bool any_palette = false);
 
 struct Holder {
-    std::string mod;              // the mod's name
-    std::filesystem::path file;   // its file for the item
+    std::string mod;             // the mod's name
+    std::filesystem::path file;  // its file for the item
 };
 
 // Every mod holding a file for `item`, in the port's order of preference:

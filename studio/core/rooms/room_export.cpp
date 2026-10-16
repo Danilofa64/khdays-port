@@ -23,28 +23,34 @@ constexpr float kFx = 1.0f / 4096.0f;
 
 }  // namespace
 
-std::vector<std::array<float, 3>> room_points(const fs::path& nitrofs, const fs::path& graphics_dump, const World& w, int room) {
+std::vector<std::array<float, 3>> room_points(const fs::path& nitrofs, const fs::path& graphics_dump, const World& w,
+                                              int room) {
     std::vector<std::array<float, 3>> out;
-    if (room < 0 || static_cast<std::size_t>(room) >= w.rooms.size()) return out;
+    if (room < 0 || static_cast<std::size_t>(room) >= w.rooms.size())
+        return out;
     std::error_code ec;
     for (const auto& o : w.rooms[static_cast<std::size_t>(room)].objects) {
         const std::string label = world_path(w.code) + "#" + std::to_string(o.member);
         std::string key;
         for (const auto& e : fs::directory_iterator(graphics_dump / path_u8(label) / "mdl", ec)) {
-            if (lower(u8(e.path().extension())) == ".gltf") key = label + "/mdl/" + u8(e.path().stem());
+            if (lower(u8(e.path().extension())) == ".gltf")
+                key = label + "/mdl/" + u8(e.path().stem());
         }
         GameModel g;
         std::string problem;
-        if (key.empty() || !load_game_model(nitrofs, graphics_dump, key, &g, &problem)) continue;
+        if (key.empty() || !load_game_model(nitrofs, graphics_dump, key, &g, &problem))
+            continue;
         std::vector<Mat> node_world, palette;
         pose_game_model(g, nullptr, 0.0f, &node_world, &palette);
         for (const auto& mesh : g.model.meshes) {
             for (const auto& v : mesh.vertices) {
                 std::array<float, 3> pos{0, 0, 0};
                 for (std::size_t k = 0; k < 4; ++k) {
-                    if (v.weights[k] <= 0.0f || v.joints[k] >= palette.size()) continue;
+                    if (v.weights[k] <= 0.0f || v.joints[k] >= palette.size())
+                        continue;
                     const auto q = mat_point(palette[v.joints[k]], v.position);
-                    for (std::size_t c = 0; c < 3; ++c) pos[c] += v.weights[k] * q[c];
+                    for (std::size_t c = 0; c < 3; ++c)
+                        pos[c] += v.weights[k] * q[c];
                 }
                 out.push_back(pos);
             }
@@ -56,15 +62,19 @@ std::vector<std::array<float, 3>> room_points(const fs::path& nitrofs, const fs:
 bool export_room(const fs::path& nitrofs, const fs::path& graphics_dump, const World& w, int room, const fs::path& out,
                  std::vector<std::string>* notes, std::string* why) {
     auto fail = [&](const std::string& reason) {
-        if (why != nullptr) *why = reason;
+        if (why != nullptr)
+            *why = reason;
         return false;
     };
-    if (room < 0 || static_cast<std::size_t>(room) >= w.rooms.size()) return fail("no room " + std::to_string(room));
+    if (room < 0 || static_cast<std::size_t>(room) >= w.rooms.size())
+        return fail("no room " + std::to_string(room));
     const WorldRoom& r = w.rooms[static_cast<std::size_t>(room)];
     {
         std::error_code made;
-        if (!out.parent_path().empty()) fs::create_directories(out.parent_path(), made);
-        if (made) return fail("cannot make the folder " + u8(out.parent_path()) + ": " + made.message());
+        if (!out.parent_path().empty())
+            fs::create_directories(out.parent_path(), made);
+        if (made)
+            return fail("cannot make the folder " + u8(out.parent_path()) + ": " + made.message());
     }
     // one model, one bone: every mesh already in the room's space
     assets::NeutralModel model;
@@ -81,12 +91,14 @@ bool export_room(const fs::path& nitrofs, const fs::path& graphics_dump, const W
         const fs::path dir = graphics_dump / path_u8(label) / "mdl";
         std::string key;
         for (const auto& e : fs::directory_iterator(dir, ec)) {
-            if (lower(u8(e.path().extension())) == ".gltf") key = label + "/mdl/" + u8(e.path().stem());
+            if (lower(u8(e.path().extension())) == ".gltf")
+                key = label + "/mdl/" + u8(e.path().stem());
         }
         GameModel g;
         std::string problem;
         if (key.empty() || !load_game_model(nitrofs, graphics_dump, key, &g, &problem)) {
-            if (notes != nullptr) notes->push_back(label + ": " + (key.empty() ? std::string("not in the graphics dump") : problem));
+            if (notes != nullptr)
+                notes->push_back(label + ": " + (key.empty() ? std::string("not in the graphics dump") : problem));
             continue;
         }
         std::vector<Mat> node_world, palette;
@@ -97,10 +109,12 @@ bool export_room(const fs::path& nitrofs, const fs::path& graphics_dump, const W
             for (auto& v : m.vertices) {
                 std::array<float, 3> pos{0, 0, 0}, nrm{0, 0, 0};
                 for (std::size_t k = 0; k < 4; ++k) {
-                    if (v.weights[k] <= 0.0f || v.joints[k] >= palette.size()) continue;
+                    if (v.weights[k] <= 0.0f || v.joints[k] >= palette.size())
+                        continue;
                     const auto q = mat_point(palette[v.joints[k]], v.position);
                     const auto n = mat_vec(palette[v.joints[k]], v.normal);
-                    for (std::size_t c = 0; c < 3; ++c) pos[c] += v.weights[k] * q[c], nrm[c] += v.weights[k] * n[c];
+                    for (std::size_t c = 0; c < 3; ++c)
+                        pos[c] += v.weights[k] * q[c], nrm[c] += v.weights[k] * n[c];
                 }
                 v.position = pos;
                 v.normal = nrm;
@@ -127,30 +141,40 @@ bool export_room(const fs::path& nitrofs, const fs::path& graphics_dump, const W
     RoomCollision c;
     if (!data.empty()) {
         std::string problem;
-        if (!parse_collision(data, &c, &problem)) return fail(problem);
+        if (!parse_collision(data, &c, &problem))
+            return fail(problem);
     }
     static const char* const kinds[3] = {"ground", "wall", "ceiling"};
     std::map<std::string, std::size_t> mesh_of;
     for (int l = 0; l < 3; ++l) {
         for (const auto& f : c.faces[static_cast<std::size_t>(l)]) {
-            if (f.corners < 3) continue;
+            if (f.corners < 3)
+                continue;
             std::string name = kinds[l];
             for (std::size_t p = 0; p < 4; ++p) {
                 const auto s = f.slots[p];
-                if (s == 0xff) continue;
-                if (!slot_names(l, p)) name += " kind" + std::to_string(s);
-                else if (s < c.named.size()) name += " " + c.named[s].text();
+                if (s == 0xff)
+                    continue;
+                if (!slot_names(l, p))
+                    name += " kind" + std::to_string(s);
+                else if (s < c.named.size())
+                    name += " " + c.named[s].text();
             }
             auto found = mesh_of.find(name);
             if (found == mesh_of.end()) {
                 // a one-texel picture of its colour, so the material carries the name and shows
                 std::uint8_t px[4] = {90, 220, 90, 255};
-                if (l == kWall) px[0] = 255, px[1] = 140, px[2] = 40;
-                if (l == kCeiling) px[0] = 90, px[1] = 140, px[2] = 255;
-                if (name.find(" gate") != std::string::npos) px[0] = 255, px[1] = 220, px[2] = 40;
-                if (name.find(" col_wall") != std::string::npos) px[0] = 230, px[1] = 80, px[2] = 230;
+                if (l == kWall)
+                    px[0] = 255, px[1] = 140, px[2] = 40;
+                if (l == kCeiling)
+                    px[0] = 90, px[1] = 140, px[2] = 255;
+                if (name.find(" gate") != std::string::npos)
+                    px[0] = 255, px[1] = 220, px[2] = 40;
+                if (name.find(" col_wall") != std::string::npos)
+                    px[0] = 230, px[1] = 80, px[2] = 230;
                 std::string file = "collision-" + name + ".png";
-                for (auto& ch : file) ch = ch == ' ' ? '_' : ch;
+                for (auto& ch : file)
+                    ch = ch == ' ' ? '_' : ch;
                 if (const char* e = khdays_png_write(u8(out.parent_path() / path_u8(file)).c_str(), px, 1, 1)) {
                     return fail(std::string("could not write ") + file + ": " + e);
                 }
@@ -172,13 +196,15 @@ bool export_room(const fs::path& nitrofs, const fs::path& graphics_dump, const W
                 m.vertices.push_back(nv);
             }
             m.indices.insert(m.indices.end(), {first, first + 1, first + 2});
-            if (f.corners == 4) m.indices.insert(m.indices.end(), {first, first + 2, first + 3});
+            if (f.corners == 4)
+                m.indices.insert(m.indices.end(), {first, first + 2, first + 3});
         }
     }
     const std::string text = assets::to_gltf(model, textures);
     std::ofstream file(out, std::ios::binary | std::ios::trunc);
     file << text;
-    if (!file) return fail("could not write " + u8(out));
+    if (!file)
+        return fail("could not write " + u8(out));
     return true;
 }
 

@@ -42,9 +42,9 @@ typedef struct KhdaysPausePiece {
     int lit;        /* 0, or the lit strip shown: 1 or 2 (the game's blinks between two) */
 } KhdaysPausePiece;
 typedef struct KhdaysPauseView {
-    int shown;   /* the game's pause is up, drawn */
-    int layer;   /* the BG of engine A it is drawn in */
-    int count;   /* its pieces, the title first */
+    int shown; /* the game's pause is up, drawn */
+    int layer; /* the BG of engine A it is drawn in */
+    int count; /* its pieces, the title first */
     KhdaysPausePiece piece[KHDAYS_PAUSE_PIECES];
     int language;
 } KhdaysPauseView;

@@ -41,24 +41,16 @@ int main() {
         const Bytes plain{'K', 'H', 0x00U, 0x11U, 0xFFU, '3', '5', '8', '/', '2'};
         expect(khdays::assets::lz_decompress(lz11_store(plain)) == plain, "LZ11 literals");
 
-        expect(
-            khdays::assets::message_to_utf8(u"A\nB") == "A\nB",
-            "utf8 newline passthrough");
+        expect(khdays::assets::message_to_utf8(u"A\nB") == "A\nB", "utf8 newline passthrough");
 
         // Text override escapes: message_from_utf8 decodes what
         // message_to_utf8 emits, and both round-trip control codes/newlines.
-        expect(
-            khdays::assets::message_from_utf8("Piro\\nPlus") == u"Piro\nPlus",
-            "from_utf8 newline escape");
-        expect(
-            khdays::assets::message_from_utf8("A\\x01B")
-                == std::u16string{u'A', u'\x01', u'B'},
-            "from_utf8 hex escape");
+        expect(khdays::assets::message_from_utf8("Piro\\nPlus") == u"Piro\nPlus", "from_utf8 newline escape");
+        expect(khdays::assets::message_from_utf8("A\\x01B") == std::u16string{u'A', u'\x01', u'B'},
+               "from_utf8 hex escape");
         {
             const std::u16string original{u'H', u'i', u'\n', u'\x03', u'!'};
-            const auto round =
-                khdays::assets::message_from_utf8(
-                    khdays::assets::message_to_utf8(original));
+            const auto round = khdays::assets::message_from_utf8(khdays::assets::message_to_utf8(original));
             expect(round == original, "utf8 round-trip");
         }
 

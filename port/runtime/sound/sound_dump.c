@@ -17,23 +17,23 @@
 #include <string.h>
 #include <windows.h>
 
-#define RENDER_RATE  48000u
-#define RENDER_LIMIT 600u  /* seconds */
+#define RENDER_RATE 48000u
+#define RENDER_LIMIT 600u /* seconds */
 
 /* Where a render's files go in the DS's main RAM, free as the game does not
  * run (its static module and BSS end far below): the render's command lists
  * and shared work, then the bank, its wave archives and the sequence. */
-#define REGION      0x02200000u
+#define REGION 0x02200000u
 #define REGION_SIZE 0x00100000u
-#define WORK        REGION
-#define FILES       (REGION + 0x400u)
+#define WORK REGION
+#define FILES (REGION + 0x400u)
 
 /* A stream's rings, for the stream reader to bind the channels to: any
  * address will do, nothing is written there. */
-#define STREAM_RING       0x02300000u
+#define STREAM_RING 0x02300000u
 #define STREAM_RING_BYTES 2048u
 
-static const char *root;  /* the directory the dump goes to */
+static const char *root; /* the directory the dump goes to */
 static int written, failed;
 
 static uint32_t rd16(const uint8_t *p)
@@ -177,7 +177,7 @@ static void dump_waves(const KhdaysSoundArchive *a)
         if (record == 0) {
             continue;
         }
-        swar = file_copy(a, record_word(a, record, 0) & 0xffffffu, &size);  /* NNSSndArcWaveArcInfo.fileId */
+        swar = file_copy(a, record_word(a, record, 0) & 0xffffffu, &size); /* NNSSndArcWaveArcInfo.fileId */
         if (swar == NULL || size < 0x3c || memcmp(swar, "SWAR", 4) != 0) {
             free(swar);
             continue;
@@ -200,7 +200,7 @@ static void dump_waves(const KhdaysSoundArchive *a)
                 continue;
             }
             per_word = param[0] == 0 ? 4 : param[0] == 1 ? 2 : 8;
-            header = param[0] == 2 ? 8 : 0;  /* ADPCM's header word */
+            header = param[0] == 2 ? 8 : 0; /* ADPCM's header word */
             samples = malloc(((size_t)words * per_word + 1) * sizeof(int16_t));
             if (samples == NULL) {
                 ++failed;
@@ -259,7 +259,7 @@ static void dump_streams(const KhdaysSoundArchive *a)
         int16_t *samples;
         char identifier[256];
         if (record == 0 ||
-            !khdays_sound_archive_file(a, record_word(a, record, 0), &file.offset, &file.size)) {  /* fileId */
+            !khdays_sound_archive_file(a, record_word(a, record, 0), &file.offset, &file.size)) { /* fileId */
             continue;
         }
         memset(&prepared, 0, sizeof(prepared));
@@ -310,7 +310,7 @@ static void dump_streams(const KhdaysSoundArchive *a)
 /* What is in the region now, so consecutive entries with the same bank do
  * not load it again. */
 static int loaded_bank = -1;
-static uint32_t files_end;  /* past the bank and its wave archives */
+static uint32_t files_end; /* past the bank and its wave archives */
 
 /* Bank `bank` (NNSSndArcBankInfo: its file, its four wave archives) into
  * the region, each wave archive assigned to it as SND_AssignWaveArc does
@@ -337,17 +337,16 @@ static int load_bank(const KhdaysSoundArchive *a, int bank)
         uint32_t wave_record;
         memset(link, 0, 8);
         if (wave_archive == 0xffff) {
-            continue;  /* NNS_SND_ARC_INVALID_WAVEARC_NO */
+            continue; /* NNS_SND_ARC_INVALID_WAVEARC_NO */
         }
         wave_record = khdays_sound_archive_record(a, KHDAYS_SOUND_WAVE, (int)wave_archive);
-        if (wave_record == 0 ||
-            (size = load_file(a, record_word(a, wave_record, 0) & 0xffffffu, region + (at - REGION),
-                              REGION + REGION_SIZE - at)) < 0x3c) {
+        if (wave_record == 0 || (size = load_file(a, record_word(a, wave_record, 0) & 0xffffffu, region + (at - REGION),
+                                                  REGION + REGION_SIZE - at)) < 0x3c) {
             return 0;
         }
         {
             const uint32_t link_address = sbnk + 0x18 + 8 * i;
-            memcpy(link, &at, 4);                                  /* the link's archive; no next */
+            memcpy(link, &at, 4);                                    /* the link's archive; no next */
             memcpy(region + (at - REGION) + 0x18, &link_address, 4); /* the archive's first link */
         }
         at = (at + size + 31) & ~31u;
@@ -415,8 +414,7 @@ static void dump_sequences(const KhdaysSoundArchive *a)
             continue;
         }
         khdays_sound_archive_identifier(a, KHDAYS_SOUND_SEQUENCE, n, -1, identifier, sizeof(identifier));
-        if (!load_bank(a, (int)rd16(param)) ||
-            (file = load_sequence_file(a, record_word(a, record, 0), &size)) == 0) {
+        if (!load_bank(a, (int)rd16(param)) || (file = load_sequence_file(a, record_word(a, record, 0), &size)) == 0) {
             fprintf(stderr, "dump: %s: its bank or its file cannot be loaded\n", identifier);
             ++failed;
             continue;
@@ -438,7 +436,7 @@ static void dump_sequence_archives(const KhdaysSoundArchive *a)
         if (record == 0) {
             continue;
         }
-        ssar = file_copy(a, record_word(a, record, 0), &size);  /* NNSSndArcSeqArcInfo.fileId */
+        ssar = file_copy(a, record_word(a, record, 0), &size); /* NNSSndArcSeqArcInfo.fileId */
         if (ssar == NULL || size < 0x20 || memcmp(ssar, "SSAR", 4) != 0) {
             free(ssar);
             continue;
@@ -449,7 +447,7 @@ static void dump_sequence_archives(const KhdaysSoundArchive *a)
             char identifier[256];
             uint32_t file, file_size;
             if (rd32(info) == 0xffffffffu) {
-                continue;  /* NNS_SND_SEQ_ARC_INVALID_OFFSET */
+                continue; /* NNS_SND_SEQ_ARC_INVALID_OFFSET */
             }
             khdays_sound_archive_identifier(a, KHDAYS_SOUND_SEQUENCE_ARCHIVE_ENTRY, n, (int)e, identifier,
                                             sizeof(identifier));
@@ -480,7 +478,7 @@ int khdays_sound_dump(const char *directory)
     if (a == NULL || !khdays_sound_bridge_native_segment()) {
         return 1;
     }
-    khdays_snd7_native_set_ds_base((uintptr_t)khdays_window);  /* the game's memory (window.h) */
+    khdays_snd7_native_set_ds_base((uintptr_t)khdays_window); /* the game's memory (window.h) */
     printf("dump: the game's sounds to %s\n", full);
     fflush(stdout);
 

@@ -23,8 +23,8 @@ struct MissionEdit {
 
 // The mission as the mod has it (its own copies, where it holds them) or as
 // the game has it; `mod_dir` empty: the game's.
-bool load_mission_edit(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, int number, MissionEdit* out,
-                       std::string* why);
+bool load_mission_edit(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, int number,
+                       MissionEdit* out, std::string* why);
 
 // A step's operand `slot` (its words 2*slot, 2*slot+1) made `o`.
 void set_slot(ScriptStep& step, std::size_t slot, const OperandSlot& o);
@@ -49,24 +49,26 @@ bool write_placed_set_over(std::vector<std::uint8_t>& file, const PlacedSet& set
 PlacedSet* placed_set_of(std::vector<PlacedSet>& sets, int mission);
 
 // The files a change writes, relative to the mod.
-std::string mission_mod_path(int number);  // files/mi/mi/0101
+std::string mission_mod_path(int number);              // files/mi/mi/0101
 std::string placed_mod_path(const std::string& name);  // files/mi/mi/trbox
 
 // Writes the mission, and trbox / evi when they differ from the game's (else
 // the mod's copy goes: the game's is the same), each read back as the game
 // reads it before it takes its place; `written` the files written or removed.
-bool save_mission_edit(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, const MissionEdit& edit,
-                       std::vector<std::string>* written, std::string* why);
+bool save_mission_edit(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir,
+                       const MissionEdit& edit, std::vector<std::string>* written, std::string* why);
 
 // A mission made from another: `from`'s content written as mission `target`, whose list place, name,
 // unlock and saved progress stay the target's; its chests and emblems copied when the target's sets
 // have as many rows (`copied_sets`).
-bool copy_mission_to(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, const MissionEdit& from, int target,
-                     std::vector<std::string>* written, bool* copied_sets, std::string* why);
+bool copy_mission_to(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir,
+                     const MissionEdit& from, int target, std::vector<std::string>* written, bool* copied_sets,
+                     std::string* why);
 
 // The mission given back to the game: the mod's mission file removed, and its
 // sets in the mod's trbox / evi made the game's again (the file removed when
 // it is then the game's).
-bool give_back_mission(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, int number, std::string* why);
+bool give_back_mission(const std::filesystem::path& nitrofs, const std::filesystem::path& mod_dir, int number,
+                       std::string* why);
 
 }  // namespace studio

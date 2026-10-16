@@ -3,6 +3,7 @@
 environment (found as port/build.py finds it), into build/studio/debug or release; --test runs its tests.
   python studio/build.py [--config Debug|Release] [--test] [--jobs N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,9 +32,21 @@ def main() -> int:
     native = native_build()
     env = native.msvc_env()
     obj = ROOT / "build" / "studio" / args.config.lower()
-    native.run(["cmake", "-S", str(ROOT / "studio"), "-B", str(obj), "-G", "Ninja",
-                f"-DCMAKE_BUILD_TYPE={args.config}",
-                "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl"], env)
+    native.run(
+        [
+            "cmake",
+            "-S",
+            str(ROOT / "studio"),
+            "-B",
+            str(obj),
+            "-G",
+            "Ninja",
+            f"-DCMAKE_BUILD_TYPE={args.config}",
+            "-DCMAKE_C_COMPILER=cl",
+            "-DCMAKE_CXX_COMPILER=cl",
+        ],
+        env,
+    )
     build = ["cmake", "--build", str(obj)]
     if args.jobs:
         build += ["--parallel", str(args.jobs)]

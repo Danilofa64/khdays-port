@@ -3,6 +3,7 @@
 hang's input copied back there; a run that ends well before its time fails (docs/BUILD.md).
     python port/tools/fuzz.py [--tree build/port/obj-release-x64] [--target NAME] [--minutes N] [--jobs N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,9 +41,21 @@ def run_one(tree: Path, name: str, minutes: float, jobs: int) -> int:
         print(f"== {name}: {minutes:g} minutes on {jobs} processes", flush=True)
         began = time.monotonic()
         run = subprocess.run(
-            [str(scratch / exe.name), "corpus", f"-max_total_time={seconds}", f"-jobs={jobs}",
-             f"-workers={jobs}", "-timeout=10", "-rss_limit_mb=2048", "-artifact_prefix=artifacts/"],
-            cwd=scratch, capture_output=True, text=True, errors="replace")
+            [
+                str(scratch / exe.name),
+                "corpus",
+                f"-max_total_time={seconds}",
+                f"-jobs={jobs}",
+                f"-workers={jobs}",
+                "-timeout=10",
+                "-rss_limit_mb=2048",
+                "-artifact_prefix=artifacts/",
+            ],
+            cwd=scratch,
+            capture_output=True,
+            text=True,
+            errors="replace",
+        )
         took = time.monotonic() - began
         out = run.stdout + run.stderr
         for log in sorted(scratch.glob("fuzz-*.log")):

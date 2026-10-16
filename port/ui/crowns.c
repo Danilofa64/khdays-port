@@ -20,14 +20,14 @@ extern int GetLanguage(void);
 int khdays_overlay_loaded(int id); /* overlays.c */
 
 #define OV_STORY_CAMP 25
-#define HOLO_MISSIONS 1         /* the camp's screen (khdays_camp_screen) */
-#define CAMP 0x020b5744u        /* its second word: the story camp's context (Ov025_GetPageB) */
-#define PAGE_B 0x95a0u          /* the day list (Ov025ScrollList) */
+#define HOLO_MISSIONS 1  /* the camp's screen (khdays_camp_screen) */
+#define CAMP 0x020b5744u /* its second word: the story camp's context (Ov025_GetPageB) */
+#define PAGE_B 0x95a0u   /* the day list (Ov025ScrollList) */
 #define LIST_ROWS 0x4u
 #define LIST_COUNT 0x8u
-#define LIST_SCROLL 0x2d0u      /* dots, 16 a row */
-#define ROW_SIZE 0x10u          /* its first day, its last day, ... */
-#define FIELD_STATUS 0x28e4     /* 3: cleared */
+#define LIST_SCROLL 0x2d0u  /* dots, 16 a row */
+#define ROW_SIZE 0x10u      /* its first day, its last day, ... */
+#define FIELD_STATUS 0x28e4 /* 3: cleared */
 #define FIELD_BADGES 0x92b
 
 /* The crown: the gold one of the list sheet's four (characters 0x40-0x47 over 0x60-0x67), 16 x 16,
@@ -57,14 +57,17 @@ static int mission_complete(int language, uint16_t room, uint16_t m)
     const unsigned ranks = (kinds & 1u) + ((kinds >> 1) & 1u);
     int chests;
     const int *flag = khdays_mission_chests(room, &chests);
-    if (chests < 0 || GameState_GetField(FIELD_STATUS + 3 * m, 3) != 3) return 0;
+    if (chests < 0 || GameState_GetField(FIELD_STATUS + 3 * m, 3) != 3)
+        return 0;
     for (int k = 0; k < chests; ++k) {
-        if (!GameState_IsFlagSet((unsigned int)flag[k])) return 0;
+        if (!GameState_IsFlagSet((unsigned int)flag[k]))
+            return 0;
     }
     /* as Ov025_DrawMissionRow lights them: the ordeal badge and the blazon by their count (bits 0
      * and 1), the unity badge bit 3 */
     for (unsigned i = 0; i < ranks; ++i) {
-        if (!((found >> i) & 1u)) return 0;
+        if (!((found >> i) & 1u))
+            return 0;
     }
     return !(kinds & 8u) || (found & 8u);
 }
@@ -77,8 +80,10 @@ static int days_complete(int language, uint32_t first, uint32_t last)
     int n, missions = 0;
     const KhdaysMissionRecord *r = khdays_mission_records(language, &n);
     for (int i = 0; i < n; ++i) {
-        if (r[i].kind != 0 || !r[i].counted || r[i].first_day < first || r[i].last_day > last) continue;
-        if (!mission_complete(language, r[i].room, r[i].mission)) return 0;
+        if (r[i].kind != 0 || !r[i].counted || r[i].first_day < first || r[i].last_day > last)
+            continue;
+        if (!mission_complete(language, r[i].room, r[i].mission))
+            return 0;
         ++missions;
     }
     return missions > 0;
@@ -93,15 +98,16 @@ static int crown_image(int scale)
         khdays_ui_image_put(image);
         image = -1;
         for (int c = 0; c < 4; ++c) {
-            if (colours == NULL || !khdays_mission_list_character(CROWN_CHARACTER + (unsigned)(c & 1) + (c >> 1) * 0x20u,
-                                                                  cell[c])) {
+            if (colours == NULL ||
+                !khdays_mission_list_character(CROWN_CHARACTER + (unsigned)(c & 1) + (c >> 1) * 0x20u, cell[c])) {
                 return -1;
             }
         }
         image = khdays_ui_image_get(16 * scale, 16 * scale);
         image_scale = scale;
         texels = image >= 0 ? khdays_ui_image_begin(image) : NULL;
-        if (texels == NULL) return -1;
+        if (texels == NULL)
+            return -1;
         for (int y = 0; y < 16 * scale; ++y) {
             for (int x = 0; x < 16 * scale; ++x) {
                 const int dx = x / scale, dy = y / scale;
@@ -119,16 +125,21 @@ void khdays_ui_crowns_emit(void)
     static int told = -1;
     uint32_t ctx, list, rows, count;
     int story, language, scale, shown = 0;
-    if (trace < 0) trace = getenv("KHDAYS_TRACE_CROWNS") != NULL;
+    if (trace < 0)
+        trace = getenv("KHDAYS_TRACE_CROWNS") != NULL;
     /* the check compares the game's own drawing, which has none of this */
-    if (khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON || !khdays_overlay_loaded(OV_STORY_CAMP)) return;
-    if (khdays_camp_screen(&story) != HOLO_MISSIONS || !story) return;
+    if (khdays_ui_mode(KHDAYS_UI_HUD) != KHDAYS_UI_ON || !khdays_overlay_loaded(OV_STORY_CAMP))
+        return;
+    if (khdays_camp_screen(&story) != HOLO_MISSIONS || !story)
+        return;
     ctx = rd32(CAMP + 4);
     list = khdays_game_ram(ctx) ? rd32(ctx + PAGE_B) : 0u;
-    if (!khdays_game_ram(list)) return;
+    if (!khdays_game_ram(list))
+        return;
     rows = rd32(list + LIST_ROWS);
     count = rd32(list + LIST_COUNT);
-    if (count == 0 || !khdays_game_ram(rows)) return;
+    if (count == 0 || !khdays_game_ram(rows))
+        return;
     scale = khdays_ui_scale();
     language = GetLanguage();
     for (uint32_t r = 0; r < count; ++r) {
@@ -136,8 +147,10 @@ void khdays_ui_crowns_emit(void)
         const int y = CROWN_Y + ROW_HEIGHT * (int)r - (int)rd32(list + LIST_SCROLL);
         KhdaysUiElement e;
         const int top = y - (CROWN_Y - LIST_TOP); /* the row's */
-        if (top < LIST_TOP || top + ROW_HEIGHT > LIST_BOTTOM || !days_complete(language, first, last)) continue;
-        if (crown_image(scale) < 0) return;
+        if (top < LIST_TOP || top + ROW_HEIGHT > LIST_BOTTOM || !days_complete(language, first, last))
+            continue;
+        if (crown_image(scale) < 0)
+            return;
         e.id = "hud.crown";
         e.screen = 1;
         e.slot = KES_DIRECT | CROWN_LAYER;
