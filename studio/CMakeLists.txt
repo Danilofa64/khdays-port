@@ -110,7 +110,7 @@ target_compile_options(khdays-studio-port PRIVATE
 set_source_files_properties("${ROOT}/port/sound/third_party_decoders.c" PROPERTIES COMPILE_OPTIONS "/W0")
 # The port's files as they are: their C library and C++20 deprecation notes
 # are the port's to decide on, not this build's.
-target_compile_definitions(khdays-studio-port PRIVATE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING)
+target_compile_definitions(khdays-studio-port PRIVATE _CRT_SECURE_NO_WARNINGS)
 # The tool's own code reaches these by their directories.
 set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/port/sound" "${ROOT}/port/host")
 

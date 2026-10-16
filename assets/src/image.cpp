@@ -85,7 +85,7 @@ std::optional<std::filesystem::path> find_texture(const std::filesystem::path& m
     // either separator, whatever machine the model was made on
     std::string normalised = stored_path;
     std::replace(normalised.begin(), normalised.end(), '\\', '/');
-    const std::filesystem::path stored = std::filesystem::u8path(normalised);
+    const std::filesystem::path stored{std::u8string(normalised.begin(), normalised.end())};
     const std::filesystem::path candidates[] = {
         model_folder / stored,
         stored,

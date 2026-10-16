@@ -21,11 +21,18 @@ extern "C" {
 #include <list>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
 
 namespace fs = std::filesystem;
+
+// A path from UTF-8 text (fs::u8path's, deprecated in C++20).
+fs::path utf8_path(std::string_view text)
+{
+    return fs::path(std::u8string(text.begin(), text.end()));
+}
 
 struct Region {
     u32 start;
@@ -262,7 +269,7 @@ extern "C" int khdays_rom_init(void)
         // a mission world a mod replaces (the studio's map editor): its rooms' models named from the start,
         // so the mod's are drawn even with HD graphics off (models.cpp)
         if (game_path.rfind("mi/wd/wd_", 0) == 0 &&
-            khdays::vfs::find_in_mods(fs::path("files") / fs::u8path(game_path))) {
+            khdays::vfs::find_in_mods(fs::path("files") / utf8_path(game_path))) {
             khdays_origin_want();
         }
         std::vector<u8> worded;
@@ -476,7 +483,7 @@ extern "C" int khdays_rom_area_at(u32 offset, char *name, int size, u32 *start, 
 
 extern "C" int khdays_mods_find(const char *relative, char *path, int size)
 {
-    const auto found = khdays::vfs::find_in_mods(fs::u8path(relative));
+    const auto found = khdays::vfs::find_in_mods(utf8_path(relative));
     if (!found) {
         return 0;
     }
