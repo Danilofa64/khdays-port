@@ -748,6 +748,17 @@ KD_FN uint kd_split(uint color[4], KdSprite spr, uint mask, int x, int row)
         color[0] = a3 != 0u ? KD_OPAQUE : 0u;
     }
     t = kd_top(color, spr, mask);
+    if (is3d != 0u && t.layer0 == 0u && t.layer1 == KD_LAYER_BACKDROP && a3 < 31u &&
+        ((blendw >> 8) & (1u << KD_LAYER_BACKDROP)) != 0u) {
+        /* the 3D, translucent, over the backdrop: blended by its alpha as kd_compose does (the
+         * backdrop's share, and the 3D's factor) -- drawn whole it would lose its soft edges */
+        const uint eva = a3 / 2u, bd = kd_fine(KD_DESC(KD_BACKDROP) & 0x7fffu);
+        uint kb = 0u;
+        for (uint sh = 0u; sh < 24u; sh += 8u) {
+            kb |= (((bd >> sh) & 255u) * (16u - eva) / 16u) << sh;
+        }
+        return kb | ((1u + (eva * 254u + 8u) / 16u) << 24);
+    }
     if (t.layer0 == KD_LAYER_BACKDROP ||
         (is3d != 0u && t.layer0 == 0u && (a3 >= 31u || t.layer1 == KD_LAYER_BACKDROP))) {
         return 0u;
