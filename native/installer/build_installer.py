@@ -14,7 +14,6 @@ Output: build/installer/KH358-2-Days-Port-Setup-<date>-<commit>.exe
 from __future__ import annotations
 
 import argparse
-import datetime
 import hashlib
 import json
 import os
@@ -67,11 +66,18 @@ def sha256(path: Path) -> str:
 
 
 def version() -> str:
+    """The repository's VERSION ("0.1.0") when the commit is its release tag (v0.1.0) and nothing is
+    changed; otherwise that version with the commit after it, and "-modified" when files changed."""
+    number = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                             text=True, check=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT,
                            capture_output=True, text=True, check=True).stdout.strip()
-    return f"{datetime.date.today():%Y.%m.%d}-{commit}" + ("-modified" if dirty else "")
+    tags = subprocess.run(["git", "tag", "--points-at", "HEAD"], cwd=ROOT, capture_output=True,
+                          text=True, check=True).stdout.split()
+    if f"v{number}" in tags and not dirty:
+        return number
+    return f"{number}+{commit}" + ("-modified" if dirty else "")
 
 
 def pe_imports(exe: Path) -> list[str]:
