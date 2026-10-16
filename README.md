@@ -55,22 +55,18 @@ or its display; and the 3D is drawn at the monitor's refresh rate, between the
 game's frames, which still come 30 a second as on the DS. The game's memory
 is the port's: a range Windows places, with each DS region at its DS address
 from its start, the game's pointers kept as references into it -- the DS's own
-addresses hold nothing. Underneath, the rest of the DS is still close to the
-original: its two screens one above the other, its ARM7 services.
+addresses hold nothing. The HUD, the menus and the game's text are drawn
+anew by the port, each element placeable. Underneath, the game still sees a
+DS -- two screens one above the other, and the ARM7's services, which the port
+answers on the PC: the clock from the PC's, the touch screen from the mouse,
+the save from its files.
 
-Planned: first, replacing one by one the DS systems still under the game
-with the port's own, so that nothing the game shows or plays is bound to
-the DS any more. The sound, the 2D, the 3D, the files, the movies, the
-timing, the registers and the memory map are done; the HUD, the menus and
-the text drawn anew by the port, each element placeable, are next. Then, in
-this order:
+On top of the game, a new edition from content the user provides: HD
+textures, models and 2D graphics, new rooms, sounds and videos, a
+single-screen mode, and Mission Mode's multiplayer.
 
-- the ARM7's other services (the save, the clock, the touch screen);
-- Linux and macOS.
-
-Then a new edition of the game on top: new HD models, maps, textures, audio
-and videos from content the user provides, a single-screen mode, and
-Mission Mode's multiplayer.
+Planned: the port on other systems -- Linux first, then, from one ARM64
+build, macOS, Windows on ARM and the Nintendo Switch.
 
 ## Installing
 
