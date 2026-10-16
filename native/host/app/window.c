@@ -31,6 +31,7 @@
 #include "../screens/camp_screen.h"
 #include "../screens/save_screen.h"
 #include "sound_output.h"
+#include "updates.h"
 #include "../screens/ui_font.h"
 #include "../screens/ui_text.h"
 #include "../../runtime/core/clock.h"
@@ -326,12 +327,10 @@ static void apply_changes(void)
     }
 }
 
-/* Opens the settings menu. The game pauses: its time stops, it gets no
- * input and its sound is silent. In a multiplayer session it only stops
- * getting input. */
-static void open_settings(void)
+/* While the settings menu shows, the game pauses: its time stops, it gets no input and its sound
+ * is silent. In a multiplayer session it only stops getting input. */
+static void stop_game_for_menu(void)
 {
-    char text[160];
     khdays_devices_set_game_input(0);
     settings_stopped = !khdays_net_in_session();
     if (settings_stopped) {
@@ -339,6 +338,21 @@ static void open_settings(void)
         khdays_sound_output_pause(1);
         khdays_hd_pause(1); /* an HD video playing for a movie pauses too */
     }
+}
+
+/* Opens the menu for the notice of a newer release alone (host/app/updates.h). */
+static void open_update_notice(const char *tag)
+{
+    khdays_log("updates: telling the player of %s", tag);
+    stop_game_for_menu();
+    khdays_settings_offer_update(khdays_devices_profile(), khdays_updates_version(), tag);
+}
+
+/* Opens the settings menu (the game pauses, stop_game_for_menu). */
+static void open_settings(void)
+{
+    char text[160];
+    stop_game_for_menu();
     while (khdays_devices_take_notice(text, sizeof(text))) {
         khdays_settings_add_notice(text);
     }
@@ -446,6 +460,7 @@ static int host_thread(void *unused)
     khdays_devices_init(&profile, publish);
     khdays_settings_set_graphics_card(khdays_present_gpu());
     tell_game();
+    khdays_updates_start(profile.network.check_updates); /* in the background; told of on the title */
     SDL_SetAtomicInt(&started, 1);
     SDL_SignalSemaphore(ready);
 
@@ -453,7 +468,17 @@ static int host_thread(void *unused)
         SDL_Event event;
         /* While the settings menu shows, it keeps animating even if the paused
          * game sends no frames. */
-        const int animating = khdays_settings_is_open();
+        int animating;
+        /* A newer release is told of on the front-end (the boot logos, the title: scene 1), never
+         * in the middle of the game, and once a run. */
+        if (!khdays_settings_is_open() && khdays_runtime_scene() == 1) {
+            char tag[64];
+            if (khdays_updates_offer(tag, sizeof(tag))) {
+                open_update_notice(tag);
+                redraw(window, renderer);
+            }
+        }
+        animating = khdays_settings_is_open();
         /* The 3D at the monitor's refresh rate: draw a picture
          * whenever VSync lets one through, between events. */
         const int smooth = khdays_present_smooth();
@@ -579,7 +604,11 @@ static int host_thread(void *unused)
             static Uint64 drawn_at;
             khdays_devices_handle(&event, renderer);
             if (khdays_settings_handle(&event, window)) {
+                const int update = khdays_settings_take_update_answer();
                 close_settings();
+                if (update >= 0) {
+                    khdays_updates_answer(update); /* the notice's: the page opened, or not told again */
+                }
                 redraw(window, renderer);
                 continue;
             }

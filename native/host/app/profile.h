@@ -199,6 +199,7 @@ typedef struct KhdaysNetwork {
     int online;                               /* rooms also through the server */
     char server[KHDAYS_SERVER_BYTES];         /* host[:port] */
     int show_ping;                            /* the round trip to the other players, in a corner, in a session */
+    int check_updates;                        /* look once a day for a newer release (host/app/updates.c) */
 } KhdaysNetwork;
 
 /* No nickname of the player's (an automatic one), online through the

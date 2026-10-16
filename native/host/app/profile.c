@@ -200,6 +200,7 @@ void khdays_network_default(KhdaysNetwork *n)
     /* the maintainer's public server */
     SDL_strlcpy(n->server, "212.227.76.27", sizeof(n->server));
     n->show_ping = 0;
+    n->check_updates = 1;
 }
 
 int khdays_nickname_char(int c)
@@ -1053,7 +1054,7 @@ static void read_sound(Reader *r, const char *key, const char *value, const char
     keep_unknown("sound", line);
 }
 
-/* [network]: nickname, online, server, show_ping. */
+/* [network]: nickname, online, server, show_ping, check_updates. */
 static void read_network(Reader *r, const char *key, const char *value, const char *line)
 {
     KhdaysNetwork *n = &r->profile->network;
@@ -1093,6 +1094,13 @@ static void read_network(Reader *r, const char *key, const char *value, const ch
         } else {
             say(r->notice, "settings: [network] show_ping = \"%s\" is neither on nor off; off is used", value);
             n->show_ping = 0;
+        }
+    } else if (SDL_strcasecmp(key, "check_updates") == 0) {
+        if (SDL_strcasecmp(value, "on") == 0 || SDL_strcasecmp(value, "off") == 0) {
+            n->check_updates = SDL_strcasecmp(value, "on") == 0;
+        } else {
+            say(r->notice, "settings: [network] check_updates = \"%s\" is neither on nor off; on is used", value);
+            n->check_updates = 1;
         }
     } else {
         say(r->notice, "settings: [network] has no setting \"%s\"; kept as it is", key);
@@ -1463,8 +1471,12 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
                 "# local network; server: its address (host or host:port, the port 35821 if none)\n"
                 "online = %s\nserver = %s\n"
                 "# show_ping: in a session, the round trip to each other player, in a corner\n"
-                "show_ping = %s\n",
-            n->nickname, n->online ? "on" : "off", n->server, n->show_ping ? "on" : "off");
+                "show_ping = %s\n"
+                "# check_updates: once a day, ask GitHub whether a newer release of the port is out, and\n"
+                "# say so on the title screen (nothing about you is sent)\n"
+                "check_updates = %s\n",
+            n->nickname, n->online ? "on" : "off", n->server, n->show_ping ? "on" : "off",
+            n->check_updates ? "on" : "off");
     }
     add_unknown(&t, "network");
     {

@@ -256,6 +256,12 @@ static void trace_mission(u32 frame, int in_field)
     }
 }
 
+unsigned int khdays_runtime_scene(void)
+{
+    /* the scene controller at 0x0204bda8: object, table entry, current id, pending id, argument */
+    return *(const volatile u32 *)KHDAYS_W(0x0204bda8 + 8);
+}
+
 void khdays_host_frame(void)
 {
     /* the scene controller at 0x0204bda8: object, table entry, current id, pending id, argument */

@@ -14,6 +14,7 @@
 
 extern "C" { // the host's C headers that say nothing of C++
 #include "../app/devices.h"
+#include "../app/updates.h"
 #include "../screens/ui_text.h"
 }
 
@@ -38,7 +39,7 @@ constexpr Uint64 kRepeatDelayMs = 400; // a held gamepad direction starts repeat
 constexpr Uint64 kRepeatEveryMs = 100; // and then repeats this often
 constexpr int kClose = KHDAYS_SECTION_COUNT; // the column's last entry
 
-enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT };
+enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT, MODE_UPDATE };
 enum { FACE_ACCEPT, FACE_CLEAR, FACE_BACK, FACE_COUNT };
 constexpr int PLACE_VALUE = KHDAYS_PLACE_VALUE;
 
@@ -98,6 +99,10 @@ struct Menu {
     SDL_Renderer *bound = nullptr; // the renderer the backend draws with
     float styled_size = 0;
     Uint64 last_draw = 0;
+    // A newer release told of (khdays_settings_offer_update): this build's version, the new one,
+    // and the player's answer (KHDAYS_UPDATE_*), -1 until given.
+    char update_have[64] = {}, update_new[64] = {};
+    int update_answer = -1;
 };
 
 Menu m;
@@ -835,6 +840,77 @@ bool mouse_click(float x, float y)
         return false; // on the action's name: nothing to do
     }
     return activate();
+}
+
+// ---- A newer release (the menu opened for its notice alone) -----------------
+
+// Download, Later, Don't remind me of this version: KHDAYS_UPDATE_*, in that order.
+constexpr int kUpdateAnswers = 3;
+
+// The answer closes the notice, and with it the menu (opened for it alone): returns true.
+bool answer_update(int answer)
+{
+    m.update_answer = answer;
+    m.mode = MODE_BROWSE;
+    m.open = false;
+    return true;
+}
+
+void update_step(int by)
+{
+    m.choice = (m.choice + kUpdateAnswers + by) % kUpdateAnswers;
+}
+
+// Returns true when the notice was answered (the menu closed).
+bool update_event(const SDL_Event *e)
+{
+    switch (e->type) {
+    case SDL_EVENT_KEY_DOWN:
+        switch (e->key.scancode) {
+        case SDL_SCANCODE_UP:
+        case SDL_SCANCODE_LEFT: update_step(-1); break;
+        case SDL_SCANCODE_DOWN:
+        case SDL_SCANCODE_RIGHT: update_step(1); break;
+        case SDL_SCANCODE_RETURN:
+        case SDL_SCANCODE_KP_ENTER:
+        case SDL_SCANCODE_SPACE: return answer_update(m.choice);
+        case SDL_SCANCODE_ESCAPE:
+        case SDL_SCANCODE_BACKSPACE: return answer_update(KHDAYS_UPDATE_LATER);
+        default: break;
+        }
+        break;
+    case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        switch (e->gbutton.button) {
+        case SDL_GAMEPAD_BUTTON_DPAD_UP:
+        case SDL_GAMEPAD_BUTTON_DPAD_LEFT: update_step(-1); break;
+        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: update_step(1); break;
+        default:
+            switch (face_of((SDL_GamepadButton)e->gbutton.button)) {
+            case FACE_ACCEPT: return answer_update(m.choice);
+            case FACE_BACK: return answer_update(KHDAYS_UPDATE_LATER);
+            default: break;
+            }
+            break;
+        }
+        break;
+    case SDL_EVENT_MOUSE_MOTION:
+        if (const Place *p = place_at(KHDAYS_PLACE_ANSWER, e->motion.x * m.density, e->motion.y * m.density)) {
+            m.choice = p->index;
+        }
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        if (e->button.button == SDL_BUTTON_LEFT) {
+            if (const Place *p = place_at(KHDAYS_PLACE_ANSWER, e->button.x * m.density, e->button.y * m.density)) {
+                return answer_update(p->index);
+            }
+        } else if (e->button.button == SDL_BUTTON_RIGHT) {
+            return answer_update(KHDAYS_UPDATE_LATER);
+        }
+        break;
+    default: break;
+    }
+    return false;
 }
 
 // Notes what the last key or button pressed does, for the test row.
@@ -1618,7 +1694,7 @@ void draw_prompt(float w, float h, float row_h, float pad)
 {
     std::string question;
     std::vector<std::string> details;
-    const char *yes = nullptr, *no = nullptr;
+    const char *yes = nullptr, *no = nullptr, *third = nullptr; // a third answer: the three stacked
     char line[512];
     if (m.mode == MODE_CAPTURE) {
         const Uint64 now = SDL_GetTicks();
@@ -1662,6 +1738,13 @@ void draw_prompt(float w, float h, float row_h, float pad)
         }
         yes = khdays_text(TXT_APPLY);
         no = khdays_text(TXT_CANCEL);
+    } else if (m.mode == MODE_UPDATE) {
+        question = khdays_text(TXT_UPDATE_TITLE);
+        SDL_snprintf(line, sizeof(line), khdays_text(TXT_UPDATE_DETAIL), m.update_have, m.update_new);
+        details.push_back(line);
+        yes = khdays_text(TXT_UPDATE_DOWNLOAD);
+        no = khdays_text(TXT_UPDATE_LATER);
+        third = khdays_text(TXT_UPDATE_SKIP);
     } else {
         SDL_snprintf(line, sizeof(line), khdays_text(TXT_NO_INPUT_PRESSES), m.unbound);
         question = line;
@@ -1677,7 +1760,12 @@ void draw_prompt(float w, float h, float row_h, float pad)
     }
     // in the HD menu's pieces: its question's window, the words below its title
     const float title = m.skin ? row_h * 1.1f : 0.0f;
-    const float box_h = text_h + 2 * pad + title + (yes != nullptr ? row_h * 1.5f : 0);
+    const float gap = std::round(pad * 0.5f);
+    // as with two answers, a quarter row above them and room for the spacing between the items
+    const float answers_h = third != nullptr ? row_h * 0.5f + 3 * row_h + 2 * gap + 2 * ImGui::GetStyle().ItemSpacing.y
+                            : yes != nullptr ? row_h * 1.5f
+                                             : 0;
+    const float box_h = text_h + 2 * pad + title + answers_h;
     const ImVec2 box_at((w - box_w) / 2, (h - box_h) / 2), box_end(box_at.x + box_w, box_at.y + box_h);
     ImGui::SetNextWindowPos(box_at);
     ImGui::SetNextWindowSize(ImVec2(box_w, box_h));
@@ -1705,7 +1793,27 @@ void draw_prompt(float w, float h, float row_h, float pad)
     }
     ImGui::PopStyleColor();
     ImGui::PopTextWrapPos();
-    if (yes != nullptr) {
+    if (third != nullptr) {
+        ImGui::Dummy(ImVec2(0, row_h * 0.25f));
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float bw = box_w - 2 * pad;
+        const char *const labels[3] = {yes, no, third};
+        for (int b = 0; b < 3; ++b) {
+            const ImVec2 a(p.x, p.y + (float)b * (row_h + gap)), z(a.x + bw, a.y + row_h);
+            if (m.skin) {
+                khdays_skin_piece(ImGui::GetWindowDrawList(), "answer", "shown", a, z);
+                if (m.choice == b) {
+                    khdays_skin_piece(ImGui::GetWindowDrawList(), "answer", "selected", a, z);
+                }
+            } else {
+                ImGui::GetWindowDrawList()->AddRectFilled(a, z, m.choice == b ? kFocus : kChosen);
+            }
+            text_at(ImVec2(a.x + (bw - width_of(labels[b])) / 2, a.y + (row_h - ImGui::GetFontSize()) / 2), kWhite,
+                    labels[b]);
+            record(KHDAYS_PLACE_ANSWER, b, a, z);
+        }
+        ImGui::Dummy(ImVec2(bw, 3 * row_h + 2 * gap));
+    } else if (yes != nullptr) {
         ImGui::Dummy(ImVec2(0, row_h * 0.25f));
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float bw = (box_w - 3 * pad) / 2;
@@ -1776,6 +1884,23 @@ void khdays_settings_open(const KhdaysProfile *current)
     settle();
 }
 
+void khdays_settings_offer_update(const KhdaysProfile *current, const char *have, const char *latest)
+{
+    khdays_settings_open(current);
+    m.mode = MODE_UPDATE;
+    m.choice = 0;
+    m.update_answer = -1;
+    SDL_snprintf(m.update_have, sizeof(m.update_have), "%s%s", have[0] == 'v' ? "" : "v", have);
+    SDL_strlcpy(m.update_new, latest, sizeof(m.update_new));
+}
+
+int khdays_settings_take_update_answer(void)
+{
+    const int answer = m.update_answer;
+    m.update_answer = -1;
+    return answer;
+}
+
 int khdays_settings_is_open(void)
 {
     return m.open;
@@ -1829,6 +1954,9 @@ int khdays_settings_handle(const SDL_Event *e, SDL_Window *window)
     }
     m.window = window;
     m.density = window != nullptr && SDL_GetWindowPixelDensity(window) > 0 ? SDL_GetWindowPixelDensity(window) : 1.0f;
+    if (m.mode == MODE_UPDATE) {
+        return update_event(e);
+    }
     if (m.mode == MODE_CAPTURE) {
         capture_event(e);
         settle();
@@ -2042,6 +2170,17 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
     const float pad = std::round(m.skin ? row_h * 0.45f : ImGui::GetFontSize() * 0.6f);
     const float margin = std::round(ImGui::GetFontSize());
     const ImVec2 screen((float)w, (float)h);
+
+    if (m.mode == MODE_UPDATE) {
+        // the notice alone, over the game dimmed: the menu itself is not shown
+        ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), screen, IM_COL32(0, 0, 0, 170));
+        draw_prompt((float)w, (float)h, row_h, pad);
+        ImGui::PopFont();
+        ImGui::Render();
+        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+        SDL_SetRenderLogicalPresentation(renderer, lw, lh, mode);
+        return;
+    }
 
     if (m.skin) {
         // the HD menu's screen over the game; the menu inside its band, the hints on its bar

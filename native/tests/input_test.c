@@ -423,7 +423,11 @@ static void test_settings_file(void)
     CHECK(load_text("", &q) == 0 && q.network.nickname[0] == '\0' && q.network.online && !q.network.show_ping);
     CHECK(load_text("[network]\nshow_ping = on\n", &q) == 0 && q.network.show_ping);
     CHECK(load_text("[network]\nshow_ping = maybe\n", &q) == 1 && !q.network.show_ping);
-    load_text("[network]\nnickname = Xion\nonline = off\nshow_ping = on\n", &q);
+    /* The update check: on unless turned off; a bad value says so and is on. */
+    CHECK(load_text("", &q) == 0 && q.network.check_updates);
+    CHECK(load_text("[network]\ncheck_updates = off\n", &q) == 0 && !q.network.check_updates);
+    CHECK(load_text("[network]\ncheck_updates = sometimes\n", &q) == 1 && q.network.check_updates);
+    load_text("[network]\nnickname = Xion\nonline = off\nshow_ping = on\ncheck_updates = off\n", &q);
     path_of("network.ini", path, sizeof(path));
     khdays_profile_save(&q, path, count_notice);
     khdays_profile_load(&p, path, count_notice);
@@ -871,6 +875,7 @@ static void test_settings_model(void)
         {KHDAYS_SET_ONLINE, KHDAYS_ROW_SWITCH, 0, 1, 0},
         {KHDAYS_SET_SERVER, KHDAYS_ROW_TEXT, 0, 0, 0},
         {KHDAYS_SET_SHOW_PING, KHDAYS_ROW_SWITCH, 0, 1, 0},
+        {KHDAYS_SET_CHECK_UPDATES, KHDAYS_ROW_SWITCH, 0, 1, 0},
         {KHDAYS_SET_LANGUAGE, KHDAYS_ROW_CHOICE, 0, KHDAYS_LANGUAGE_LAST, 0},
         {KHDAYS_SET_SESSION_LOG, KHDAYS_ROW_SWITCH, 0, 1, 0},
         {KHDAYS_SET_RESTORE_BOTH, KHDAYS_ROW_COMMAND, 0, 0, 0},

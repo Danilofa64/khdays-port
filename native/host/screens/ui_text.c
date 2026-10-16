@@ -666,6 +666,36 @@ static const char *const texts[TXT_COUNT][5] = {
                          "avviarne uno.",
                          "La dirección del khdays-server por el que encontrarse (host, o host:puerto). Cualquiera "
                          "puede abrir uno."},
+    [TXT_CHECK_UPDATES] = {"Check for updates", "Rechercher des mises à jour", "Nach Updates suchen",
+                           "Cerca aggiornamenti", "Buscar actualizaciones"},
+    [TXT_CHECK_UPDATES_NOTE] = {"Once a day, asks GitHub whether a newer version of the port is out, and says so on "
+                                "the title screen. Nothing about you is sent.",
+                                "Une fois par jour, demande à GitHub si une version plus récente du portage est "
+                                "sortie, et le signale sur l'écran titre. Rien de vous n'est envoyé.",
+                                "Fragt einmal am Tag bei GitHub, ob eine neuere Version der Portierung erschienen "
+                                "ist, und meldet es auf dem Titelbildschirm. Nichts über dich wird gesendet.",
+                                "Una volta al giorno chiede a GitHub se è uscita una versione più recente del port e "
+                                "lo segnala nella schermata del titolo. Non viene inviato nulla su di te.",
+                                "Una vez al día pregunta a GitHub si ha salido una versión más nueva del port, y lo "
+                                "avisa en la pantalla de título. No se envía nada tuyo."},
+    [TXT_UPDATE_TITLE] = {"A new version of the port is out", "Une nouvelle version du portage est sortie",
+                          "Eine neue Version der Portierung ist erschienen", "È uscita una nuova versione del port",
+                          "Ha salido una versión nueva del port"},
+    [TXT_UPDATE_DETAIL] = {"You have %s; %s is out. Its installer updates this copy and keeps your saves, "
+                           "settings and mods.",
+                           "Vous avez la %s ; la %s est sortie. Son installateur met à jour cette copie et garde "
+                           "vos sauvegardes, réglages et mods.",
+                           "Du hast %s; %s ist erschienen. Ihr Installationsprogramm aktualisiert diese Kopie und "
+                           "behält deine Spielstände, Einstellungen und Mods.",
+                           "Hai la %s; è uscita la %s. Il suo programma di installazione aggiorna questa copia e "
+                           "conserva salvataggi, impostazioni e mod.",
+                           "Tienes la %s; ha salido la %s. Su instalador actualiza esta copia y conserva tus "
+                           "partidas, ajustes y mods."},
+    [TXT_UPDATE_DOWNLOAD] = {"Download", "Télécharger", "Herunterladen", "Scarica", "Descargar"},
+    [TXT_UPDATE_LATER] = {"Later", "Plus tard", "Später", "Più tardi", "Más tarde"},
+    [TXT_UPDATE_SKIP] = {"Don't remind me of this version", "Ne plus me le rappeler pour cette version",
+                         "Für diese Version nicht mehr erinnern", "Non ricordarmelo per questa versione",
+                         "No avisar de esta versión"},
     [TXT_SHOW_PING] = {"Show ping", "Afficher le ping", "Ping anzeigen", "Mostra ping", "Mostrar ping"},
     [TXT_SHOW_PING_NOTE] = {"In a multiplayer session, the round trip to each other player in milliseconds, in a "
                             "corner.",

@@ -9,6 +9,13 @@ if(WIN32)
     enable_language(RC)  # the executable icon (resources/game.rc)
 endif()
 
+# The release's version (the repository's VERSION file; its tag is v<version>): the update check
+# compares it with the latest release's (host/app/updates.c).
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" KHDAYS_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
+# only the file that tells it: a new version rebuilds that file alone
+set_source_files_properties(host/app/updates.c PROPERTIES COMPILE_DEFINITIONS "KHDAYS_VERSION=\"${KHDAYS_VERSION}\"")
+
 set(KHDAYS_GEN "" CACHE PATH "Output directory of native/tools/prepare.py")
 if(NOT EXISTS "${KHDAYS_GEN}/sources.cmake")
     message(FATAL_ERROR "KHDAYS_GEN does not hold prepare.py's output: ${KHDAYS_GEN}")
@@ -365,6 +372,9 @@ add_executable(khdays-native
     runtime/core/start.c
     runtime/core/vram.c
     host/app/window.c
+    host/app/updates.c                 # a newer release, told of on the title
+    host/app/release_version.c
+    host/net/https_win.c               # ... asked of GitHub through WinHTTP
     host/app/context_win.c
     host/app/context_x64.asm             # the contexts' switch (host/app/context.h)
     host/app/files_win.c
@@ -450,14 +460,14 @@ target_compile_options(khdays-native PRIVATE
 add_library(khdays-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 target_link_libraries(khdays-native PRIVATE khdays-ufbx)
 target_link_libraries(khdays-native PRIVATE khdays-gfx khdays-gpu khdays-sound khdays-host-input SDL3::SDL3 dbghelp winmm delayimp
-                      mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi advapi32)
+                      mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi advapi32 winhttp)
 # The DS's own addresses are held, inaccessible, first thing in main
 # (memory.c), so that an access at one stops the game. DLLs loaded with the
 # process could take them first: user32 maps the 20 MB desktop heap at the
 # lowest free address, right over main RAM's. So SDL's system DLLs (and
 # everything that pulls in user32) load on first use.
 foreach(dll user32 gdi32 imm32 ole32 oleaut32 version setupapi shell32 winmm dbghelp mfplat mfreadwrite ws2_32
-            iphlpapi)
+            iphlpapi winhttp)
     target_link_options(khdays-native PRIVATE /DELAYLOAD:${dll}.dll)
 endforeach()
 
@@ -565,6 +575,11 @@ add_test(NAME khdays-save COMMAND khdays-save-test)
 # The save files beyond the DS's three (runtime/menus/saveslots.h): what each file
 # holds as the game's read tells it, the two views, a port's file written and
 # read back.
+# The update check's versions and GitHub's answer (host/app/release_version.h).
+add_executable(khdays-updates-test tests/updates_test.c host/app/release_version.c)
+target_compile_options(khdays-updates-test PRIVATE /W4 /std:c17)
+add_test(NAME khdays-updates COMMAND khdays-updates-test)
+
 add_executable(khdays-saveslots-test tests/saveslots_test.c runtime/menus/saveslots.c runtime/core/sha1.c host/app/files_win.c)
 target_link_libraries(khdays-saveslots-test PRIVATE SDL3::SDL3)
 target_compile_options(khdays-saveslots-test PRIVATE /W4 /std:c17)

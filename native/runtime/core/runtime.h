@@ -51,6 +51,10 @@ void khdays_data_init(int module);
 /* Brings up the host side (window, audio, files, threads). */
 int khdays_runtime_init(int argc, char **argv);
 
+/* The game's scene now (its scene controller's current id: 1 the front-end -- the boot logos, the
+ * title and its menus --, 2 the field, ...); 0 before the game sets one. Any thread. */
+unsigned int khdays_runtime_scene(void);
+
 #ifdef __cplusplus
 }
 #endif

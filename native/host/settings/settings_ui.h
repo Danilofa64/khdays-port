@@ -23,6 +23,13 @@ extern "C" {
 /* Opens the menu on a working copy of `current`. */
 void khdays_settings_open(const KhdaysProfile *current);
 
+/* Opens the menu for the notice of a newer release alone: this build's version (`have`) and the new
+ * release's tag (`latest`), and its three answers. The answer closes the menu (khdays_settings_handle
+ * returns 1); khdays_settings_take_update_answer then gives it (KHDAYS_UPDATE_*, host/app/updates.h),
+ * once; -1 when there is none. */
+void khdays_settings_offer_update(const KhdaysProfile *current, const char *have, const char *latest);
+int khdays_settings_take_update_answer(void);
+
 int khdays_settings_is_open(void);
 
 /* Handles one event while the menu is open. Returns 1 when the menu has just
