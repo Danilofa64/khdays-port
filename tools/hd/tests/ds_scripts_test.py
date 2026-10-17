@@ -110,7 +110,10 @@ class Scripts(unittest.TestCase):
         self.assertEqual([(op, sub) for _, op, sub, _ in ds.commands(s)], [(0, 0x0A), (1, 0x1D), (1, 0x1D), (0, 0x0A)])
         items = ds.census_of(s)
         self.assertEqual(items[0], {"at": 4, "target": 0x1C})
-        self.assertEqual(items[1]["line"], {"en": "Up this way.", "fr": "Par ici.", "de": "Hier lang.", "it": "Di qua.", "es": "Por aqui."})
+        self.assertEqual(
+            items[1]["line"],
+            {"en": "Up this way.", "fr": "Par ici.", "de": "Hier lang.", "it": "Di qua.", "es": "Por aqui."},
+        )
         self.assertEqual(items[2], {"at": 0x24, "target": -1})
         self.assertEqual(len(items), 3)  # the step naming no record names no line
 

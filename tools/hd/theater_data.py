@@ -54,7 +54,9 @@ def chapters(mare: Path) -> list[dict]:
     out = []
     for i in range(count):
         record = struct.unpack_from("<48H", data, 8 + 96 * i)
-        out.append({"day": record[1], "art": _string(data, base, record[4]), "scenes": list(record[18 : 18 + record[16]])})
+        out.append(
+            {"day": record[1], "art": _string(data, base, record[4]), "scenes": list(record[18 : 18 + record[16]])}
+        )
     return out
 
 
@@ -67,7 +69,9 @@ def story(mare: Path) -> list[dict]:
             scene = all_scenes[index]
             if scene["video"]:
                 stem = scene["event"].split("/")[0] if scene["event"] else Path(scene["video"]).stem
-                out.append({"chapter": number, "day": chapter["day"], "scene": index, "stem": stem, "video": scene["video"]})
+                out.append(
+                    {"chapter": number, "day": chapter["day"], "scene": index, "stem": stem, "video": scene["video"]}
+                )
     return out
 
 
