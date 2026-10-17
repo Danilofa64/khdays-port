@@ -379,6 +379,17 @@ int main(void)
         khdays_movie_hd_game_buttons(0);
     }
 
+    /* a scene whose video is missing: the game's own scene plays, nothing held */
+    {
+        char *const stems[] = {"hd010", "hd999"};
+        const int opened_before = opens;
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 2) == 0);
+        CHECK(!khdays_movie_hd_showing() && !held() && !muted && opens == opened_before);
+        graphics_flags = 0; /* movies = pc or ds: none of the scenes */
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 0 && !khdays_movie_hd_showing());
+        graphics_flags = KHDAYS_HOST_MOVIES_HD;
+    }
+
     /* START during a scene's video: the video paused, the game let go with START once to open its own
      * pause; Continue holds it again and the video goes on, Skip lets it unwind to the scene's end */
     {
