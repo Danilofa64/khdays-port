@@ -169,6 +169,7 @@ add_executable(khdays-studio
     app/views/mods_console.cpp
     app/views/model_view.cpp
     app/preview3d.cpp
+    app/save_dialog.cpp
     app/views/sheet_view.cpp
     app/views/sound_view.cpp
     app/strings.cpp

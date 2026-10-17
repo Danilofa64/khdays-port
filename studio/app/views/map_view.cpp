@@ -2,6 +2,7 @@
 // exits, any face or marker picked to read what it is -- and replaced by the modder's model, its
 // collision made and shown as the game will read it (docs/STUDIO.md, "Rooms").
 #include "../app.h"
+#include "../save_dialog.h"
 
 #include "core/models/bones.h"
 #include "core/models/game_model.h"
@@ -996,17 +997,8 @@ void line_up(App& app) {
     p.dirty = true;
 }
 
-void choose_room_export(App& app) {
-    static const SDL_DialogFileFilter gltf[] = {{"glTF", "gltf"}};
-    SDL_ShowSaveFileDialog(
-        [](void* user, const char* const* files, int) {
-            if (files == nullptr || files[0] == nullptr)
-                return;
-            App* a = static_cast<App*>(user);
-            std::lock_guard lock(a->dialog_mutex);
-            a->dialog_room_exports.emplace_back(files[0]);
-        },
-        &app, app.window, gltf, 1, nullptr);
+void choose_room_export(App& app, const Item& item) {
+    choose_save_file(app, item, "glTF", "gltf", app.dialog_room_exports);
 }
 
 void draw_replace(App& app, const Item& item) {
@@ -1026,7 +1018,7 @@ void draw_replace(App& app, const Item& item) {
     }
     same_line_if_room(button_width(tr(lang, S::map_export)));
     if (ImGui::Button(tr(lang, S::map_export)))
-        choose_room_export(app);
+        choose_room_export(app, item);
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered())

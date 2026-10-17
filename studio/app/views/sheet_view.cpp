@@ -4,6 +4,7 @@
 // edited twice, repeated or flipped marked, and saved as the sheet the port
 // reads.
 #include "../app.h"
+#include "../save_dialog.h"
 
 #include "core/files/paths.h"
 #include "core/sheets/sheets.h"
@@ -799,16 +800,9 @@ void draw_sheets_export(App& app) {
 }
 
 void choose_export(App& app) {
-    static const SDL_DialogFileFilter png[] = {{"PNG", "png"}};
-    SDL_ShowSaveFileDialog(
-        [](void* user, const char* const* files, int) {
-            if (files == nullptr || files[0] == nullptr)
-                return;
-            App* a = static_cast<App*>(user);
-            std::lock_guard lock(a->dialog_mutex);
-            a->dialog_exports.emplace_back(files[0]);
-        },
-        &app, app.window, png, 1, nullptr);
+    if (v.item < 0 || v.item >= static_cast<int>(app.catalog.items.size()))
+        return;
+    choose_save_file(app, app.catalog.items[static_cast<std::size_t>(v.item)], "PNG", "png", app.dialog_exports);
 }
 
 }  // namespace studio
