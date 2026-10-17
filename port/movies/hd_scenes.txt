@@ -8,8 +8,115 @@
 #             mission's script section, mi/<mission>/<script>:<section>
 #   off       in place of the stems: the game's own scene (a mod may switch an entry off)
 
-# Day 7: the castle at night, then Roxas in his room (the theater: his words over black)
+# Day 7: the castle at night (Roxas in his room, EV_S#0, has no theater scene: the theater's hd003,
+# his words over black, is the day's monologue, ui/mnl, not this scene)
 EV_S#196 hd002 ; pictures: the castle at night, 4.1 s
-EV_S#0 hd003 ; order: day 7's second scene; the theater's voice over black
 # Day 8
 EV_S#4 hd004 ; lines 15/15, in order
+EV_S#6 hd006 ; lines: 33% of the theater's found in the scene's
+# Day 14
+EV_S#7 hd008 ; lines: 43% of the theater's found in the scene's
+EV_S#8 hd009 ; lines: 24% of the theater's found in the scene's
+# Day 22
+EV_S#12 hd010 ; lines: 51% of the theater's found in the scene's
+# Day 23
+EV_S#13 hd011 ; lines: 27% of the theater's found in the scene's
+# Day 24
+EV_S#19 hd017 ; lines: 23% of the theater's found in the scene's
+EV_S#20 hd018 ; lines: 29% of the theater's found in the scene's
+# Day 25
+EV_S#23 hd020 ; lines: 55% of the theater's found in the scene's
+EV_S#24 hd021 ; lines: 38% of the theater's found in the scene's
+EV_S#25 hd022 ; lines: 48% of the theater's found in the scene's
+# Day 26
+EV_S#27 hd024 ; lines: 26% of the theater's found in the scene's
+EV_S#28 hd025 ; lines: 35% of the theater's found in the scene's
+# Day 27
+EV_S#30 hd027 ; lines: 58% of the theater's found in the scene's
+# Day 49
+EV_S#31 hd028 ; lines: 49% of the theater's found in the scene's
+# Day 50
+EV_S#34 hd031 ; lines: 54% of the theater's found in the scene's
+# Day 71
+EV_S#38 hd034 ; lines: 45% of the theater's found in the scene's
+EV_S#39 hd035 ; lines: 37% of the theater's found in the scene's
+# Day 72
+EV_S#40 hd036 ; lines: 36% of the theater's found in the scene's
+EV_S#43 hd039 ; lines: 28% of the theater's found in the scene's
+# Day 74
+EV_S#48 hd043a ; lines: 95% of the theater's found in the scene's
+EV_S#49 hd043b ; lines: 32% of the theater's found in the scene's
+EV_S#50 hd044 ; lines: 47% of the theater's found in the scene's
+# Day 94
+EV_S#55 hd048a ; lines: 28% of the theater's found in the scene's
+EV_S#56 hd048b ; lines: 20% of the theater's found in the scene's
+# Day 95
+EV_S#58 hd050 ; lines: 42% of the theater's found in the scene's
+# Day 96
+EV_S#63 hd054 ; lines: 41% of the theater's found in the scene's
+EV_S#64 hd055 ; lines: 35% of the theater's found in the scene's
+# Day 117
+EV_S#68 hd056 ; lines: 33% of the theater's found in the scene's
+EV_S#70 hd059 ; lines: 32% of the theater's found in the scene's
+# Day 118
+EV_S#75 hd063 ; lines: 45% of the theater's found in the scene's
+EV_S#76 hd064 ; lines: 60% of the theater's found in the scene's
+# Day 149
+EV_S#81 hd065 ; lines: 64% of the theater's found in the scene's
+EV_S#82 hd066a ; lines: 73% of the theater's found in the scene's
+# Day 150
+EV_S#84 hd067 ; lines: 85% of the theater's found in the scene's
+EV_S#85 hd068 ; lines: 42% of the theater's found in the scene's
+# Day 151
+EV_S#87 hd070 ; lines: 91% of the theater's found in the scene's
+EV_S#88 hd071 ; lines: 48% of the theater's found in the scene's
+# Day 172
+EV_S#98 hd076 ; lines: 45% of the theater's found in the scene's
+# Day 193
+EV_S#102 hd080 ; lines: 63% of the theater's found in the scene's
+EV_S#106 hd082b ; lines: 21% of the theater's found in the scene's
+EV_S#107 hd084 ; lines: 63% of the theater's found in the scene's
+EV_S#108 hd085 ; lines: 46% of the theater's found in the scene's
+# Day 194
+EV_S#110 hd086b ; lines: 88% of the theater's found in the scene's
+# Day 224
+EV_S#113 hd087 ; lines: 50% of the theater's found in the scene's
+# Day 255
+EV_S#116 hd089 ; lines: 37% of the theater's found in the scene's
+EV_S#117 hd090 ; lines: 40% of the theater's found in the scene's
+# Day 276
+EV_S#123 hd094 ; lines: 27% of the theater's found in the scene's
+EV_S#124 hd095 ; lines: 35% of the theater's found in the scene's
+# Day 296
+EV_S#128 hd096 ; lines: 53% of the theater's found in the scene's
+# Day 297
+EV_S#130 hd098 ; lines: 54% of the theater's found in the scene's
+EV_S#131 hd099 ; lines: 59% of the theater's found in the scene's
+EV_S#132 hd100a ; lines: 60% of the theater's found in the scene's
+# Day 299
+EV_S#139 hd107 ; lines: 56% of the theater's found in the scene's
+EV_S#140 hd108 ; lines: 100% of the theater's found in the scene's
+EV_S#141 hd109 ; lines: 22% of the theater's found in the scene's
+# Day 300
+EV_S#145 hd112b ; lines: 38% of the theater's found in the scene's
+# Day 321
+EV_S#151 hd115b ; lines: 36% of the theater's found in the scene's
+EV_S#152 hd116 ; lines: 42% of the theater's found in the scene's
+# Day 322
+EV_S#153 hd117 ; lines: 35% of the theater's found in the scene's
+# Day 352
+EV_S#155 hd119 ; lines: 31% of the theater's found in the scene's
+EV_S#159 hd123 ; lines: 34% of the theater's found in the scene's
+# Day 353
+EV_S#160 hd124 ; lines: 41% of the theater's found in the scene's
+EV_S#162 hd126 ; lines: 42% of the theater's found in the scene's
+EV_S#163 hd127 ; lines: 41% of the theater's found in the scene's
+EV_S#164 hd128 ; lines: 58% of the theater's found in the scene's
+# Day 354
+EV_S#165 hd129 ; lines: 36% of the theater's found in the scene's
+EV_S#166 hd130a ; lines: 54% of the theater's found in the scene's
+# Day 355
+EV_S#169 hd132 ; lines: 55% of the theater's found in the scene's
+# Day 356
+EV_S#171 hd133b ; lines: 45% of the theater's found in the scene's
+EV_S#174 hd136 ; lines: 72% of the theater's found in the scene's
