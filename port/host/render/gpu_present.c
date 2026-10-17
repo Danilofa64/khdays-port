@@ -1254,9 +1254,10 @@ void khdays_present_draw(void)
             SDL_RenderTexture(renderer, lower, &lower_from, &lower_at);
         }
     } else if (port2d_drawn) {
-        if (video.one_screen) {
-            present_size(columns, 2 * H); /* stacked: the two-screen picture */
-        }
+        /* stacked: the two-screen picture. Set each frame, as every picture sets its own: an HD video
+         * left its size behind (seen: after hd818's 1280 x 720, the two screens letterboxed into it at
+         * 0.4 of their size) */
+        present_size(columns, 2 * H);
         /* the port's own screens, the DS's 256 columns in the middle (engine A as wide as it was drawn) */
         int cu = 0, cl = 0;
         SDL_Texture *upper = screen_texture(port2d_upper, &cu);
@@ -1274,6 +1275,7 @@ void khdays_present_draw(void)
         /* the 1x screens, the DS's 256 columns in the middle */
         const SDL_FRect upper = {0, 0, W, H}, lower = {0, H, W, H};
         const SDL_FRect upper_at = {left, 0, W, H}, lower_at = {left, H, W, H};
+        present_size(columns, 2 * H);
         SDL_RenderTexture(renderer, screens, &upper, &upper_at);
         SDL_RenderTexture(renderer, screens, &lower, &lower_at);
     }
