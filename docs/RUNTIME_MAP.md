@@ -4405,3 +4405,11 @@ the story walk and `KHDAYS_TEST_DAY`).
   the voice alone (digital silence between the lines, no music), so the port plays only their sound
   over the game's page (`mnl#<record>` in the scene map), from `Ov007_SceneInit` to
   `Ov007_RequestSceneChange`, at the voices' volume.
+- **How the map was made, and checked.** `tools/hd/scene_match.py` pairs scenes by their lines (the
+  theater's subtitles against the scripts' texts, in story order); the theater retranslated its
+  lines, so short scenes were paired by meaning, read side by side. `tools/hd/scene_census.py` plays
+  every shared scene in place (`KHDAYS_TEST_SCENE`) and keeps its pictures; `tools/hd/scene_compare.py`
+  sets them over the video's at the same fractions, one sheet per entry, and every pair was looked
+  at (scenes without lines were paired by them alone). `tools/hd/scene_report.py` says where each of
+  the collection's 142 videos plays (a scene, a monologue, a movie, or not played and why) and fails
+  on an entry whose video the collection or whose script the game lacks.
