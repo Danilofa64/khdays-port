@@ -6,6 +6,8 @@
 #define COBJMACROS
 #include "movie_hd.h"
 
+#include "theater_music.h"
+
 #include <windows.h>
 #include <mfapi.h>
 #include <mfidl.h>
@@ -594,6 +596,7 @@ static DWORD WINAPI run(LPVOID unused)
         SetEvent(hd.opened);
         while (hd.open_ok && !hd.stop) {
             const int did = hd.paused ? 0 : decode_ahead();
+            khdays_theater_music_tick(clock_now(), hd.started, hd.paused);
             if (did < 0) {
                 AcquireSRWLockExclusive(&lock);
                 hd.status = -1;
@@ -623,8 +626,11 @@ static DWORD WINAPI run(LPVOID unused)
     return 0;
 }
 
-void khdays_hd_close(void)
+/* The video closed; the theater's music with it, unless `next_follows` (another video opens at once)
+ * and the music goes on into it. */
+static void close_video(int next_follows)
 {
+    khdays_theater_music_close(next_follows);
     if (hd.thread == NULL) {
         return;
     }
@@ -661,6 +667,11 @@ void khdays_hd_close(void)
     ReleaseSRWLockExclusive(&lock);
 }
 
+void khdays_hd_close(void)
+{
+    close_video(0);
+}
+
 /* `path` (UTF-8) as a full Windows path, in a new string to free; NULL if it
  * cannot be converted. As long as the path is: no fixed limit. */
 static WCHAR *full_path(const char *path)
@@ -685,7 +696,7 @@ static WCHAR *full_path(const char *path)
 
 int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
 {
-    khdays_hd_close();
+    close_video(1);
     QueryPerformanceFrequency(&hd.frequency);
     hd.url = full_path(path);
     if (hd.url == NULL) {
@@ -713,6 +724,7 @@ int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
         return 0;
     }
     *info = hd.info;
+    khdays_theater_music_open(path);
     return 1;
 }
 

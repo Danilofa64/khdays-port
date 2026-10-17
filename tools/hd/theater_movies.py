@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""The HD videos and their subtitles from the 358/2 Days theater (MARE, its videos in --movies: found
-from MARE by default), from your own copy (docs/HD_SCREENS.md, "Making them"). Without --videos or
---subtitles it does both; a video already there is kept unless --force.
-  python tools/hd/theater_movies.py MARE [--movies DIR] [--videos] [--subtitles] [--force] [--lang ...]
+"""The HD videos, their subtitles and their music from the 358/2 Days theater (MARE, its videos in
+--movies: found from MARE by default), from your own copy (docs/HD_SCREENS.md, "Making them"). Without
+--videos, --subtitles or --music it does all three; a video already there is kept unless --force.
+  python tools/hd/theater_movies.py MARE [--movies DIR] [--videos] [--subtitles] [--music] [--force]
+                                         [--lang ...]
 """
 
 from __future__ import annotations
@@ -209,6 +210,123 @@ def subtitles(mare: Path, lang: str) -> int:
     return made
 
 
+# --- The music ----------------------------------------------------------------------------------
+
+# The theater plays most videos with music of its own over their sound (their sound has the voices
+# and effects only): each event file's BGM schedule names the track (sound/<track>.win32.scd), the
+# frames it plays between and the volume's ramps. The schedule is the same in every language.
+MUSIC_EVENTS = ("uk", "en")  # the event files read for it (any language's would do)
+OGG = 6  # an SCD sound's codec: Ogg Vorbis
+
+
+def scd_ogg(data: bytes) -> tuple[bytes, int, int]:
+    """An SCD's first sound as a plain Ogg Vorbis file, the sample its loop goes back to (-1: it
+    plays once, its loop's end 0) and its rate.
+    The SCD's tables start at its header's size (u16 at 0x0e); the fourth word of the tables'
+    header points to the sounds' offsets; a sound's header (0x20 bytes) gives its stream's size, its
+    channels, rate, codec, loop start and end (bytes into the stream: a page's start) and the size of
+    what comes before the stream; for Ogg, that is a header (0x20 bytes: its version, its size, the
+    byte the Vorbis header pages are XORed with; at 0x10 the seek table's size, then the Vorbis
+    header's), the seek table and the Vorbis header pages, then the stream's own pages."""
+    if data[:8] != b"SEDBSSCF":
+        raise ValueError("not an SCD")
+    tables = struct.unpack_from("<H", data, 0x0E)[0]
+    sounds = struct.unpack_from("<I", data, tables + 0x0C)[0]
+    entry = struct.unpack_from("<I", data, sounds)[0]
+    size, _channels, rate, codec, loop_start, loop_end, extra, _aux = struct.unpack_from("<8i", data, entry)
+    if codec != OGG:
+        raise ValueError(f"codec {codec}, not Ogg Vorbis")
+    head = entry + 0x20
+    header_size, key = data[head + 1], data[head + 2]
+    seek_size, vorbis_size = struct.unpack_from("<II", data, head + 0x10)
+    vorbis = head + header_size + seek_size
+    pages = bytes(b ^ key for b in data[vorbis : vorbis + vorbis_size])
+    stream = data[head + extra : head + extra + size]
+    if pages[:4] != b"OggS" or stream[:4] != b"OggS":
+        raise ValueError("no Ogg pages where the header says")
+    # the loop's sample: the granule of the page before the one the loop starts at
+    loop, at, granule = (0 if loop_end > 0 else -1), 0, 0
+    while loop >= 0 and at < len(stream) and stream[at : at + 4] == b"OggS":
+        if at == loop_start:
+            loop = granule
+            break
+        granule = struct.unpack_from("<q", stream, at + 6)[0]
+        count = stream[at + 26]
+        at += 27 + count + sum(stream[at + 27 : at + 27 + count])
+    return pages + stream, loop, rate
+
+
+def bgm_schedule(xml: str) -> dict | None:
+    """An event file's BGM schedule: where the music comes from and goes ("field": the video before
+    or after it plays it on; "stop"), its cues (first frame, end frame, track) and its volume points
+    (first frame, end frame, percent: a ramp from the level before). None without cues."""
+    found = re.search(r'<SCHEDULE_CATEGORY type = "SCHEDULE_CATEGORY_BGM">(.*?)</SCHEDULE_CATEGORY>', xml, re.S)
+    if not found:
+        return None
+    block = found.group(1)
+    param = dict(re.findall(r'(\w+)="([^"]*)"', (re.search(r"<PARAM ([^/]*)/>", block) or [""])[0]))
+
+    def data(tag: str) -> list[dict]:
+        part = re.search(rf"<{tag}>(.*?)</{tag}>", block, re.S)
+        return (
+            [dict(re.findall(r'(\w+)="([^"]*)"', d)) for d in re.findall(r"<DATA ([^/]*)/>", part.group(1))]
+            if part
+            else []
+        )
+
+    cues = [(int(d["FrameStart"]), int(d["FrameEnd"]), d["SoundName"]) for d in data("BGM1")]
+    if not cues:
+        return None
+    return {
+        "from": "field" if param.get("BgmStartSet", "STOP").startswith("FIELD") else "stop",
+        "to": "field" if param.get("BgmEndSet", "STOP").startswith("FIELD") else "stop",
+        "cues": cues,
+        "volume": [(int(d["FrameStart"]), int(d["FrameEnd"]), int(d["Param"])) for d in data("VOLUME1")],
+    }
+
+
+def music(mare: Path) -> int:
+    folder, name = MUSIC_EVENTS
+    out = OUT / "music"
+    out.mkdir(parents=True, exist_ok=True)
+    scenes = set(scene_stems())
+    tracks: dict[str, int] = {}
+    made = 0
+    for event in sorted((mare / folder / "event" / name / "hd").glob("hd*/hd*.exia2")):
+        if not (event.stem.startswith("hd8") or event.stem in scenes):
+            continue
+        movie = event.stem[2:]
+        if movie == ENDING_EVENT:
+            movie = ENDING[1]
+        plan = bgm_schedule(event.read_bytes().decode("utf-8", errors="replace"))
+        if plan is None:
+            continue
+        for _, _, track in plan["cues"]:
+            if track not in tracks:
+                ogg, loop, rate = scd_ogg((mare / "sound" / f"{track}.win32.scd").read_bytes())
+                (out / f"{track}.ogg").write_bytes(ogg)
+                tracks[track] = loop
+                print(f"{track}.ogg: {len(ogg)} bytes, {rate} Hz, its loop from sample {loop}")
+        txt = [
+            f"# hd{movie}.mp4's music as the HD collection's 358/2 Days theater plays it over the video's",
+            "# sound, made by tools/hd/theater_movies.py from the player's own copy. The video's frames",
+            "# (`rate` a second); `from`/`to`: whether the music comes from the video before and goes on",
+            "# into the next (field) or not (stop); each cue plays music/<track>.ogg from its start, from",
+            "# its first frame to before its end, looping back to sample `loop` at the track's end (-1:",
+            "# it plays once); each volume point ramps the music to `level` percent between its two",
+            "# frames (from 100).",
+            f"rate {RATE}",
+            f"from {plan['from']}",
+            f"to {plan['to']}",
+        ]
+        txt += [f"cue {first} {end} {track} {tracks[track]}" for first, end, track in plan["cues"]]
+        txt += [f"volume {first} {end} {level}" for first, end, level in plan["volume"]]
+        (out / f"hd{movie}.txt").write_text("\n".join(txt) + "\n", encoding="utf-8", newline="\n")
+        made += 1
+    print(f"{made} videos' music in {out} ({len(tracks)} tracks)")
+    return made
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("mare", type=Path, help="the theater extracted: <collection>/Image/Mare.hed_out/original")
@@ -220,10 +338,11 @@ def main() -> int:
     )
     ap.add_argument("--videos", action="store_true")
     ap.add_argument("--subtitles", action="store_true")
+    ap.add_argument("--music", action="store_true")
     ap.add_argument("--force", action="store_true", help="replace the videos already there")
     ap.add_argument("--lang", nargs="*", default=list(LANGUAGES), choices=list(LANGUAGES))
     args = ap.parse_args()
-    both = not args.videos and not args.subtitles
+    both = not args.videos and not args.subtitles and not args.music
     if args.videos or both:
         collection = args.mare.resolve().parents[2]
         movies = args.movies or next(
@@ -241,6 +360,8 @@ def main() -> int:
     if args.subtitles or both:
         for lang in args.lang:
             subtitles(args.mare, lang)
+    if args.music or both:
+        music(args.mare)
     return 0
 
 

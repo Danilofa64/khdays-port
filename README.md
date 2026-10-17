@@ -529,7 +529,10 @@ python tools/hd/theater_movies.py "<collection>/Image/Mare.hed_out/original"
 The videos go to `data/cutscenes/cinematics/hd<id>.mp4` (the opening's from
 the theater's `DOP.mp4`; the ending's, 843, is not among them), the subtitles
 to `data/cutscenes/cinematics/subtitles/<lang>/hd<id>.png` and `.txt`; a mod's
-`movies/subtitles/<lang>/hd<id>.txt` comes first.
+`movies/subtitles/<lang>/hd<id>.txt` comes first. The music the theater plays
+over them goes to `data/cutscenes/cinematics/music/` (each video's schedule,
+`hd<id>.txt`, and its tracks, `bgm_<n>.ogg`); a video of a mod has music only
+from a `music/` folder beside it.
 
 **HD graphics from mods.** A mod replaces any of the game's graphics, at
 any resolution, with a file named after it:
@@ -628,7 +631,8 @@ its own movie behind it, unseen, and waits at its end until the video ends.
 START stops the video where the DS lets you skip the movie. Windows decodes
 the videos (Media Foundation); a file it cannot play, or a movie without an
 HD video, plays the game's movie, and the log says why. A mod's movie for the
-same movie comes first. Subtitles are not shown over the HD videos.
+same movie comes first. The theater's subtitles show over them (see
+*Subtitles*), and its music where the theater plays some (see *HD scenes*).
 
 **HD scenes.** The theater also holds the game's event scenes the DS draws in
 real time, made again in HD, and Roxas's monologues as a voice. The same tool
@@ -646,6 +650,13 @@ Skip ends the scene (on two screens the pause shows over the game's screens).
 A mod's `cutscenes/scenes.txt` adds or replaces entries (`<script> <videos>
 ; <evidence>`, or `off` for the DS's scene), and its
 `cutscenes/cinematics/<video>.mp4` comes before your own.
+
+Most of the theater's videos, scenes and movies alike, hold the voices and
+effects alone: the theater plays its music over them, each video with its own
+cues and volume (hd848, Xion's end, among them). The same tool takes the music
+and those schedules from your copy, and the port plays them with the video,
+at the Music volume, paused with it and on from one video into the next where
+the theater goes on.
 
 **Replacing movies.** A mod replaces any of the game's 46 movies with an
 MPEG-1 file of any size, with or without MPEG-1 Layer II sound:

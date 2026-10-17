@@ -4450,3 +4450,23 @@ the story walk and `KHDAYS_TEST_DAY`).
   (`Ov023_FlushTextBox`, +0x588) unwinds the event and clears its target, which ends the course;
   Continue (`PauseMenu_GetMode` back to 0, the request clear) holds the game again and the video
   goes on. Seen on day 7's castle (hd002), both ways.
+- **The theater's music over its videos.** Most of the theater's videos carry the voices and effects
+  alone (hd848, Xion's end: near silence up to 2.9 s between lines, the DS movie 848's sound the same
+  to a tenth of a decibel); the theater plays music over them from each event file's
+  `SCHEDULE_CATEGORY_BGM`: `BGM1` cues (`FrameStart`, `FrameEnd`, `SoundName` bgm_NNN, 30 frames a
+  second), `VOLUME1` ramps (to `Param` percent between two frames, from the level before; all of
+  curve 0), and `BgmStartSet` / `BgmEndSet` (FIELD: the music comes from the video before or goes
+  on into the next; STOP). 129 of the 214 event files have cues, the same in every language; one
+  track each at a time; hd848 plays bgm_222 from frame 390 to 5080 at 50 %, faded out over its last
+  80 frames. The tracks are `sound/bgm_NNN.win32.scd` (SEDBSSCF, version 3: the tables at the
+  header's size, u16 at 0x0e; the sounds' offsets at the tables' +0x0c; a sound's 0x20-byte header:
+  its stream's size, channels, rate, codec 6 = Ogg Vorbis, its loop's start and end in bytes into
+  the stream, always a page's start, and the size of what precedes the stream: a 0x20-byte Ogg
+  header whose third byte the Vorbis header pages are XORed with, the seek table's size and the
+  Vorbis header's at +0x10, the seek table, the pages). A loop's end of 0 means the track plays
+  once; 21 of the tracks the port's videos use, 48,000 Hz stereo, some shorter than their cues
+  (hd063's 204.8 s on a track of 52.7 s), so the loop matters. The DS plays music under those
+  scenes from its own sequences, which the port silences while a video plays; the theater's
+  schedule is followed instead (`tools/hd/theater_movies.py --music`, `host/movies/theater_music.c`).
+  Seen: hd004 (day 8) played bgm_213 50.4 s from its first frame, the video 1,513 frames; hd818 (the
+  prologue's movie) bgm_219 from frame 1038 for 64.6 s, both as their schedules say.

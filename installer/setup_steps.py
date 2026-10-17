@@ -372,7 +372,7 @@ HD_MENU_TOOLS = [
     ("ddd_camp.py", ["{ddd}", "{mare}", "{settings}"]),
 ]
 HD_VIDEO_TOOLS = [
-    ("theater_movies.py", ["{mare}", "--movies", "{movies}", "--videos", "--subtitles"]),
+    ("theater_movies.py", ["{mare}", "--movies", "{movies}", "--videos", "--subtitles", "--music"]),
 ]
 # theater_movies.py's scene map (which of the theater's scene videos the port plays), beside the tools
 # in the repository's layout, so the videos it names are made too

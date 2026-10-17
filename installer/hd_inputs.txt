@@ -1,6 +1,6 @@
 # The collection files the HD tools read (installer/setup_steps.py trace-inputs):
 # '<archive> <entry>' (its data and remastered assets) or 'movies <file>'.
-# tools cfd391e8f13ce8ef03a11314d47ae542a2daddb4444ad04801605f8bf6f38431
+# tools 2bc02d6176ab8c4f6bee4babb901c38b45335c4644ecd8817023e9420ec9e1b5
 Mare bg/artwork/tz000a.tm2
 Mare bg/artwork/tz000b.tm2
 Mare bg/artwork/tz007a.tm2
@@ -766,6 +766,27 @@ Mare it/message/it/event/hd/bin/cthd050.ctd
 Mare it/message/it/event/hd/bin/cthd100.ctd
 Mare it/message/it/event/hd/bin/cthd300.ctd
 Mare it/message/it/event/hd/bin/cthd800.ctd
+Mare sound/bgm_203.win32.scd
+Mare sound/bgm_204.win32.scd
+Mare sound/bgm_213.win32.scd
+Mare sound/bgm_218.win32.scd
+Mare sound/bgm_219.win32.scd
+Mare sound/bgm_220.win32.scd
+Mare sound/bgm_222.win32.scd
+Mare sound/bgm_225.win32.scd
+Mare sound/bgm_226.win32.scd
+Mare sound/bgm_227.win32.scd
+Mare sound/bgm_228.win32.scd
+Mare sound/bgm_229.win32.scd
+Mare sound/bgm_230.win32.scd
+Mare sound/bgm_233.win32.scd
+Mare sound/bgm_238.win32.scd
+Mare sound/bgm_239.win32.scd
+Mare sound/bgm_240.win32.scd
+Mare sound/bgm_241.win32.scd
+Mare sound/bgm_242.win32.scd
+Mare sound/bgm_243.win32.scd
+Mare sound/bgm_245.win32.scd
 Mare sp/ctd/ct00100.ctd
 Mare sp/event/sp/hd/hd000/hd000.exia2
 Mare sp/event/sp/hd/hd002/hd002.exia2

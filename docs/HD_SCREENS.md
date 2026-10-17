@@ -164,6 +164,24 @@ rectangle's height and its middle stretched between them (its other states
 placed as they lie against its shown one); a stacked one likewise upright; one
 of a whole part is stretched over it.
 
+## The HD videos' music
+
+Written by `tools/hd/theater_movies.py --music` as
+`data/cutscenes/cinematics/music/hd<id>.txt`, beside the tracks it names
+(`bgm_<n>.ogg`, Ogg Vorbis); played with the HD video by
+`host/movies/theater_music.c`, at the video's clock and the Music volume.
+
+| Line | What it is |
+|---|---|
+| `rate R` | the video's frames a second (30) |
+| `from field\|stop` | `field`: the music comes from the video before (it plays on when that one's track is this one's first, from frame 0) |
+| `to field\|stop` | `field`: it goes on into the next video of the same course |
+| `cue FIRST END TRACK LOOP` | `TRACK` plays from its start at frame `FIRST`, to before `END`; past its end it goes back to sample `LOOP` (-1: it plays once) |
+| `volume FIRST END LEVEL` | the music's level moves to `LEVEL` percent between the two frames, from the level before (100 at first) |
+
+A mod's video (`mods/<Mod>/movies/` or `cutscenes/cinematics/`) has music only
+from a `music/` folder beside it.
+
 ## The HD videos' subtitles
 
 Written by `tools/hd/theater_movies.py --subtitles` as
@@ -381,7 +399,7 @@ lines). Into `layouts/pause/`: `hand.png` and per language `title.png`,
 the game's (its `pause/etcicon.NSCR` strips over `pause/pausebg_&.pbg`) and the
 port's Retry.
 
-### The videos and subtitles (`theater_movies.py MARE`)
+### The videos, subtitles and music (`theater_movies.py MARE`)
 
 `--videos`: the theater's videos as the port plays them in the game's movies'
 place (`data/cutscenes/cinematics/hd<id>.mp4`): `hd8NN.mp4`, `DOP.mp4` as the

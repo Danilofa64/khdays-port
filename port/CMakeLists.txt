@@ -435,6 +435,8 @@ add_executable(khdays-native
     runtime/movies/scenes.c               # its files, and the scene the event runs
     host/movies/movie_hd_win.c            # the HD video through Media Foundation
     host/movies/movie_subtitles.c         # the theater's subtitles over the HD video
+    host/movies/theater_music.c           # ... and its music
+    host/movies/music_schedule.c
     runtime/net/net_session.c          # the multiplayer's session (specs/015)
     runtime/net/mp_predict.c           # a guest's prediction of its own character (specs/017)
     host/net/net_win.c                 # ... on Winsock
@@ -533,9 +535,15 @@ add_test(NAME khdays-movie-hd COMMAND khdays-movie-hd-test)
 add_executable(khdays-scenes-test tests/scenes_test.c runtime/movies/scene_map.c)
 target_compile_options(khdays-scenes-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-scenes COMMAND khdays-scenes-test)
+# The theater's music schedules (host/movies/music_schedule.c): cues, ramps, loops.
+add_executable(khdays-music-schedule-test tests/music_schedule_test.c host/movies/music_schedule.c)
+target_compile_options(khdays-music-schedule-test PRIVATE /W4 /std:c17)
+add_test(NAME khdays-music-schedule COMMAND khdays-music-schedule-test)
 # ... and its decoder on one of the player's files, when they are there.
-add_executable(khdays-movie-hd-decode-test tests/movie_hd_decode_test.c host/movies/movie_hd_win.c)
-target_link_libraries(khdays-movie-hd-decode-test PRIVATE SDL3::SDL3 mfplat mfreadwrite mfuuid ole32)
+add_executable(khdays-movie-hd-decode-test tests/movie_hd_decode_test.c host/movies/movie_hd_win.c
+               host/movies/theater_music.c host/movies/music_schedule.c)
+target_include_directories(khdays-movie-hd-decode-test PRIVATE "${stb_SOURCE_DIR}")
+target_link_libraries(khdays-movie-hd-decode-test PRIVATE khdays-sound SDL3::SDL3 mfplat mfreadwrite mfuuid ole32)
 target_compile_options(khdays-movie-hd-decode-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-movie-hd-decode
          COMMAND khdays-movie-hd-decode-test "${CMAKE_CURRENT_SOURCE_DIR}/../data/cutscenes/cinematics/hd808.mp4" 7.19)
@@ -705,7 +713,7 @@ if(KHDAYS_ASAN)
     set(KHDAYS_PORT_TARGETS khdays-native khdays-gpu khdays-sound khdays-gfx khdays-host-input khdays-mobiclip
         khdays-gpu-test khdays-input-test khdays-movie-hd-test khdays-movie-hd-decode-test khdays-net-test
         khdays-server khdays-server-test khdays-elements-test khdays-onescreen-test khdays-thread-test
-        khdays-save-test khdays-sound-test khdays-render-test)
+        khdays-save-test khdays-sound-test khdays-render-test khdays-music-schedule-test)
     foreach(target IN LISTS KHDAYS_PORT_TARGETS)
         if(TARGET ${target})
             target_compile_options(${target} PRIVATE $<$<NOT:$<COMPILE_LANGUAGE:ASM_MASM>>:/fsanitize=address>)
