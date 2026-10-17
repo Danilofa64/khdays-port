@@ -55,10 +55,9 @@ ByteVector load_resource(const std::filesystem::path& path) {
 
 }  // namespace
 
-Font decode_nftr(const std::filesystem::path& path) {
-    const auto d = load_resource(path);
+Font decode_nftr(const std::vector<std::uint8_t>& d) {
     if (d.size() < 0x20U || d[0] != 'R' || d[1] != 'T' || d[2] != 'F' || d[3] != 'N') {
-        throw std::runtime_error("not an NFTR font: " + path.string());
+        throw std::runtime_error("not an NFTR font");
     }
 
     // FINF at 0x10; its pointers target section data (8 past the section tag).
@@ -73,6 +72,8 @@ Font decode_nftr(const std::filesystem::path& path) {
     font.cell_height = d[cglp + 1U];
     const auto cell_size = static_cast<std::size_t>(read_u16(d, cglp + 2U));
     font.bpp = d[cglp + 6U];
+    font.baseline = static_cast<std::int8_t>(d[cglp + 4U]);
+    font.max_width = d[cglp + 5U];
     const std::size_t glyph_count =
         cell_size > 0U ? (static_cast<std::size_t>(read_u32(d, cglp - 4U)) - 0x10U) / cell_size : 0U;
     const std::size_t pixels = static_cast<std::size_t>(font.cell_width) * font.cell_height;
@@ -164,6 +165,9 @@ Font decode_nftr(const std::filesystem::path& path) {
     return font;
 }
 
+Font decode_nftr(const std::filesystem::path& path) {
+    return decode_nftr(load_resource(path));
+}
 DecodedTexture render_text(const Font& font, const std::u16string& text) {
     // Measure.
     int width = 0;
