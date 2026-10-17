@@ -60,9 +60,9 @@ them again). Either folder may be left empty: a choice whose collection is not g
 ticked. The collections are found in Steam's libraries, else in the Epic Games Store's folders (its
 launcher's manifests in `ProgramData/Epic/EpicGamesLauncher/Data/Manifests`), and either store's copy
 is read: Steam's keeps its language's archives in `Image/dt` and Days's videos in
-`STEAM/Mare/MOVIE/Days/dt`, the Epic Games Store's its archives in `Image/en` and the videos wherever
-the collection has them in the same place (`*/Mare/MOVIE/Days/*`). (The page is a text page with its own Browse buttons, because Inno's folder page refuses an
-empty folder.)
+`STEAM/Mare/MOVIE/Days/dt`, the Epic Games Store's its archives in `Image/en` and the videos in
+`EPIC/Mare/MOVIE/Days/en` (any `*/Mare/MOVIE/Days/*` holding them is taken). (The page is a text
+page with its own Browse buttons, because Inno's folder page refuses an empty folder.)
 
 ## Add to Steam
 

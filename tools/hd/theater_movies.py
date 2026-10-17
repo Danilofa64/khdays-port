@@ -192,7 +192,12 @@ def subtitles(mare: Path, lang: str) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("mare", type=Path, help="the theater extracted: <collection>/Image/Mare.hed_out/original")
-    ap.add_argument("--movies", type=Path, help="its videos: <collection>/STEAM/Mare/MOVIE/Days/dt")
+    ap.add_argument(
+        "--movies",
+        type=Path,
+        help="its videos: <collection>/STEAM/Mare/MOVIE/Days/dt (Steam's), <collection>/EPIC/Mare/MOVIE/Days/en "
+        "(the Epic Games Store's)",
+    )
     ap.add_argument("--videos", action="store_true")
     ap.add_argument("--subtitles", action="store_true")
     ap.add_argument("--force", action="store_true", help="replace the videos already there")
@@ -200,7 +205,12 @@ def main() -> int:
     args = ap.parse_args()
     both = not args.videos and not args.subtitles
     if args.videos or both:
-        movies = args.movies or args.mare.resolve().parents[2] / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt"
+        collection = args.mare.resolve().parents[2]
+        movies = args.movies or next(
+            (m for m in (collection / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt",
+                         collection / "EPIC" / "Mare" / "MOVIE" / "Days" / "en") if m.is_dir()),
+            collection / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt",
+        )
         print(videos(movies, args.force), "videos made")
     if args.subtitles or both:
         for lang in args.lang:

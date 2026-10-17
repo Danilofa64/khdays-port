@@ -399,9 +399,9 @@ def tool_arguments(template: list[str], places: dict[str, Path]) -> list[str]:
 def _inputs_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--mare", type=Path, required=True, help="<1.5+2.5>/Image/Mare.hed_out/original (an extraction)")
     p.add_argument("--settings", type=Path, required=True, help="<1.5+2.5>/Image/SettingMenu.hed_out/original")
-    p.add_argument("--ddd", type=Path, required=True, help="<2.8>/Image/dt/kh3d_first.hed_out")
-    p.add_argument("--kh2", type=Path, required=True, help="<1.5+2.5>/Image/dt/kh2_first.hed_out")
-    p.add_argument("--movies", type=Path, required=True, help="<1.5+2.5>/STEAM/Mare/MOVIE/Days/dt")
+    p.add_argument("--ddd", type=Path, required=True, help="<2.8>/Image/dt (or en)/kh3d_first.hed_out")
+    p.add_argument("--kh2", type=Path, required=True, help="<1.5+2.5>/Image/dt (or en)/kh2_first.hed_out")
+    p.add_argument("--movies", type=Path, required=True, help="<1.5+2.5>/STEAM/Mare/MOVIE/Days/dt (or EPIC/.../en)")
     p.add_argument("--data", type=Path, default=HERE.parent / "data" / "extracted", help="the game's extracted data")
     p.add_argument("--out", type=Path, default=INPUTS_FILE)
 
@@ -496,7 +496,8 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
 
 # The collections' places and what each HD choice needs. Steam's copies keep their language's archives
 # in Image/dt and Days's videos in STEAM/Mare/MOVIE/Days/dt; the Epic Games Store's keep the archives in
-# Image/en (KHPCPatchManager looks in en or dt) -- the videos are found where the collection has them.
+# Image/en and the videos in EPIC/Mare/MOVIE/Days/en (seen in a copy of its own); the
+# videos are found where the collection has them.
 KH2_EXE = "KINGDOM HEARTS II FINAL MIX.exe"
 COLLECTION_ARCHIVES = {
     "1.5+2.5": {"Mare": "Image/Mare", "SettingMenu": "Image/SettingMenu", "kh2_first": "Image/dt/kh2_first"},
