@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The theater's videos and where the port plays them (specs/029): for every video of the player's
+"""The theater's videos and where the port plays them: for every video of the player's
 collection, the game's scene it plays in (the scene map), the day's monologue it is the voice of, the
 game's movie it replaces (hd8xx, DOP as 802, DED as 843), or that it is not played; and for every
 entry of the map, that its videos are the collection's and its script the game's: an event archive's

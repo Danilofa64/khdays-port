@@ -819,8 +819,7 @@ static const char *const texts[TXT_COUNT][5] = {
                            "In einem Raum gelten die Optionen des Hosts.",
                            "In una stanza contano le opzioni dell'host.",
                            "En una sala cuentan las opciones del anfitrión."},
-    [TXT_AUTOSAVE] = {"Autosave", "Sauvegarde auto", "Automatisch speichern", "Salvataggio automatico",
-                      "Autoguardado"},
+    [TXT_AUTOSAVE] = {"Autosave", "Sauvegarde auto", "Automatisch speichern", "Salvataggio automatico", "Autoguardado"},
     [TXT_AUTOSAVE_FILE99] = {"In file 99", "Dans le fichier 99", "In Datei 99", "Nel file 99", "En el archivo 99"},
     [TXT_AUTOSAVE_PLAYED] = {"In the file being played", "Dans le fichier en cours", "In der gespielten Datei",
                              "Nel file in gioco", "En el archivo en juego"},
@@ -838,8 +837,9 @@ static const char *const texts[TXT_COUNT][5] = {
                            "Tras cada misión completada, cuando el juego vuelve a donde deja guardar: en el archivo 99 "
                            "(AUTO en las listas) o en el archivo en juego (una partida nunca guardada: el primer "
                            "archivo vacío)."},
-    [TXT_SAVE_FILES] = {"Files in the game's lists", "Fichiers dans les listes du jeu", "Dateien in den Listen des Spiels",
-                        "File negli elenchi del gioco", "Archivos en las listas del juego"},
+    [TXT_SAVE_FILES] = {"Files in the game's lists", "Fichiers dans les listes du jeu",
+                        "Dateien in den Listen des Spiels", "File negli elenchi del gioco",
+                        "Archivos en las listas del juego"},
     [TXT_SAVE_FILES_ALL] = {"All 99", "Les 99", "Alle 99", "Tutti i 99", "Los 99"},
     [TXT_SAVE_FILES_DS] = {"3, as on the DS", "3, comme sur DS", "3, wie auf dem DS", "3, come su DS", "3, como en DS"},
     [TXT_SAVE_FILES_NOTE] = {"The game's own save and load lists (without the HD save screens): the port's 99 files in "

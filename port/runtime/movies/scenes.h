@@ -1,4 +1,4 @@
-/* The theater's HD scenes in place of the game's event scenes (specs/029): the scene map, and which
+/* The theater's HD scenes in place of the game's event scenes: the scene map, and which
  * scene the field's event runs. */
 #ifndef KHDAYS_SCENES_H
 #define KHDAYS_SCENES_H

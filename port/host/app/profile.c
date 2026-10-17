@@ -95,7 +95,7 @@ static const char *const mouse_names[KHDAYS_MOUSE_COUNT] = {
 const char *khdays_mouse_input_name(int input)
 {
     return input >= KHDAYS_MOUSE_INPUT && input < KHDAYS_KEYBOARD_INPUTS ? mouse_names[input - KHDAYS_MOUSE_INPUT]
-                                                                          : NULL;
+                                                                         : NULL;
 }
 
 int khdays_mouse_input_from_name(const char *name)
@@ -1386,9 +1386,9 @@ static void add_bindings(Text *t, const KhdaysProfile *p, int device, int layer,
                 continue;
             }
             add(t, "%s %s", written++ ? "," : "",
-                device != KHDAYS_DEVICE_KEYBOARD     ? khdays_pad_input_name(input)
-                : input >= KHDAYS_MOUSE_INPUT ? khdays_mouse_input_name(input)
-                                              : SDL_GetScancodeName((SDL_Scancode)input));
+                device != KHDAYS_DEVICE_KEYBOARD ? khdays_pad_input_name(input)
+                : input >= KHDAYS_MOUSE_INPUT    ? khdays_mouse_input_name(input)
+                                                 : SDL_GetScancodeName((SDL_Scancode)input));
         }
         add(t, "\n");
     }

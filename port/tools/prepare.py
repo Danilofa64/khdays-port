@@ -1042,7 +1042,7 @@ HOOKS = {
     # three frames, 20 a second); the port keeps mode 0's. KHDAYS_MP_DS_PACE=1 keeps the game's.
     "ov002@020679d4": [
         (  # Ov002_ConstructGameplayScene: the record the field is built from (its mission, its event
-           # script), seen by the port and set by a test (runtime/movies/scene_trace.c)
+            # script), seen by the port and set by a test (runtime/movies/scene_trace.c)
             "    src = param_1 ? (char *)param_1 : (char *)&data_0204c240;\n",
             "    src = param_1 ? (char *)param_1 : (char *)&data_0204c240;\n"
             "    { extern void khdays_scene_field_record(void *record, int from_argument);\n"
@@ -1055,7 +1055,7 @@ HOOKS = {
             "*(int *)(Session_GetSetup() + 4)); }\n",
         ),
         (  # the field begins (a mission, or the same one again after Retry): the mods' mission start
-           # waits for its first run (runtime/scripts/scripts.h)
+            # waits for its first run (runtime/scripts/scripts.h)
             "    if (Session_IsActive() != 0) {\n        return (void *)Ov002_UpdatePendingRequest;\n    }\n"
             "    return (void *)Ov002_TickGameplayState;\n}\n",
             "    { extern void khdays_scripts_field_begins(void); khdays_scripts_field_begins(); }\n"
@@ -1420,7 +1420,7 @@ HOOKS = {
     ],
     "ov002@02068090": [
         (  # Ov002_BeginMissionRun: the session request went through, a run starts (the first after the
-           # field begins is the mission's start)
+            # field begins is the mission's start)
             "        pfnStep = Ov002_SessionTick;\n",
             "        pfnStep = Ov002_SessionTick;\n"
             "        { extern void khdays_scripts_mission_start(void); khdays_scripts_mission_start(); }\n",
@@ -1439,8 +1439,7 @@ HOOKS = {
     "ov022@020acc94": [
         (  # Ov022_ActorSetHp: the HP before, then the change told once it is made
             "    struct Ent *pSelf = (struct Ent *)pEnt;\n",
-            "    struct Ent *pSelf = (struct Ent *)pEnt;\n"
-            "    const int khdays_before = pSelf->nHp;\n",
+            "    struct Ent *pSelf = (struct Ent *)pEnt;\n    const int khdays_before = pSelf->nHp;\n",
         ),
         (
             "    Ov002_GetPanelWord0220(pSelf->nId, pSelf->nHp);\n}\n",

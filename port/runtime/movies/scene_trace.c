@@ -1,4 +1,6 @@
-/* KHDAYS_TRACE_SCENES (scene_trace.h): the field's event script read once a frame.
+/* The field's event scenes (scene_trace.h): each one recognised as its skippable stretch begins and
+ * played by the theater's HD videos when the map has it, the days' monologues with their voice, the
+ * trace (KHDAYS_TRACE_SCENES) and the testing knobs.
  *
  * The field's root (data_ov002_0207fa00) holds the mission it opened (u16 at +0x8ba8, the file
  * mi/mi/%04d) and the script it runs there (u16 at +0x8baa, the script's name as "%d",
@@ -22,6 +24,7 @@ int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 /* the game's own */
 void GameState_SetField(int field, int bits, int value);
 void SoundMgr_StopAllSePlayers(void);
+int PauseMenu_GetMode(void); /* its pause's step, 0 when closed */
 
 #define FIELD_ROOT 0x0207fa00u
 #define FIELD_MISSION 0x8ba8u
@@ -30,8 +33,11 @@ void SoundMgr_StopAllSePlayers(void);
 #define EVENT_STATE 0x4b88u
 #define EVENT_STATUS 0x8758cu
 #define OV_EVENT 23
-#define MISSION_FLAGS 0x0204c240u /* its first byte: bit 2 Mission Mode */
+#define MISSION_FLAGS 0x0204c240u /* data_0204c240: its first byte's bit 2 Mission Mode; the field's record */
 #define MISSION_MODE 4u
+#define SCENE_CTL 0x0204bda8u  /* the scene controller: the pending scene at +0xc, its argument at +0x10 */
+#define GAME_STATE 0x0204be18u /* gGameState: the game state's block */
+#define GAME_STATE_SIZE 0x2000u
 
 #define STATE_DEPTH 0x124u
 #define STATE_ENTRIES 4u
@@ -171,7 +177,8 @@ static void test_scene(void *st)
             ++room; /* the padding to the next word */
         }
         if (strlen(v) + 1 <= room) {
-            fprintf(stderr, "scene: KHDAYS_TEST_SCENE: the event's \"%s\" becomes \"%s\"\n", (const char *)data + at, v);
+            fprintf(stderr, "scene: KHDAYS_TEST_SCENE: the event's \"%s\" becomes \"%s\"\n", (const char *)data + at,
+                    v);
             memset(data + at, 0, room);
             memcpy(data + at, v, strlen(v));
             done = 1;
@@ -194,8 +201,6 @@ void khdays_scene_step(void *st)
     skip_state = 0u;
 }
 
-/* Game_ActionSetBranchTarget (prepare.py HOOKS): `state` the script machine's (a reference), the
- * operand the target's offset from the entry's script start, -1 clearing it. */
 /* The scene running now (its key), "" when none: set when a stretch begins, cleared when it ends. */
 static char current[48];
 static int monologue; /* current is a day's monologue (no event of its own) */
@@ -205,6 +210,8 @@ const char *khdays_scene_current(void)
     return current;
 }
 
+/* Game_ActionSetBranchTarget (prepare.py HOOKS): `state` the script machine's (a reference), the
+ * operand the target's offset from the entry's script start, -1 clearing it. */
 void khdays_scene_target(unsigned int state, int operand)
 {
     const uint32_t depth = u32_at(state + STATE_DEPTH);
@@ -262,7 +269,9 @@ void khdays_scene_monologue(int record)
     e = khdays_scene_map_find(khdays_scenes_map(), key);
     if (tracing_scenes()) {
         fprintf(stderr, "scene: f%u start %s: %s\n", khdays_events_vblank_count(), key,
-                e == NULL ? "ds (not in the map)" : e->off ? "ds (off)" : "the theater's voice over the ds");
+                e == NULL ? "ds (not in the map)"
+                : e->off  ? "ds (off)"
+                          : "the theater's voice over the ds");
     }
     if (e != NULL && !e->off) {
         khdays_movie_hd_voice(key, e->stems, e->stem_count); /* the clips are black: their sound alone */
@@ -322,12 +331,12 @@ static void state_at_close(uint32_t frame)
     const int now = view_now().running;
     const char *path = getenv("KHDAYS_SCENE_STATE");
     if (path != NULL && running && !now) {
-        const uint32_t state = u32_at(0x0204be18u); /* gGameState */
+        const uint32_t state = u32_at(GAME_STATE);
         char name[512];
         FILE *f;
         snprintf(name, sizeof(name), "%s.%d", path, n++);
         if (khdays_game_ram(state) && (f = fopen(name, "wb")) != NULL) {
-            fwrite(KHDAYS_W(state), 1, 0x2000, f);
+            fwrite(KHDAYS_W(state), 1, GAME_STATE_SIZE, f);
             fclose(f);
             fprintf(stderr, "scene: f%u the game's state at the event's close written to %s\n", frame, name);
         }
@@ -335,7 +344,7 @@ static void state_at_close(uint32_t frame)
     running = now;
 }
 
-int PauseMenu_GetMode(void); /* the game's: its pause's step, 0 when closed */
+static void trace_frame(uint32_t frame);
 
 void khdays_scene_trace_frame(uint32_t frame)
 {
@@ -344,20 +353,26 @@ void khdays_scene_trace_frame(uint32_t frame)
     if (khdays_movie_hd_scene_paused()) {
         /* the game's pause over a scene's paused video: open, and whether its Skip set the request */
         const uint32_t st = khdays_movie_hd_scene_state();
-        khdays_movie_hd_scene_frame(PauseMenu_GetMode() != 0, st != 0u && u32_at(st + 0x588u) != 0u);
+        khdays_movie_hd_scene_frame(PauseMenu_GetMode() != 0, st != 0u && u32_at(st + STATE_SKIP) != 0u);
     }
     if (current[0] != '\0' && !monologue && !view_now().running) {
         current[0] = '\0'; /* the event closed without clearing its target */
         khdays_movie_hd_scene_ended();
     }
+    if (tracing_scenes()) {
+        trace_frame(frame);
+    }
+}
+
+/* KHDAYS_TRACE_SCENES, once a frame: what changed of the field's record and script, the scene
+ * controller, the event, its target and the game's movie. */
+static void trace_frame(uint32_t frame)
+{
     static int first = 1;
     static EventView was;
     static int was_movie;
     EventView now;
     int movie;
-    if (!tracing_scenes()) {
-        return;
-    }
     if (first) {
         was.mission = was.script = ~0u;
         first = 0;
@@ -367,18 +382,18 @@ void khdays_scene_trace_frame(uint32_t frame)
         /* the record the field is built from when its scene has no argument
          * (Ov002_ConstructGameplayScene): the mode byte, the mission at +2, the script at +4 */
         static uint32_t record[2] = {~0u, ~0u};
-        const uint32_t r0 = u32_at(0x0204c240u), r1 = u32_at(0x0204c244u);
+        const uint32_t r0 = u32_at(MISSION_FLAGS), r1 = u32_at(MISSION_FLAGS + 4u);
         if (r0 != record[0] || r1 != record[1]) {
-            fprintf(stderr, "scene: f%u record mode %02x mission %u script %u (+6 %04x)\n", frame, r0 & 0xffu,
-                    r0 >> 16, r1 & 0xffffu, r1 >> 16);
+            fprintf(stderr, "scene: f%u record mode %02x mission %u script %u (+6 %04x)\n", frame, r0 & 0xffu, r0 >> 16,
+                    r1 & 0xffffu, r1 >> 16);
             record[0] = r0;
             record[1] = r1;
         }
     }
     {
-        /* the scene controller (0x0204bda8): pending id at +0xc, its argument at +0x10 */
+        /* the scene controller: the pending scene and its argument */
         static uint32_t pending = ~0u, argument = ~0u;
-        const uint32_t p = u32_at(0x0204bda8u + 0xcu), a = u32_at(0x0204bda8u + 0x10u);
+        const uint32_t p = u32_at(SCENE_CTL + 0xcu), a = u32_at(SCENE_CTL + 0x10u);
         if (p != pending || a != argument) {
             fprintf(stderr, "scene: f%u pending scene %u argument %08x", frame, p, a);
             if (khdays_game_ram(a)) {
@@ -415,11 +430,11 @@ void khdays_scene_trace_frame(uint32_t frame)
         if (now.target != 0u) {
             /* the target in the script of the entry it was set from: the entry now when the depths
              * agree (a called routine runs deeper) */
-            fprintf(stderr, "scene: f%u target %08x depth %u (+%x in the script at %08x) skip %u\n", frame,
-                    now.target, now.target_depth, now.target - now.start, now.start, now.skip);
+            fprintf(stderr, "scene: f%u target %08x depth %u (+%x in the script at %08x) skip %u\n", frame, now.target,
+                    now.target_depth, now.target - now.start, now.start, now.skip);
         } else {
-            fprintf(stderr, "scene: f%u target none (at +%x of %08x) skip %u\n", frame, now.next - now.start,
-                    now.start, now.skip);
+            fprintf(stderr, "scene: f%u target none (at +%x of %08x) skip %u\n", frame, now.next - now.start, now.start,
+                    now.skip);
         }
     }
     movie = khdays_movie_game_playing();

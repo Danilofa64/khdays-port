@@ -115,8 +115,8 @@ static int pause_page(u32 *ctx_out)
     if (tracing() && rd8(KHDAYS_DS_gPauseMode) != 0) {
         /* what decides whether the port changes this pause, once per change */
         static int last = -1;
-        const int now = rd8(KHDAYS_DS_data_0204c240) << 16 | (in_ram(setup) ? (int)rd32(setup + SETUP_PLAYERS) : 0xff)
-                                                              << 8 |
+        const int now = rd8(KHDAYS_DS_data_0204c240) << 16 |
+                        (in_ram(setup) ? (int)rd32(setup + SETUP_PLAYERS) : 0xff) << 8 |
                         (rd16(KHDAYS_DS_data_0204bda4) & 0xff);
         static int last_pieces = -1;
         KhdaysPauseView v;
@@ -134,7 +134,8 @@ static int pause_page(u32 *ctx_out)
         static u32 last_target = 0xffffffffu;
         if (rd32(CHALLENGE_TARGETS + TARGETS) != last_target) {
             last_target = rd32(CHALLENGE_TARGETS + TARGETS);
-            say("a pause: a challenge's first two targets", (int)last_target, (int)rd32(CHALLENGE_TARGETS + TARGETS + 4u));
+            say("a pause: a challenge's first two targets", (int)last_target,
+                (int)rd32(CHALLENGE_TARGETS + TARGETS + 4u));
         }
         if (pieces != last_pieces) {
             last_pieces = pieces;
@@ -143,8 +144,9 @@ static int pause_page(u32 *ctx_out)
         }
     }
     if (khdays_ui_mode(KHDAYS_UI_PAUSE) != KHDAYS_UI_ON || rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT) != FIELD_SCENE ||
-        !(rd8(KHDAYS_DS_data_0204c240) & (MISSION_MODE | CHALLENGE)) || !in_ram(setup) || rd32(setup + SETUP_PLAYERS) != 1u ||
-        rd8(KHDAYS_DS_gPauseMode) == 0 || !(rd16(KHDAYS_DS_data_0204bda4) & PAUSE_SESSION)) {
+        !(rd8(KHDAYS_DS_data_0204c240) & (MISSION_MODE | CHALLENGE)) || !in_ram(setup) ||
+        rd32(setup + SETUP_PLAYERS) != 1u || rd8(KHDAYS_DS_gPauseMode) == 0 ||
+        !(rd16(KHDAYS_DS_data_0204bda4) & PAUSE_SESSION)) {
         return -1;
     }
     ctx = pause_context();

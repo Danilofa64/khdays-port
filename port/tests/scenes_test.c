@@ -41,15 +41,15 @@ int main(void)
                        "  EV_S#169   hd131a  hd132  ; lines, split # a comment\n"
                        "mi/0105/11:_e hd010 # a comment after a space\n"
                        "EV_S#3 off ; no theater scene\n"
-                       "EVS#4 hd004\n"           /* line 8: not a script */
-                       "EV_S#x hd004\n"          /* 9: not an index */
-                       "EV_S#5\n"                /* 10: nothing to play */
-                       "EV_S#6 hd/006\n"         /* 11: not a file's name */
-                       "EV_S#7 hd007 off\n"      /* 12: off among videos */
-                       "mi/0105:_e hd010\n"      /* 13: no script name */
+                       "EVS#4 hd004\n"      /* line 8: not a script */
+                       "EV_S#x hd004\n"     /* 9: not an index */
+                       "EV_S#5\n"           /* 10: nothing to play */
+                       "EV_S#6 hd/006\n"    /* 11: not a file's name */
+                       "EV_S#7 hd007 off\n" /* 12: off among videos */
+                       "mi/0105:_e hd010\n" /* 13: no script name */
                        "mnl#1 hd003 ; a monologue\n"
-                       "mnl#a hd003\n"           /* 15: not a record */
-                       "EV_TT#61 hd007c";        /* the last line without its end */
+                       "mnl#a hd003\n"    /* 15: not a record */
+                       "EV_TT#61 hd007c"; /* the last line without its end */
     const char *mod = "EV_S#0 off ; the mod keeps the DS's room\n"
                       "EV_S#4 hd004 hd004b\n";
 

@@ -1,7 +1,6 @@
-"""The 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX read from the player's own copy
-(specs/029): its scenes (data/DaysTheater.thd), its chapters (data/DaysTheater.chp), each scene's
-lines in a language (its event's TEXT_MOVIE schedule and the CTD tables), and its videos, scrambled
-or already plain.
+"""The 358/2 Days theater of KINGDOM HEARTS HD 1.5+2.5 ReMIX read from the player's own copy: its
+scenes (data/DaysTheater.thd), its chapters (data/DaysTheater.chp), each scene's lines in a language
+(its event's TEXT_MOVIE schedule and the CTD tables), and its videos, scrambled or already plain.
 
 MARE is `<collection>/Image/Mare.hed_out/original` (an extraction of Image/Mare).
 """

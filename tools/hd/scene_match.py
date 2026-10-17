@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pairs the HD theater's scenes with Days's event scenes by their lines (specs/029): every theater
+"""Pairs the HD theater's scenes with Days's event scenes by their lines: every theater
 scene with a video against every game script with lines (ds_scripts.py), in Spanish and English;
 then the path through the event archive EV_S that keeps the story's order and takes the most
 agreement; scenes without lines are placed between their neighbours. Candidates for review: the

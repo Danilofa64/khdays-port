@@ -22,8 +22,8 @@ unsigned int khdays_events_vblank_count(void);
 
 namespace {
 
-constexpr unsigned kShown = 180;     // VBlanks: three seconds
-constexpr int kLeft = 4, kTop = 4;   // DS dots
+constexpr unsigned kShown = 180;                                    // VBlanks: three seconds
+constexpr int kLeft = 4, kTop = 4;                                  // DS dots
 constexpr std::uint32_t kWhite = 0xffffffffu, kBlack = 0xff000000u; // RGBA, red in bits 0-7
 
 std::optional<khdays::assets::Font> font;

@@ -1,4 +1,4 @@
-"""Days's event scripts read from the game's data (specs/029 research R1b): the event archives'
+"""Days's event scripts read from the game's data: the event archives'
 entries (ev/EV_*.p2) and the missions' script containers (mi/mi/<mission>, "CAKP"), each script's
 commands, its skip targets and the messages its commands name.
 

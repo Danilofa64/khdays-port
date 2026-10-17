@@ -1033,23 +1033,26 @@ void khdays_hd_voice_stop(void)
 
 void khdays_hd_voice_play(const char *const *paths, int count)
 {
+    WCHAR **files;
+    int n = 0;
     khdays_hd_voice_stop();
-    voice.files = count > 0 ? (WCHAR **)calloc((size_t)count, sizeof(*voice.files)) : NULL;
-    if (voice.files == NULL) {
+    if (count <= 0 || (files = (WCHAR **)calloc((size_t)count, sizeof(*files))) == NULL) {
         return;
     }
     for (int i = 0; i < count; ++i) {
         WCHAR *file = full_path(paths[i]);
         if (file != NULL) {
-            voice.files[voice.count++] = file;
+            files[n++] = file;
         }
     }
+    voice.files = files;
+    voice.count = n;
     voice.thread = CreateThread(NULL, 0, voice_run, NULL, 0, NULL);
     if (voice.thread == NULL) {
-        for (int i = 0; i < voice.count; ++i) {
-            free(voice.files[i]);
+        for (int i = 0; i < n; ++i) {
+            free(files[i]);
         }
-        free(voice.files);
+        free(files);
         memset(&voice, 0, sizeof(voice));
     }
 }

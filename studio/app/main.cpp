@@ -64,10 +64,9 @@ void draw_frame(App& app, bool* settings_open, bool* themes_open, bool* console_
     draw_mod_bar(app);
     // the themes and the settings at the right end of the same row
     const ImGuiStyle& style = ImGui::GetStyle();
-    const float buttons = ImGui::CalcTextSize(tr(app.language, S::console)).x +
-                          ImGui::CalcTextSize(tr(app.language, S::themes)).x +
-                          ImGui::CalcTextSize(tr(app.language, S::settings)).x + style.FramePadding.x * 6 +
-                          style.ItemSpacing.x * 2;
+    const float buttons =
+        ImGui::CalcTextSize(tr(app.language, S::console)).x + ImGui::CalcTextSize(tr(app.language, S::themes)).x +
+        ImGui::CalcTextSize(tr(app.language, S::settings)).x + style.FramePadding.x * 6 + style.ItemSpacing.x * 2;
     ImGui::SameLine();
     const float room = ImGui::GetContentRegionAvail().x;
     if (room > buttons)

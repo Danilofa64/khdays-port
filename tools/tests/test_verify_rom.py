@@ -66,17 +66,26 @@ class HeaderFreeTests(unittest.TestCase):
             kept, zeroed = Path(temporary) / "kept.nds", Path(temporary) / "zeroed.nds"
             kept.write_bytes(rom)
             zeroed.write_bytes(other)
-            entry = {"name": "test", "sha256": hashlib.sha256(rom).hexdigest(),
-                     "sha256_header_free": hashlib.sha256(other).hexdigest()}
+            entry = {
+                "name": "test",
+                "sha256": hashlib.sha256(rom).hexdigest(),
+                "sha256_header_free": hashlib.sha256(other).hexdigest(),
+            }
             for tool in (verify_rom, extract_data):
                 self.assertNotEqual(tool.whole_dump_sha256(kept), tool.whole_dump_sha256(zeroed))
-                self.assertEqual(tool.whole_dump_sha256(kept, header_free=True),
-                                 tool.whole_dump_sha256(zeroed, header_free=True))
+                self.assertEqual(
+                    tool.whole_dump_sha256(kept, header_free=True), tool.whole_dump_sha256(zeroed, header_free=True)
+                )
             for path in (kept, zeroed):
                 self.assertIs(verify_rom.find_supported_rom(verify_rom.read_rom_info(path), [entry]), entry)
-                self.assertIs(extract_data.find_supported_rom(extract_data.whole_dump_sha256(path), [entry],
-                                                              extract_data.whole_dump_sha256(path, header_free=True)),
-                              entry)
+                self.assertIs(
+                    extract_data.find_supported_rom(
+                        extract_data.whole_dump_sha256(path),
+                        [entry],
+                        extract_data.whole_dump_sha256(path, header_free=True),
+                    ),
+                    entry,
+                )
             # the game's own bytes are never left out
             other[0x4000] ^= 1
             zeroed.write_bytes(other)

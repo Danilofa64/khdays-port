@@ -340,7 +340,7 @@ const unsigned int khdays_${name}_size = ${size}u;
 endfunction()
 set(KHDAYS_PORT_COMPOSITIONS "${CMAKE_CURRENT_SOURCE_DIR}/ui/compositions/port_days.txt")
 khdays_embed_text(compositions_port "${KHDAYS_PORT_COMPOSITIONS}")
-# The theater's HD scenes in place of the game's (movies/hd_scenes.txt, specs/029), compiled in the same way.
+# The theater's HD scenes in place of the game's (movies/hd_scenes.txt), compiled in the same way.
 khdays_embed_text(scenes_port "${CMAKE_CURRENT_SOURCE_DIR}/movies/hd_scenes.txt")
 
 add_executable(khdays-native
@@ -431,7 +431,7 @@ add_executable(khdays-native
     runtime/movies/video_mod.c
     runtime/movies/movie_hd.c             # an HD video in a movie's place (specs/013)
     runtime/movies/scene_trace.c          # KHDAYS_TRACE_SCENES: the field's event scripts
-    runtime/movies/scene_map.c            # the theater's HD scenes: the map (specs/029)
+    runtime/movies/scene_map.c            # the theater's HD scenes: the map
     runtime/movies/scenes.c               # its files, and the scene the event runs
     host/movies/movie_hd_win.c            # the HD video through Media Foundation
     host/movies/movie_subtitles.c         # the theater's subtitles over the HD video

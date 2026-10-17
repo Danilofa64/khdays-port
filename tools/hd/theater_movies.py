@@ -39,7 +39,7 @@ OPENING = ("DOP.mp4", "802")
 ENDING = ("DED.mp4", "843")
 ENDING_EVENT = "844"  # the ending's subtitles: no DS movie 844, its sound DED_MONO
 OUT = tt.ROOT / "data" / "cutscenes" / "cinematics"
-# the port's scene map: which of the theater's scene videos it plays (specs/029)
+# the port's scene map: which of the theater's scene videos it plays
 SCENE_MAP = tt.ROOT / "port" / "movies" / "hd_scenes.txt"
 # Measured on the theater's window captures (hd818's lines, scaled to 1920 x 1080): the font's cells
 # drawn 1.445 times their size, a space 13.75 texels, the lines 51 apart, the last one's top at 956,
@@ -54,7 +54,7 @@ RATE = 30
 
 def scene_stems() -> list[str]:
     """The theater's scene videos the port plays in place of the game's own event scenes: the stems
-    its scene map names (port/movies/hd_scenes.txt, specs/029), in the map's order."""
+    its scene map names (port/movies/hd_scenes.txt), in the map's order."""
     if not SCENE_MAP.is_file():
         return []
     out = []
@@ -227,8 +227,14 @@ def main() -> int:
     if args.videos or both:
         collection = args.mare.resolve().parents[2]
         movies = args.movies or next(
-            (m for m in (collection / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt",
-                         collection / "EPIC" / "Mare" / "MOVIE" / "Days" / "en") if m.is_dir()),
+            (
+                m
+                for m in (
+                    collection / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt",
+                    collection / "EPIC" / "Mare" / "MOVIE" / "Days" / "en",
+                )
+                if m.is_dir()
+            ),
             collection / "STEAM" / "Mare" / "MOVIE" / "Days" / "dt",
         )
         print(videos(movies, args.force), "videos made")

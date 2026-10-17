@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Comparison pictures of the HD scenes (specs/029): for each scene of the map, a row of the game's
+"""Comparison pictures of the HD scenes: for each scene of the map, a row of the game's
 pictures (KHDAYS_SCENE_SHOTS: <scene>_<frame>.bmp, both screens) over a row of the HD video's at the
 same fractions of the scene, captioned with the scene, its videos and the map's evidence. For the
-maintainer's review; written under OUT, never into an install.
+review; written under OUT, never into an install.
 
   python tools/hd/scene_compare.py SHOTS VIDEOS OUT [--map port/movies/hd_scenes.txt] [--only EV_S#4 ...]
 

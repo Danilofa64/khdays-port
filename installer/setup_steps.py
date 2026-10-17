@@ -248,7 +248,10 @@ def find_rom(args: argparse.Namespace) -> dict[str, Any]:
         import epic_library
         import steam_library
 
-        found = [steam_library.app_folder(steam_library.APP_1525), epic_library.collection_folder(epic_library.MARKER_1525)]
+        found = [
+            steam_library.app_folder(steam_library.APP_1525),
+            epic_library.collection_folder(epic_library.MARKER_1525),
+        ]
         folders = [f for f in found if f is not None]
     for folder in folders:
         candidate = folder / "Image" / "melon" / "roms" / "days.nds"
@@ -535,6 +538,8 @@ def movies_folder(folder: Path) -> Path:
         if candidate.is_dir() and (not first or (candidate / first[0]).is_file()):
             return candidate
     return folder / MOVIES
+
+
 DATA_TOOLS = {"theater_mission.py", "theater_cine.py", "save_screen.py", "ddd_camp.py"}  # take --data
 
 MESSAGES.update(

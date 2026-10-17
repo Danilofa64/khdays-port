@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The game's pictures of its event scenes (specs/029): for each scene asked, one headless run of the
+"""The game's pictures of its event scenes: for each scene asked, one headless run of the
 port that plays it on demand (a new game's day 7, its first scene path written over:
 KHDAYS_TEST_DAY=7, KHDAYS_TEST_SCENE=<slot>:<entry>), its lines answered with A every 45 frames, its
 pictures saved (KHDAYS_SCENE_SHOTS) and its course traced (KHDAYS_TRACE_SCENES). One run at a time;

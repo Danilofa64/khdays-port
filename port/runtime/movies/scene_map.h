@@ -7,11 +7,11 @@
 #include <stddef.h>
 
 typedef struct KhdaysSceneEntry {
-    char *key;       /* EV_S#4, mi/0105/11:_e, mnl#1 */
-    int off;         /* the game's own scene */
-    char **stems;    /* the videos in order (data/cutscenes/cinematics/<stem>.mp4) */
+    char *key;    /* EV_S#4, mi/0105/11:_e, mnl#1 */
+    int off;      /* the game's own scene */
+    char **stems; /* the videos in order (data/cutscenes/cinematics/<stem>.mp4) */
     int stem_count;
-    char *evidence;  /* the text after ';', "" when none */
+    char *evidence; /* the text after ';', "" when none */
 } KhdaysSceneEntry;
 
 typedef struct KhdaysSceneMap {

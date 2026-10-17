@@ -1218,12 +1218,14 @@ static void draw_frame(u32 frame, int want, int capture, KhdaysGpuInput *in, LAR
         }
     }
     if (scene_shot_at(frame)) {
-        char path[MAX_PATH];
-        int at = snprintf(path, sizeof(path), "%s/", scene_shot_dir);
-        for (const char *k = khdays_scene_current(); *k != '\0' && at + 1 < (int)sizeof(path); ++k) {
-            path[at++] = (*k == '#' || *k == '/' || *k == ':') ? '_' : *k;
+        /* the scene's key as a file's name: EV_S#4 -> EV_S_4 */
+        char name[64], path[MAX_PATH];
+        int n = 0;
+        for (const char *k = khdays_scene_current(); *k != '\0' && n + 1 < (int)sizeof(name); ++k) {
+            name[n++] = (*k == '#' || *k == '/' || *k == ':') ? '_' : *k;
         }
-        snprintf(path + at, sizeof(path) - (size_t)at, "_%05u.bmp", frame);
+        name[n] = '\0';
+        snprintf(path, sizeof(path), "%s/%s_%05u.bmp", scene_shot_dir, name, frame);
         write_bmp(path, upper, lower);
     }
     if (frame == mark_frame) {
@@ -1414,8 +1416,9 @@ static void display_capture(const KhdaysGpuInput *in, const KhdaysGpu2dState *wi
             static int said;
             if (!said) {
                 said = 1;
-                khdays_log("display: a capture into bank %c, its VRAMCNT %02x not the LCDC's: not written, as on the DS",
-                           'A' + dest, bank_cnt);
+                khdays_log(
+                    "display: a capture into bank %c, its VRAMCNT %02x not the LCDC's: not written, as on the DS",
+                    'A' + dest, bank_cnt);
             }
             return;
         }

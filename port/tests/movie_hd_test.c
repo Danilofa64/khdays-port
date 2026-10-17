@@ -1,6 +1,6 @@
 /* How an HD movie runs (runtime/movies/movie_hd.c), against a scripted game and video: the ids, the
  * lookup, every transition, the buttons the game is given and the clock's pause reasons (with the real
- * runtime/core/clock.c); an event scene's videos and a monologue's voice (specs/029). It runs in a
+ * runtime/core/clock.c); an event scene's videos and a monologue's voice. It runs in a
  * folder of its own, which it creates and leaves behind. */
 #include "../host/movies/movie_hd.h"
 #include "../host/app/host.h"
@@ -350,7 +350,7 @@ int main(void)
     CHECK(!khdays_movie_hd_showing() && !muted && !held());
     khdays_movie_hd_game_buttons(0);
 
-    /* an event scene of two videos (specs/029): the game held while they play, then let go to take
+    /* an event scene of two videos: the game held while they play, then let go to take
      * its own skip at its event's next step, shown until the scene ends */
     {
         static uint8_t event[0x600]; /* the event machine's state: its skip request at +0x588 */
@@ -402,7 +402,7 @@ int main(void)
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);
         CHECK(khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && hd_paused && !held() && muted);
-        khdays_movie_hd_scene_frame(0, 0);                    /* before the game read its START: waits */
+        khdays_movie_hd_scene_frame(0, 0); /* before the game read its START: waits */
         CHECK(khdays_movie_hd_scene_paused());
         CHECK(khdays_movie_hd_game_buttons(START) == START); /* START pressed for the pause ... */
         khdays_movie_hd_scene_frame(0, 0);                   /* (refused: the screen fades) */
@@ -412,11 +412,11 @@ int main(void)
         khdays_movie_hd_scene_frame(1, 0);                   /* the pause open */
         CHECK(khdays_movie_hd_game_buttons(START) == 0);     /* held since: not a new press */
         CHECK(khdays_movie_hd_game_buttons(0) == 0);
-        CHECK(khdays_movie_hd_game_buttons(A) == A);         /* the pause's choices are the player's */
+        CHECK(khdays_movie_hd_game_buttons(A) == A); /* the pause's choices are the player's */
         CHECK(khdays_movie_hd_scene_paused());
-        khdays_movie_hd_scene_frame(0, 0);                   /* closed by Continue */
+        khdays_movie_hd_scene_frame(0, 0); /* closed by Continue */
         CHECK(!khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && held() && !hd_paused);
-        CHECK(khdays_movie_hd_game_buttons(A) == 0);         /* held for the video again: none */
+        CHECK(khdays_movie_hd_game_buttons(A) == 0); /* held for the video again: none */
         /* again, and Skip */
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);

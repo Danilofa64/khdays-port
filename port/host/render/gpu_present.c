@@ -846,10 +846,8 @@ static void under_paused_video(KhdaysOneScreenDraw *one)
 {
     if (paused_got == 0) {
         paused_turn ^= 1;
-        paused_got = khdays_hd_picture_rgba(&paused_rgba[paused_turn], &paused_capacity[paused_turn], &paused_w,
-                                            &paused_h)
-                         ? 1
-                         : -1;
+        uint8_t **rgba = &paused_rgba[paused_turn];
+        paused_got = khdays_hd_picture_rgba(rgba, &paused_capacity[paused_turn], &paused_w, &paused_h) ? 1 : -1;
     }
     if (paused_got > 0) {
         one->backdrop = paused_rgba[paused_turn];

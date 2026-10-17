@@ -1,4 +1,4 @@
-# The theater's HD scenes the port plays in place of the game's own event scenes (specs/029): the
+# The theater's HD scenes the port plays in place of the game's own event scenes: the
 # videos of the HD collection's 358/2 Days theater, made from the player's own copy into
 # data/cutscenes/cinematics/<stem>.mp4, played instead of the scene's skippable stretch, the game's
 # own skip ending it. A mod's cutscenes/scenes.txt adds entries or replaces these by their script.
