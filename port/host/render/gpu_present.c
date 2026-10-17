@@ -131,14 +131,32 @@ static const char *shot_dir;
 static uint32_t shot_frames[64];
 static int shot_count;
 
+/* Wine or Proton (a Steam Deck, Linux): its ntdll names its version. */
+static int under_wine(void)
+{
+    SDL_SharedObject *ntdll = SDL_LoadObject("ntdll.dll");
+    int wine = 0;
+    if (ntdll != NULL) {
+        wine = SDL_LoadFunction(ntdll, "wine_get_version") != NULL;
+        SDL_UnloadObject(ntdll);
+    }
+    SDL_ClearError();
+    return wine;
+}
+
 /* Makes a renderer on a new GPU device. Returns NULL with the reason in `why`. */
 static SDL_Renderer *gpu_renderer(char *why, size_t size)
 {
     static const char *const names[KHDAYS_BACKEND_COUNT] = {NULL, "direct3d12", "vulkan"};
     const int debug = SDL_getenv("KHDAYS_GPU_DEBUG") != NULL;
     const char *name = video.backend > 0 && video.backend < KHDAYS_BACKEND_COUNT ? names[video.backend] : NULL;
+    SDL_GPUDevice *made = NULL;
     SDL_Renderer *r;
-    device = SDL_CreateGPUDevice(SHADER_FORMATS, debug, name);
+    if (name == NULL && SDL_GetHint(SDL_HINT_GPU_DRIVER) == NULL && under_wine()) {
+        /* Automatic under Wine: its Direct3D 12 is made of Vulkan (vkd3d), so Vulkan straight away */
+        made = SDL_CreateGPUDevice(SHADER_FORMATS, debug, "vulkan");
+    }
+    device = made != NULL ? made : SDL_CreateGPUDevice(SHADER_FORMATS, debug, name);
     if (device == NULL && name != NULL) {
         /* the graphics API asked for is not available: use the system's (the settings menu says so) */
         char text[480];

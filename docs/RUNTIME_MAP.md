@@ -575,8 +575,9 @@ For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present
   route through it would be: the game stops naming the address, the read
   and the function (exit code 6, section 13).
 - `SDL_GPU_DRIVER=vulkan` (or `direct3d12`) -- SDL's choice of graphics
-  backend overridden when the Video page's Graphics API is Automatic; the
-  port carries the shaders for both.
+  backend overridden when the Video page's Graphics API is Automatic (which
+  is otherwise Vulkan under Wine or Proton); the port carries the shaders
+  for both.
 - `KHDAYS_TEST_GPU_LOST=FRAME` -- at that frame the graphics card is taken as
   lost, as when Windows resets its driver (a `DXGI_ERROR_DEVICE_HUNG`): the
   port says so with the last 3D it sent the card (frame, internal resolution,

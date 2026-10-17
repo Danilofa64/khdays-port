@@ -177,8 +177,8 @@ typedef enum KhdaysDisplay {
  * full colour; or as the DS showed them. */
 typedef enum KhdaysMovies { KHDAYS_MOVIES_HD, KHDAYS_MOVIES_PC, KHDAYS_MOVIES_DS, KHDAYS_MOVIES_COUNT } KhdaysMovies;
 
-/* The graphics API ([video] backend): SDL's choice (Direct3D 12 on Windows),
- * or one asked for -- Vulkan where Direct3D 12 misbehaves on a card. */
+/* The graphics API ([video] backend): SDL's choice (Direct3D 12 on Windows, Vulkan under Wine or
+ * Proton), or one asked for -- Vulkan where Direct3D 12 misbehaves on a card. */
 typedef enum KhdaysBackend {
     KHDAYS_BACKEND_AUTO,
     KHDAYS_BACKEND_D3D12,

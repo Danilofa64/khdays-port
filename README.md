@@ -289,8 +289,9 @@ once:
   (HUD, menus, text) and the movies change when the game changes them.
 - **Show FPS**: a counter in the window's corner -- the pictures drawn a
   second and the game's own frames a second.
-- **Graphics API**: what draws the picture -- automatic (the system's
-  choice: Direct3D 12 on Windows), Direct3D 12 or Vulkan, changed at once. If
+- **Graphics API**: what draws the picture -- automatic (Direct3D 12 on
+  Windows, Vulkan on a Steam Deck or under Proton), Direct3D 12 or Vulkan,
+  changed at once. If
   the graphics card stops answering on Direct3D 12, try Vulkan. Should the
   card stop answering anyway (Windows resets its driver), the game carries on:
   the picture is made again, and an internal resolution lost twice drops to

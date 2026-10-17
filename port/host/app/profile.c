@@ -1485,7 +1485,8 @@ int khdays_profile_save(const KhdaysProfile *p, const char *path, KhdaysNotice n
             "picture_pace = %s\n"
             "# show_fps: the pictures and the game's frames a second, in a corner\n"
             "show_fps = %s\n"
-            "# backend: the graphics API -- auto (SDL's choice), direct3d12 or vulkan\n"
+            "# backend: the graphics API -- auto (Direct3D 12 on Windows, Vulkan under Wine or Proton),\n"
+            "#          direct3d12 or vulkan\n"
             "backend = %s\n",
             displays[v->display >= 0 && v->display < KHDAYS_DISPLAY_COUNT ? v->display : 0], resolution, antialiasing,
             v->one_screen ? "one" : "two", v->hud_size,

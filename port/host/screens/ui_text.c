@@ -531,16 +531,17 @@ static const char *const texts[TXT_COUNT][5] = {
                                   "Los subtítulos de las películas del juego. También lo pregunta una partida nueva."},
     [TXT_VIDEO_BACKEND] = {"Graphics API", "API graphique", "Grafik-API", "API grafica", "API gráfica"},
     [TXT_VIDEO_BACKEND_AUTO] = {"Automatic", "Automatique", "Automatisch", "Automatica", "Automática"},
-    [TXT_VIDEO_BACKEND_NOTE] = {"What draws the picture: Automatic lets the system choose (Direct3D 12 on Windows). If "
-                                "the graphics card stops answering, try Vulkan.",
-                                "Ce qui dessine l'image : Automatique laisse le système choisir (Direct3D 12 sous "
-                                "Windows). Si la carte graphique ne répond plus, essayez Vulkan.",
-                                "Was das Bild zeichnet: Automatisch lässt das System wählen (unter Windows Direct3D "
-                                "12). Wenn die Grafikkarte nicht mehr antwortet, Vulkan versuchen.",
-                                "Cosa disegna l'immagine: Automatica lascia scegliere al sistema (Direct3D 12 su "
-                                "Windows). Se la scheda grafica smette di rispondere, prova Vulkan.",
-                                "Lo que dibuja la imagen: Automática deja elegir al sistema (Direct3D 12 en Windows). "
-                                "Si la tarjeta gráfica deja de responder, prueba Vulkan."},
+    [TXT_VIDEO_BACKEND_NOTE] = {"What draws the picture: Automatic is Direct3D 12 on Windows, Vulkan on a Steam Deck "
+                                "or under Proton. If the graphics card stops answering, try Vulkan.",
+                                "Ce qui dessine l'image : Automatique est Direct3D 12 sous Windows, Vulkan sur un "
+                                "Steam Deck ou sous Proton. Si la carte graphique ne répond plus, essayez Vulkan.",
+                                "Was das Bild zeichnet: Automatisch ist unter Windows Direct3D 12, auf einem Steam "
+                                "Deck oder unter Proton Vulkan. Wenn die Grafikkarte nicht mehr antwortet, Vulkan "
+                                "versuchen.",
+                                "Cosa disegna l'immagine: Automatica è Direct3D 12 su Windows, Vulkan su uno Steam "
+                                "Deck o con Proton. Se la scheda grafica smette di rispondere, prova Vulkan.",
+                                "Lo que dibuja la imagen: Automática es Direct3D 12 en Windows y Vulkan en una Steam "
+                                "Deck o con Proton. Si la tarjeta gráfica deja de responder, prueba Vulkan."},
     [TXT_BACKEND_REFUSED] = {"the graphics API %s cannot run here (%s); the system's choice is used",
                              "l'API graphique %s ne peut pas fonctionner ici (%s) ; le choix du système est utilisé",
                              "die Grafik-API %s läuft hier nicht (%s); die Wahl des Systems wird verwendet",
