@@ -56,8 +56,8 @@ tools). The helper reads the entries the tools need straight from the collection
 format and its encryption found by our own reverse engineering of the collections' executables;
 the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.exe`, never kept),
 runs the tools under a folder of their own and puts what they made in place whole. An update
-leaves the pieces already made from the same collections as they are (deleting their folder makes
-them again). Either folder may be left empty: a choice whose collection is not given cannot be
+leaves the pieces already made from the same collections by the same tools as they are (deleting
+their folder makes them again; an installer whose tools or scene map differ makes them again). Either folder may be left empty: a choice whose collection is not given cannot be
 ticked. The collections are found in Steam's libraries, else in the Epic Games Store's folders (its
 launcher's manifests in `ProgramData/Epic/EpicGamesLauncher/Data/Manifests`), and either store's copy
 is read: Steam's keeps its language's archives in `Image/dt` and Days's videos in
@@ -106,7 +106,8 @@ version with the commit after it (`0.1.0+e593a05`, `-modified` when files change
 ## Updates
 
 A newer installer run over an install updates it in place: the port's files are replaced, and the
-game's data (already made), the HD pieces, the saves, the settings and the mods are kept. The port
+game's data (already made), the HD pieces (unless its HD tools differ), the saves, the settings and
+the mods are kept. The port
 itself tells the player when a newer release is out (at each start it asks GitHub for the latest
 release, `host/app/updates.c`; a setting turns it off), with a link to the release's page.
 

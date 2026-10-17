@@ -123,11 +123,11 @@ fr.HdMenus=Menus et interface HD (deux collections nécessaires)
 de.HdMenus=HD-Menüs und HD-HUD (braucht beide Sammlungen)
 it.HdMenus=Menu e HUD HD (servono entrambe le raccolte)
 
-en.HdVideos=HD videos: the movies and the theater's scenes, with subtitles (needs 1.5+2.5, about 6.5 GB)
-es.HdVideos=Vídeos HD: las películas y las escenas del teatro, con subtítulos (necesita 1.5+2.5, unos 6,5 GB)
-fr.HdVideos=Vidéos HD : les films et les scènes du théâtre, sous-titrés (1.5+2.5 nécessaire, environ 6,5 Go)
-de.HdVideos=HD-Videos: die Filme und die Szenen des Theaters, mit Untertiteln (braucht 1.5+2.5, etwa 6,5 GB)
-it.HdVideos=Video HD: i filmati e le scene del teatro, con sottotitoli (serve 1.5+2.5, circa 6,5 GB)
+en.HdVideos=HD videos: movies and scenes with subtitles and music (needs 1.5+2.5, 6.5 GB)
+es.HdVideos=Vídeos HD: películas y escenas con subtítulos y música (necesita 1.5+2.5, 6,5 GB)
+fr.HdVideos=Vidéos HD : films et scènes, sous-titres et musique (1.5+2.5 nécessaire, 6,5 Go)
+de.HdVideos=HD-Videos: Filme und Szenen mit Untertiteln und Musik (braucht 1.5+2.5, 6,5 GB)
+it.HdVideos=Video HD: filmati e scene con sottotitoli e musica (serve 1.5+2.5, 6,5 GB)
 
 en.HdChecking=Checking the collections...
 es.HdChecking=Comprobando las colecciones...

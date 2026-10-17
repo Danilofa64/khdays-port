@@ -171,13 +171,25 @@ def same_folder(a: str, b: str) -> bool:
 
 
 def hd_made(state: dict[str, Any], step: str, folders: dict[str, str], made: Path) -> bool:
-    """Whether an HD step was made from these collection folders and what it made is still there: an
-    update then leaves it as it is."""
+    """Whether an HD step was made from these collection folders by these tools and what it made is
+    still there: an update then leaves it as it is."""
     record = state.get("steps", {}).get(step)
     if not record or record.get("complete") is not True or not made.is_dir() or not any(made.iterdir()):
         return False
+    if record.get("made_by") != made_by(step):
+        return False  # other tools (or a record from before they were kept): made again
     recorded = record.get("inputs", {})
     return set(recorded) == set(folders) and all(same_folder(recorded[k], folders[k]) for k in folders)
+
+
+def made_by(step: str) -> str:
+    """What an HD step's pieces are made by: its tools as installed beside the installer, with their
+    arguments, and for the videos the scene map; an update whose tools differ makes them again."""
+    tools = HD_MENU_TOOLS if step == "hd-menus" else HD_VIDEO_TOOLS
+    parts = [repr(tools).encode()] + [(tool_folders()["hd"] / t).read_bytes() for t, _ in tools]
+    if step == "hd-videos":
+        parts.append((HERE.parent / SCENE_MAP).read_bytes())
+    return hashlib.sha256(b"".join(parts)).hexdigest()
 
 
 # ---- The commands ------------------------------------------------------------------------------
@@ -717,7 +729,8 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
         raise Refusal("hd-needs-both")
     if args.videos and args.c1525 is None:
         raise Refusal("hd-needs-1525")
-    # an update leaves the pieces already made from the same collections (their folder deleted: made again)
+    # an update leaves the pieces already made from the same collections by the same tools (their folder
+    # deleted: made again)
     made_before = load_state(install)
     if args.menus and hd_made(
         made_before, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)}, install / "mods" / HD_MOD
@@ -783,10 +796,12 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
         state = load_state(install)
         if args.menus:
             replace_folder(root / "mods" / HD_MOD, install / "mods" / HD_MOD)
-            mark_step(state, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)})
+            mark_step(
+                state, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)}, made_by=made_by("hd-menus")
+            )
         if args.videos:
             replace_folder(root / "data" / "cutscenes", install / "data" / "cutscenes")
-            mark_step(state, "hd-videos", {"1.5+2.5": str(args.c1525)})
+            mark_step(state, "hd-videos", {"1.5+2.5": str(args.c1525)}, made_by=made_by("hd-videos"))
         save_state(install, state)
     finally:
         remove(work)

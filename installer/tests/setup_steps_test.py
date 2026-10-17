@@ -80,12 +80,20 @@ class State(unittest.TestCase):
             install = Path(d)
             made = install / "mods" / s.HD_MOD
             state = {}
-            s.mark_step(state, "hd-menus", {"1.5+2.5": r"z:\games\KH 1.5", "2.8": r"z:\games\KH 2.8"})
+            inputs = {"1.5+2.5": r"z:\games\KH 1.5", "2.8": r"z:\games\KH 2.8"}
+            s.mark_step(state, "hd-menus", inputs, made_by=s.made_by("hd-menus"))
             folders = {"1.5+2.5": "Z:\\Games\\kh 1.5\\", "2.8": r"Z:\Games\KH 2.8"}  # as Windows compares them
             self.assertFalse(s.hd_made(state, "hd-menus", folders, made))  # nothing there: made again
             made.mkdir(parents=True)
             (made / "layouts").mkdir()
             self.assertTrue(s.hd_made(state, "hd-menus", folders, made))
+            # made by other tools, or by an installer that did not keep them (0.1.2's): made again
+            s.mark_step(state, "hd-menus", inputs, made_by="another installer's tools")
+            self.assertFalse(s.hd_made(state, "hd-menus", folders, made))
+            s.mark_step(state, "hd-menus", inputs)
+            self.assertFalse(s.hd_made(state, "hd-menus", folders, made))
+            self.assertNotEqual(s.made_by("hd-menus"), s.made_by("hd-videos"))
+            s.mark_step(state, "hd-menus", inputs, made_by=s.made_by("hd-menus"))
             self.assertFalse(s.hd_made(state, "hd-menus", {**folders, "2.8": r"Z:\Other"}, made))
             self.assertFalse(s.hd_made(state, "hd-videos", folders, made))
             # the command: everything asked for already made, so no collection is read
