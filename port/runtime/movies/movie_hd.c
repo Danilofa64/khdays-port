@@ -135,6 +135,7 @@ void khdays_movie_hd_reset(void)
 }
 
 static void scene_videos_over(const char *how);
+static int scene_chapter; /* the course is a Theater chapter's (no event: it ends with its videos) */
 static void scene_pause_begin(void);
 
 static void begin_skip(void)
@@ -166,7 +167,13 @@ static void request_skip(void)
             finish("skipped");
         }
         break;
-    case SCENE: scene_pause_begin(); break;
+    case SCENE:
+        if (scene_chapter) {
+            scene_videos_over("stopped by START");
+        } else {
+            scene_pause_begin();
+        }
+        break;
     default: break;
     }
 }
@@ -335,7 +342,7 @@ int khdays_movie_hd_showing(void)
     return state_now() != IDLE;
 }
 
-/* --- The theater's HD scenes (specs/029) ------------------------------------------------------- */
+/* --- The theater's HD scenes, its chapters, the monologues' voice --------------------------------- */
 
 #define SCENE_SKIP_REQUEST 0x588u /* the event machine's skip request (Game_UnwindActionStack) */
 
@@ -343,16 +350,17 @@ void SoundMgr_StopAllSePlayers(void); /* the game's: what the event pause's Skip
 
 static char scene_key[48];
 static uint32_t scene_state; /* the event machine's state (a reference) */
+static char (*scene_stems)[64];
+static int scene_count, scene_next;
+
 /* KHDAYS_TEST_SCENE_START=<ms>: START pressed that long into each scene's course (the scripted
  * input cannot: the game, held, reads none), once a course. */
 static int test_start_ms = -2; /* -2 not read, -1 none */
 static ULONGLONG scene_began_at;
 static int test_start_done;
-static char (*scene_stems)[64];
-static int scene_count, scene_next;
 
 /* A scene video's file: a mod's cutscenes/cinematics/<stem>.mp4 first, then the player's own. */
-static void scene_file(const char *stem, char *file, size_t size)
+void khdays_movie_hd_scene_file(const char *stem, char *file, size_t size)
 {
     char relative[128];
     snprintf(relative, sizeof(relative), "cutscenes/cinematics/%s.mp4", stem);
@@ -363,12 +371,11 @@ static void scene_file(const char *stem, char *file, size_t size)
 
 /* The next of the scene's videos: opened (Media Foundation takes its time: never under the lock), then
  * started with its subtitles (the stem without its "hd", as the movies' are named). */
-
 static int scene_open(int index)
 {
     char file[1024], why[320];
     KhdaysHdInfo info;
-    scene_file(scene_stems[index], file, sizeof(file));
+    khdays_movie_hd_scene_file(scene_stems[index], file, sizeof(file));
     if (!khdays_hd_open(file, &info, why, sizeof(why))) {
         khdays_log("scene %s: %s cannot be played (%s)", scene_key, file, why);
         fprintf(stderr, "scenes: %s: %s cannot be played (%s)\n", scene_key, file, why);
@@ -394,6 +401,10 @@ static void scene_start_opened(void)
  * the window keeps the last picture until the scene's stretch ends. Under the lock. */
 static void scene_videos_over(const char *how)
 {
+    if (scene_chapter) {
+        finish(how); /* a Theater chapter's: back to its list */
+        return;
+    }
     khdays_hd_close();
     InterlockedExchange(&state, SCENE_SKIP);
     khdays_clock_hold(KHDAYS_HOLD_MOVIE, 0);
@@ -401,8 +412,9 @@ static void scene_videos_over(const char *how)
     fprintf(stderr, "scenes: %s: the HD videos %s; the game's skip is asked\n", scene_key, how);
 }
 
-/* START during the videos: they pause, picture and sound, and the game is let go with START given
- * once, to open its own pause over them (khdays_movie_hd_scene_frame watches it). Under the lock. */
+/* START during the videos: they pause, picture and sound, and the game is let go with START (its
+ * buttons, khdays_movie_hd_game_buttons) to open its own pause over them; khdays_movie_hd_scene_frame
+ * watches it. Under the lock. */
 static void scene_pause_begin(void)
 {
     khdays_hd_pause(1);
@@ -457,14 +469,14 @@ uint32_t khdays_movie_hd_scene_state(void)
     return now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE ? scene_state : 0u;
 }
 
-int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *stems, int count)
+static int scene_course(const char *key, uint32_t event_state, char *const *stems, int count, int chapter)
 {
     char file[1024];
     if (count <= 0 || state_now() != IDLE || !(khdays_host_graphics_flags() & KHDAYS_HOST_MOVIES_HD)) {
         return 0;
     }
     for (int i = 0; i < count; ++i) {
-        scene_file(stems[i], file, sizeof(file));
+        khdays_movie_hd_scene_file(stems[i], file, sizeof(file));
         if (GetFileAttributesA(file) == INVALID_FILE_ATTRIBUTES) {
             if (tell_once(key)) {
                 khdays_log("scene %s: no HD video %s; the game's scene plays", key, file);
@@ -475,7 +487,7 @@ int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *st
     }
     AcquireSRWLockExclusive(&lock);
     {
-        char(*grown)[64] = realloc(scene_stems, (size_t)count * sizeof(*scene_stems));
+        char (*grown)[64] = realloc(scene_stems, (size_t)count * sizeof(*scene_stems));
         if (grown == NULL) {
             ReleaseSRWLockExclusive(&lock);
             return 0;
@@ -486,6 +498,7 @@ int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *st
         snprintf(scene_stems[i], sizeof(scene_stems[i]), "%s", stems[i]);
     }
     scene_count = count;
+    scene_chapter = chapter;
     scene_next = 0;
     scene_state = event_state;
     snprintf(scene_key, sizeof(scene_key), "%s", key);
@@ -512,6 +525,16 @@ int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *st
      * picture passed over (seen: 3.8 s of hd002's 4.1 s) */
     khdays_host_wake();
     return 1;
+}
+
+int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *stems, int count)
+{
+    return scene_course(key, event_state, stems, count, 0);
+}
+
+int khdays_movie_hd_chapter(const char *key, char *const *stems, int count)
+{
+    return scene_course(key, 0u, stems, count, 1);
 }
 
 void khdays_movie_hd_scene_step(uint32_t event_state, void *host_state)
@@ -546,7 +569,7 @@ int khdays_movie_hd_voice(const char *key, char *const *stems, int count)
             ok = 0;
             break;
         }
-        scene_file(stems[i], files[i], 1024);
+        khdays_movie_hd_scene_file(stems[i], files[i], 1024);
         if (GetFileAttributesA(files[i]) == INVALID_FILE_ATTRIBUTES) {
             if (tell_once(key)) {
                 khdays_log("scene %s: no HD video %s; the game's page alone", key, files[i]);

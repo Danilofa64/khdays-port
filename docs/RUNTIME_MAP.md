@@ -3303,6 +3303,28 @@ the same save): the list, DOWN, RIGHT (the second page, rows 10-19), A on
 "La captura de Xion" (825: the fade, the HD video with its subtitles), START
 (the video skipped, the list again), B (the title's menu again).
 
+**The theater's chapters (2026-10-17).** THEATER MODE shows on the title only
+when the save's story is complete (`Ov000_HandoffState`: game-state field
+0x44e, 3 bits, equal to 6), and the game then lists all its 28 movies: no
+chapter of the port's needs a lock of its own. A chapter record's u16s at 24
+and 26 name it, `<lang dir>/ctd/ct00100.ctd`'s message (id, group 50): 67 of
+the 109 have one; each of the others (35 with videos) is on the day of the
+named one before it, as its continuation (the opening's has none: the game's
+word for it). `theater_cine.py` writes the named chapters with videos, 53,
+each with its videos and its unnamed followers' in a row (`chapter` lines,
+DOP and DED as hd802 and hd843, CED left out). With Video `hd`, the port's
+list takes the game's: `cine_screen.c` keeps the chapters whose videos are
+there (each one's length from its MP4's `mvhd`), its own cursor (a row with
+UP and DOWN, round at the ends as the game's; a page with LEFT and RIGHT;
+held directions repeat), the game's sound for a move; A plays the chapter's
+videos as a scene's course with no event (`khdays_movie_hd_chapter`, the
+game's list held under them, START or their end back to it); the game gets B
+and START alone (`khdays_cinelist_buttons`), its closing. The buttons it
+reads are those the game's list would have got (`khdays_cinelist_seen`: the
+player's and a script's). Seen (Spanish, the maintainer's full save, one
+screen): the 53 chapters, DOWN to "Sin corazón" (day 9), A (hd007a with its
+subtitles, 565 pictures, none late), the list again on the same chapter.
+
 ### 15.6 The port's own situations (2026-10-14)
 
 `port/ui/situation_decide.c` tells the screen from what the game runs, measured on the

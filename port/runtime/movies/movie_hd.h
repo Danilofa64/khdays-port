@@ -4,6 +4,7 @@
 #ifndef KHDAYS_MOVIE_HD_H
 #define KHDAYS_MOVIE_HD_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -50,7 +51,7 @@ void khdays_movie_hd_poll(void);
  * thread reads none). */
 void khdays_movie_hd_host_buttons(uint16_t buttons);
 
-/* The theater's HD scenes (specs/029). The game's thread, as an event's scene begins its skippable
+/* The theater's HD scenes. The game's thread, as an event's scene begins its skippable
  * stretch (`state` the event machine's, a reference): with Video `hd`, the videos `stems` in a row
  * (data/cutscenes/cinematics/<stem>.mp4, a mod's cutscenes/cinematics/ first) shown in its place, the
  * game held meanwhile. Returns 1 when the course starts, 0 when the scene plays as the game's (no
@@ -77,6 +78,14 @@ int khdays_movie_hd_scene_paused(void);
 
 /* The event machine's state (a reference) of the scene whose videos are shown, 0 when none. */
 uint32_t khdays_movie_hd_scene_state(void);
+
+/* A Theater chapter's videos in a row (host/screens/cine_screen.c), the game's list held under them,
+ * as a scene's are; START or their end back to the list. Returns 1 when they start, 0 when not (no
+ * Video `hd`, a video missing). */
+int khdays_movie_hd_chapter(const char *key, char *const *stems, int count);
+
+/* A scene video's file: a mod's cutscenes/cinematics/<stem>.mp4 first, then the player's own. */
+void khdays_movie_hd_scene_file(const char *stem, char *file, size_t size);
 
 /* The game's thread, as a day's monologue begins (scene 10): with Video `hd`, the sound of the videos
  * `stems` in a row (the theater's voice-only clips; their pictures are black) heard over the game's

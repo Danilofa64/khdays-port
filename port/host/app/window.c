@@ -13,6 +13,7 @@
 #include "../settings/settings_sample.h"
 #include "../settings/settings_ui.h"
 #include "../screens/cine_screen.h"
+#include "../../runtime/menus/cinelist.h"
 #include "../screens/room_screen.h"
 #include "../screens/select_screen.h"
 #include "../screens/camp_screen.h"
@@ -576,6 +577,9 @@ static int host_thread(void *unused)
          * on both screens): it is decided again as the game's VBlanks pass. */
         const int settling = khdays_present_settling();
         keep_subtitles();
+        if (!khdays_settings_is_open()) {
+            khdays_cine_screen_buttons(khdays_cinelist_seen()); /* MODO CINE's chapters, the port's list */
+        }
         if (movie && !khdays_settings_is_open()) {
             khdays_movie_hd_poll();
             khdays_movie_hd_host_buttons(khdays_host_buttons());

@@ -360,7 +360,8 @@ void khdays_input_pad_sample(void)
     latched = khdays_movie_hd_game_buttons((u16)(script_keys | (snapshot.ui_open ? 0 : player_buttons())));
     latched = khdays_newgame_buttons(latched);    /* the port's question in the new game takes them */
     latched = khdays_savelist_buttons(latched);   /* the port's save list takes the files' rows */
-    khdays_cinelist_frame();                      /* MODO CINE's list, for the port to draw (it takes no buttons) */
+    khdays_cinelist_frame();                      /* MODO CINE's list, for the port to draw */
+    latched = khdays_cinelist_buttons(latched);   /* the port's list of chapters takes all but B and START */
     latched = khdays_roomlist_buttons(latched);   /* the port's list of rooms takes the group list's */
     latched = khdays_charselect_buttons(latched); /* the port's character select takes the directions */
     latched = khdays_camp_buttons(latched);       /* the port's Preferences page joins the game's tabs */

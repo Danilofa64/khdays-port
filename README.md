@@ -440,11 +440,15 @@ python tools/hd/theater_cine.py "<collection>/Image/Mare.hed_out/original"
 ```
 
 They go to `mods/Theater title/layouts/cine/` (`<lang>/` and `art/`). With
-them THEATER MODE's list is drawn as the theater draws its chapters: the
-game's 28 scenes, ten to a page as in the game, each with its name and length,
-its day when it is a day's first, and behind the list the artwork of the
-selected scene's chapter. The game's own list runs underneath (its keys,
-pages and movies).
+them THEATER MODE's list is drawn as the theater draws its chapters. With
+the Movies setting on HD and the theater's videos made (*HD scenes* above)
+the list is the theater's own: its 53 chapters with videos, each with its
+name, its length and its day when it is a day's first, the artwork of the
+selected one behind; UP and DOWN move a row, LEFT and RIGHT a page, A plays
+the chapter's videos in a row with their subtitles (START stops them), B
+leaves as the game's list does. Otherwise the list is the game's 28 movies,
+ten to a page, its own list running underneath (its keys, pages and
+movies).
 
 **Mission Mode's rooms and character select on one screen.**
 `tools/hd/theater_mission.py` makes, from the same copy, the faces of the
