@@ -442,6 +442,49 @@ void khdays_movie_hd_scene_step(uint32_t event_state, void *host_state)
     ReleaseSRWLockExclusive(&lock);
 }
 
+int khdays_movie_hd_voice(const char *key, char *const *stems, int count)
+{
+    char **files;
+    int ok = 1;
+    if (count <= 0 || !(khdays_host_graphics_flags() & KHDAYS_HOST_MOVIES_HD)) {
+        return 0;
+    }
+    files = (char **)calloc((size_t)count, sizeof(*files));
+    if (files == NULL) {
+        return 0;
+    }
+    for (int i = 0; i < count && ok; ++i) {
+        files[i] = (char *)malloc(1024);
+        if (files[i] == NULL) {
+            ok = 0;
+            break;
+        }
+        scene_file(stems[i], files[i], 1024);
+        if (GetFileAttributesA(files[i]) == INVALID_FILE_ATTRIBUTES) {
+            if (tell_once(key)) {
+                khdays_log("scene %s: no HD video %s; the game's page alone", key, files[i]);
+                fprintf(stderr, "scenes: %s: no HD video %s; the game's page alone\n", key, files[i]);
+            }
+            ok = 0;
+        }
+    }
+    if (ok) {
+        khdays_hd_voice_play((const char *const *)files, count);
+        khdays_log("scene %s: the voice of %s heard over the game's page", key, files[0]);
+        fprintf(stderr, "scenes: %s: the voice of %s heard over the game's page\n", key, files[0]);
+    }
+    for (int i = 0; i < count; ++i) {
+        free(files[i]);
+    }
+    free(files);
+    return ok;
+}
+
+void khdays_movie_hd_voice_stop(void)
+{
+    khdays_hd_voice_stop();
+}
+
 void khdays_movie_hd_scene_ended(void)
 {
     LONG now = state_now();

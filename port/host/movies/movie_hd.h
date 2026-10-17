@@ -54,6 +54,20 @@ typedef struct KhdaysHdPicture {
 int khdays_hd_picture_begin(KhdaysHdPicture *picture);
 void khdays_hd_picture_done(void);
 
+/* A voice heard over the game, apart from the video: the sound alone of the files `paths` (UTF-8),
+ * one after another, decoded on a thread of its own into an audio stream of its own; their pictures
+ * are never read. A voice still heard is stopped first. */
+void khdays_hd_voice_play(const char *const *paths, int count);
+
+/* Stops the voice at once; does nothing if none is heard. */
+void khdays_hd_voice_stop(void);
+
+/* Pauses or resumes the voice (the settings menu pauses it). */
+void khdays_hd_voice_pause(int pause);
+
+/* Sets the voice's volume (0-1): the master volume times the voices' volume. */
+void khdays_hd_voice_set_gain(float gain);
+
 #ifdef __cplusplus
 }
 #endif

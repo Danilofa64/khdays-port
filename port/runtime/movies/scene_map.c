@@ -1,6 +1,7 @@
 /* The scene map's text (scene_map.h): a line per scene,
  *   <script> <stem> [<stem> ...] ; <evidence>      or      <script> off ; <evidence>
- * '#' comments, blank lines skipped. A script is EV_<world>#<index> or mi/<mission>/<script>:<section>;
+ * '#' comments, blank lines skipped. A script is EV_<world>#<index>, mi/<mission>/<script>:<section>
+ * or mnl#<record> (a day's monologue, ui/mnl's record);
  * a stem is a video's file name without .mp4. */
 #include "scene_map.h"
 
@@ -29,12 +30,27 @@ static void entry_free(KhdaysSceneEntry *e)
     memset(e, 0, sizeof(*e));
 }
 
-/* EV_<world>#<index> or mi/<mission>/<script>:<section>, letters, digits and _ in the names */
+/* Digits only, at least one. */
+static int digits(const char *p)
+{
+    if (*p == '\0') {
+        return 0;
+    }
+    for (; *p != '\0'; ++p) {
+        if (!isdigit((unsigned char)*p)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* EV_<world>#<index>, mi/<mission>/<script>:<section> (letters, digits and _ in the names) or
+ * mnl#<record> */
 static int key_valid(const char *k)
 {
     if (strncmp(k, "EV_", 3) == 0) {
         const char *hash = strchr(k, '#');
-        if (hash == NULL || hash == k + 3 || hash[1] == '\0') {
+        if (hash == NULL || hash == k + 3) {
             return 0;
         }
         for (const char *p = k + 3; p < hash; ++p) {
@@ -42,12 +58,10 @@ static int key_valid(const char *k)
                 return 0;
             }
         }
-        for (const char *p = hash + 1; *p != '\0'; ++p) {
-            if (!isdigit((unsigned char)*p)) {
-                return 0;
-            }
-        }
-        return 1;
+        return digits(hash + 1);
+    }
+    if (strncmp(k, "mnl#", 4) == 0) {
+        return digits(k + 4);
     }
     if (strncmp(k, "mi/", 3) == 0) {
         const char *slash = strchr(k + 3, '/');
@@ -155,7 +169,7 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
     if (count == 0) {
         result = 0;
     } else if (!key_valid(words[0])) {
-        *why = "not a scene's script (EV_<world>#<index> or mi/<mission>/<script>:<section>)";
+        *why = "not a scene's script (EV_<world>#<index>, mi/<mission>/<script>:<section> or mnl#<record>)";
         result = -1;
     } else if (count == 1) {
         *why = "no video and no `off`";

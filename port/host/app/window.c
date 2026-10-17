@@ -389,6 +389,7 @@ static void stop_game_for_menu(void)
         khdays_clock_hold(KHDAYS_HOLD_SETTINGS, 1);
         khdays_sound_output_pause(1);
         khdays_hd_pause(1); /* an HD video playing for a movie pauses too */
+        khdays_hd_voice_pause(1); /* and a monologue's voice */
     }
 }
 
@@ -442,6 +443,7 @@ static void close_settings(void)
         khdays_clock_hold(KHDAYS_HOLD_SETTINGS, 0);
         khdays_sound_output_pause(0);
         khdays_hd_pause(0);
+        khdays_hd_voice_pause(0);
         settings_stopped = 0;
     }
 }
@@ -617,6 +619,7 @@ static int host_thread(void *unused)
                 }
             }
             khdays_sound_output_close();
+            khdays_hd_voice_stop(); /* a monologue's voice still heard */
             khdays_ui_font_forget();
             khdays_settings_renderer_gone();
             khdays_save_screen_renderer_gone();

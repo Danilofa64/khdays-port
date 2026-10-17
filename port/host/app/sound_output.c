@@ -107,6 +107,8 @@ void khdays_sound_output_set(const KhdaysSound *settings)
                                     settings->movies);
     /* an HD video's volume is the master volume times the movies' volume */
     khdays_hd_set_gain((float)settings->volume / 100.0f * (float)settings->movies / 100.0f);
+    /* a monologue's voice (the theater's) is a voice: the master volume times the voices' */
+    khdays_hd_voice_set_gain((float)settings->volume / 100.0f * (float)settings->voices / 100.0f);
 }
 
 void khdays_sound_output_mute(int mute)

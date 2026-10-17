@@ -66,6 +66,15 @@ void khdays_movie_hd_scene_step(uint32_t state, void *host_state);
  * the course ends and the game is shown again. */
 void khdays_movie_hd_scene_ended(void);
 
+/* The game's thread, as a day's monologue begins (scene 10): with Video `hd`, the sound of the videos
+ * `stems` in a row (the theater's voice-only clips; their pictures are black) heard over the game's
+ * own page, the game going on as on the DS. Returns 1 when the voice starts, 0 when there is none (no
+ * Video `hd`, a video missing: said in the log once). */
+int khdays_movie_hd_voice(const char *key, char *const *stems, int count);
+
+/* The game's thread: the monologue has ended; its voice stops if it still speaks. */
+void khdays_movie_hd_voice_stop(void);
+
 #ifdef __cplusplus
 }
 #endif

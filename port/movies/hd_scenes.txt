@@ -4,9 +4,22 @@
 # own skip ending it. A mod's cutscenes/scenes.txt adds entries or replaces these by their script.
 #
 # <script> <video stem> [<video stem> ...] ; <evidence>
-#   <script>  an event archive's entry, EV_<world>#<index> (ev/EV_S.p2's entry 4: EV_S#4), or a
-#             mission's script section, mi/<mission>/<script>:<section>
+#   <script>  an event archive's entry, EV_<world>#<index> (ev/EV_S.p2's entry 4: EV_S#4), a
+#             mission's script section, mi/<mission>/<script>:<section>, or a day's monologue,
+#             mnl#<record> (ui/mnl's text record, picked by the story's day)
 #   off       in place of the stems: the game's own scene (a mod may switch an entry off)
+
+# Roxas's monologues (scene 10, before the calendar): the theater's clips are his voice over black,
+# so their sound alone is heard over the game's own page (his picture and the DS's text), the game
+# going on as on the DS. The clips tell the texts in their own words; each is paired by its subject.
+# Record 2 (his first day of work) has no clip.
+mnl#0 hd000 ; words: the day it all started, the seventh, when he met her
+mnl#1 hd003 ; words: seven days with only the name and the number, the people around him unknown
+mnl#3 hd007a ; words: the Organization collects hearts; he does not know what a heart is
+mnl#4 hd007b ; words: Nobodies, born without hearts
+mnl#5 hd007c ; words: the Keyblade releases hearts; why him
+mnl#6 hd007d ; words: the castle and the town; the paths of darkness between worlds
+mnl#7 hd007e ; words: good and bad in the Organization, all for Kingdom Hearts; fighting to be whole
 
 # Day 7: the castle at night (Roxas in his room, EV_S#0, has no theater scene: the theater's hd003,
 # his words over black, is the day's monologue, ui/mnl, not this scene)

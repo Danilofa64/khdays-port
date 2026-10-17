@@ -624,6 +624,23 @@ HOOKS = {
             "    return 1;\n}\n",
         )
     ],
+    # The day's monologue (ov007, scene 10) begins with its record picked by the story's day, and
+    # ends asking for the calendar: the theater's voice for it may be heard over its page
+    # (runtime/movies/scene_trace.c).
+    "ov007@0204cb80": [
+        (  # Ov007_SceneInit
+            "    heap[0x1d] = (int)Ov007_GetVarRecordByIndex(heap + 2, idx);\n",
+            "    heap[0x1d] = (int)Ov007_GetVarRecordByIndex(heap + 2, idx);\n"
+            "    { extern void khdays_scene_monologue(int record); khdays_scene_monologue(idx); }\n",
+        )
+    ],
+    "ov007@0204d31c": [
+        (  # Ov007_RequestSceneChange
+            "    Scene_RequestPending(SCENE_CALENDAR, r1);\n",
+            "    Scene_RequestPending(SCENE_CALENDAR, r1);\n"
+            "    { extern void khdays_scene_monologue_ends(void); khdays_scene_monologue_ends(); }\n",
+        )
+    ],
     # A scene has ended and the next is not built yet: a language the
     # settings menu asked for is set there, so that every scene is built whole
     # in one language (runtime/core/language.c).

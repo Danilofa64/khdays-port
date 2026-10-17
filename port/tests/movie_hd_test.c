@@ -1,6 +1,7 @@
 /* How an HD movie runs (runtime/movies/movie_hd.c), against a scripted game and video: the ids, the
  * lookup, every transition, the buttons the game is given and the clock's pause reasons (with the real
- * runtime/core/clock.c). It runs in a folder of its own, which it creates and leaves behind. */
+ * runtime/core/clock.c); an event scene's videos and a monologue's voice (specs/029). It runs in a
+ * folder of its own, which it creates and leaves behind. */
 #include "../host/movies/movie_hd.h"
 #include "../host/app/host.h"
 #include "../host/app/sound_output.h"
@@ -93,6 +94,19 @@ int khdays_hd_status(char *why, size_t size)
 void khdays_sound_output_mute(int mute)
 {
     muted = mute;
+}
+/* a monologue's voice: the files asked for, and the stops */
+static char voice_path[260];
+static int voices, voice_files, voice_stops;
+void khdays_hd_voice_play(const char *const *paths, int count)
+{
+    snprintf(voice_path, sizeof(voice_path), "%s", count > 0 ? paths[0] : "");
+    voice_files = count;
+    ++voices;
+}
+void khdays_hd_voice_stop(void)
+{
+    ++voice_stops;
 }
 /* the subtitles asked for when a video starts: its movie, in the game's language */
 static char subtitles_movie[16];
@@ -327,6 +341,55 @@ int main(void)
     khdays_movie_hd_poll();
     CHECK(!khdays_movie_hd_showing() && !muted && !held());
     khdays_movie_hd_game_buttons(0);
+
+    /* an event scene of two videos (specs/029): the game held while they play, then let go to take
+     * its own skip at its event's next step, shown until the scene ends */
+    {
+        static uint8_t event[0x600]; /* the event machine's state: its skip request at +0x588 */
+        char *const stems[] = {"hd010", "hd011"};
+        const int opened_before = opens, stopped_before = sound_effects_stopped;
+        touch("data/cutscenes/cinematics/hd010.mp4");
+        touch("data/cutscenes/cinematics/hd011.mp4");
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 2) == 1);
+        CHECK(khdays_movie_hd_showing() && held() && muted && opens == opened_before + 1);
+        CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd010.mp4") == 0 && strcmp(subtitles_movie, "010") == 0);
+        CHECK(khdays_movie_hd_game_buttons(A) == 0);
+        status_now = 1;
+        khdays_movie_hd_poll(); /* the first ended: the second */
+        CHECK(opens == opened_before + 2 && strcmp(subtitles_movie, "011") == 0 && held());
+        status_now = 1;
+        khdays_movie_hd_poll(); /* the last ended: let go */
+        CHECK(khdays_movie_hd_showing() && !held() && muted);
+        CHECK(khdays_movie_hd_game_buttons(START) == 0); /* a scene's own skip: no button given */
+        khdays_movie_hd_scene_step(0x9999u, event);      /* another event's step */
+        CHECK(*(uint32_t *)(event + 0x588) == 0);
+        khdays_movie_hd_scene_step(0x1234u, event);
+        CHECK(*(uint32_t *)(event + 0x588) == 1 && sound_effects_stopped == stopped_before + 1);
+        khdays_movie_hd_scene_ended();
+        CHECK(!khdays_movie_hd_showing() && !muted && !held());
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(0);
+    }
+
+    /* a day's monologue (scene 10): its clip's voice over the game's page, the game going on */
+    {
+        char *const stems[] = {"hd000"}, *const missing[] = {"hd001"};
+        touch("data/cutscenes/cinematics/hd000.mp4");
+        CHECK(khdays_movie_hd_voice("mnl#0", stems, 1) == 1);
+        CHECK(voices == 1 && voice_files == 1 && strcmp(voice_path, "data/cutscenes/cinematics/hd000.mp4") == 0);
+        CHECK(!khdays_movie_hd_showing() && !held() && !muted);
+        CHECK(khdays_movie_hd_game_buttons(START) == START); /* the game's own page takes its buttons */
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_voice_stop();
+        CHECK(voice_stops == 1);
+        CHECK(khdays_movie_hd_voice("mnl#9", missing, 1) == 0 && voices == 1); /* no file: the page alone */
+        graphics_flags = 0;
+        CHECK(khdays_movie_hd_voice("mnl#0", stems, 1) == 0 && voices == 1); /* movies = pc or ds */
+        graphics_flags = KHDAYS_HOST_MOVIES_HD;
+    }
+    DeleteFileA("data/cutscenes/cinematics/hd000.mp4");
+    DeleteFileA("data/cutscenes/cinematics/hd010.mp4");
+    DeleteFileA("data/cutscenes/cinematics/hd011.mp4");
 
     /* failing to open: the game's movie, said once */
     open_ok = 0;

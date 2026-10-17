@@ -4394,3 +4394,14 @@ the story walk and `KHDAYS_TEST_DAY`).
   end of mission 0001, `mi/0001/99:_e`). Written over in memory (`KHDAYS_TEST_SCENE=4:6` on day 8's
   `4:3`), the event played EV_S#6 whole in its own place, the clock tower of Twilight Town: a scene
   loads its stage and characters itself (its data names them, `/mi/wd/wd_tt`, `mi/ch/07.z`).
+- **The day's monologue.** Scene 10 (ov007) is Roxas's words over black before the calendar, no
+  script: `Ov007_SceneInit` picks a record of `ui/mnl/mnl_&.s` (a count at +4, then eight texts,
+  each a length word and UTF-16) from the story's day, the game state's field 0: days 7 to 13 give
+  records 1 to 7, any other day record 0 (the prologue's, after the clock tower: day 255). A
+  (`gPadPressed & 1`) shows the next lines; START (`& 8`) goes to the fade-out from any of its
+  steps; `Ov007_RequestSceneChange` then asks for the calendar. The theater's voice-only clips tell
+  the same texts in their own words: hd000 record 0, hd003 record 1, hd007a to hd007e records 3 to
+  7; record 2 (day 8, his first day of work) has none. Their pictures are black and their sound is
+  the voice alone (digital silence between the lines, no music), so the port plays only their sound
+  over the game's page (`mnl#<record>` in the scene map), from `Ov007_SceneInit` to
+  `Ov007_RequestSceneChange`, at the voices' volume.

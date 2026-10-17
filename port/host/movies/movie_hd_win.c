@@ -1,7 +1,8 @@
 /* The player's HD video through Media Foundation (movie_hd.h): a thread of its own, two Source Readers
  * reading ahead at their own pace (the picture as NV12, the sound as floats into its SDL stream); the
  * clock is the sound played so far, else the performance counter less the pauses; each refresh takes
- * the newest picture due (docs/PLATFORM.md, "The PC's side"). */
+ * the newest picture due (docs/PLATFORM.md, "The PC's side"). Apart from it, a voice: files' sound
+ * alone over the game, on a thread and a stream of their own. */
 #define COBJMACROS
 #include "movie_hd.h"
 
@@ -204,38 +205,48 @@ static int open_video(void)
     return read_video_type();
 }
 
-/* Opens the sound, if the file has one the system can decode: its own reader
- * and audio stream (paused until the video starts). Returns 0 if there is no
- * sound to play; the video then plays silent. */
-static int open_audio(void)
+/* Has `reader` read the file's first sound alone, as floats; its channels and rate. Fails, or leaves
+ * them 0, when the file has no sound the system can decode. */
+static HRESULT read_sound_as_floats(IMFSourceReader *reader, UINT32 *channels, UINT32 *rate)
 {
     IMFMediaType *type = NULL;
-    UINT32 channels = 0, rate = 0;
     HRESULT hr;
-    hd.audio = make_reader("the file cannot be opened for its sound");
-    if (hd.audio == NULL) {
-        return 0;
-    }
-    IMFSourceReader_SetStreamSelection(hd.audio, (DWORD)MF_SOURCE_READER_ALL_STREAMS, FALSE);
-    hr = IMFSourceReader_SetStreamSelection(hd.audio, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, TRUE);
+    *channels = *rate = 0;
+    IMFSourceReader_SetStreamSelection(reader, (DWORD)MF_SOURCE_READER_ALL_STREAMS, FALSE);
+    hr = IMFSourceReader_SetStreamSelection(reader, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, TRUE);
     if (SUCCEEDED(hr)) {
         hr = MFCreateMediaType(&type);
     }
     if (SUCCEEDED(hr)) {
         IMFMediaType_SetGUID(type, &MF_MT_MAJOR_TYPE, &MFMediaType_Audio);
         IMFMediaType_SetGUID(type, &MF_MT_SUBTYPE, &MFAudioFormat_Float);
-        hr = IMFSourceReader_SetCurrentMediaType(hd.audio, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, NULL, type);
+        hr = IMFSourceReader_SetCurrentMediaType(reader, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, NULL, type);
         IMFMediaType_Release(type);
         type = NULL;
     }
     if (SUCCEEDED(hr)) {
-        hr = IMFSourceReader_GetCurrentMediaType(hd.audio, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, &type);
+        hr = IMFSourceReader_GetCurrentMediaType(reader, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, &type);
     }
     if (SUCCEEDED(hr)) {
-        IMFMediaType_GetUINT32(type, &MF_MT_AUDIO_NUM_CHANNELS, &channels);
-        IMFMediaType_GetUINT32(type, &MF_MT_AUDIO_SAMPLES_PER_SECOND, &rate);
+        IMFMediaType_GetUINT32(type, &MF_MT_AUDIO_NUM_CHANNELS, channels);
+        IMFMediaType_GetUINT32(type, &MF_MT_AUDIO_SAMPLES_PER_SECOND, rate);
         IMFMediaType_Release(type);
     }
+    return hr;
+}
+
+/* Opens the sound, if the file has one the system can decode: its own reader
+ * and audio stream (paused until the video starts). Returns 0 if there is no
+ * sound to play; the video then plays silent. */
+static int open_audio(void)
+{
+    UINT32 channels = 0, rate = 0;
+    HRESULT hr;
+    hd.audio = make_reader("the file cannot be opened for its sound");
+    if (hd.audio == NULL) {
+        return 0;
+    }
+    hr = read_sound_as_floats(hd.audio, &channels, &rate);
     if (FAILED(hr) || channels == 0 || rate == 0) {
         IMFSourceReader_Release(hd.audio);
         hd.audio = NULL;
@@ -834,4 +845,187 @@ int khdays_hd_picture_begin(KhdaysHdPicture *picture)
 void khdays_hd_picture_done(void)
 {
     ReleaseSRWLockExclusive(&lock);
+}
+
+/* --- A voice over the game (khdays_hd_voice_play) ---------------------------------------------- */
+
+static SRWLOCK voice_lock = SRWLOCK_INIT; /* guards the voice's stream against the pause and the volume */
+static float voice_gain = 1.0f;           /* khdays_hd_voice_set_gain */
+static volatile LONG voice_paused;        /* khdays_hd_voice_pause */
+
+static struct {
+    HANDLE thread;
+    volatile LONG stop;
+    WCHAR **files; /* full paths */
+    int count;
+    SDL_AudioStream *sound; /* opened by the thread for the first file; destroyed once it has ended */
+} voice;
+
+/* The voice's stream, opened for `spec` the first time, else told the next file's format (what is
+ * queued plays on in its own). NULL if the system gives no sound. */
+static SDL_AudioStream *voice_stream(const SDL_AudioSpec *spec)
+{
+    SDL_AudioStream *stream;
+    AcquireSRWLockExclusive(&voice_lock);
+    if (voice.sound == NULL) {
+        voice.sound = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, spec, NULL, NULL);
+        if (voice.sound == NULL) {
+            fprintf(stderr, "movies: no sound for the voice: %s\n", SDL_GetError());
+        } else {
+            SDL_SetAudioStreamGain(voice.sound, voice_gain);
+            if (!voice_paused) {
+                SDL_ResumeAudioStreamDevice(voice.sound);
+            }
+        }
+    } else {
+        SDL_SetAudioStreamFormat(voice.sound, spec, NULL);
+    }
+    stream = voice.sound;
+    ReleaseSRWLockExclusive(&voice_lock);
+    return stream;
+}
+
+/* One file's sound into the voice's stream, a little ahead of the device, to its end or a stop. */
+static void voice_file(const WCHAR *file)
+{
+    IMFSourceReader *reader = NULL;
+    SDL_AudioStream *stream = NULL;
+    UINT32 channels = 0, rate = 0;
+    double put = 0.0; /* seconds of sound put into the stream */
+    HRESULT hr = MFCreateSourceReaderFromURL(file, NULL, &reader);
+    if (SUCCEEDED(hr)) {
+        hr = read_sound_as_floats(reader, &channels, &rate);
+    }
+    if (FAILED(hr) || channels == 0 || rate == 0) {
+        fprintf(stderr, "movies: no voice in %ls (0x%08lx)\n", file, (unsigned long)hr);
+    } else {
+        const SDL_AudioSpec spec = {SDL_AUDIO_F32, (int)channels, (int)rate};
+        stream = voice_stream(&spec);
+    }
+    while (stream != NULL && !voice.stop) {
+        DWORD index = 0, flags = 0;
+        LONGLONG time = 0;
+        IMFSample *sample = NULL;
+        const double queued = (double)SDL_GetAudioStreamQueued(stream) / (double)(channels * sizeof(float)) / rate;
+        if (voice_paused || queued >= SOUND_AHEAD) {
+            Sleep(10);
+            continue;
+        }
+        hr = IMFSourceReader_ReadSample(reader, (DWORD)MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, &index, &flags, &time,
+                                        &sample);
+        if (FAILED(hr) || (flags & MF_SOURCE_READERF_ERROR)) {
+            fprintf(stderr, "movies: the voice in %ls cannot be decoded (0x%08lx); it ends there\n", file,
+                    (unsigned long)hr);
+            break;
+        }
+        if (sample != NULL) {
+            IMFMediaBuffer *buffer = NULL;
+            BYTE *data = NULL;
+            DWORD length = 0;
+            if (SUCCEEDED(IMFSample_ConvertToContiguousBuffer(sample, &buffer))) {
+                if (SUCCEEDED(IMFMediaBuffer_Lock(buffer, &data, NULL, &length))) {
+                    SDL_PutAudioStreamData(stream, data, (int)length);
+                    put += (double)length / (double)(channels * sizeof(float)) / rate;
+                    IMFMediaBuffer_Unlock(buffer);
+                }
+                IMFMediaBuffer_Release(buffer);
+            }
+            IMFSample_Release(sample);
+        }
+        if (flags & MF_SOURCE_READERF_ENDOFSTREAM) {
+            break;
+        }
+    }
+    if (stream != NULL) {
+        SDL_FlushAudioStream(stream); /* what the resampler holds back plays too */
+        fprintf(stderr, "movies: the voice of %ls: %.1f s of its sound %s\n", file, put,
+                voice.stop ? "before it was stopped" : "to its end");
+    }
+    if (reader != NULL) {
+        IMFSourceReader_Release(reader);
+    }
+}
+
+/* The voice's thread: the files' sound one after another; the stream plays on what is queued. */
+static DWORD WINAPI voice_run(LPVOID unused)
+{
+    const HRESULT com = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    (void)unused;
+    if (SUCCEEDED(MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET))) {
+        for (int i = 0; i < voice.count && !voice.stop; ++i) {
+            voice_file(voice.files[i]);
+        }
+        MFShutdown();
+    }
+    if (SUCCEEDED(com)) {
+        CoUninitialize();
+    }
+    return 0;
+}
+
+void khdays_hd_voice_stop(void)
+{
+    if (voice.thread == NULL) {
+        return;
+    }
+    InterlockedExchange(&voice.stop, 1);
+    WaitForSingleObject(voice.thread, INFINITE);
+    CloseHandle(voice.thread);
+    AcquireSRWLockExclusive(&voice_lock);
+    if (voice.sound != NULL) {
+        SDL_DestroyAudioStream(voice.sound); /* the voice stops at once */
+    }
+    for (int i = 0; i < voice.count; ++i) {
+        free(voice.files[i]);
+    }
+    free(voice.files);
+    memset(&voice, 0, sizeof(voice));
+    ReleaseSRWLockExclusive(&voice_lock);
+}
+
+void khdays_hd_voice_play(const char *const *paths, int count)
+{
+    khdays_hd_voice_stop();
+    voice.files = count > 0 ? (WCHAR **)calloc((size_t)count, sizeof(*voice.files)) : NULL;
+    if (voice.files == NULL) {
+        return;
+    }
+    for (int i = 0; i < count; ++i) {
+        WCHAR *file = full_path(paths[i]);
+        if (file != NULL) {
+            voice.files[voice.count++] = file;
+        }
+    }
+    voice.thread = CreateThread(NULL, 0, voice_run, NULL, 0, NULL);
+    if (voice.thread == NULL) {
+        for (int i = 0; i < voice.count; ++i) {
+            free(voice.files[i]);
+        }
+        free(voice.files);
+        memset(&voice, 0, sizeof(voice));
+    }
+}
+
+void khdays_hd_voice_pause(int pause)
+{
+    AcquireSRWLockExclusive(&voice_lock);
+    InterlockedExchange(&voice_paused, pause != 0);
+    if (voice.sound != NULL) {
+        if (pause) {
+            SDL_PauseAudioStreamDevice(voice.sound);
+        } else {
+            SDL_ResumeAudioStreamDevice(voice.sound);
+        }
+    }
+    ReleaseSRWLockExclusive(&voice_lock);
+}
+
+void khdays_hd_voice_set_gain(float g)
+{
+    AcquireSRWLockExclusive(&voice_lock);
+    voice_gain = g;
+    if (voice.sound != NULL) {
+        SDL_SetAudioStreamGain(voice.sound, g);
+    }
+    ReleaseSRWLockExclusive(&voice_lock);
 }

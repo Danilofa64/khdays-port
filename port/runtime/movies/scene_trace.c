@@ -198,6 +198,7 @@ void khdays_scene_step(void *st)
  * operand the target's offset from the entry's script start, -1 clearing it. */
 /* The scene running now (its key), "" when none: set when a stretch begins, cleared when it ends. */
 static char current[48];
+static int monologue; /* current is a day's monologue (no event of its own) */
 
 const char *khdays_scene_current(void)
 {
@@ -247,6 +248,36 @@ void khdays_scene_target(unsigned int state, int operand)
                     khdays_events_vblank_count());
         }
     }
+}
+
+/* Ov007_SceneInit (prepare.py HOOKS): the day's monologue begins, its record `record` of ui/mnl's
+ * texts (picked by the story's day: 0 the prologue, 1-7 days 7-13). Its key is mnl#<record>. */
+void khdays_scene_monologue(int record)
+{
+    char key[32];
+    const KhdaysSceneEntry *e;
+    snprintf(key, sizeof(key), "mnl#%d", record);
+    snprintf(current, sizeof(current), "%s", key);
+    monologue = 1;
+    e = khdays_scene_map_find(khdays_scenes_map(), key);
+    if (tracing_scenes()) {
+        fprintf(stderr, "scene: f%u start %s: %s\n", khdays_events_vblank_count(), key,
+                e == NULL ? "ds (not in the map)" : e->off ? "ds (off)" : "the theater's voice over the ds");
+    }
+    if (e != NULL && !e->off) {
+        khdays_movie_hd_voice(key, e->stems, e->stem_count); /* the clips are black: their sound alone */
+    }
+}
+
+/* Ov007_RequestSceneChange (prepare.py HOOKS): the monologue ends, asking for the calendar. */
+void khdays_scene_monologue_ends(void)
+{
+    if (tracing_scenes() && current[0] != '\0') {
+        fprintf(stderr, "scene: f%u end %s\n", khdays_events_vblank_count(), current);
+    }
+    current[0] = '\0';
+    monologue = 0;
+    khdays_movie_hd_voice_stop();
 }
 
 /* With KHDAYS_TEST_SCENE, the port leaves 30 frames after the scene asked for ends (the shared
@@ -308,7 +339,7 @@ void khdays_scene_trace_frame(uint32_t frame)
 {
     test_scene_frame(frame);
     state_at_close(frame);
-    if (current[0] != '\0' && !view_now().running) {
+    if (current[0] != '\0' && !monologue && !view_now().running) {
         current[0] = '\0'; /* the event closed without clearing its target */
         khdays_movie_hd_scene_ended();
     }

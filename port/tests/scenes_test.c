@@ -1,4 +1,4 @@
-/* The scene map's text (runtime/movies/scene_map.c): entries of both key forms, comments, `off`,
+/* The scene map's text (runtime/movies/scene_map.c): entries of the three key forms, comments, `off`,
  * malformed lines among good ones, an entry replacing one of the same key, lookups. */
 #include "../runtime/movies/scene_map.h"
 
@@ -47,15 +47,17 @@ int main(void)
                        "EV_S#6 hd/006\n"         /* 11: not a file's name */
                        "EV_S#7 hd007 off\n"      /* 12: off among videos */
                        "mi/0105:_e hd010\n"      /* 13: no script name */
+                       "mnl#1 hd003 ; a monologue\n"
+                       "mnl#a hd003\n"           /* 15: not a record */
                        "EV_TT#61 hd007c";        /* the last line without its end */
     const char *mod = "EV_S#0 off ; the mod keeps the DS's room\n"
                       "EV_S#4 hd004 hd004b\n";
 
-    CHECK(khdays_scene_map_read(&map, port, length(port), "port", report) == 6);
-    CHECK(map.count == 6);
-    CHECK(report_count == 6);
-    CHECK(report_count >= 6 && reported[0] == 8 && reported[1] == 9 && reported[2] == 10 && reported[3] == 11 &&
-          reported[4] == 12 && reported[5] == 13);
+    CHECK(khdays_scene_map_read(&map, port, length(port), "port", report) == 7);
+    CHECK(map.count == 7);
+    CHECK(report_count == 7);
+    CHECK(report_count >= 7 && reported[0] == 8 && reported[1] == 9 && reported[2] == 10 && reported[3] == 11 &&
+          reported[4] == 12 && reported[5] == 13 && reported[6] == 15);
 
     e = khdays_scene_map_find(&map, "EV_S#196");
     CHECK(e != NULL && !e->off && e->stem_count == 1 && strcmp(e->stems[0], "hd002") == 0 &&
@@ -71,6 +73,9 @@ int main(void)
     CHECK(e != NULL && e->off && e->stem_count == 0 && strcmp(e->evidence, "no theater scene") == 0);
     e = khdays_scene_map_find(&map, "EV_TT#61");
     CHECK(e != NULL && e->stem_count == 1 && strcmp(e->stems[0], "hd007c") == 0);
+    e = khdays_scene_map_find(&map, "mnl#1");
+    CHECK(e != NULL && e->stem_count == 1 && strcmp(e->stems[0], "hd003") == 0 &&
+          strcmp(e->evidence, "a monologue") == 0);
     CHECK(khdays_scene_map_find(&map, "EV_S#4") == NULL);
     CHECK(khdays_scene_map_find(&map, "EV_S#7") == NULL);
 
@@ -78,7 +83,7 @@ int main(void)
     report_count = 0;
     CHECK(khdays_scene_map_read(&map, mod, length(mod), "mod", report) == 2);
     CHECK(report_count == 0);
-    CHECK(map.count == 7);
+    CHECK(map.count == 8);
     e = khdays_scene_map_find(&map, "EV_S#0");
     CHECK(e != NULL && e->off && e->stem_count == 0);
     e = khdays_scene_map_find(&map, "EV_S#4");

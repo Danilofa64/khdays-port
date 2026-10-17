@@ -371,6 +371,9 @@ HD_MENU_TOOLS = [
 HD_VIDEO_TOOLS = [
     ("theater_movies.py", ["{mare}", "--movies", "{movies}", "--videos", "--subtitles"]),
 ]
+# theater_movies.py's scene map (which of the theater's scene videos the port plays), beside the tools
+# in the repository's layout, so the videos it names are made too
+SCENE_MAP = "port/movies/hd_scenes.txt"
 HD_MOD = "HD PACK"
 HAND = "menu/fm/title.2ld"  # kh2_first's entry whose remastered sheet newgame_dialog takes the glove from
 HAND_ASSET = "UK_title_2ld0.png"
@@ -394,6 +397,12 @@ runpy.run_path(tool, run_name="__main__")
 
 def tool_arguments(template: list[str], places: dict[str, Path]) -> list[str]:
     return [str(places[a[1:-1]]) if a.startswith("{") and a.endswith("}") else a for a in template]
+
+
+def tools_digest(repository: Path) -> str:
+    """What the trace depends on: the HD tools and the scene map, as they are in `repository`."""
+    parts = [(repository / "tools" / "hd" / t).read_bytes() for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS]
+    return hashlib.sha256(b"".join(parts + [(repository / SCENE_MAP).read_bytes()])).hexdigest()
 
 
 def _inputs_arguments(p: argparse.ArgumentParser) -> None:
@@ -431,7 +440,8 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
         root = Path(temp)
         # the tools in the repository's layout, the game's data beside them (read only: a junction to
         # data/extracted alone, so nothing they write reaches the repository's data or mods)
-        for rel in [f"tools/hd/{t}" for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS] + ["tools/decompress_data.py"]:
+        copied = [f"tools/hd/{t}" for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS] + ["tools/decompress_data.py", SCENE_MAP]
+        for rel in copied:
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(repository / rel, root / rel)
         (root / "data").mkdir()
@@ -480,13 +490,10 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
                     break
         finally:
             subprocess.run(["cmd", "/c", "rmdir", str(root / "data" / "extracted")], capture_output=True)
-    tools_digest = hashlib.sha256(
-        b"".join((repository / "tools" / "hd" / t).read_bytes() for t, _ in HD_MENU_TOOLS + HD_VIDEO_TOOLS)
-    ).hexdigest()
     lines = [
         "# The collection files the HD tools read (installer/setup_steps.py trace-inputs):",
         "# '<archive> <entry>' (its data and remastered assets) or 'movies <file>'.",
-        f"# tools {tools_digest}",
+        f"# tools {tools_digest(repository)}",
     ]
     for archive in sorted(entries):
         lines += [f"{archive} {rel}" for rel in sorted(entries[archive])]
@@ -733,6 +740,8 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
             (root / "tools" / "hd").mkdir(parents=True, exist_ok=True)
             shutil.copy2(tools["hd"] / tool, root / "tools" / "hd" / tool)
         shutil.copy2(tools["rom"] / "decompress_data.py", root / "tools")
+        (root / SCENE_MAP).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(HERE.parent / SCENE_MAP, root / SCENE_MAP)
         places = {
             "movies": movies_folder(args.c1525) if args.c1525 else Path(),
             "mare": src / "Mare.hed_out" / "original",
