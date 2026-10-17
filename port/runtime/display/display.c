@@ -11,6 +11,7 @@
 #include "../mods/sheet_colours.h"
 #include "../mods/tiles2d.h"
 #include "../movies/video.h"
+#include "../movies/scene_trace.h"
 #include "../mods/textures.h"
 #include "../core/window.h"
 #include "../../ui/elements.h"
@@ -264,10 +265,19 @@ static int marked(u32 frame)
     return mark_frame != ~0u && (frame == mark_frame || frame + 1u == mark_frame);
 }
 
+/* KHDAYS_SCENE_SHOTS=<dir>: while a scene of the field's event runs (runtime/movies/scene_trace.h),
+ * both screens every 30 frames as <dir>/<scene>_<frame>.bmp. */
+static const char *scene_shot_dir;
+
+static int scene_shot_at(u32 frame)
+{
+    return scene_shot_dir != NULL && frame % 30u == 0u && khdays_scene_current()[0] != '\0';
+}
+
 /* Whether KHDAYS_SHOTS (or F12) saves this frame. */
 static int shot_at(u32 frame)
 {
-    if (marked(frame)) {
+    if (marked(frame) || scene_shot_at(frame)) {
         return 1;
     }
     for (int n = 0; n < shot_count; ++n) {
@@ -290,6 +300,9 @@ static int drawn(u32 frame)
             return 1;
         }
     }
+    if (scene_shot_dir != NULL && khdays_scene_current()[0] != '\0' && (frame % 30u == 0u || frame % 30u >= 28u)) {
+        return 1;
+    }
     return 0;
 }
 
@@ -297,6 +310,10 @@ void khdays_display_init(void)
 {
     const char *text = getenv("KHDAYS_SHOTS");
     shot_dir = getenv("KHDAYS_SHOT_DIR");
+    scene_shot_dir = getenv("KHDAYS_SCENE_SHOTS");
+    if (scene_shot_dir != NULL) {
+        CreateDirectoryA(scene_shot_dir, NULL);
+    }
     profile = getenv("KHDAYS_PROFILE") != NULL;
     headless = getenv("KHDAYS_HEADLESS") != NULL;
     record_dir = getenv("KHDAYS_RECORD_FRAMES");
@@ -1199,6 +1216,15 @@ static void draw_frame(u32 frame, int want, int capture, KhdaysGpuInput *in, LAR
         if (shots[n] == frame) {
             save_shot(frame, upper, lower);
         }
+    }
+    if (scene_shot_at(frame)) {
+        char path[MAX_PATH];
+        int at = snprintf(path, sizeof(path), "%s/", scene_shot_dir);
+        for (const char *k = khdays_scene_current(); *k != '\0' && at + 1 < (int)sizeof(path); ++k) {
+            path[at++] = (*k == '#' || *k == '/' || *k == ':') ? '_' : *k;
+        }
+        snprintf(path + at, sizeof(path) - (size_t)at, "_%05u.bmp", frame);
+        write_bmp(path, upper, lower);
     }
     if (frame == mark_frame) {
         save_mark(frame, upper, lower);

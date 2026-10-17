@@ -362,6 +362,11 @@ The native build prints these to stderr when the variable is set:
 - `KHDAYS_TEST_EVENT=<mission>/<script>` -- the first field built from that mission and script.
 - `KHDAYS_TEST_SKIP_AT=<frames>` -- that many frames after a scene's stretch begins, the port asks
   the game's own skip, as the event pause's Skip does (section 21).
+- `KHDAYS_TEST_SCENE=<slot>:<entry>` -- the event's first scene path (`4:3` on day 8) written over
+  with this one (`4:6`: EV_S#6), so that scene plays in its own place; the port leaves 30 frames after
+  the event closes (section 21).
+- `KHDAYS_SCENE_SHOTS=<dir>` -- while a scene of the field's event runs, both screens every 30 frames
+  as `<dir>/<scene>_<frame>.bmp` (EV_S_4_02400.bmp), headless too.
 - `KHDAYS_TRACE_PAD` -- every game frame's buttons: what the port gave
   `Pad_Sample` and what it made of them (held, pressed).
 - `KHDAYS_TRACE_CONTROLS` -- what the field does with its controls, when it
@@ -4380,3 +4385,12 @@ the story walk and `KHDAYS_TEST_DAY`).
   script number became the story's day in the same frame (400 the prologue, 7 on day 7): the day is
   the game state's field 0 (9 bits, the save's day). Setting it to 8 at the first field's construction
   (`KHDAYS_TEST_DAY=8`) made that field run 10000's script 8 and its first scene.
+- **Where a scene is played.** The field's scripts load a scene with step 0.2
+  (`Game_ActionLoadArenaResource`) naming it by a text of their data, `<slot>:<entry>`: slot 4 the
+  shared archive EV_S, slot 5 the mission's world's (`EV_TT`...), slot 3 a path built from the event
+  code (`Ov023_BuildEventTextPath`), 0 a mission script's own section (`0:sys`, `0:lbcmn`). Day 7's
+  `_e` loads `4:196`, `4:0` and `4:2`, day 8's `4:3` and `4:4`; over the missions' scripts 285 such
+  loads name slot 4 and 487 slot 5, 302 different scenes (EV_S#6, the clock tower on day 8, from the
+  end of mission 0001, `mi/0001/99:_e`). Written over in memory (`KHDAYS_TEST_SCENE=4:6` on day 8's
+  `4:3`), the event played EV_S#6 whole in its own place, the clock tower of Twilight Town: a scene
+  loads its stage and characters itself (its data names them, `/mi/wd/wd_tt`, `mi/ch/07.z`).

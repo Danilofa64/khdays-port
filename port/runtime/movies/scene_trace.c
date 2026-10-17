@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 /* the game's own */
@@ -137,9 +138,50 @@ void khdays_scene_field_record(void *record, int from_argument)
  * request at the state's +0x588 set), at the machine's next step. */
 static uint32_t skip_state, skip_frame;
 
+/* KHDAYS_TEST_SCENE=<slot>:<entry> (4:6 for EV_S#6): the first scene path the event's script holds
+ * ("4:196" on day 7: Game_ActionLoadArenaResource loads entry 196 of the archive in slot 4) is
+ * written over with this one where it fits, so the event plays that scene. */
+static void test_scene(void *st)
+{
+    static int done = -1;
+    const char *v;
+    uint8_t *start, *data;
+    uint32_t word;
+    if (done < 0) {
+        done = getenv("KHDAYS_TEST_SCENE") == NULL;
+    }
+    if (done || !khdays_overlay_loaded(OV_EVENT) || KHDAYS_REF(st) != u32_at(EVENT_ROOT + 4u) + EVENT_STATE) {
+        return;
+    }
+    v = getenv("KHDAYS_TEST_SCENE");
+    start = (uint8_t *)KHDAYS_W(u32_at(KHDAYS_REF(st) + STATE_ENTRIES + ENTRY_START) - 4u); /* depth 0's script */
+    memcpy(&word, start, 4);
+    data = start + word;
+    for (int at = 0; at + 8 < 0x800; ++at) {
+        size_t room = 0;
+        if (data[at] < '0' || data[at] > '9' || data[at + 1] != ':' || (at > 0 && data[at - 1] != '\0')) {
+            continue;
+        }
+        while (at + (int)room < 0x800 && data[at + room] != '\0') {
+            ++room;
+        }
+        while (at + (int)room < 0x800 && data[at + room] == '\0' && ((at + room) & 3u) != 0) {
+            ++room; /* the padding to the next word */
+        }
+        if (strlen(v) + 1 <= room) {
+            fprintf(stderr, "scene: KHDAYS_TEST_SCENE: the event's \"%s\" becomes \"%s\"\n", (const char *)data + at, v);
+            memset(data + at, 0, room);
+            memcpy(data + at, v, strlen(v));
+            done = 1;
+            return;
+        }
+    }
+}
+
 /* Game_RunActionScript's step (diag.c khdays_trace_script): `st` the machine's state. */
 void khdays_scene_step(void *st)
 {
+    test_scene(st);
     if (skip_state == 0u || KHDAYS_REF(st) != skip_state || khdays_events_vblank_count() < skip_frame) {
         return;
     }
@@ -151,8 +193,18 @@ void khdays_scene_step(void *st)
 
 /* Game_ActionSetBranchTarget (prepare.py HOOKS): `state` the script machine's (a reference), the
  * operand the target's offset from the entry's script start, -1 clearing it. */
+/* The scene running now (its key), "" when none: set when a stretch begins, cleared when it ends. */
+static char current[48];
+
+const char *khdays_scene_current(void)
+{
+    return current;
+}
+
 void khdays_scene_target(unsigned int state, int operand)
 {
+    const uint32_t depth = u32_at(state + STATE_DEPTH);
+    const uint32_t entry = state + STATE_ENTRIES + depth * ENTRY_SIZE;
     {
         const char *v = getenv("KHDAYS_TEST_SKIP_AT");
         if (v != NULL && operand != -1) {
@@ -160,38 +212,67 @@ void khdays_scene_target(unsigned int state, int operand)
             skip_frame = khdays_events_vblank_count() + (uint32_t)atoi(v);
         }
     }
+    if (operand == -1) {
+        current[0] = '\0';
+    } else if (!khdays_scenes_recognise(u32_at(entry + ENTRY_START), current, (int)sizeof(current))) {
+        current[0] = '\0';
+    }
     if (tracing_scenes()) {
-        const uint32_t depth = u32_at(state + STATE_DEPTH);
-        const uint32_t entry = state + STATE_ENTRIES + depth * ENTRY_SIZE;
         fprintf(stderr, "scene: f%u skip target %s +%x (depth %u, script at %08x, command at +%x)\n",
                 khdays_events_vblank_count(), operand == -1 ? "cleared" : "set", operand == -1 ? 0u : (unsigned)operand,
                 depth, u32_at(entry + ENTRY_START), u32_at(entry + ENTRY_NEXT) - u32_at(entry + ENTRY_START));
-        if (operand != -1) {
-            char key[48];
-            if (khdays_scenes_recognise(u32_at(entry + ENTRY_START), key, (int)sizeof(key))) {
-                const KhdaysSceneEntry *e = khdays_scene_map_find(khdays_scenes_map(), key);
-                fprintf(stderr, "scene: f%u start %s: ", khdays_events_vblank_count(), key);
-                if (e == NULL) {
-                    fprintf(stderr, "ds (not in the map)\n");
-                } else if (e->off) {
-                    fprintf(stderr, "ds (off)\n");
-                } else {
-                    fprintf(stderr, "hd");
-                    for (int i = 0; i < e->stem_count; ++i) {
-                        fprintf(stderr, " %s", e->stems[i]);
-                    }
-                    fprintf(stderr, "\n");
-                }
+        if (operand != -1 && current[0] != '\0') {
+            const KhdaysSceneEntry *e = khdays_scene_map_find(khdays_scenes_map(), current);
+            fprintf(stderr, "scene: f%u start %s: ", khdays_events_vblank_count(), current);
+            if (e == NULL) {
+                fprintf(stderr, "ds (not in the map)\n");
+            } else if (e->off) {
+                fprintf(stderr, "ds (off)\n");
             } else {
-                fprintf(stderr, "scene: f%u start of a script none of the event archives holds\n",
-                        khdays_events_vblank_count());
+                fprintf(stderr, "hd");
+                for (int i = 0; i < e->stem_count; ++i) {
+                    fprintf(stderr, " %s", e->stems[i]);
+                }
+                fprintf(stderr, "\n");
             }
+        } else if (operand != -1) {
+            fprintf(stderr, "scene: f%u start of a script none of the event archives holds\n",
+                    khdays_events_vblank_count());
         }
+    }
+}
+
+/* With KHDAYS_TEST_SCENE, the port leaves 30 frames after the event that played the scene closes. */
+static void test_scene_frame(uint32_t frame)
+{
+    static int armed = -1, started;
+    static uint32_t closed;
+    EventView now;
+    if (armed < 0) {
+        armed = getenv("KHDAYS_TEST_SCENE") != NULL;
+    }
+    if (!armed) {
+        return;
+    }
+    now = view_now();
+    if (now.running && now.status != 0u) {
+        started = 1;
+        closed = 0u;
+    } else if (started && closed == 0u) {
+        closed = frame;
+    } else if (started && frame >= closed + 30u) {
+        fprintf(stderr, "scene: f%u KHDAYS_TEST_SCENE: the event closed; leaving\n", frame);
+        fflush(stderr);
+        _Exit(0);
     }
 }
 
 void khdays_scene_trace_frame(uint32_t frame)
 {
+    test_scene_frame(frame);
+    if (current[0] != '\0' && !view_now().running) {
+        current[0] = '\0'; /* the event closed without clearing its target */
+    }
     static int first = 1;
     static EventView was;
     static int was_movie;
