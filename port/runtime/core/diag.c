@@ -519,6 +519,20 @@ static const char *symbol_name(const void *address)
     if (SymFromAddr(GetCurrentProcess(), (DWORD64)(size_t)address, &displacement, symbol)) {
         return symbol->Name;
     }
+    {
+        /* no symbol (a system DLL's): its module and the offset in it */
+        static char where[MAX_PATH + 32];
+        HMODULE module = NULL;
+        char path[MAX_PATH];
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCSTR)address, &module) &&
+            GetModuleFileNameA(module, path, (DWORD)sizeof(path)) > 0) {
+            const char *name = strrchr(path, '\\');
+            snprintf(where, sizeof(where), "%s+0x%llx", name != NULL ? name + 1 : path,
+                     (unsigned long long)((const char *)address - (const char *)module));
+            return where;
+        }
+    }
     return "?";
 }
 

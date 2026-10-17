@@ -48,6 +48,8 @@ static uint32_t frame[2 * W * H];
 static SDL_AtomicInt frame_new;     /* set by khdays_host_present, cleared by the window */
 static SDL_AtomicInt frame_pending; /* a frame event is already on its way */
 static Uint32 frame_event;          /* our SDL event: "a new frame is ready" */
+static Uint64 last_redraw;          /* SDL_GetTicks of the last redraw */
+#define MOVIE_REDRAW_MS 8           /* an HD video drawn at least this often (ms) */
 
 /* The frame packages. There are three, so neither thread ever waits for the
  * other: the game thread fills one, the newest finished one waits in
@@ -260,6 +262,7 @@ static void redraw(SDL_Window *window, SDL_Renderer *renderer)
 {
     int pictures, frames, fps, corner_rows;
     char *ping;
+    last_redraw = SDL_GetTicks();
     if (khdays_present_lost()) {
         return;
     }
@@ -572,6 +575,11 @@ static int host_thread(void *unused)
         if (movie && !khdays_settings_is_open()) {
             khdays_movie_hd_poll();
             khdays_movie_hd_host_buttons(khdays_host_buttons());
+            /* drawn on time even while events keep coming (a gamepad's stream of them): the game,
+             * held for a scene's video, sends no frames that would draw it */
+            if (SDL_GetTicks() - last_redraw >= MOVIE_REDRAW_MS) {
+                redraw(window, renderer);
+            }
         }
         if (khdays_present_lost()) {
             /* the port noticed it itself (SDL's renderer does not on D3D12):

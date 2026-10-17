@@ -257,17 +257,22 @@ static int open_audio(void)
     return 1;
 }
 
-/* A buffer for a picture of `size` bytes: a spare one of that size, or a new one. */
+/* A buffer for a picture of `size` bytes: a spare one of that size, or a new one. The decoder's
+ * thread asks while the presenter's gives spares back (khdays_hd_picture_begin, keep_spare): under
+ * the lock, or the list is taken apart under both. */
 static uint8_t *picture_buffer(size_t size)
 {
+    AcquireSRWLockExclusive(&lock);
     while (hd.spare_count > 0) {
         Picture p = hd.spare[--hd.spare_count];
         if (p.size == size) {
+            ReleaseSRWLockExclusive(&lock);
             return p.data;
         }
 #pragma warning(suppress : 6001) /* every item below the count was written before the count moved: none uninitialised */
         free(p.data);
     }
+    ReleaseSRWLockExclusive(&lock);
     return (uint8_t *)malloc(size);
 }
 
