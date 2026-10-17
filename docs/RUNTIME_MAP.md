@@ -1182,6 +1182,24 @@ engine A shows bank D (DISPCNT `002e0f3c`); its frames 11084-11108 and
 shot before to the new one -- what the testers' black screens in cutscenes
 were.
 
+**A capture into a bank not mapped to the LCDC** (2026-10-17): the DS writes a
+capture only into a bank mapped to the LCDC (GBATEK, DISPCAPCNT's write block);
+the port wrote it whatever the bank's mapping. After a multiplayer mission won,
+the field asks for the mission review (scene 3, ov003: `Ov002_StepSessionMenu`'s
+case 0 -> `Ov002_SendSeatTally`, in a session and without the give-up flag),
+whose VBlank callback (`Ov003_DisplaySetup` -> `Gfx_ToggleCaptureMode`) arms a
+capture every VBlank, into bank C or D in turn, until `Ov003_Teardown`
+unregisters it. The last one armed is taken by the port at the next VBlank,
+after the results (scene 6) have mapped bank C to their BG (VRAMCNT 0x84) and
+loaded their characters there: the results' upper screen showed the captured
+pixels as vertical stripes (the players' reports, always after a mission won in
+multiplayer). Seen with `KHDAYS_TEST_REVIEW` (a give-up in a session goes on to
+the review as a won mission does: `runtime/menus/retry.c`) on two copies of the
+multiplayer walk: the review's captures all into banks in the LCDC (VRAMCNT 0x80),
+one at the scene change into bank C at 0x84, the results striped; now that
+capture is not written, the results whole, the review and the story's screen
+blends (f11082, bank D) as before.
+
 **The screen blends at the port's resolution** (2026-10-16, `gfx_render.c`
 `take_capture`): shown from the DS's bank, each cut was a 256x192 picture,
 stretched, without the sides of a wider one (a player's report: the models

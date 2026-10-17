@@ -1379,6 +1379,21 @@ static void display_capture(const KhdaysGpuInput *in, const KhdaysGpu2dState *wi
     IO32(0x64) = cnt & ~0x80000000u;
     memcpy(last_drawn.io_a + 0x64, khdays_io_host + 0x64, 4); /* the register alone changes no picture */
     log_capture(cnt);
+    {
+        /* the DS writes a capture only into a bank mapped to the LCDC (GBATEK, DISPCAPCNT's write block): the
+         * mission review's last capture (ov003, armed every VBlank until its teardown) is taken after the
+         * results have mapped that bank to their BG and loaded their characters there */
+        const u8 bank_cnt = IO8(khdays_vram_cnt_reg[dest]);
+        if (!(bank_cnt & 0x80) || (bank_cnt & 7) != 0) {
+            static int said;
+            if (!said) {
+                said = 1;
+                khdays_log("display: a capture into bank %c, its VRAMCNT %02x not the LCDC's: not written, as on the DS",
+                           'A' + dest, bank_cnt);
+            }
+            return;
+        }
+    }
     if (mode != 1) {
         capture_source_a(cnt, in, window_a);
     }

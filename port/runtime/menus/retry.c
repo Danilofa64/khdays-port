@@ -19,6 +19,7 @@
 
 extern int GetLanguage(void);
 extern int Session_GetSetup(void);
+extern int Session_IsActive(void);
 extern void PlaySound(int bank, int id);
 extern void GameState_ClearFlag(int flag);
 extern int GameState_IsFlagSet(unsigned int flag);
@@ -343,6 +344,13 @@ int khdays_retry_pending(void)
 int khdays_retry_take(void)
 {
     if (!retry.confirmed) {
+        if (Session_IsActive() && getenv("KHDAYS_TEST_REVIEW") != NULL && GameState_IsFlagSet(QUIT_FLAG)) {
+            /* a testing knob for scripted runs that cannot clear a mission: a give-up in a session goes on
+             * as a cleared mission does, to the mission review (Ov002_SendSeatTally, scene 3), then the
+             * results */
+            GameState_ClearFlag(QUIT_FLAG);
+            say("KHDAYS_TEST_REVIEW: the give-up goes on to the mission review", 0, 0);
+        }
         return 0;
     }
     retry.confirmed = 0;
