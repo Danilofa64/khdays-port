@@ -20,6 +20,10 @@ void khdays_host_tell_no_data(const char *where, const char *broken);
  * reset). */
 void khdays_host_close(void);
 
+/* Wakes the window's loop to look again at what it shows: an HD scene's video begun while the game,
+ * held for it, sends no frames that would. */
+void khdays_host_wake(void);
+
 /* Shows a finished frame: both screens, 256x192 each, 0x00RRGGBB (copied). */
 void khdays_host_present(const uint32_t *upper, const uint32_t *lower);
 

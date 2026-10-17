@@ -424,6 +424,9 @@ int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *st
     khdays_clock_hold(KHDAYS_HOLD_MOVIE, 1); /* the game stops at its next wait */
     InterlockedExchange(&state, SCENE);
     ReleaseSRWLockExclusive(&lock);
+    /* the held game sends no frames: without this the window may sleep on through the video, every
+     * picture passed over (seen: 3.8 s of hd002's 4.1 s) */
+    khdays_host_wake();
     return 1;
 }
 

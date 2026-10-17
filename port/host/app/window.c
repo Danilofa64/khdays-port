@@ -73,6 +73,7 @@ static SDL_Semaphore *ready; /* signalled when the window is up (or failed) */
 static SDL_AtomicInt started;
 static SDL_Semaphore *closed; /* signalled when the window and the sound are gone */
 static Uint32 close_event;    /* our SDL event: khdays_host_close's request */
+static Uint32 wake_event;     /* our SDL event: khdays_host_wake's, the loop looks again */
 
 /* Stores the latest input for the game thread to read. */
 static void publish(const KhdaysInputSnapshot *snapshot)
@@ -528,8 +529,9 @@ static int host_thread(void *unused)
     display_now(profile.video.display);
     khdays_present_set_video(&profile.video);
     renderer = window ? khdays_present_open(window, notice) : NULL;
-    frame_event = SDL_RegisterEvents(2);
+    frame_event = SDL_RegisterEvents(3);
     close_event = frame_event + 1;
+    wake_event = frame_event + 2;
     if (renderer == NULL || frame_event == 0) {
         fprintf(stderr, "host: cannot open the window: %s\n", SDL_GetError());
         SDL_SignalSemaphore(ready);
@@ -810,6 +812,17 @@ void khdays_host_close(void)
     if (SDL_PushEvent(&event)) {
         SDL_WaitSemaphoreTimeout(closed, 5000);
     }
+}
+
+void khdays_host_wake(void)
+{
+    SDL_Event event;
+    if (!SDL_GetAtomicInt(&started)) {
+        return;
+    }
+    SDL_zero(event);
+    event.type = wake_event;
+    SDL_PushEvent(&event);
 }
 
 void khdays_host_present(const uint32_t *upper, const uint32_t *lower)

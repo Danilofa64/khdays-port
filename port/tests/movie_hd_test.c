@@ -36,6 +36,13 @@ int khdays_host_graphics_flags(void)
     return graphics_flags;
 }
 
+/* the window woken as a scene's video begins (the held game sends no frames) */
+static int wakes;
+void khdays_host_wake(void)
+{
+    ++wakes;
+}
+
 /* A mod's video (mods/<Mod>/movies/hd<id>.mp4, as khdays-studio saves one):
  * the one mod holds hd843's once the test gives it. */
 static int mod_has_843;
@@ -351,7 +358,7 @@ int main(void)
         touch("data/cutscenes/cinematics/hd010.mp4");
         touch("data/cutscenes/cinematics/hd011.mp4");
         CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 2) == 1);
-        CHECK(khdays_movie_hd_showing() && held() && muted && opens == opened_before + 1);
+        CHECK(khdays_movie_hd_showing() && held() && muted && opens == opened_before + 1 && wakes == 1);
         CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd010.mp4") == 0 && strcmp(subtitles_movie, "010") == 0);
         CHECK(khdays_movie_hd_game_buttons(A) == 0);
         status_now = 1;
