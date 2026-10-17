@@ -157,6 +157,36 @@ void *khdays_trace_pointer(const char *what, void *result)
 
 /* ---- The camera (Ov002_Camera_UpdateFollow) -------------------------------- */
 
+/* The mouse camera: the mouse's motion since the camera last took it, as a share of the game's own
+ * turn (or tilt) of a frame -- MOUSE_COUNTS_A_FRAME counts at 100 % a frame's -- so its scale is the
+ * game's in both directions. What moved while the camera did not follow (another scene, a menu) is
+ * not taken. */
+#define MOUSE_COUNTS_A_FRAME 40
+static int32_t mouse_seen[2];
+static u32 mouse_frame[2];
+static long long mouse_rest[2]; /* what the division left, for slow motions */
+
+static int mouse_share(const KhdaysInputSnapshot *in, int axis, int rate)
+{
+    const int32_t total = axis ? in->mouse_y : in->mouse_x;
+    const u32 frame = khdays_input_game_frames();
+    const long long per = 100LL * MOUSE_COUNTS_A_FRAME;
+    long long moved;
+    if ((in->enhancements & KHDAYS_ENH_MOUSE_CAMERA) == 0 || in->ui_open) {
+        mouse_frame[axis] = 0;
+        return 0;
+    }
+    if (mouse_frame[axis] == 0 || frame - mouse_frame[axis] > 2u) {
+        mouse_seen[axis] = total;
+        mouse_rest[axis] = 0;
+    }
+    mouse_frame[axis] = frame != 0 ? frame : 1;
+    moved = (long long)rate * (long long)(total - mouse_seen[axis]) * in->mouse_speed + mouse_rest[axis];
+    mouse_seen[axis] = total;
+    mouse_rest[axis] = moved % per;
+    return (int)(moved / per);
+}
+
 /* Where the game applies its own turn input (bits 4 and 8 turn, 1 and 2 tilt; `rate` its turn a
  * frame; `inverted` its horizontal inversion, Config 0x37c3): returns the right stick's share of the
  * game's rate to add to the yaw target. Right on the stick turns as every "right" of the game's does
@@ -168,9 +198,10 @@ int khdays_controls_camera_turn(int rate, int inverted, int bits, int flags, int
     int turn = 0;
     if ((in->enhancements & KHDAYS_ENH_ANALOG_CAMERA) != 0 && !in->ui_open && in->camera_x != 0) {
         turn = -scaled(rate, in->camera_x, in->camera_speed);
-        if (inverted) {
-            turn = -turn;
-        }
+    }
+    turn -= mouse_share(in, 0, rate); /* right on the mouse as right on the stick */
+    if (inverted) {
+        turn = -turn;
     }
     if (bits != 0 || turn != 0 || bits != last_bits || target != last_target || pitch != last_pitch) {
         trace("camera: bits %x flags %08x flags2 %08x yaw %04x target %04x rate %x pitch %d inverted %d stick %d", bits,
@@ -191,9 +222,10 @@ int khdays_controls_camera_pitch(int rate, int inverted)
     int tilt = 0;
     if ((in->enhancements & KHDAYS_ENH_ANALOG_CAMERA) != 0 && !in->ui_open && in->camera_y != 0) {
         tilt = -scaled(rate, in->camera_y, in->camera_speed);
-        if (inverted) {
-            tilt = -tilt;
-        }
+    }
+    tilt -= mouse_share(in, 1, rate); /* up on the mouse as up on the stick */
+    if (inverted) {
+        tilt = -tilt;
     }
     return tilt;
 }

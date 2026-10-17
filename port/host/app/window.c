@@ -443,6 +443,26 @@ static void close_settings(void)
     }
 }
 
+/* The mouse: its pointer shown over the settings menu alone (the touch screen is not used); with the
+ * mouse camera on, the window holds the mouse while the game has the input, its motion turning the
+ * camera (devices.c), and the settings menu or another window frees it. */
+static void mouse_follow(SDL_Window *window)
+{
+    const int menu = khdays_settings_is_open();
+    const int hold = !menu && khdays_devices_profile()->enh.mouse_camera &&
+                     (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    if (hold != (int)SDL_GetWindowRelativeMouseMode(window)) {
+        SDL_SetWindowRelativeMouseMode(window, hold != 0);
+    }
+    if (menu != (int)SDL_CursorVisible()) {
+        if (menu) {
+            SDL_ShowCursor();
+        } else {
+            SDL_HideCursor();
+        }
+    }
+}
+
 /* Whether this event opens the settings menu (which is closed now). */
 static int opens_settings(const SDL_Event *event, SDL_Window *window)
 {
@@ -532,6 +552,8 @@ static int host_thread(void *unused)
             }
         }
         animating = khdays_settings_is_open();
+        khdays_devices_frame(); /* a wheel's notch let go */
+        mouse_follow(window);
         /* The 3D at the monitor's refresh rate: draw a picture
          * whenever VSync lets one through, between events. */
         const int smooth = khdays_present_smooth();
@@ -572,6 +594,7 @@ static int host_thread(void *unused)
             }
             continue;
         }
+        mouse_follow(window);
         if (event.type == SDL_EVENT_QUIT) {
             if (khdays_settings_is_open() && khdays_settings_profile_changed()) {
                 save_settings(); /* closed with the menu open: keep what was changed */

@@ -498,6 +498,46 @@ static void test_settings_file(void)
 /* The [video] section: the DS's
  * picture by default, every value written back as read, a bad value
  * reported in the file's language and replaced by the default. */
+/* The mouse's buttons and wheel, bound in the keyboard's column: read and written by name, held as keys
+ * are, masked as keys are. */
+static void test_mouse_bindings(void)
+{
+    KhdaysProfile p, q;
+    KhdaysDeviceState s;
+    char path[600];
+    CHECK(load_text("[keyboard]\na = Mouse Left, Z\nb = Mouse X2\nl = mouse wheel up\n", &p) == 0);
+    CHECK(p.input[KB][BASE][KHDAYS_ACT_A][0] == KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_LEFT &&
+          p.input[KB][BASE][KHDAYS_ACT_A][1] == SDL_SCANCODE_Z);
+    CHECK(p.input[KB][BASE][KHDAYS_ACT_B][0] == KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_X2);
+    CHECK(p.input[KB][BASE][KHDAYS_ACT_L][0] == KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_WHEEL_UP);
+    CHECK(SDL_strcmp(khdays_mouse_input_name(KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_WHEEL_DOWN), "Mouse Wheel Down") == 0);
+    CHECK(khdays_mouse_input_name(SDL_SCANCODE_Z) == NULL && khdays_mouse_input_from_name("Mouse 9") < 0);
+    /* written by name and read back the same */
+    path_of("mouse.ini", path, sizeof(path));
+    CHECK(khdays_profile_save(&p, path, count_notice) == 0);
+    notices = 0;
+    khdays_profile_load(&q, path, count_notice);
+    CHECK(notices == 0 && memcmp(&p, &q, sizeof(p)) == 0);
+    /* held as a key is; masked until let go */
+    khdays_bindings_reset(&s);
+    s.mouse[KHDAYS_MOUSE_X2] = 1;
+    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_B));
+    s.mouse[KHDAYS_MOUSE_X2] = 0;
+    s.mouse[KHDAYS_MOUSE_LEFT] = 1;
+    s.mouse[KHDAYS_MOUSE_WHEEL_UP] = 1;
+    CHECK(resolve(&p, &s).ds_buttons == (DS(KHDAYS_ACT_A) | DS(KHDAYS_ACT_L)));
+    khdays_bindings_mask_held(&s);
+    CHECK(resolve(&p, &s).ds_buttons == 0);
+    s.mouse[KHDAYS_MOUSE_LEFT] = 0;
+    CHECK(resolve(&p, &s).ds_buttons == 0);
+    s.mouse[KHDAYS_MOUSE_LEFT] = 1;
+    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_A));
+    /* an unbound mouse input does nothing */
+    khdays_bindings_reset(&s);
+    s.mouse[KHDAYS_MOUSE_MIDDLE] = 1;
+    CHECK(resolve(&p, &s).ds_buttons == 0);
+}
+
 static void test_video_settings(void)
 {
     KhdaysProfile p, q, r;
@@ -2005,6 +2045,7 @@ int main(void)
     test_masking();
     test_devices();
     test_settings_file();
+    test_mouse_bindings();
     test_video_settings();
     test_sound_settings();
     test_settings_model();

@@ -389,14 +389,14 @@ int khdays_present_scale(void)
 
 /* Lays out the picture for its width now: the two screens one above the
  * other, the DS's 256 columns of each in the middle, fitted to the window. */
-static void present_size(int w, int h, float touch_left, float touch_top);
+static void present_size(int w, int h);
 
 static void layout(void)
 {
     columns = khdays_present_columns();
     /* one screen: each frame sets what it shows (khdays_present_draw); until then, leave it */
     presented_w = presented_h = 0;
-    present_size(columns, video.one_screen ? H : 2 * H, (float)(columns - W) / 2, video.one_screen ? 1.0e9f : (float)H);
+    present_size(columns, video.one_screen ? H : 2 * H);
 }
 
 void khdays_present_resized(void)
@@ -1113,16 +1113,14 @@ void khdays_present_set_video(const KhdaysVideo *v)
     layout();
 }
 
-/* The logical presentation `w` x `h`, set when it changes, and where the lower
- * screen is for the stylus (no screen: nowhere). */
-static void present_size(int w, int h, float touch_left, float touch_top)
+/* The logical presentation `w` x `h`, set when it changes. */
+static void present_size(int w, int h)
 {
     if (renderer != NULL && (w != presented_w || h != presented_h)) {
         SDL_SetRenderLogicalPresentation(renderer, w, h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
         presented_w = w;
         presented_h = h;
     }
-    khdays_devices_set_touch_area(touch_left, touch_top);
 }
 
 /* An HD video in a movie's place: its newest picture due, over the whole window, letterboxed; the last
@@ -1164,7 +1162,7 @@ static void draw_hd_movie(void)
         khdays_hd_picture_done();
     }
     if (hd_movie != NULL) {
-        present_size(hd_movie_w, hd_movie_h, 0.0f, 1.0e9f);
+        present_size(hd_movie_w, hd_movie_h);
         SDL_RenderTexture(renderer, hd_movie, NULL, NULL);
         if (khdays_subtitles_shown()) {
             khdays_movie_subtitles_draw(renderer, hd_movie_time, hd_movie_fps, hd_movie_w, hd_movie_h);
@@ -1212,7 +1210,7 @@ void khdays_present_draw(void)
         /* the one picture, as wide as it was made, in the middle; nothing touched */
         int made = 0;
         SDL_Texture *picture = khdays_gfx_render_picture(renderer, &made);
-        present_size(columns, H, 0.0f, 1.0e9f);
+        present_size(columns, H);
         if (picture != NULL) {
             const SDL_FRect at = {((float)columns - (float)made) / 2, 0, (float)made, H};
             one_at_x = at.x;
@@ -1227,7 +1225,7 @@ void khdays_present_draw(void)
         int wu = 0, wl = 0;
         SDL_Texture *upper = screen_texture(port2d_upper, &wu);
         SDL_Texture *lower = screen_texture(!port2d_upper, &wl);
-        present_size(2 * W, H, (float)W, 0.0f);
+        present_size(2 * W, H);
         if (upper != NULL && lower != NULL) {
             const SDL_ScaleMode mode = video.smooth_scaling ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST;
             const SDL_FRect upper_from = ds_columns(upper, wu), lower_from = ds_columns(lower, wl);
@@ -1239,7 +1237,7 @@ void khdays_present_draw(void)
         }
     } else if (port2d_drawn) {
         if (video.one_screen) {
-            present_size(columns, 2 * H, (float)(columns - W) / 2, (float)H); /* stacked: the two-screen picture */
+            present_size(columns, 2 * H); /* stacked: the two-screen picture */
         }
         /* the port's own screens, the DS's 256 columns in the middle (engine A as wide as it was drawn) */
         int cu = 0, cl = 0;

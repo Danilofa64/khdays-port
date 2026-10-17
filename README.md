@@ -58,8 +58,7 @@ from its start, the game's pointers kept as references into it -- the DS's own
 addresses hold nothing. The HUD, the menus and the game's text are drawn
 anew by the port, each element placeable. Underneath, the game still sees a
 DS -- two screens one above the other, and the ARM7's services, which the port
-answers on the PC: the clock from the PC's, the touch screen from the mouse,
-the save from its files.
+answers on the PC: the clock from the PC's, the save from its files.
 
 On top of the game, a new edition from content the user provides: HD
 textures, models and 2D graphics, new rooms, sounds and videos, a
@@ -141,8 +140,10 @@ By default the game is played as on the DS.
 
 - **Keyboard:** arrows = D-pad, Z = A, X = B, S = X, A = Y, Q = L, E = R,
   Enter = START, right Shift = SELECT.
-- **Mouse:** hold the left button on the lower screen to touch it with the
-  stylus.
+- **Mouse:** its buttons (left, middle, right, the side buttons X1 and X2) and
+  its wheel can be bound to any action in Settings -> Controls, in the
+  keyboard's column; a notch of the wheel is a short press. Its pointer shows
+  only over the settings menu (the touch screen is not used).
 - **Gamepad** (Xbox, PlayStation, Switch Pro, Steam Deck, or any controller
   your system recognises as a gamepad): connect it whenever you like, even in
   the middle of a battle. The buttons follow the DS's layout by *position*,
@@ -193,6 +194,11 @@ own controls can do, through the same parts of the game:
   (adjustable, and invertible, under Sticks and camera). On the DS the camera
   is turned by dragging on the touch screen, by Select's look view, or with
   L/R when the game's Config sets them to the camera.
+- **Mouse camera:** moving the mouse turns and tilts the field camera, through
+  the same part of the game as the analog camera, at a speed of its own
+  (Sticks and camera -> Mouse camera speed) and with the camera's inversions.
+  While you play the window holds the mouse; Esc frees it with the settings
+  menu.
 - **Command menu on the D-pad:** in a field, the gamepad's D-pad moves
   through the command deck instead of moving Roxas, by making the presses the
   DS itself uses (X, or X held with a direction); menus, dialogs and open
@@ -263,8 +269,8 @@ once:
   wider picture as it does on the DS -- the command deck bottom left, the
   portrait and gauge bottom right, the hearts counter top left. What the game
   centres (dialogs, menus) and what follows the 3D (markers over targets)
-  stays where it was, and the lower screen stays 4:3 in the middle, where the
-  mouse still touches it. The game sees nothing different: it still computes
+  stays where it was, and the lower screen stays 4:3 in the middle. The game
+  sees nothing different: it still computes
   its 4:3 view.
 - **Screen scaling**: sharp (the DS's pixels as squares) or smooth.
 - **3D texture smoothing**: off as on the DS, or blended between texels.

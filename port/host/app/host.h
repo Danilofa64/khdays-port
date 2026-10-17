@@ -75,6 +75,7 @@ enum {
     KHDAYS_ENH_SEPARATE_LOCK_ON = 1 << 1,
     KHDAYS_ENH_DPAD_COMMAND_MENU = 1 << 2,
     KHDAYS_ENH_ANALOG_MOVEMENT = 1 << 3,
+    KHDAYS_ENH_MOUSE_CAMERA = 1 << 4, /* the camera turned by the mouse's motion (the analog camera's join) */
 };
 
 /* Everything the game needs to know about the player's input at one moment.
@@ -94,8 +95,11 @@ typedef struct KhdaysInputSnapshot {
     int16_t move_y;            /* y positive is up; both 0 unless analog movement is on */
     uint8_t run_threshold;     /* analog movement: how far (percent) the stick must go to run */
     uint8_t walk_speed;        /* analog movement: percent of the game's speed when walking */
-    uint16_t touch_x, touch_y; /* the stylus on the lower screen, in its pixels */
+    uint16_t touch_x, touch_y; /* the stylus on the lower screen, in its pixels (the input scripts') */
     uint8_t touching;          /* 1 while the stylus is down */
+    int32_t mouse_x, mouse_y;  /* the mouse camera: the mouse's motion summed since the start, in its counts,
+                                  right and up positive (the camera's inversions taken) */
+    uint16_t mouse_speed;      /* the mouse camera: percent of MOUSE_COUNTS_A_FRAME (controls_hooks.c) */
     uint8_t ui_open;           /* 1 while the settings menu is open: no input reaches the game */
     uint16_t enhancements;     /* KHDAYS_ENH_* switched on */
 } KhdaysInputSnapshot;

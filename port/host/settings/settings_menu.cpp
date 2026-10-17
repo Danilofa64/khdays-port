@@ -285,6 +285,8 @@ void input_label(int device, int input, char *text, size_t size)
 {
     if (input == KHDAYS_NO_INPUT) {
         SDL_strlcpy(text, "-", size);
+    } else if (device == KHDAYS_DEVICE_KEYBOARD && khdays_mouse_input_name(input) != nullptr) {
+        SDL_strlcpy(text, khdays_mouse_input_name(input), size);
     } else if (device == KHDAYS_DEVICE_KEYBOARD) {
         // the label on this keyboard's key, for its layout
         const SDL_Keycode key = SDL_GetKeyFromScancode((SDL_Scancode)input, SDL_KMOD_NONE, false);
@@ -691,6 +693,12 @@ void capture_event(const SDL_Event *e)
         }
     } else if (e->type == SDL_EVENT_GAMEPAD_REMOVED && m.cap_device == KHDAYS_DEVICE_GAMEPAD) {
         m.mode = MODE_BROWSE; // the gamepad was unplugged
+    } else if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN && m.cap_device == KHDAYS_DEVICE_KEYBOARD &&
+               e->button.button >= SDL_BUTTON_LEFT && e->button.button <= SDL_BUTTON_X2) {
+        // the mouse's buttons share the keyboard's column (SDL numbers them from 1: left, middle, right, X1, X2)
+        finish_capture(KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_LEFT + (e->button.button - SDL_BUTTON_LEFT));
+    } else if (e->type == SDL_EVENT_MOUSE_WHEEL && m.cap_device == KHDAYS_DEVICE_KEYBOARD && e->wheel.y != 0.0f) {
+        finish_capture(KHDAYS_MOUSE_INPUT + (e->wheel.y > 0.0f ? KHDAYS_MOUSE_WHEEL_UP : KHDAYS_MOUSE_WHEEL_DOWN));
     }
 }
 

@@ -856,6 +856,20 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_AUTOSAVE_FAILED] = {"Autosave failed: file %d", "Échec de la sauvegarde auto : fichier %d",
                              "Autospeichern fehlgeschlagen: Datei %d", "Salvataggio automatico non riuscito: file %d",
                              "Error al autoguardar: archivo %d"},
+    [TXT_ENH_MOUSE] = {"Mouse camera", "Caméra à la souris", "Kamera mit der Maus", "Telecamera con il mouse",
+                       "Cámara con el ratón"},
+    [TXT_ENH_MOUSE_NOTE] = {"Moving the mouse turns the camera, up and down too. The window holds the mouse while "
+                            "you play; Esc frees it with the settings.",
+                            "Bouger la souris tourne la caméra, aussi vers le haut et le bas. La fenêtre garde la "
+                            "souris pendant le jeu ; Échap la libère avec les réglages.",
+                            "Die Maus bewegen dreht die Kamera, auch hoch und runter. Das Fenster hält die Maus beim "
+                            "Spielen; Esc gibt sie mit den Einstellungen frei.",
+                            "Muovere il mouse gira la telecamera, anche su e giù. La finestra trattiene il mouse "
+                            "mentre giochi; Esc lo libera con le impostazioni.",
+                            "Mover el ratón gira la cámara, también arriba y abajo. La ventana retiene el ratón "
+                            "mientras juegas; Esc lo suelta con los ajustes."},
+    [TXT_MOUSE_SPEED] = {"Mouse camera speed (%)", "Vitesse caméra souris (%)", "Maus-Kameratempo (%)",
+                         "Velocità telecamera mouse (%)", "Velocidad cámara ratón (%)"},
 };
 
 static int current = KHDAYS_LANGUAGE_ENGLISH;

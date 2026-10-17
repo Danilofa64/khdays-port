@@ -293,6 +293,9 @@ static void build_enhancements(Builder *b, KhdaysProfile *w)
                menu_note);
     add_switch(b, KHDAYS_SET_ENH_MOVEMENT, TXT_ENH_MOVEMENT, &e->analog_movement, built(KHDAYS_ENH_ANALOG_MOVEMENT),
                khdays_text(TXT_ENH_MOVEMENT_NOTE));
+    /* the mouse turns the camera where the analog camera does (runtime/input/controls_hooks.c) */
+    add_switch(b, KHDAYS_SET_ENH_MOUSE, TXT_ENH_MOUSE, &e->mouse_camera, built(KHDAYS_ENH_ANALOG_CAMERA),
+               khdays_text(TXT_ENH_MOUSE_NOTE));
 }
 
 static void build_sticks(Builder *b, KhdaysProfile *w)
@@ -308,6 +311,7 @@ static void build_sticks(Builder *b, KhdaysProfile *w)
         add_number(b, KHDAYS_SET_CAMERA_SPEED, TXT_CAMERA_SPEED, &e->camera_speed, 10, 300, 10);
         add_choice(b, KHDAYS_SET_CAMERA_X, TXT_CAMERA_X, &e->camera_invert_x, normal_inverted, 2);
         add_choice(b, KHDAYS_SET_CAMERA_Y, TXT_CAMERA_Y, &e->camera_invert_y, normal_inverted, 2);
+        add_number(b, KHDAYS_SET_MOUSE_SPEED, TXT_MOUSE_SPEED, &e->mouse_speed, 10, 300, 10);
     }
     if (built(KHDAYS_ENH_ANALOG_MOVEMENT)) {
         add_number(b, KHDAYS_SET_RUN_FROM, TXT_RUN_FROM, &e->run_threshold, 50, 95, 5);
