@@ -340,6 +340,8 @@ const unsigned int khdays_${name}_size = ${size}u;
 endfunction()
 set(KHDAYS_PORT_COMPOSITIONS "${CMAKE_CURRENT_SOURCE_DIR}/ui/compositions/port_days.txt")
 khdays_embed_text(compositions_port "${KHDAYS_PORT_COMPOSITIONS}")
+# The theater's HD scenes in place of the game's (movies/hd_scenes.txt, specs/029), compiled in the same way.
+khdays_embed_text(scenes_port "${CMAKE_CURRENT_SOURCE_DIR}/movies/hd_scenes.txt")
 
 add_executable(khdays-native
     resources/game.rc   # the executable's icon (port/resources/game.ico)
@@ -429,6 +431,8 @@ add_executable(khdays-native
     runtime/movies/video_mod.c
     runtime/movies/movie_hd.c             # an HD video in a movie's place (specs/013)
     runtime/movies/scene_trace.c          # KHDAYS_TRACE_SCENES: the field's event scripts
+    runtime/movies/scene_map.c            # the theater's HD scenes: the map (specs/029)
+    runtime/movies/scenes.c               # its files, and the scene the event runs
     host/movies/movie_hd_win.c            # the HD video through Media Foundation
     host/movies/movie_subtitles.c         # the theater's subtitles over the HD video
     runtime/net/net_session.c          # the multiplayer's session (specs/015)
@@ -454,6 +458,7 @@ add_executable(khdays-native
     ui/situation_decide.c          # what the game shows, from what it runs
     ui/composition.c
     "${CMAKE_CURRENT_BINARY_DIR}/compositions_port.c"
+    "${CMAKE_CURRENT_BINARY_DIR}/scenes_port.c"
     host/render/gpu_hd.c
     "${KHDAYS_GEN}/ds_functions.c"  # the native function at each DS address
     ../assets/src/mesh.cpp         # DS models decoded, for the graphics dump's glTF
@@ -525,6 +530,9 @@ add_executable(khdays-movie-hd-test tests/movie_hd_test.c runtime/movies/movie_h
 target_link_libraries(khdays-movie-hd-test PRIVATE winmm)
 target_compile_options(khdays-movie-hd-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-movie-hd COMMAND khdays-movie-hd-test)
+add_executable(khdays-scenes-test tests/scenes_test.c runtime/movies/scene_map.c)
+target_compile_options(khdays-scenes-test PRIVATE /W4 /std:c17)
+add_test(NAME khdays-scenes COMMAND khdays-scenes-test)
 # ... and its decoder on one of the player's files, when they are there.
 add_executable(khdays-movie-hd-decode-test tests/movie_hd_decode_test.c host/movies/movie_hd_win.c)
 target_link_libraries(khdays-movie-hd-decode-test PRIVATE SDL3::SDL3 mfplat mfreadwrite mfuuid ole32)

@@ -1,0 +1,15 @@
+# The theater's HD scenes the port plays in place of the game's own event scenes (specs/029): the
+# videos of the HD collection's 358/2 Days theater, made from the player's own copy into
+# data/cutscenes/cinematics/<stem>.mp4, played instead of the scene's skippable stretch, the game's
+# own skip ending it. A mod's cutscenes/scenes.txt adds entries or replaces these by their script.
+#
+# <script> <video stem> [<video stem> ...] ; <evidence>
+#   <script>  an event archive's entry, EV_<world>#<index> (ev/EV_S.p2's entry 4: EV_S#4), or a
+#             mission's script section, mi/<mission>/<script>:<section>
+#   off       in place of the stems: the game's own scene (a mod may switch an entry off)
+
+# Day 7: the castle at night, then Roxas in his room (the theater: his words over black)
+EV_S#196 hd002 ; pictures: the castle at night, 4.1 s
+EV_S#0 hd003 ; order: day 7's second scene; the theater's voice over black
+# Day 8
+EV_S#4 hd004 ; lines 15/15, in order

@@ -10,6 +10,7 @@
  * status halfword is at +0x8758c. */
 #include "scene_trace.h"
 #include "movie_hd.h"
+#include "scenes.h"
 #include "../core/events.h"
 #include "../core/window.h"
 
@@ -165,6 +166,27 @@ void khdays_scene_target(unsigned int state, int operand)
         fprintf(stderr, "scene: f%u skip target %s +%x (depth %u, script at %08x, command at +%x)\n",
                 khdays_events_vblank_count(), operand == -1 ? "cleared" : "set", operand == -1 ? 0u : (unsigned)operand,
                 depth, u32_at(entry + ENTRY_START), u32_at(entry + ENTRY_NEXT) - u32_at(entry + ENTRY_START));
+        if (operand != -1) {
+            char key[48];
+            if (khdays_scenes_recognise(u32_at(entry + ENTRY_START), key, (int)sizeof(key))) {
+                const KhdaysSceneEntry *e = khdays_scene_map_find(khdays_scenes_map(), key);
+                fprintf(stderr, "scene: f%u start %s: ", khdays_events_vblank_count(), key);
+                if (e == NULL) {
+                    fprintf(stderr, "ds (not in the map)\n");
+                } else if (e->off) {
+                    fprintf(stderr, "ds (off)\n");
+                } else {
+                    fprintf(stderr, "hd");
+                    for (int i = 0; i < e->stem_count; ++i) {
+                        fprintf(stderr, " %s", e->stems[i]);
+                    }
+                    fprintf(stderr, "\n");
+                }
+            } else {
+                fprintf(stderr, "scene: f%u start of a script none of the event archives holds\n",
+                        khdays_events_vblank_count());
+            }
+        }
     }
 }
 
