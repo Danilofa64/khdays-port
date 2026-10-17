@@ -242,26 +242,35 @@ void khdays_scene_target(unsigned int state, int operand)
     }
 }
 
-/* With KHDAYS_TEST_SCENE, the port leaves 30 frames after the event that played the scene closes. */
+/* With KHDAYS_TEST_SCENE, the port leaves 30 frames after the scene asked for ends (the shared
+ * archive's, slot 4: EV_S#<entry>) or, for another slot, after the event that played it closes. */
 static void test_scene_frame(uint32_t frame)
 {
-    static int armed = -1, started;
+    static int armed = -1, started, seen;
     static uint32_t closed;
+    static char wanted[48];
     EventView now;
     if (armed < 0) {
-        armed = getenv("KHDAYS_TEST_SCENE") != NULL;
+        const char *v = getenv("KHDAYS_TEST_SCENE");
+        armed = v != NULL;
+        if (v != NULL && v[0] == '4' && v[1] == ':') {
+            snprintf(wanted, sizeof(wanted), "EV_S#%s", v + 2);
+        }
     }
     if (!armed) {
         return;
     }
     now = view_now();
-    if (now.running && now.status != 0u) {
+    if (wanted[0] != '\0' && strcmp(current, wanted) == 0) {
+        seen = 1;
+    }
+    if (now.running && now.status != 0u && !(seen && strcmp(current, wanted) != 0)) {
         started = 1;
         closed = 0u;
     } else if (started && closed == 0u) {
         closed = frame;
     } else if (started && frame >= closed + 30u) {
-        fprintf(stderr, "scene: f%u KHDAYS_TEST_SCENE: the event closed; leaving\n", frame);
+        fprintf(stderr, "scene: f%u KHDAYS_TEST_SCENE: the scene ended; leaving\n", frame);
         fflush(stderr);
         _Exit(0);
     }
