@@ -108,9 +108,11 @@ EV_S#109 hd086a ; pictures: Naminé drawing (no lines on either side)
 EV_S#110 hd086b ; lines: 88% of the theater's found in the scene's
 # Day 224
 EV_S#113 hd087 ; lines: 50% of the theater's found in the scene's
+EV_S#178 hd086h ; pictures: Xion alone on her bed (no lines on either side)
 # Day 255
 EV_S#116 hd089 ; lines: 37% of the theater's found in the scene's
 EV_S#117 hd090 ; lines: 40% of the theater's found in the scene's
+EV_S#119 hd092 ; lines (by meaning, 2 of 2): not who he was; pictures: Xion before Sora's pod
 # Day 276
 EV_S#123 hd094 ; lines: 27% of the theater's found in the scene's
 EV_S#124 hd095 ; lines: 35% of the theater's found in the scene's
@@ -125,9 +127,15 @@ EV_S#138 hd106 ; lines (by meaning, 3 of 3): what happened to Xion; pictures: Xe
 EV_S#139 hd107 ; lines: 56% of the theater's found in the scene's
 EV_S#140 hd108 ; lines: 100% of the theater's found in the scene's
 EV_S#141 hd109 ; lines: 22% of the theater's found in the scene's
+EV_S#142 hd110 ; pictures: Riku before the Memory's Skyscraper and Kingdom Hearts (no lines on either side)
+EV_S#143 hd111 ; lines (by meaning, 2 of 2): what to do, Riku; pictures: Xion on her bed, Kingdom Hearts
 # Day 300
+EV_S#144 hd112a ; pictures: Roxas and Axel on the clock tower, Xion joins them at sunset (no lines on either side)
 EV_S#145 hd112b ; lines: 38% of the theater's found in the scene's
+# Day 301
+EV_S#146 hd112c ; pictures: Roxas alone on the clock tower at sunset (no lines on either side)
 # Day 321
+EV_S#147 hd113 ; lines (by meaning, 1 of 1): what is this; pictures: Roxas wakes, his hand
 EV_S#151 hd115b ; lines: 36% of the theater's found in the scene's
 EV_S#152 hd116 ; lines: 42% of the theater's found in the scene's
 # Day 322
@@ -146,6 +154,10 @@ EV_S#165 hd129 ; lines: 36% of the theater's found in the scene's
 EV_S#166 hd130a ; lines: 54% of the theater's found in the scene's
 # Day 355
 EV_S#169 hd132 ; lines: 55% of the theater's found in the scene's
+EV_S#187 hd131a ; lines (by meaning): Xion a replica, both special Nobodies, Axel hiding things; pictures: Roxas on his bed
+EV_S#188 hd132a ; lines (by meaning, 3 of 3): he tried, he must find out about himself; pictures: Roxas with the stick in his room
 # Day 356
 EV_S#171 hd133b ; lines: 45% of the theater's found in the scene's
 EV_S#174 hd136 ; lines: 72% of the theater's found in the scene's
+# Day 358
+EV_S#177 hd140 ; pictures: Riku and the hooded Roxas at the Memory's Skyscraper (the theater lists it in no chapter and has no subtitles for it)
