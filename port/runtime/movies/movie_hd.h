@@ -66,6 +66,18 @@ void khdays_movie_hd_scene_step(uint32_t state, void *host_state);
  * the course ends and the game is shown again. */
 void khdays_movie_hd_scene_ended(void);
 
+/* The game's thread, each frame: START during a scene's videos paused them and let the game open its
+ * own pause (Continue, Skip); `pause_open` whether it is open (PauseMenu_GetMode), `skip_requested`
+ * whether the event's skip request is set. Once it closes, Skip leaves the game to unwind to the
+ * scene's end; Continue (or a pause that never opened) holds the game again and the video goes on. */
+void khdays_movie_hd_scene_frame(int pause_open, int skip_requested);
+
+/* Whether the game's pause is over a scene's paused video (the window draws the pause over it). */
+int khdays_movie_hd_scene_paused(void);
+
+/* The event machine's state (a reference) of the scene whose videos are shown, 0 when none. */
+uint32_t khdays_movie_hd_scene_state(void);
+
 /* The game's thread, as a day's monologue begins (scene 10): with Video `hd`, the sound of the videos
  * `stems` in a row (the theater's voice-only clips; their pictures are black) heard over the game's
  * own page, the game going on as on the DS. Returns 1 when the voice starts, 0 when there is none (no

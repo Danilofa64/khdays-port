@@ -83,9 +83,10 @@ void khdays_hd_start(void)
 {
     started = 1;
 }
+static int hd_paused; /* the decoder paused (START's pause over a scene) */
 void khdays_hd_pause(int pause)
 {
-    (void)pause;
+    hd_paused = pause;
 }
 void khdays_hd_close(void)
 {
@@ -374,6 +375,60 @@ int main(void)
         CHECK(*(uint32_t *)(event + 0x588) == 1 && sound_effects_stopped == stopped_before + 1);
         khdays_movie_hd_scene_ended();
         CHECK(!khdays_movie_hd_showing() && !muted && !held());
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(0);
+    }
+
+    /* START during a scene's video: the video paused, the game let go with START once to open its own
+     * pause; Continue holds it again and the video goes on, Skip lets it unwind to the scene's end */
+    {
+        static uint8_t event[0x600];
+        char *const stems[] = {"hd010"};
+        const int closed_before = closes;
+        touch("data/cutscenes/cinematics/hd010.mp4");
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 1);
+        CHECK(khdays_movie_hd_scene_state() == 0x1234u);
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(START);
+        CHECK(khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && hd_paused && !held() && muted);
+        khdays_movie_hd_scene_frame(0, 0);                    /* before the game read its START: waits */
+        CHECK(khdays_movie_hd_scene_paused());
+        CHECK(khdays_movie_hd_game_buttons(START) == START); /* START pressed for the pause ... */
+        khdays_movie_hd_scene_frame(0, 0);                   /* (refused: the screen fades) */
+        CHECK(khdays_movie_hd_game_buttons(START) == 0);     /* ... every other frame ... */
+        khdays_movie_hd_scene_frame(0, 0);
+        CHECK(khdays_movie_hd_game_buttons(START) == START); /* ... until it opens */
+        khdays_movie_hd_scene_frame(1, 0);                   /* the pause open */
+        CHECK(khdays_movie_hd_game_buttons(START) == 0);     /* held since: not a new press */
+        CHECK(khdays_movie_hd_game_buttons(0) == 0);
+        CHECK(khdays_movie_hd_game_buttons(A) == A);         /* the pause's choices are the player's */
+        CHECK(khdays_movie_hd_scene_paused());
+        khdays_movie_hd_scene_frame(0, 0);                   /* closed by Continue */
+        CHECK(!khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && held() && !hd_paused);
+        CHECK(khdays_movie_hd_game_buttons(A) == 0);         /* held for the video again: none */
+        /* again, and Skip */
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(START);
+        khdays_movie_hd_game_buttons(START);
+        khdays_movie_hd_scene_frame(1, 0);
+        khdays_movie_hd_scene_frame(0, 1);
+        CHECK(!khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && !held() && closes == closed_before + 1);
+        khdays_movie_hd_scene_step(0x1234u, event); /* nothing more to ask: the game's own skip runs */
+        CHECK(*(uint32_t *)(event + 0x588) == 0);
+        khdays_movie_hd_scene_ended();
+        CHECK(!khdays_movie_hd_showing() && !muted && khdays_movie_hd_scene_state() == 0u);
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(0);
+        /* a pause the game does not open: the video goes on */
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 1);
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(START);
+        for (int i = 0; i <= 90; ++i) {
+            khdays_movie_hd_game_buttons(0);
+            khdays_movie_hd_scene_frame(0, 0);
+        }
+        CHECK(!khdays_movie_hd_scene_paused() && held() && !hd_paused);
+        khdays_movie_hd_scene_ended();
         khdays_movie_hd_game_buttons(0);
         khdays_movie_hd_game_buttons(0);
     }

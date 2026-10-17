@@ -626,6 +626,23 @@ the videos (Media Foundation); a file it cannot play, or a movie without an
 HD video, plays the game's movie, and the log says why. A mod's movie for the
 same movie comes first. Subtitles are not shown over the HD videos.
 
+**HD scenes.** The theater also holds the game's event scenes the DS draws in
+real time, made again in HD, and Roxas's monologues as a voice. The same tool
+makes the ones the port plays: the scene map, `port/movies/hd_scenes.txt`
+(86 scenes and 7 monologues, each paired by its lines or its pictures, every
+pair checked side by side; `tools/hd/scene_report.py` says where each video
+of your collection plays). With the Movies setting on HD, when the game
+reaches a scene of the map its videos play over the whole window with their
+sound and subtitles while the game waits; then the game takes its own skip,
+so it goes on exactly as after the DS's Skip. A day's monologue keeps the
+game's page, and the theater's voice reads it. Without the video, or with
+Movies on PC or DS, the DS's scene plays. START pauses the video and opens
+the game's own pause over it, as on the DS: Continue goes on with the video,
+Skip ends the scene (on two screens the pause shows over the game's screens).
+A mod's `cutscenes/scenes.txt` adds or replaces entries (`<script> <videos>
+; <evidence>`, or `off` for the DS's scene), and its
+`cutscenes/cinematics/<video>.mp4` comes before your own.
+
 **Replacing movies.** A mod replaces any of the game's 46 movies with an
 MPEG-1 file of any size, with or without MPEG-1 Layer II sound:
 `mods/<Mod>/movies/<id>.mpg`, `<id>` the movie's number in the game's `mv/`

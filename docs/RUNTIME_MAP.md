@@ -366,7 +366,13 @@ The native build prints these to stderr when the variable is set:
   with this one (`4:6`: EV_S#6), so that scene plays in its own place; the port leaves 30 frames after
   the event closes (section 21).
 - `KHDAYS_SCENE_SHOTS=<dir>` -- while a scene of the field's event runs, both screens every 30 frames
-  as `<dir>/<scene>_<frame>.bmp` (EV_S_4_02400.bmp), headless too.
+  as `<dir>/<scene>_<frame>.bmp` (EV_S_4_02400.bmp), headless only (the window's composition draws
+  without the frames these are made from); a day's monologue as `mnl_<record>_<frame>.bmp`.
+- `KHDAYS_SCENE_STATE=<file>` -- the event machine's state (0x2000 bytes) written at each event's
+  close as `<file>.<n>`, to compare a skip by the HD course with the DS's.
+- `KHDAYS_TEST_SCENE_START=<ms>` -- START pressed that many milliseconds into each HD scene's videos
+  (the scripted input cannot: the game, held for them, reads none); the game's pause then opens over
+  the paused video and the script's presses choose in it.
 - `KHDAYS_TRACE_PAD` -- every game frame's buttons: what the port gave
   `Pad_Sample` and what it made of them (held, pressed).
 - `KHDAYS_TRACE_CONTROLS` -- what the field does with its controls, when it
@@ -4413,3 +4419,12 @@ the story walk and `KHDAYS_TEST_DAY`).
   at (scenes without lines were paired by them alone). `tools/hd/scene_report.py` says where each of
   the collection's 142 videos plays (a scene, a monologue, a movie, or not played and why) and fails
   on an entry whose video the collection or whose script the game lacks.
+- **START over an HD scene.** The video and its sound pause and the game is let go with START,
+  pressed every other frame until its pause opens: `PauseMenu_PollInput` refuses one while the
+  screen's brightness moves, and a scene held at its start is in its fade-in (seen: the first START
+  refused, the pause open 35 frames later). The pause's panel is engine A's BG3 over the scene's 3D,
+  which the DS darkens (BLDCNT 0xc1, BLDY 8); on one screen the port draws the situation's shapes
+  with the video's picture behind them and no 3D, on two the game's screens as they are. Skip
+  (`Ov023_FlushTextBox`, +0x588) unwinds the event and clears its target, which ends the course;
+  Continue (`PauseMenu_GetMode` back to 0, the request clear) holds the game again and the video
+  goes on. Seen on day 7's castle (hd002), both ways.

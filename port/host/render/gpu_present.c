@@ -831,8 +831,45 @@ int khdays_present_fps(int *pictures, int *frames)
     return video.show_fps;
 }
 
+/* The game's pause over an HD scene's paused video: the video's picture as RGBA, taken once a pause
+ * (-1 when none could be), in two buffers used in turn, so the next pause's picture is a backdrop
+ * the card has not kept (gfx_render.c knows a backdrop by its address). */
+static uint8_t *paused_rgba[2];
+static size_t paused_capacity[2];
+static int paused_turn, paused_w, paused_h, paused_got;
+
+/* One screen: the video's picture behind everything, fitted inside the picture as the video shows,
+ * and no 3D. The pause's panel is the upper screen's 2D (seen: engine A's BG3 over the scene's 3D,
+ * the 3D alone darkened), which the situation's shapes draw over it; the scene the game holds under
+ * the pause is its 3D. */
+static void under_paused_video(KhdaysOneScreenDraw *one)
+{
+    if (paused_got == 0) {
+        paused_turn ^= 1;
+        paused_got = khdays_hd_picture_rgba(&paused_rgba[paused_turn], &paused_capacity[paused_turn], &paused_w,
+                                            &paused_h)
+                         ? 1
+                         : -1;
+    }
+    if (paused_got > 0) {
+        one->backdrop = paused_rgba[paused_turn];
+        one->backdrop_w = paused_w;
+        one->backdrop_h = paused_h;
+        one->backdrop_ax = one->backdrop_ay = 0.5f;
+        one->backdrop_fit = 1;
+        one->animated = 0;
+        one->picture_w = one->picture_h = 0;
+        one->pieces = NULL;
+        one->piece_count = 0;
+    }
+    one->hide3d_all = 1;
+}
+
 void khdays_present_package(const KhdaysFramePackage *p)
 {
+    if (!khdays_movie_hd_scene_paused()) {
+        paused_got = 0; /* the next pause takes the video's picture anew */
+    }
     note_logic_frame(p);
     latest = p;
     present(p, 1);
@@ -1011,9 +1048,12 @@ static void present(const KhdaysFramePackage *p, int first)
             if (raster && khdays_raster3d_targets(&c3d, &a3d, &raster_columns)) {
                 one.columns = raster_columns;
             }
+            if (khdays_movie_hd_scene_paused()) {
+                under_paused_video(&one);
+            }
             /* at the DS's own size without 3D, but for a picture with a backdrop of its own (the
              * camp's Preferences page: an HD picture, no model) */
-            drawn = khdays_gfx_render_draw_one(p, raster || composition.backdrop != NULL ? n : 1, raster, &one);
+            drawn = khdays_gfx_render_draw_one(p, raster || one.backdrop != NULL ? n : 1, raster, &one);
             one_drawn = drawn;
             one_made = one_made || drawn;
         } else {
@@ -1215,11 +1255,15 @@ void khdays_present_draw(void)
     fps_count(1);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-    if (khdays_movie_hd_showing()) {
+    /* the game's pause over a scene's paused video: on one screen its panel over the video's picture
+     * (under_paused_video), on two the game's screens as they are (the panel is engine A's 2D, over the
+     * scene's 3D: no picture of it apart) */
+    const int paused = khdays_movie_hd_scene_paused();
+    if (khdays_movie_hd_showing() && !paused) {
         draw_hd_movie();
         return;
     }
-    if (hd_movie != NULL) {
+    if (hd_movie != NULL && !paused) {
         SDL_DestroyTexture(hd_movie); /* the video is over */
         hd_movie = NULL;
         khdays_movie_subtitles_release();

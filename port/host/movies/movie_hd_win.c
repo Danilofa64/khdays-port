@@ -847,6 +847,54 @@ void khdays_hd_picture_done(void)
     ReleaseSRWLockExclusive(&lock);
 }
 
+static uint8_t clamp8(int v)
+{
+    return (uint8_t)(v < 0 ? 0 : v > 255 ? 255 : v);
+}
+
+int khdays_hd_picture_rgba(uint8_t **rgba, size_t *capacity, int *w, int *h)
+{
+    int found = 0;
+    AcquireSRWLockShared(&lock);
+    for (int i = 0; i < hd.count && !found; ++i) {
+        const Picture *p = &hd.pictures[i];
+        size_t need;
+        if (p->number != hd.taken) {
+            continue;
+        }
+        found = 1;
+        need = (size_t)p->width * (size_t)p->height * 4u;
+        if (*capacity < need) {
+            uint8_t *grown = (uint8_t *)SDL_realloc(*rgba, need);
+            if (grown == NULL) {
+                found = 0;
+                break;
+            }
+            *rgba = grown;
+            *capacity = need;
+        }
+        *w = p->width;
+        *h = p->height;
+        /* NV12: the luma, then the chroma at half the rows, U and V interleaved; BT.709 limited range
+         * in 16.16 fixed point (Y' = 1.164 (Y - 16), R += 1.793 V, G -= 0.213 U + 0.533 V, B += 2.112 U) */
+        for (int y = 0; y < p->height; ++y) {
+            const uint8_t *luma = p->data + (size_t)y * (size_t)p->width;
+            const uint8_t *chroma = p->data + (size_t)p->width * (size_t)p->height + (size_t)(y / 2) * (size_t)p->width;
+            uint8_t *out = *rgba + (size_t)y * (size_t)p->width * 4u;
+            for (int x = 0; x < p->width; ++x) {
+                const int yy = 76284 * (luma[x] - 16);
+                const int u = chroma[(x & ~1)] - 128, v = chroma[(x & ~1) + 1] - 128;
+                out[4 * x + 0] = clamp8((yy + 117504 * v + 32768) >> 16);
+                out[4 * x + 1] = clamp8((yy - 13954 * u - 34903 * v + 32768) >> 16);
+                out[4 * x + 2] = clamp8((yy + 138392 * u + 32768) >> 16);
+                out[4 * x + 3] = 255;
+            }
+        }
+    }
+    ReleaseSRWLockShared(&lock);
+    return found;
+}
+
 /* --- A voice over the game (khdays_hd_voice_play) ---------------------------------------------- */
 
 static SRWLOCK voice_lock = SRWLOCK_INIT; /* guards the voice's stream against the pause and the volume */

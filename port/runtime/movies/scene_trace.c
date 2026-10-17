@@ -335,10 +335,17 @@ static void state_at_close(uint32_t frame)
     running = now;
 }
 
+int PauseMenu_GetMode(void); /* the game's: its pause's step, 0 when closed */
+
 void khdays_scene_trace_frame(uint32_t frame)
 {
     test_scene_frame(frame);
     state_at_close(frame);
+    if (khdays_movie_hd_scene_paused()) {
+        /* the game's pause over a scene's paused video: open, and whether its Skip set the request */
+        const uint32_t st = khdays_movie_hd_scene_state();
+        khdays_movie_hd_scene_frame(PauseMenu_GetMode() != 0, st != 0u && u32_at(st + 0x588u) != 0u);
+    }
     if (current[0] != '\0' && !monologue && !view_now().running) {
         current[0] = '\0'; /* the event closed without clearing its target */
         khdays_movie_hd_scene_ended();
