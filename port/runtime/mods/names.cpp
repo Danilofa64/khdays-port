@@ -3,6 +3,7 @@
 // in it found by their headers, and their TEX0 dictionaries naming each texture and palette
 // (docs/RENDERING.md, "Mods' graphics").
 #include "names.h"
+#include "fonts.h"
 
 #include "../core/rom.h"
 extern "C" {
@@ -584,9 +585,8 @@ int dump_font(const std::string &label, const std::vector<u8> &data, const std::
         }
     }
 
-    std::filesystem::path relative(label);
-    relative.replace_extension(".png");
-    const std::filesystem::path png = std::filesystem::path(folder) / "fonts" / relative;
+    // Keep the complete original filename, e.g. text/font_eu_10.nftr.png.
+    const std::filesystem::path png = std::filesystem::path(folder) / "fonts" / (label + ".png");
     std::error_code ec;
     std::filesystem::create_directories(png.parent_path(), ec);
     if (ec || !khdays_textures_write_png(png.string().c_str(), rgba.data(), w, h)) {
@@ -658,6 +658,8 @@ extern "C" int khdays_graphics_dump(const char *directory)
             if (dump_font(label, d, full)) {
                 ++fonts;
                 ++files;
+                // Smoke-test any matching mod atlas without changing game rendering.
+                khdays::hd_fonts::probe(label);
             }
             return;
         }

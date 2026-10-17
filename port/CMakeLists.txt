@@ -387,6 +387,7 @@ add_executable(khdays-native
     runtime/display/gfx_check.c
     runtime/core/origin.c
     runtime/mods/names.cpp
+    runtime/mods/fonts.cpp
     runtime/mods/textures.c
     runtime/mods/models.cpp
     runtime/mods/tiles2d.c
