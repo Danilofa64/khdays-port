@@ -132,17 +132,18 @@ shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 # ----------------------------------------------------------------------------
 # The field's dialogs (an event's text, a person's words): the upper screen
 # whole over the 3D, at the HUD's size but never larger than the DS's, at the
-# bottom where the dialog box is (the maintainer's choices). A challenge's
-# label (the upper screen's top left, rows 0-13) at the picture's top left
-# against its edge, as small as the HUD's pieces, in its events and in play
-# (the maintainer, 2026-10-17: it showed at the picture's size in a challenge's
-# cutscene); in an event the rows under it whole, as without one.
-[field if dialog challenge]
-shape upper 0 0 132 14 at top-left margin 0 5 0 0 scale 0.666667
+# bottom where the dialog box is (the maintainer's choices). The label the
+# events of a mission played again show at the upper screen's top left (rows
+# 0-13: "HOLOMEMORIA" in Mission Mode, a challenge's "RELOJ PARADO"), and a
+# challenge's in play, at the picture's top left corner against its edges, as
+# small as the HUD's pieces (the maintainer, 2026-10-17: it showed at the
+# picture's size in the cutscenes); in an event the rows under it whole.
+[field if dialog holo]
+shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
 stop
-[field-3d-both if dialog challenge]
-shape upper 0 0 132 14 at top-left margin 0 5 0 0 scale 0.666667
+[field-3d-both if dialog holo]
+shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
 stop
 [field if dialog]
@@ -152,9 +153,9 @@ stop
 shape upper at bottom scale 1 at-most fixed(1)
 stop
 [field if hud challenge]
-shape upper 0 0 132 14 at top-left margin 0 5 0 0 scale 0.666667
+shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 [field-3d-both if hud challenge]
-shape upper 0 0 132 14 at top-left margin 0 5 0 0 scale 0.666667
+shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 
 # ----------------------------------------------------------------------------
 # The pause: its menu (the upper screen's 72,64-184,140: PAUSA, its lines, the

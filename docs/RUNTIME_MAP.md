@@ -2666,6 +2666,20 @@ maintainer's picture).
   127.5, short of the middle where the portal's countdown ends its digits.
   `hide3d` hid nothing until then (its rectangle was empty): the pause's and
   a tutorial's lines now hide the HUD's 3D, as their comments say.
+- **The label of a mission played again** (2026-10-17, the maintainer's
+  pictures; mission 11 in multiplayer with the player's save, and challenge
+  07): in the events of a mission played again the upper screen shows a label
+  at its top left, rows 0-13 -- "HOLOMEMORIA" in Mission Mode, a challenge's
+  "RELOJ PARADO" -- with "Todos pueden pulsar START y omitir" at its bottom in
+  multiplayer. An event is the state `dialog`, which shows the upper screen
+  whole at the picture's size, so the label was shown large (at 16:9 towards
+  the middle). The port's state `holo` (`data_0204c240`'s bits 0-2: the story
+  camp's Holo-Missions 1, a challenge 3, Mission Mode bit 2, 7 on the
+  multiplayer walk's host; 0 in a story's own mission and the Grey Area) puts
+  the label at the picture's top left against its edges, at the HUD's size,
+  and the rows under it whole as before; a challenge's label in play goes there
+  too. Seen in windows on both copies of mission 11: the label in the corner,
+  the line to skip at the bottom.
 
 ### 15.1 The title as the HD collection's theater menu (2026-10-09)
 

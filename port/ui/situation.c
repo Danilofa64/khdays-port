@@ -11,7 +11,7 @@ static const char *const scene_names[KHDAYS_SITUATIONS] = {
 
 static const char *const state_names[KHDAYS_STATES] = {
     "hud",     "dialog",   "challenge",     "info-upper", "info-lower", "lower-3d",
-    "party-4", "info-new", "mission-panel", "title-lit",  "event",
+    "party-4", "info-new", "mission-panel", "title-lit",  "event", "holo",
 };
 
 const char *khdays_situation_name(int scene)

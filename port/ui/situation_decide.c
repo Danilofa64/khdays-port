@@ -207,6 +207,12 @@ static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
         if (story_camp && (in->mission_flags & 2u) != 0u) {
             s |= ST(CHALLENGE);
         }
+        /* a mission played again: the story's camp sets bit 0 (with bit 1 for a challenge), Mission Mode
+         * bit 2 (7 on the host of the multiplayer walk); a story's own mission and the Grey Area 0 (the
+         * results' exit clears it, Ov005_UpdateMenuExitTransition) */
+        if ((in->mission_flags & 7u) != 0u) {
+            s |= ST(HOLO);
+        }
         /* the 3D on the lower screen alone: engine A shows the lower screen (POWCNT1 bit 15
          * clear) and does not swap */
         if ((in->powcnt1 & 0x8000u) == 0u && in->engine_swaps == 0u && scene != KHDAYS_SIT_FIELD_3D_BOTH) {
