@@ -377,7 +377,11 @@ In `port/tools` (Python 3.11+ unless said):
   `[[vk::combinedImageSampler]]` and the same `[[vk::binding(n, set)]]`);
   compute shaders' read-only textures then buffers in t registers of space0,
   read-write ones in u registers of space1, uniforms in b registers of space2
-  (a storage image needs `[[vk::image_format(...)]]`).
+  (a storage image needs `[[vk::image_format(...)]]`). A storage buffer is a
+  `ByteAddressBuffer`, never a `StructuredBuffer`: SDL's Direct3D 12 views
+  every buffer raw (no stride), and AMD's cards and vkd3d index a structured
+  one by the view's stride, so every element read is the first (SDL issue
+  12200; NVIDIA's cards read it right, which hides it).
 - `analyze.py [--tree ...]`: builds the `khdays-analyze` target -- the port's
   own sources (not the decompilation's, not the third parties') compiled again
   with MSVC's `/analyze` and their real flags, not linked -- and lists every
