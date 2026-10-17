@@ -292,12 +292,17 @@ begin
     Result := Result + '.';
 end;
 
-{ The Browse button beside a folder (its Tag says which) }
+{ The Browse button beside a folder (its Tag says which): an empty one starts beside the other
+  collection (Steam's and the Epic Games Store's keep both in one library), else in Program Files }
 procedure HdBrowse(Sender: TObject);
 var
   Folder: String;
 begin
   Folder := HdFolder(TNewButton(Sender).Tag);
+  if Folder = '' then
+    Folder := ExtractFileDir(HdFolder(1 - TNewButton(Sender).Tag));
+  if Folder = '' then
+    Folder := ExpandConstant('{commonpf}');
   if BrowseForFolder(SetupMessage(msgBrowseDialogLabel), Folder, False) then
     HdPage.Values[TNewButton(Sender).Tag] := Folder;
 end;

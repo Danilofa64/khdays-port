@@ -236,16 +236,20 @@ def verify_rom(args: argparse.Namespace) -> dict[str, Any]:
     "find-rom",
     "a supported ROM already on this computer where KH Melon Mix keeps a player's own",
     lambda p: p.add_argument(
-        "folders", type=Path, nargs="*", help="KINGDOM HEARTS HD 1.5+2.5 ReMIX folders (default: Steam's)"
+        "folders",
+        type=Path,
+        nargs="*",
+        help="KINGDOM HEARTS HD 1.5+2.5 ReMIX folders (default: Steam's and the Epic Games Store's)",
     ),
 )
 def find_rom(args: argparse.Namespace) -> dict[str, Any]:
     folders = list(args.folders)
     if not folders:
+        import epic_library
         import steam_library
 
-        found = steam_library.app_folder(steam_library.APP_1525)
-        folders = [found] if found is not None else []
+        found = [steam_library.app_folder(steam_library.APP_1525), epic_library.collection_folder(epic_library.MARKER_1525)]
+        folders = [f for f in found if f is not None]
     for folder in folders:
         candidate = folder / "Image" / "melon" / "roms" / "days.nds"
         if candidate.is_file():
@@ -490,13 +494,39 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
     return {"inputs": sum(len(v) for v in entries.values()), "out": str(args.out)}
 
 
-# The collections' places (from their Steam folder) and what each HD choice needs.
+# The collections' places and what each HD choice needs. Steam's copies keep their language's archives
+# in Image/dt and Days's videos in STEAM/Mare/MOVIE/Days/dt; the Epic Games Store's keep the archives in
+# Image/en (KHPCPatchManager looks in en or dt) -- the videos are found where the collection has them.
 KH2_EXE = "KINGDOM HEARTS II FINAL MIX.exe"
 COLLECTION_ARCHIVES = {
     "1.5+2.5": {"Mare": "Image/Mare", "SettingMenu": "Image/SettingMenu", "kh2_first": "Image/dt/kh2_first"},
     "2.8": {"kh3d_first": "Image/dt/kh3d_first"},
 }
 MOVIES = "STEAM/Mare/MOVIE/Days/dt"
+LANGUAGE_FOLDERS = ("dt", "en")
+
+
+def archive_base(folder: Path, kind: str, archive: str) -> Path:
+    """Where `archive` of collection `kind` is in `folder` (its .hed and .pkg beside this name): its
+    language folder the one the collection has."""
+    rel = COLLECTION_ARCHIVES[kind][archive]
+    for language in LANGUAGE_FOLDERS if "/dt/" in rel else ():
+        base = folder / rel.replace("/dt/", f"/{language}/")
+        if base.with_name(base.name + ".hed").is_file():
+            return base
+    return folder / rel
+
+
+def movies_folder(folder: Path) -> Path:
+    """Days's videos in the 1.5+2.5 collection `folder`: Steam's STEAM/Mare/MOVIE/Days/dt, else the
+    folder in the same place of the collection that holds them (*/Mare/MOVIE/Days/*)."""
+    if (folder / MOVIES).is_dir():
+        return folder / MOVIES
+    first = hd_inputs().get("movies", [])
+    for candidate in sorted(folder.glob("*/Mare/MOVIE/Days/*")):
+        if candidate.is_dir() and (not first or (candidate / first[0]).is_file()):
+            return candidate
+    return folder / MOVIES
 DATA_TOOLS = {"theater_mission.py", "theater_cine.py", "save_screen.py", "ddd_camp.py"}  # take --data
 
 MESSAGES.update(
@@ -557,7 +587,7 @@ def check_folder(kind: str, folder: Path) -> list[str]:
     inputs = hd_inputs()
     missing = []
     for archive, rel in COLLECTION_ARCHIVES[kind].items():
-        base = folder / rel
+        base = archive_base(folder, kind, archive)
         if not (base.with_name(base.name + ".hed").is_file() and base.with_name(base.name + ".pkg").is_file()):
             missing.append(rel + ".hed/.pkg")
             continue
@@ -569,9 +599,10 @@ def check_folder(kind: str, folder: Path) -> list[str]:
         if absent:
             missing.append(f"{rel}: {len(absent)} entries ({absent[0]}...)")
     if kind == "1.5+2.5":
-        absent = [m for m in inputs.get("movies", []) if not (folder / MOVIES / m).is_file()]
+        movies = movies_folder(folder)
+        absent = [m for m in inputs.get("movies", []) if not (movies / m).is_file()]
         if absent:
-            missing.append(f"{MOVIES}: {len(absent)} files ({absent[0]}...)")
+            missing.append(f"{movies.relative_to(folder).as_posix()}: {len(absent)} files ({absent[0]}...)")
         try:
             collection_archive.load_table(folder / KH2_EXE)
         except (OSError, collection_archive.ArchiveError):
@@ -579,15 +610,29 @@ def check_folder(kind: str, folder: Path) -> list[str]:
     return missing
 
 
-@command("find-collections", "the KINGDOM HEARTS collections Steam has on this computer, each checked", lambda p: None)
+@command(
+    "find-collections",
+    "the KINGDOM HEARTS collections Steam or the Epic Games Store has on this computer, each checked",
+    lambda p: None,
+)
 def find_collections(args: argparse.Namespace) -> dict[str, Any]:
+    import epic_library
     import steam_library
 
     steam = steam_library.steam_folder()
     found = []
-    for kind, app in (("1.5+2.5", steam_library.APP_1525), ("2.8", steam_library.APP_28)):
+    for kind, app, marker in (
+        ("1.5+2.5", steam_library.APP_1525, epic_library.MARKER_1525),
+        ("2.8", steam_library.APP_28, epic_library.MARKER_28),
+    ):
+        # Steam's copy first, the Epic Games Store's when Steam has none that is whole
         folder = steam_library.app_folder(app, steam) if steam is not None else None
         missing = check_folder(kind, folder) if folder is not None else None
+        if folder is None or missing:
+            epic = epic_library.collection_folder(marker)
+            epic_missing = check_folder(kind, epic) if epic is not None else None
+            if epic is not None and (folder is None or not epic_missing):
+                folder, missing = epic, epic_missing
         found.append(
             {
                 "kind": kind,
@@ -688,7 +733,7 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
             shutil.copy2(tools["hd"] / tool, root / "tools" / "hd" / tool)
         shutil.copy2(tools["rom"] / "decompress_data.py", root / "tools")
         places = {
-            "movies": args.c1525 / MOVIES if args.c1525 else Path(),
+            "movies": movies_folder(args.c1525) if args.c1525 else Path(),
             "mare": src / "Mare.hed_out" / "original",
             "settings": src / "SettingMenu.hed_out" / "original",
             "ddd": src / "kh3d_first.hed_out",
@@ -702,7 +747,7 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
         for archive, folder in wanted.items():
             kind = "1.5+2.5" if archive in COLLECTION_ARCHIVES["1.5+2.5"] else "2.8"
             progress(0, 1, words("hd-making", args.language, what=archive))
-            with collection_archive.Archive(folder / COLLECTION_ARCHIVES[kind][archive], cipher) as a:
+            with collection_archive.Archive(archive_base(folder, kind, archive), cipher) as a:
                 collection_archive.materialise(a, inputs.get(archive, []), src / f"{archive}.hed_out")
         runs = (HD_MENU_TOOLS if args.menus else []) + (HD_VIDEO_TOOLS if args.videos else [])
         for i, (tool, template) in enumerate(runs):

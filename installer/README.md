@@ -14,6 +14,7 @@ is made on the player's computer from the player's own copies.
 | `messages.iss` | the installer's own words in the game's five languages |
 | `setup_steps.py` | the helper: each step the installer cannot do by itself (`--help` lists them) |
 | `steam_library.py` | where Steam keeps the collections (its folder, libraries, app manifests) |
+| `epic_library.py` | where the Epic Games Store keeps them (its launcher's manifests, the default folder) |
 | `steam_shortcut.py` | the port added to Steam as a non-Steam game, and taken out again |
 | `collection_archive.py` | the collections' archives (`.hed`/`.pkg`) read as their own code reads them |
 | `hd_inputs.txt` | the collection files the HD tools read (traced: `setup_steps.py trace-inputs`) |
@@ -56,7 +57,11 @@ the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.ex
 runs the tools under a folder of their own and puts what they made in place whole. An update
 leaves the pieces already made from the same collections as they are (deleting their folder makes
 them again). Either folder may be left empty: a choice whose collection is not given cannot be
-ticked. (The page is a text page with its own Browse buttons, because Inno's folder page refuses an
+ticked. The collections are found in Steam's libraries, else in the Epic Games Store's folders (its
+launcher's manifests in `ProgramData/Epic/EpicGamesLauncher/Data/Manifests`), and either store's copy
+is read: Steam's keeps its language's archives in `Image/dt` and Days's videos in
+`STEAM/Mare/MOVIE/Days/dt`, the Epic Games Store's its archives in `Image/en` and the videos wherever
+the collection has them in the same place (`*/Mare/MOVIE/Days/*`). (The page is a text page with its own Browse buttons, because Inno's folder page refuses an
 empty folder.)
 
 ## Add to Steam
