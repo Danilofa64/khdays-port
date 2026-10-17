@@ -1,6 +1,7 @@
-/* Mission Mode's Retry in the pause (retry.h), for a mission played alone: the port draws Continue,
- * Retry and Give Up (ui/pause.cpp) and moves the game's cursor so A on Retry opens the game's "Are you
- * sure?", whose yes runs Give Up, which two prepare.py hooks turn into the field again.
+/* The Retry in the pause of Mission Mode's missions and the story's challenges (retry.h), for a mission
+ * played alone: the port draws Continue, Retry and Give Up (ui/pause.cpp) and moves the game's cursor so
+ * A on Retry opens the game's "Are you sure?", whose yes runs Give Up, which prepare.py hooks turn into
+ * the field again.
  * docs/RUNTIME_MAP.md, "Mission Mode's pause and the port's Retry"; KHDAYS_TRACE_RETRY=1 logs it. */
 #include "retry.h"
 
@@ -27,6 +28,10 @@ u32 khdays_events_vblank_count(void);
 #define FIELD_SCENE 2u
 #define SCENE_CURRENT 0x8u
 #define MISSION_MODE 0x4u  /* data_0204c240's first byte: a Mission Mode mission */
+#define CHALLENGE 0x2u     /* ... a challenge (with bit 0, Ov025_MissionList_StartMission) */
+#define CHALLENGE_TARGETS 0x0204c254u /* data_0204c254: a challenge's targets, copied as it starts */
+#define TARGETS_KEPT 0xeu             /* its u16 that, when not 0, keeps them as they are */
+#define TARGETS 0x10u                 /* its three targets */
 #define PAUSE_SESSION 0x2u /* the pause's kind: Mission Mode's three entries */
 #define CTX_COUNT 0xd0u    /* the pause context's entries: 3 its first page, 2 "Are you sure?" */
 #define CTX_CURSOR 0xd4u
@@ -106,8 +111,38 @@ static int pause_page(u32 *ctx_out)
 {
     const u32 setup = (u32)Session_GetSetup();
     u32 ctx;
+    if (tracing() && rd8(KHDAYS_DS_gPauseMode) != 0) {
+        /* what decides whether the port changes this pause, once per change */
+        static int last = -1;
+        const int now = rd8(KHDAYS_DS_data_0204c240) << 16 | (in_ram(setup) ? (int)rd32(setup + SETUP_PLAYERS) : 0xff)
+                                                              << 8 |
+                        (rd16(KHDAYS_DS_data_0204bda4) & 0xff);
+        static int last_pieces = -1;
+        KhdaysPauseView v;
+        int pieces = 0;
+        if (khdays_pause_view(&v)) {
+            for (int i = 0; i < v.count; ++i) {
+                pieces = pieces * 16 + v.piece[i].key + 1;
+            }
+        }
+        if (now != last) {
+            last = now;
+            say("a pause: the mission's kind and the players", now >> 16, (now >> 8) & 0xff);
+            say("a pause: the game's mode word", now & 0xff, rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT));
+        }
+        static u32 last_target = 0xffffffffu;
+        if (rd32(CHALLENGE_TARGETS + TARGETS) != last_target) {
+            last_target = rd32(CHALLENGE_TARGETS + TARGETS);
+            say("a pause: a challenge's first two targets", (int)last_target, (int)rd32(CHALLENGE_TARGETS + TARGETS + 4u));
+        }
+        if (pieces != last_pieces) {
+            last_pieces = pieces;
+            say("a pause: its pieces (KHDAYS_PAUSE_* + 1, a hex digit each) and its entries", pieces,
+                pause_context() != 0 ? (int)rd32(pause_context() + CTX_COUNT) : -1);
+        }
+    }
     if (khdays_ui_mode(KHDAYS_UI_PAUSE) != KHDAYS_UI_ON || rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT) != FIELD_SCENE ||
-        !(rd8(KHDAYS_DS_data_0204c240) & MISSION_MODE) || !in_ram(setup) || rd32(setup + SETUP_PLAYERS) != 1u ||
+        !(rd8(KHDAYS_DS_data_0204c240) & (MISSION_MODE | CHALLENGE)) || !in_ram(setup) || rd32(setup + SETUP_PLAYERS) != 1u ||
         rd8(KHDAYS_DS_gPauseMode) == 0 || !(rd16(KHDAYS_DS_data_0204bda4) & PAUSE_SESSION)) {
         return -1;
     }
@@ -312,6 +347,17 @@ int khdays_retry_take(void)
     }
     retry.confirmed = 0;
     GameState_ClearFlag(QUIT_FLAG);
+    if ((rd8(KHDAYS_DS_data_0204c240) & (CHALLENGE | MISSION_MODE)) == CHALLENGE &&
+        rd16(CHALLENGE_TARGETS + TARGETS_KEPT) == 0) {
+        /* the field's construction multiplies a challenge's three targets by 100 (Ov002_ConstructGameplayScene),
+         * and only the challenge's start copies them in: as they were before it, for the construction again */
+        for (u32 k = 0; k < 3; ++k) {
+            volatile int *target = (volatile int *)KHDAYS_W(CHALLENGE_TARGETS + TARGETS + 4u * k);
+            *target /= 100;
+        }
+        say("a challenge's targets as they were before the field", rd32(CHALLENGE_TARGETS + TARGETS),
+            rd32(CHALLENGE_TARGETS + TARGETS + 4u));
+    }
     say("the field again instead of the results", 0, 0);
     return 1;
 }

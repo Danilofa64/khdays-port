@@ -483,7 +483,7 @@ the menu, or ready -- ringed in its colour -- once it accepted the mission).
 The game's menu runs underneath (its cursor, sounds and pages); its other pages
 (the holo-missions, the panels, the shop, ...) are still the game's screens.
 
-**Retry.** In a Mission Mode mission played alone, the pause has a third line
+**Retry.** In a Mission Mode mission or a story challenge played alone, the pause has a third line
 between Continue and Give Up: Retry, drawn like the game's lines in its own
 font. After the game's "Are you sure?", the mission starts again from its
 beginning, without the results screen (`KHDAYS_UI=pause=off` gives the game's

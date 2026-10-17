@@ -1983,6 +1983,23 @@ starts as from the camp (`Ov002_EnterSceneIfValidated` ->
 `Ov002_BeginMissionRun`, the event scripts loaded again), Roxas at the
 mission's start with his full HP.
 
+**The story's challenges** (2026-10-17, challenge 07 from the story camp's
+Holo-Missions with the player's save, `KHDAYS_TRACE_RETRY`): a challenge sets
+`data_0204c240`'s first byte to 3 (`Ov025_MissionList_StartMission`: bit 0 a
+Holo-Mission, bit 1 a challenge; Mission Mode's is bit 2) and copies the
+challenge's targets to `data_0204c254`. Its opening words are a scene's: the pause
+then is a scene's (the mode word 4, two entries, Continue and Skip). In play the
+pause is Mission Mode's (the mode word's bit 1, three entries, Continue and Give
+Up), and Give Up's yes goes straight to the results (scene 6, from
+`Ov002_StepSessionMenu`'s case 0, no game over), so the port's Retry runs there as
+in Mission Mode. One thing differs: with bit 1 and not bit 2, the field's
+construction multiplies the three targets at `data_0204c254 + 0x10` by 100 when
+its u16 at +0xe is 0 (`Ov002_ConstructGameplayScene`), and only the challenge's
+start copies them in, so a Retry would leave them 100 times larger each time; the
+port divides them back by 100 when it takes the Retry. Seen: targets 105 and 140,
+10500 and 14000 in play, the same after a Retry; the field again, without the
+results.
+
 What the pause draws is in its panel's draw entries
 (`SubObject_SetDrawParams`: the context's +0xc, then +0x18 a slot, 0x18
 bytes each -- source cell x, source row twice, destination x and y, width,
