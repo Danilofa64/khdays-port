@@ -613,6 +613,17 @@ HOOKS = {
             "    { extern void khdays_trace_script(void *st, void *entry); khdays_trace_script(st, cur); }\n",
         )
     ],
+    # An event script's skippable stretch begins or ends (runtime/movies/scene_trace.c): the script
+    # machine's skip target is set (an operand) or cleared (-1).
+    "main@020221f8": [
+        (  # Game_ActionSetBranchTarget
+            "    *(int *)(param_1 + 0x588) = 0;\n    return 1;\n}\n",
+            "    *(int *)(param_1 + 0x588) = 0;\n"
+            "    { extern void khdays_scene_target(unsigned int state, int operand);\n"
+            "      khdays_scene_target((unsigned int)param_1, operand); }\n"
+            "    return 1;\n}\n",
+        )
+    ],
     # A scene has ended and the next is not built yet: a language the
     # settings menu asked for is set there, so that every scene is built whole
     # in one language (runtime/core/language.c).
@@ -1013,6 +1024,13 @@ HOOKS = {
     # The field's pace with three or four players: the game drops to frame mode 1 (a step every
     # three frames, 20 a second); the port keeps mode 0's. KHDAYS_MP_DS_PACE=1 keeps the game's.
     "ov002@020679d4": [
+        (  # Ov002_ConstructGameplayScene: the record the field is built from (its mission, its event
+           # script), seen by the port and set by a test (runtime/movies/scene_trace.c)
+            "    src = param_1 ? (char *)param_1 : (char *)&data_0204c240;\n",
+            "    src = param_1 ? (char *)param_1 : (char *)&data_0204c240;\n"
+            "    { extern void khdays_scene_field_record(void *record, int from_argument);\n"
+            "      khdays_scene_field_record(src, param_1 != 0); }\n",
+        ),
         (  # Ov002_ConstructGameplayScene
             "    if (Session_IsActive() != 0 && *(int *)(Session_GetSetup() + 4) >= 3) {\n        i = 1;\n",
             "    if (Session_IsActive() != 0 && *(int *)(Session_GetSetup() + 4) >= 3) {\n"

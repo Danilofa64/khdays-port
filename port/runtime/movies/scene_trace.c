@@ -1,0 +1,252 @@
+/* KHDAYS_TRACE_SCENES (scene_trace.h): the field's event script read once a frame.
+ *
+ * The field's root (data_ov002_0207fa00) holds the mission it opened (u16 at +0x8ba8, the file
+ * mi/mi/%04d) and the script it runs there (u16 at +0x8baa, the script's name as "%d",
+ * Ov002_FormatResultLine). The event scene's root is data_ov023_0208a784's second word while ov023
+ * is loaded; its script runs on the game's script machine with its state at +0x4b88: the depth at
+ * +0x124, the entries from +4 (0x48 bytes each: +0xc the script's start, +0x10 the next command),
+ * the skip target at +0x584 with its depth at +0x580 (Game_ActionSetBranchTarget) and the skip
+ * request at +0x588 (Game_UnwindActionStack jumps to the target when both are set). The event's
+ * status halfword is at +0x8758c. */
+#include "scene_trace.h"
+#include "movie_hd.h"
+#include "../core/events.h"
+#include "../core/window.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
+/* the game's own */
+void GameState_SetField(int field, int bits, int value);
+void SoundMgr_StopAllSePlayers(void);
+
+#define FIELD_ROOT 0x0207fa00u
+#define FIELD_MISSION 0x8ba8u
+#define FIELD_SCRIPT 0x8baau
+#define EVENT_ROOT 0x0208a784u
+#define EVENT_STATE 0x4b88u
+#define EVENT_STATUS 0x8758cu
+#define OV_EVENT 23
+
+#define STATE_DEPTH 0x124u
+#define STATE_ENTRIES 4u
+#define ENTRY_SIZE 0x48u
+#define ENTRY_START 0xcu
+#define ENTRY_NEXT 0x10u
+#define STATE_TARGET_DEPTH 0x580u
+#define STATE_TARGET 0x584u
+#define STATE_SKIP 0x588u
+
+typedef struct EventView {
+    int running;      /* ov023 loaded with a scene */
+    uint32_t mission; /* the field's, else ~0 */
+    uint32_t script;
+    uint32_t status;
+    uint32_t target; /* the skip target's reference, 0 none */
+    uint32_t target_depth, skip, start, next;
+} EventView;
+
+static uint32_t u32_at(uint32_t address)
+{
+    return *(const volatile uint32_t *)KHDAYS_W(address);
+}
+
+static uint16_t u16_at(uint32_t address)
+{
+    return *(const volatile uint16_t *)KHDAYS_W(address);
+}
+
+static EventView view_now(void)
+{
+    EventView v = {0};
+    const uint32_t field = u32_at(FIELD_ROOT);
+    v.mission = v.script = ~0u;
+    if (!khdays_overlay_loaded(OV_EVENT) || !khdays_game_ram(field)) {
+        return v;
+    }
+    v.mission = u16_at(field + FIELD_MISSION);
+    v.script = u16_at(field + FIELD_SCRIPT);
+    {
+        const uint32_t root = u32_at(EVENT_ROOT + 4u);
+        if (khdays_game_ram(root)) {
+            const uint32_t state = root + EVENT_STATE;
+            const uint32_t entry = state + STATE_ENTRIES + u32_at(state + STATE_DEPTH) * ENTRY_SIZE;
+            v.running = 1;
+            v.status = u16_at(root + EVENT_STATUS);
+            v.target = u32_at(state + STATE_TARGET);
+            v.target_depth = u32_at(state + STATE_TARGET_DEPTH);
+            v.skip = u32_at(state + STATE_SKIP);
+            v.start = u32_at(entry + ENTRY_START);
+            v.next = u32_at(entry + ENTRY_NEXT);
+        }
+    }
+    return v;
+}
+
+static int tracing_scenes(void)
+{
+    static int tracing = -1;
+    if (tracing < 0) {
+        tracing = getenv("KHDAYS_TRACE_SCENES") != NULL;
+    }
+    return tracing;
+}
+
+/* Ov002_ConstructGameplayScene's record (prepare.py HOOKS): its argument, else data_0204c240; the
+ * mission at +2, the event script at +4. KHDAYS_TEST_EVENT=<mission>/<script> puts that script in
+ * place of the first field's; KHDAYS_TEST_DAY=<day> sets the story's day there. */
+void khdays_scene_field_record(void *record, int from_argument)
+{
+    static int test = -1, mission, script;
+    uint8_t *r = (uint8_t *)record;
+    if (test < 0) {
+        const char *v = getenv("KHDAYS_TEST_EVENT");
+        test = v != NULL && sscanf(v, "%d/%d", &mission, &script) == 2;
+    }
+    if (tracing_scenes()) {
+        fprintf(stderr, "scene: f%u field record (%s):", khdays_events_vblank_count(),
+                from_argument ? "the scene's argument" : "data_0204c240");
+        for (int i = 0; i < 16; ++i) {
+            fprintf(stderr, " %02x", r[i]);
+        }
+        fprintf(stderr, "\n");
+    }
+    if (test == 1) {
+        *(uint16_t *)(r + 2) = (uint16_t)mission;
+        *(uint16_t *)(r + 4) = (uint16_t)script;
+        fprintf(stderr, "scene: KHDAYS_TEST_EVENT: the field opens mission %d with script %d\n", mission, script);
+        test = 2;
+    }
+    {
+        /* KHDAYS_TEST_DAY=<day>: the story's day (the game state's field 0, 9 bits: the field takes its
+         * script number from it once built) set at the first field's construction */
+        static int done;
+        const char *v = getenv("KHDAYS_TEST_DAY");
+        if (v != NULL && !done) {
+            GameState_SetField(0, 9, atoi(v));
+            fprintf(stderr, "scene: KHDAYS_TEST_DAY: day %d\n", atoi(v));
+            done = 1;
+        }
+    }
+}
+
+/* KHDAYS_TEST_SKIP_AT=<frames>: that many frames after a stretch begins, the port asks the game's own
+ * skip, as the event pause's Skip does (PauseMenu_Frame: the sound effects stopped, the skip
+ * request at the state's +0x588 set), at the machine's next step. */
+static uint32_t skip_state, skip_frame;
+
+/* Game_RunActionScript's step (diag.c khdays_trace_script): `st` the machine's state. */
+void khdays_scene_step(void *st)
+{
+    if (skip_state == 0u || KHDAYS_REF(st) != skip_state || khdays_events_vblank_count() < skip_frame) {
+        return;
+    }
+    SoundMgr_StopAllSePlayers();
+    *(volatile uint32_t *)((uint8_t *)st + STATE_SKIP) = 1u;
+    fprintf(stderr, "scene: f%u KHDAYS_TEST_SKIP_AT: the game's skip asked\n", khdays_events_vblank_count());
+    skip_state = 0u;
+}
+
+/* Game_ActionSetBranchTarget (prepare.py HOOKS): `state` the script machine's (a reference), the
+ * operand the target's offset from the entry's script start, -1 clearing it. */
+void khdays_scene_target(unsigned int state, int operand)
+{
+    {
+        const char *v = getenv("KHDAYS_TEST_SKIP_AT");
+        if (v != NULL && operand != -1) {
+            skip_state = state;
+            skip_frame = khdays_events_vblank_count() + (uint32_t)atoi(v);
+        }
+    }
+    if (tracing_scenes()) {
+        const uint32_t depth = u32_at(state + STATE_DEPTH);
+        const uint32_t entry = state + STATE_ENTRIES + depth * ENTRY_SIZE;
+        fprintf(stderr, "scene: f%u skip target %s +%x (depth %u, script at %08x, command at +%x)\n",
+                khdays_events_vblank_count(), operand == -1 ? "cleared" : "set", operand == -1 ? 0u : (unsigned)operand,
+                depth, u32_at(entry + ENTRY_START), u32_at(entry + ENTRY_NEXT) - u32_at(entry + ENTRY_START));
+    }
+}
+
+void khdays_scene_trace_frame(uint32_t frame)
+{
+    static int first = 1;
+    static EventView was;
+    static int was_movie;
+    EventView now;
+    int movie;
+    if (!tracing_scenes()) {
+        return;
+    }
+    if (first) {
+        was.mission = was.script = ~0u;
+        first = 0;
+    }
+    now = view_now();
+    {
+        /* the record the field is built from when its scene has no argument
+         * (Ov002_ConstructGameplayScene): the mode byte, the mission at +2, the script at +4 */
+        static uint32_t record[2] = {~0u, ~0u};
+        const uint32_t r0 = u32_at(0x0204c240u), r1 = u32_at(0x0204c244u);
+        if (r0 != record[0] || r1 != record[1]) {
+            fprintf(stderr, "scene: f%u record mode %02x mission %u script %u (+6 %04x)\n", frame, r0 & 0xffu,
+                    r0 >> 16, r1 & 0xffffu, r1 >> 16);
+            record[0] = r0;
+            record[1] = r1;
+        }
+    }
+    {
+        /* the scene controller (0x0204bda8): pending id at +0xc, its argument at +0x10 */
+        static uint32_t pending = ~0u, argument = ~0u;
+        const uint32_t p = u32_at(0x0204bda8u + 0xcu), a = u32_at(0x0204bda8u + 0x10u);
+        if (p != pending || a != argument) {
+            fprintf(stderr, "scene: f%u pending scene %u argument %08x", frame, p, a);
+            if (khdays_game_ram(a)) {
+                fprintf(stderr, " -> %08x %08x %08x", u32_at(a), u32_at(a + 4u), u32_at(a + 8u));
+            }
+            fprintf(stderr, "\n");
+            pending = p;
+            argument = a;
+        }
+    }
+    {
+        /* the field's mission and script number from its construction on (ov002 loaded) */
+        static uint32_t field_script = ~0u;
+        const uint32_t field = u32_at(FIELD_ROOT);
+        const uint32_t s = khdays_overlay_loaded(2) && khdays_game_ram(field)
+                               ? (uint32_t)u16_at(field + FIELD_MISSION) << 16 | u16_at(field + FIELD_SCRIPT)
+                               : ~0u;
+        if (s != field_script) {
+            fprintf(stderr, "scene: f%u field mission/script %u/%d\n", frame, s >> 16, (int)(int16_t)(s & 0xffffu));
+            field_script = s;
+        }
+    }
+    if (now.mission != was.mission || now.script != was.script) {
+        if (now.mission == ~0u) {
+            fprintf(stderr, "scene: f%u no event script\n", frame);
+        } else {
+            fprintf(stderr, "scene: f%u script %04u/%u\n", frame, now.mission, now.script);
+        }
+    }
+    if (now.status != was.status) {
+        fprintf(stderr, "scene: f%u status %04x\n", frame, now.status);
+    }
+    if (now.target != was.target || now.skip != was.skip) {
+        if (now.target != 0u) {
+            /* the target in the script of the entry it was set from: the entry now when the depths
+             * agree (a called routine runs deeper) */
+            fprintf(stderr, "scene: f%u target %08x depth %u (+%x in the script at %08x) skip %u\n", frame,
+                    now.target, now.target_depth, now.target - now.start, now.start, now.skip);
+        } else {
+            fprintf(stderr, "scene: f%u target none (at +%x of %08x) skip %u\n", frame, now.next - now.start,
+                    now.start, now.skip);
+        }
+    }
+    movie = khdays_movie_game_playing();
+    if (movie != was_movie) {
+        fprintf(stderr, "scene: f%u game movie %s\n", frame, movie ? "starts" : "ends");
+        was_movie = movie;
+    }
+    was = now;
+    fflush(stderr);
+}

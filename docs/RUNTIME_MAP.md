@@ -354,6 +354,14 @@ The native build prints these to stderr when the variable is set:
   VBlank, the game's frame count and the pad reads so far.
 - `KHDAYS_TRACE_PLAYER` -- the field players' positions every 30 frames.
 - `KHDAYS_TRACE_SCRIPT` -- each step of the action-script interpreter.
+- `KHDAYS_TRACE_SCENES` -- the field's event scenes (section 21): the field's record and script,
+  the scene controller's pending scene, the event's status, each skip target set and cleared, the
+  game's movies (`port/runtime/movies/scene_trace.c`).
+- `KHDAYS_TEST_DAY=<day>` -- the story's day set at the first field's construction (game-state
+  field 0): a new game's first field runs that day's script of mission 10000 (section 21).
+- `KHDAYS_TEST_EVENT=<mission>/<script>` -- the first field built from that mission and script.
+- `KHDAYS_TEST_SKIP_AT=<frames>` -- that many frames after a scene's stretch begins, the port asks
+  the game's own skip, as the event pause's Skip does (section 21).
 - `KHDAYS_TRACE_PAD` -- every game frame's buttons: what the port gave
   `Pad_Sample` and what it made of them (held, pressed).
 - `KHDAYS_TRACE_CONTROLS` -- what the field does with its controls, when it
@@ -4331,3 +4339,44 @@ with `KHDAYS_TRACE_MODS=1`, the example mods (`port/mods_examples`) and the walk
   took Roxas from 62 to 55 of 62 and raised the `hp` event for that actor. Every HP change of a
   battle actor goes through `Ov022_ActorSetHp` (`Ov022_ReceiveHit`, `Ov022_ApplyDamageAndFlagHit`,
   items, the party's network state).
+
+## 21. Event scenes and their skip (spec 029)
+
+Read in the decompilation and the shipped data, then traced with `KHDAYS_TRACE_SCENES` (2026-10-17,
+the story walk and `KHDAYS_TEST_DAY`).
+
+- **The scenes are the event archives' entries.** `ev/EV_S.p2` (206 entries, the story's shared
+  scenes) and the worlds' `EV_TT`, `EV_NM`, `EV_BB`, `EV_AL`, `EV_AW`, `EV_HE`, `EV_PP` and
+  `EV_DP` hold scripts of the game's one script machine (section 18): a word, the offset of the
+  script's data, the steps from 4, then the data -- its UTF-8 texts and, for each text a step
+  names (operand mode 0x40), a record of seven words: the Japanese, English, French, German,
+  Italian and Spanish texts' offsets in the data, -1 for one the ROM lacks (the scenes have no
+  Japanese), then -1. `Ov023_LoadScripts` opens `ev/EV_S.p2` and the world's archive when the field's
+  event begins; the field's script (mission 10000's day script, a mission's area) calls the scene's
+  script one level down (depth 1 of the event's machine).
+- **A scene's skip.** Step 0.10 (`Game_ActionSetBranchTarget`) keeps a jump for later: the target
+  (`state + 0x584`, the entry's script start + the operand) and its depth (`+0x580`); -1 forgets it;
+  either way it clears the skip request (`+0x588`). 675 of the archives' entries set one target,
+  +0x1c, in their first steps (the step at 0x50 of the entry) and clear it at their end; 74 set
+  none. Skip in an event's pause (`PauseMenu_Frame`, entry 1 when the mode word lacks bit 1) stops
+  the sound effects (`SoundMgr_StopAllSePlayers`) and sets the request through
+  `Ov023_FlushTextBox` (`SetWordAt0x588To1` on the event's state at root + 0x4b88); the machine's
+  next step (`Game_UnwindActionStack`) lets the stretch's waits and callbacks go, pops to the
+  target's depth and goes on at the target, and `PauseMenu_OpenIfAllowed` runs the event until the
+  main screen's master brightness reaches -16. What follows the target is the scene's end: it runs
+  whether the player watched or skipped. Traced: a skip the port asked 60 frames into day 8's first
+  scene (EV_S#3) jumped to +0x1c on the next step, the scene cleared its target at +0x16ec and the
+  event closed (status 0xa, then 0) 17 frames later.
+- **Which scene runs.** The running script, read from memory when its target is set (the depth's
+  entry +0xc is the start of its steps, 4 bytes after the entry's first word), is its ROM entry byte
+  for byte: day 7's morning runs EV_S#196 (the castle at night), then EV_S#0 (Roxas in his room);
+  day 8's starts with EV_S#3 (Saïx sends Roxas on missions). The movies' subtitle schedules set
+  targets too, from their `_m` sections (the prologue's movie 818: mission 10000's script 400,
+  section `_m`; group 3 is the movie player's, ov024 / ov012).
+- **The day's script.** `Ov002_ConstructGameplayScene` copies its record (its argument, else
+  `data_0204c240`: the mission at +2, the script at +4) to the field's root +0x8ba8 / +0x8baa and
+  opens `mi/mi/%04d`; `Ov023_LoadScripts` names the script `Ov002_FormatResultLine(0)` ("%d" of
+  +0x8baa). In the story both fields of the walk were built from mission 10000, script 0, and the
+  script number became the story's day in the same frame (400 the prologue, 7 on day 7): the day is
+  the game state's field 0 (9 bits, the save's day). Setting it to 8 at the first field's construction
+  (`KHDAYS_TEST_DAY=8`) made that field run 10000's script 8 and its first scene.

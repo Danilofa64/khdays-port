@@ -550,6 +550,10 @@ void khdays_trace_script(void *st, void *entry)
     const u32 cmd_reference = *(const u32 *)(e + 0x10); /* the game's pointer: a reference */
     const u8 *cmd = cmd_reference ? (const u8 *)KHDAYS_W(cmd_reference) : NULL;
     u32 now[8];
+    {
+        extern void khdays_scene_step(void *st); /* runtime/movies/scene_trace.c */
+        khdays_scene_step(st);
+    }
     if (enabled < 0) {
         enabled = getenv("KHDAYS_TRACE_SCRIPT") != NULL;
     }

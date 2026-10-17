@@ -428,6 +428,7 @@ add_executable(khdays-native
     runtime/movies/video.c
     runtime/movies/video_mod.c
     runtime/movies/movie_hd.c             # an HD video in a movie's place (specs/013)
+    runtime/movies/scene_trace.c          # KHDAYS_TRACE_SCENES: the field's event scripts
     host/movies/movie_hd_win.c            # the HD video through Media Foundation
     host/movies/movie_subtitles.c         # the theater's subtitles over the HD video
     runtime/net/net_session.c          # the multiplayer's session (specs/015)
