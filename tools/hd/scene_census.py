@@ -82,7 +82,11 @@ def main() -> int:
     (out / "logs").mkdir(exist_ok=True)
     exe = out / "khdays-native.exe"
     shutil.copy2(args.exe, exe)
+    if args.exe.with_suffix(".pdb").exists():  # its symbols beside it, so the build's stay free
+        shutil.copy2(args.exe.with_suffix(".pdb"), exe.with_suffix(".pdb"))
     (out / "walk.input").write_text(walk(), encoding="utf-8")
+    # the game's own scenes, whatever HD videos are installed
+    (out / "settings.ini").write_text("[video]\nmovies = ds\n", encoding="utf-8")
     census_path = out / "census.json"
     census = json.loads(census_path.read_text(encoding="utf-8")) if census_path.exists() else {}
     for n, key in enumerate(keys, 1):
@@ -99,6 +103,8 @@ def main() -> int:
                 str(out / "walk.input"),
                 "--log",
                 str(log),
+                "--settings",
+                str(out / "settings.ini"),
                 "--timeout",
                 str(TIMEOUT),
                 "--env",
@@ -109,6 +115,8 @@ def main() -> int:
                 f"KHDAYS_SCENE_SHOTS={out / 'shots'}",
                 "--env",
                 "KHDAYS_TRACE_SCENES=1",
+                "--env",
+                f"_NT_SYMBOL_PATH={out}",
                 str(exe),
             ],
             capture_output=True,

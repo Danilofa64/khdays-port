@@ -47,6 +47,13 @@ int khdays_mods_find(const char *relative, char *path, int size)
     return 1;
 }
 
+/* the game's: what the event pause's Skip stops (the scenes' course asks it) */
+static int sound_effects_stopped;
+void SoundMgr_StopAllSePlayers(void)
+{
+    ++sound_effects_stopped;
+}
+
 int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
 {
     snprintf(opened_path, sizeof(opened_path), "%s", path);

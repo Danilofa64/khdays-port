@@ -30,6 +30,8 @@ void SoundMgr_StopAllSePlayers(void);
 #define EVENT_STATE 0x4b88u
 #define EVENT_STATUS 0x8758cu
 #define OV_EVENT 23
+#define MISSION_FLAGS 0x0204c240u /* its first byte: bit 2 Mission Mode */
+#define MISSION_MODE 4u
 
 #define STATE_DEPTH 0x124u
 #define STATE_ENTRIES 4u
@@ -181,6 +183,7 @@ static void test_scene(void *st)
 /* Game_RunActionScript's step (diag.c khdays_trace_script): `st` the machine's state. */
 void khdays_scene_step(void *st)
 {
+    khdays_movie_hd_scene_step(KHDAYS_REF(st), st);
     test_scene(st);
     if (skip_state == 0u || KHDAYS_REF(st) != skip_state || khdays_events_vblank_count() < skip_frame) {
         return;
@@ -205,17 +208,21 @@ void khdays_scene_target(unsigned int state, int operand)
 {
     const uint32_t depth = u32_at(state + STATE_DEPTH);
     const uint32_t entry = state + STATE_ENTRIES + depth * ENTRY_SIZE;
-    {
-        const char *v = getenv("KHDAYS_TEST_SKIP_AT");
-        if (v != NULL && operand != -1) {
-            skip_state = state;
-            skip_frame = khdays_events_vblank_count() + (uint32_t)atoi(v);
-        }
-    }
     if (operand == -1) {
         current[0] = '\0';
+        khdays_movie_hd_scene_ended();
     } else if (!khdays_scenes_recognise(u32_at(entry + ENTRY_START), current, (int)sizeof(current))) {
         current[0] = '\0';
+    } else if (getenv("KHDAYS_TEST_SKIP_AT") != NULL) {
+        /* a recognised scene's skip asked by the test (the movies' schedules keep theirs) */
+        skip_state = state;
+        skip_frame = khdays_events_vblank_count() + (uint32_t)atoi(getenv("KHDAYS_TEST_SKIP_AT"));
+    } else if ((*(const volatile uint8_t *)KHDAYS_W(MISSION_FLAGS) & MISSION_MODE) == 0u) {
+        /* the story's: the theater's videos in its place when the map gives them */
+        const KhdaysSceneEntry *e = khdays_scene_map_find(khdays_scenes_map(), current);
+        if (e != NULL && !e->off) {
+            khdays_movie_hd_scene(current, state, e->stems, e->stem_count);
+        }
     }
     if (tracing_scenes()) {
         fprintf(stderr, "scene: f%u skip target %s +%x (depth %u, script at %08x, command at +%x)\n",
@@ -276,11 +283,34 @@ static void test_scene_frame(uint32_t frame)
     }
 }
 
+/* KHDAYS_SCENE_STATE=<file>: when the field's event closes, the game's state (the block gGameState
+ * refers to, 0x2000 bytes) written to <file>.<n>, to compare a scene's HD course with the game's own. */
+static void state_at_close(uint32_t frame)
+{
+    static int running, n;
+    const int now = view_now().running;
+    const char *path = getenv("KHDAYS_SCENE_STATE");
+    if (path != NULL && running && !now) {
+        const uint32_t state = u32_at(0x0204be18u); /* gGameState */
+        char name[512];
+        FILE *f;
+        snprintf(name, sizeof(name), "%s.%d", path, n++);
+        if (khdays_game_ram(state) && (f = fopen(name, "wb")) != NULL) {
+            fwrite(KHDAYS_W(state), 1, 0x2000, f);
+            fclose(f);
+            fprintf(stderr, "scene: f%u the game's state at the event's close written to %s\n", frame, name);
+        }
+    }
+    running = now;
+}
+
 void khdays_scene_trace_frame(uint32_t frame)
 {
     test_scene_frame(frame);
+    state_at_close(frame);
     if (current[0] != '\0' && !view_now().running) {
         current[0] = '\0'; /* the event closed without clearing its target */
+        khdays_movie_hd_scene_ended();
     }
     static int first = 1;
     static EventView was;

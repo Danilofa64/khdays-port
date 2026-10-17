@@ -39,6 +39,8 @@ OPENING = ("DOP.mp4", "802")
 ENDING = ("DED.mp4", "843")
 ENDING_EVENT = "844"  # the ending's subtitles: no DS movie 844, its sound DED_MONO
 OUT = tt.ROOT / "data" / "cutscenes" / "cinematics"
+# the port's scene map: which of the theater's scene videos it plays (specs/029)
+SCENE_MAP = tt.ROOT / "port" / "movies" / "hd_scenes.txt"
 # Measured on the theater's window captures (hd818's lines, scaled to 1920 x 1080): the font's cells
 # drawn 1.445 times their size, a space 13.75 texels, the lines 51 apart, the last one's top at 956,
 # the block centred on 964 (docs/HD_SCREENS.md).
@@ -50,9 +52,24 @@ RATE = 30
 # --- The videos ---------------------------------------------------------------------------------
 
 
+def scene_stems() -> list[str]:
+    """The theater's scene videos the port plays in place of the game's own event scenes: the stems
+    its scene map names (port/movies/hd_scenes.txt, specs/029), in the map's order."""
+    if not SCENE_MAP.is_file():
+        return []
+    out = []
+    for raw in SCENE_MAP.read_text(encoding="utf-8").splitlines():
+        line = re.sub(r"(^|\s)#.*$", "", raw).partition(";")[0]
+        words = line.split()
+        if len(words) >= 2 and words[1] != "off":
+            out += [w for w in words[1:] if w not in out]
+    return out
+
+
 def videos(movies: Path, force: bool) -> int:
     made = 0
     names = [(p.name, p.stem[2:]) for p in sorted(movies.glob("hd8*.mp4"))] + [OPENING, ENDING]
+    names += [(f"{stem}.mp4", stem[2:]) for stem in scene_stems() if not stem.startswith("hd8")]
     OUT.mkdir(parents=True, exist_ok=True)
     for name, movie in names:
         source, target = movies / name, OUT / f"hd{movie}.mp4"
@@ -144,7 +161,9 @@ def subtitles(mare: Path, lang: str) -> int:
     out = OUT / "subtitles" / lang
     out.mkdir(parents=True, exist_ok=True)
     made = 0
-    for event in sorted((root / "event" / name / "hd").glob("hd8*/hd8*.exia2")):
+    scenes = set(scene_stems())
+    events = sorted((root / "event" / name / "hd").glob("hd*/hd*.exia2"))
+    for event in [e for e in events if e.stem.startswith("hd8") or e.stem in scenes]:
         movie = event.stem[2:]
         if movie == ENDING_EVENT:
             movie = ENDING[1]
