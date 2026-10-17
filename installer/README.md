@@ -50,8 +50,9 @@ The example gameplay mods (`port/mods_examples`) and their interface (`docs/SCRI
 
 Optional, from the player's own copies, on the HD page: **HD menus and HUD** (both KINGDOM HEARTS
 HD 1.5+2.5 ReMIX and HD 2.8 Final Chapter Prologue: the tools' `mods/HD PACK`) and **HD videos**
-(1.5+2.5: the theater's videos and their subtitles in `data/cutscenes`). The helper reads the
-entries the tools need straight from the collections' archives (`collection_archive.py`: the
+(1.5+2.5: the game's movies and the theater's scenes that `port/movies/hd_scenes.txt` names, with
+their subtitles, in `data/cutscenes`, about 6.5 GB; the installer carries the scene map beside the
+tools). The helper reads the entries the tools need straight from the collections' archives (`collection_archive.py`: the
 format and its encryption found by our own reverse engineering of the collections' executables;
 the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.exe`, never kept),
 runs the tools under a folder of their own and puts what they made in place whole. An update
