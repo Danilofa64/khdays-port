@@ -135,6 +135,17 @@ shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 # bottom where the dialog box is (the maintainer's choices). A challenge in
 # play: its label (the upper screen's top left, rows 0-13) at the top under the
 # countdown, as small as the HUD's pieces.
+# In a challenge the label stays where it is in play (below), not in the upper
+# screen's corner shown at the picture's size: the rows under it whole, as
+# without one (the maintainer, 2026-10-17: a cutscene of a challenge).
+[field if dialog challenge]
+shape upper 0 0 132 14 at top margin 0 22 0 0 scale 0.666667
+shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
+stop
+[field-3d-both if dialog challenge]
+shape upper 0 0 132 14 at top margin 0 22 0 0 scale 0.666667
+shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
+stop
 [field if dialog]
 shape upper at bottom scale 1 at-most fixed(1)
 stop
