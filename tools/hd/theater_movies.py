@@ -63,8 +63,9 @@ def videos(movies: Path, force: bool) -> int:
             print(f"{target.name}: kept (--force replaces it)")
             continue
         data = bytearray(source.read_bytes())
-        for i in range(min(SCRAMBLED, len(data))):
-            data[i] ^= PATTERN[i % 16]
+        if data[4:8] != b"ftyp":  # scrambled; a copy may hold a video plain already
+            for i in range(min(SCRAMBLED, len(data))):
+                data[i] ^= PATTERN[i % 16]
         if data[4:8] != b"ftyp":
             print(f"{source}: not one of the theater's videos as known (no MP4 header once unscrambled)")
             continue

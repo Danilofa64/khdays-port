@@ -591,6 +591,14 @@ foreach(installer_test ${KHDAYS_INSTALLER_TESTS})
     string(REPLACE "_" "-" installer_test_name "${installer_test_name}")
     add_test(NAME khdays-installer-${installer_test_name} COMMAND "${Python3_EXECUTABLE}" "${installer_test}")
 endforeach()
+# The HD tools' readers (tools/hd/): one test each, in Python, named after its file.
+file(GLOB KHDAYS_HD_TESTS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../tools/hd/tests/*_test.py")
+foreach(hd_test ${KHDAYS_HD_TESTS})
+    get_filename_component(hd_test_name "${hd_test}" NAME_WE)
+    string(REGEX REPLACE "_test$" "" hd_test_name "${hd_test_name}")
+    string(REPLACE "_" "-" hd_test_name "${hd_test_name}")
+    add_test(NAME khdays-hd-${hd_test_name} COMMAND "${Python3_EXECUTABLE}" "${hd_test}")
+endforeach()
 
 # The execution contexts the game's threads run on (host/app/context.h): more of
 # them than the old fixed table held, each resumed in turn.
