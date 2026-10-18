@@ -544,9 +544,18 @@ For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present
   meshes are drawn translucent: a glTF mesh by its material's alphaMode
   (OPAQUE: alpha ignored; MASK: each texel drawn whole or not by
   alphaCutoff; BLEND: translucent), an FBX mesh when any texel of its
-  texture is part way. (Taking a whole MASK body as translucent because of
+  texture or any vertex colour's alpha is part way. (Taking a whole MASK body as translucent because of
   its soft cut-out edges drew mods/HD Xion Boss's Final Xion seen through
-  itself, in shards: 2026-10-09.)
+  itself, in shards: 2026-10-09.) The vertex colours' alpha counts as glTF
+  has it, per triangle by its corners' mean (the DS's alpha is a
+  polygon's): under a MASK's cutoff the triangle is left out, a BLEND
+  triangle's polygon alpha is lowered by it, OPAQUE ignores it (an FBX
+  whose vertex alphas are all 0 or all 255 is taken as painted without
+  alpha). A remade Usual Spot shaded its floor in vertex colours black at
+  alpha 0.05: drawn opaque, it was a black hexagon before the curtain
+  (2026-10-18). The graphics dump and the studio write a mesh that does
+  not say (a DS model's, an FBX's) as BLEND when its texture's texels (A3I5,
+  A5I3) or its vertex colours have an alpha of their own, else MASK.
 
 - `KHDAYS_SHOTS=FRAME FRAME ...` -- both screens of those VBlanks as the 2D
   and 3D engines drew them, 256x192 each, as `KHDAYS_SHOT_DIR/frame_NNNNN.bmp`

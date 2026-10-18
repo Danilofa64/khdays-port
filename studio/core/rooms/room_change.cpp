@@ -169,7 +169,8 @@ bool write_room_model(const std::filesystem::path& mod_dir, const std::string& k
         if (!result.ok)
             return fail_with(why, file + ": " + result.why);
         written->insert("graphics/" + key.substr(0, key.rfind('/') + 1) + file);
-        refs[texture] = {file, decoded.width, decoded.height};
+        refs[texture] = {file, decoded.width, decoded.height,
+                         assets::texels_translucent(decoded.rgba.data(), decoded.rgba.size() / 4)};
     }
     const std::string text = assets::to_gltf(model.model, refs);
     const auto result = write_into_mod(

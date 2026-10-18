@@ -184,12 +184,19 @@ struct Joint {
     Mat bind = kIdentity; // the joint's vertices to the model at rest: scale * world * inverse bind
 };
 
+// How a mesh's vertex colours' alpha counts (glTF: it multiplies the texture's): not at all (an opaque
+// material); a triangle under the cutoff left out (a mask); the triangle's polygon alpha lowered by it
+// (blended). Per triangle, by its corners' mean: the DS's alpha is a polygon's, not a vertex's.
+enum class VertexAlpha { ignored, cut, blended };
+
 struct Mesh {
     std::vector<khdays::assets::NeutralVertex> vertices; // joints: Model::joints indices, -1 none
     std::vector<std::uint32_t> indices;
     int replacement = -1;
     float tex_w = 1.0F, tex_h = 1.0F;
     bool double_sided = false, translucent = false;
+    VertexAlpha vertex_alpha = VertexAlpha::ignored;
+    float cutoff = 0.5F;
 };
 
 struct Model {
@@ -403,7 +410,8 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
     // the meshes and their textures, each texture as its material takes its alpha (glTF alphaMode): kept;
     // all opaque for an opaque material; for a mask each texel drawn or not by the cutoff, opaque (a whole
     // body with soft cut-out edges came out seen through itself); where the file does not say (FBX),
-    // translucent when any texel is part way
+    // translucent when any texel or vertex colour is part way (a room's shading in vertex colours black at
+    // alpha 0.05 came out as a black floor)
     using AlphaMode = assets::NeutralMesh::AlphaMode;
     std::map<std::string, const assets::DecodedTexture *> texture_of;
     for (const auto &[key, texture] : mod.textures)
@@ -463,6 +471,17 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
             out.tex_h = static_cast<float>(t->h);
             out.translucent = t->translucent;
         }
+        bool partial_vertex = false;
+        for (const auto &v : out.vertices)
+            partial_vertex = partial_vertex || (v.color[3] >= 8 && v.color[3] < 248);
+        if (in.alpha_mode == AlphaMode::blend || in.alpha_mode == AlphaMode::unknown)
+            out.translucent = out.translucent || in.alpha_mode == AlphaMode::blend || partial_vertex;
+        // (a file that does not say, with its vertex alphas all 0 or all 255: painted without alpha, not cut)
+        out.vertex_alpha = in.alpha_mode == AlphaMode::opaque                       ? VertexAlpha::ignored
+                           : in.alpha_mode == AlphaMode::unknown && !partial_vertex ? VertexAlpha::ignored
+                           : out.translucent                                        ? VertexAlpha::blended
+                                                                                    : VertexAlpha::cut;
+        out.cutoff = in.alpha_mode == AlphaMode::mask ? in.alpha_cutoff : 0.5F;
         vertices += out.vertices.size();
         triangles += out.indices.size() / 3;
         model->meshes.push_back(std::move(out));
@@ -723,7 +742,22 @@ void draw(Model &m)
         for (std::size_t t = 0; t + 2 < mesh.indices.size(); t += 3) {
             const KhdaysG3dClipVertex tri[3] = {clip[mesh.indices[t]], clip[mesh.indices[t + 1]],
                                                 clip[mesh.indices[t + 2]]};
-            khdays_g3d_mod_polygon(tri, 3, attr, tex, mesh.replacement, mesh.translucent);
+            uint32_t tri_attr = attr;
+            if (mesh.vertex_alpha != VertexAlpha::ignored) {
+                const float alpha = (static_cast<float>(mesh.vertices[mesh.indices[t]].color[3]) +
+                                     static_cast<float>(mesh.vertices[mesh.indices[t + 1]].color[3]) +
+                                     static_cast<float>(mesh.vertices[mesh.indices[t + 2]].color[3])) /
+                                    (3.0F * 255.0F);
+                if (mesh.vertex_alpha == VertexAlpha::cut && alpha < mesh.cutoff)
+                    continue;
+                if (mesh.vertex_alpha == VertexAlpha::blended && alpha < 1.0F) {
+                    const auto a = static_cast<uint32_t>(std::lround(static_cast<float>((attr >> 16) & 31u) * alpha));
+                    if (a == 0u)
+                        continue; // the DS draws a polygon of alpha 0 as its outline: nothing of it here
+                    tri_attr = (attr & ~(31u << 16)) | (a << 16);
+                }
+            }
+            khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, mesh.replacement, mesh.translucent);
         }
     }
 }

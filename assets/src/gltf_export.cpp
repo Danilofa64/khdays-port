@@ -216,6 +216,15 @@ struct Writer final {
 
 }  // namespace
 
+bool texels_translucent(const std::uint8_t* rgba, std::size_t pixels) {
+    for (std::size_t i = 0; i < pixels; ++i) {
+        const std::uint8_t a = rgba[i * 4 + 3];
+        if (a >= 8 && a < 248)
+            return true;
+    }
+    return false;
+}
+
 std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfTextureRef>& textures,
                     const std::vector<GltfAnimation>& animations, float frames_per_second) {
     const std::size_t nbones = model.object_names.size();
@@ -276,23 +285,30 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
 
     // the materials: one per texture, alpha and sides, and one untextured. A mesh takes its alpha
     // as its material said (an imported model's: opaque, cut out at its cutoff, or blended); a
-    // decoded DS mesh says nothing and is cut out at half, as the DS's alpha test draws it. Its
-    // back faces drawn or not as the mesh says (a DS material's POLYGON_ATTR, an imported one's
-    // doubleSided): a room remade with one-sided pumpkins showed their insides through the mouth
+    // decoded DS mesh, or an FBX's, says nothing: blended when its texture's texels or its vertex
+    // colours have an alpha of their own (A3I5, A5I3, which the DS blends; a room's shading in vertex
+    // colours black at alpha 0.05), else cut out at half, as the DS's alpha test draws it -- as the
+    // port takes a model that does not say (runtime/mods/models.cpp). Its back faces drawn or not as the mesh says
+    // (a DS material's POLYGON_ATTR, an imported one's doubleSided): a room remade with one-sided
+    // pumpkins showed their insides through the mouth
     std::map<std::string, int> material_of, image_of;
     int nmaterials = 0, nimages = 0;
     const auto material_for = [&](const std::string& texture, const NeutralMesh& mesh) {
         using AlphaMode = NeutralMesh::AlphaMode;
-        const char* mode = mesh.alpha_mode == AlphaMode::opaque  ? "OPAQUE"
-                           : mesh.alpha_mode == AlphaMode::blend ? "BLEND"
-                                                                 : "MASK";
+        const auto ref = textures.find(texture);
+        bool partial_vertex = false;
+        for (const auto& v : mesh.vertices)
+            partial_vertex = partial_vertex || (v.color[3] >= 8 && v.color[3] < 248);
+        const bool blended = mesh.alpha_mode == AlphaMode::blend ||
+                             (mesh.alpha_mode == AlphaMode::unknown &&
+                              (partial_vertex || (ref != textures.end() && ref->second.translucent)));
+        const char* mode = mesh.alpha_mode == AlphaMode::opaque ? "OPAQUE" : blended ? "BLEND" : "MASK";
         const float cutoff = mesh.alpha_mode == AlphaMode::mask ? mesh.alpha_cutoff : 0.5F;
         std::ostringstream key;
         key << texture << '\n' << mode << '\n' << cutoff << '\n' << mesh.double_sided;
         const auto it = material_of.find(key.str());
         if (it != material_of.end())
             return it->second;
-        const auto ref = textures.find(texture);
         materials << (nmaterials ? "," : "") << "{\"name\":" << json_string(texture.empty() ? "untextured" : texture)
                   << (mesh.double_sided ? ",\"doubleSided\":true" : "") << ",\"alphaMode\":\"" << mode << "\"";
         if (std::strcmp(mode, "MASK") == 0)

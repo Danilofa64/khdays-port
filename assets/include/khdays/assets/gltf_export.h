@@ -4,6 +4,8 @@
 // replacement models from (the port's graphics dump).
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -13,12 +15,18 @@
 namespace khdays::assets {
 
 // A texture the glTF refers to: its image's URI (relative to the .gltf) and
-// its size in texels, the unit the DS's texture coordinates count in.
+// its size in texels, the unit the DS's texture coordinates count in; whether
+// its texels carry an alpha of their own to blend by (the DS's A3I5 and A5I3).
 struct GltfTextureRef final {
     std::string uri;
     int width = 0;
     int height = 0;
+    bool translucent = false;
 };
+
+// Whether `pixels` RGBA texels have an alpha of their own: some neither transparent nor opaque
+// (between 8 and 247, the DS's 1 to 30 of 31), as an A3I5 or A5I3 texture's dumped picture has.
+bool texels_translucent(const std::uint8_t* rgba, std::size_t pixels);
 
 // An animation of the model's skeleton to write with it, under `name`: the
 // bones' object matrices (as NeutralModel::object_matrices) at each of its

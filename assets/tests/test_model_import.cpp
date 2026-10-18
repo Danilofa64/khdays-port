@@ -11,12 +11,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include "khdays/assets/fbx.h"
 #include "khdays/assets/gltf.h"
+#include "khdays/assets/gltf_export.h"
 
 namespace {
 
@@ -359,6 +361,29 @@ int main() {
         using AlphaMode = khdays::assets::NeutralMesh::AlphaMode;
         check(gltf.model.meshes[0].alpha_mode == AlphaMode::opaque, "glTF: no alphaMode is opaque");
         check(fbx.model.meshes[0].alpha_mode == AlphaMode::unknown, "FBX: alpha mode unknown");
+        {
+            // written back as glTF, a mesh that does not say is cut out at half unless its texture's texels
+            // or its vertex colours have an alpha of their own; one that says keeps it
+            auto mode_of = [&](const khdays::assets::NeutralModel& model, bool translucent) {
+                std::map<std::string, khdays::assets::GltfTextureRef> refs;
+                for (const auto& mesh : model.meshes)
+                    refs[mesh.texture_name] = {"tex.png", 2, 2, translucent};
+                const std::string text = khdays::assets::to_gltf(model, refs);
+                const auto at = text.find("\"alphaMode\":\"");
+                return at == std::string::npos ? std::string() : text.substr(at + 13, text.find('"', at + 13) - at - 13);
+            };
+            check(mode_of(fbx.model, false) == "MASK", "export: an FBX mesh with an opaque texture cut out");
+            check(mode_of(fbx.model, true) == "BLEND", "export: an FBX mesh with a translucent texture blended");
+            khdays::assets::NeutralModel faded = fbx.model;
+            faded.meshes[0].vertices[0].color[3] = 13;  // a vertex colour at alpha 0.05
+            check(mode_of(faded, false) == "BLEND", "export: an FBX mesh with vertex alpha blended");
+            khdays::assets::NeutralModel said = faded;
+            said.meshes[0].alpha_mode = AlphaMode::mask;
+            check(mode_of(said, true) == "MASK", "export: a mesh that says MASK keeps it");
+            const std::uint8_t solid[8] = {9, 9, 9, 255, 9, 9, 9, 0}, soft[8] = {9, 9, 9, 255, 9, 9, 9, 128};
+            check(!khdays::assets::texels_translucent(solid, 2), "texels: opaque and transparent only");
+            check(khdays::assets::texels_translucent(soft, 2), "texels: one at half");
+        }
         {
             std::string masked = gltf_json(R"({"name":"tex","uri":")" + png_uri + R"("})",
                                            R"(,"uri":"data:application/octet-stream;base64,)" + base64(buffer) + "\"",
