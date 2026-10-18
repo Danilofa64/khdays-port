@@ -202,7 +202,7 @@ def subtitles(mare: Path, lang: str) -> int:
             u, v = atlas.at[region]
             h, w = atlas.pixels[region].shape[:2]
             txt.append(f"line {first} {end} {x} {y} {u} {v} {w} {h}")
-        (out / f"hd{movie}.txt").write_text("\n".join(txt) + "\n", encoding="utf-8", newline="\n")
+        (out / f"hd{movie}.txt").write_bytes(("\n".join(txt) + "\n").encode("utf-8"))
         made += 1
     if font.missing:
         print(f"{lang}: the event font has no {''.join(sorted(font.missing))!r} (left out)")
@@ -321,7 +321,7 @@ def music(mare: Path) -> int:
         ]
         txt += [f"cue {first} {end} {track} {tracks[track]}" for first, end, track in plan["cues"]]
         txt += [f"volume {first} {end} {level}" for first, end, level in plan["volume"]]
-        (out / f"hd{movie}.txt").write_text("\n".join(txt) + "\n", encoding="utf-8", newline="\n")
+        (out / f"hd{movie}.txt").write_bytes(("\n".join(txt) + "\n").encode("utf-8"))
         made += 1
     print(f"{made} videos' music in {out} ({len(tracks)} tracks)")
     return made

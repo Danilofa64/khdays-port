@@ -390,6 +390,7 @@ HD_VIDEO_TOOLS = [
 # in the repository's layout, so the videos it names are made too
 SCENE_MAP = "port/movies/hd_scenes.txt"
 HD_MOD = "HD PACK"
+HD_ERRORS = "hd-errors.log"  # under setup/: what each HD tool that failed said
 HAND = "menu/fm/title.2ld"  # kh2_first's entry whose remastered sheet newgame_dialog takes the glove from
 HAND_ASSET = "UK_title_2ld0.png"
 INPUTS_FILE = HERE / "hd_inputs.txt"
@@ -408,6 +409,38 @@ tool = sys.argv[1]
 sys.argv = sys.argv[1:]
 runpy.run_path(tool, run_name="__main__")
 """
+
+
+def run_hd_tools(
+    runs: list[tuple[str, list[str]]],
+    line_of: Callable[[str, list[str]], list[str]],
+    cwd: Path,
+    log: Path,
+    language: str,
+) -> list[dict[str, Any]]:
+    """Each HD tool run in turn. One that fails leaves its screens with the DS's look and the others
+    are made all the same (a copy changed by a mod may lack what one of them reads); what each failed
+    one said is kept whole in `log`, which is removed when none fails. Each tool, made or not."""
+    import subprocess
+
+    pieces: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for i, (tool, template) in enumerate(runs):
+        progress(i, len(runs), words("hd-making", language, what=tool))
+        line = line_of(tool, template)
+        done = subprocess.run(line, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if done.returncode != 0:
+            said = done.stderr.strip()
+            last = said.splitlines()[-1] if said else f"exit status {done.returncode}"
+            errors.append(f"== {tool} ({' '.join(line[1:])})" + chr(10) + (said or last) + chr(10))
+            pieces.append({"tool": tool, "made": False, "error": last})
+            continue
+        pieces.append({"tool": tool, "made": True})
+    log.unlink(missing_ok=True)
+    if errors:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_bytes(chr(10).join(errors).encode("utf-8"))
+    return pieces
 
 
 def tool_arguments(template: list[str], places: dict[str, Path]) -> list[str]:
@@ -512,7 +545,7 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
     ]
     for archive in sorted(entries):
         lines += [f"{archive} {rel}" for rel in sorted(entries[archive])]
-    args.out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    args.out.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
     return {"inputs": sum(len(v) for v in entries.values()), "out": str(args.out)}
 
 
@@ -590,6 +623,18 @@ MESSAGES.update(
             "fr": "Les éléments HD sont prêts.",
             "de": "Die HD-Teile sind fertig.",
             "it": "I pezzi HD sono pronti.",
+        },
+        "hd-partial": {
+            "en": "The HD pieces are ready, but for those of {tools}: those screens keep the DS's look (your copy "
+            "may be changed by a mod). What went wrong is in {log}; please attach it to a report.",
+            "es": "Las piezas HD están listas, menos las de {tools}: esas pantallas se quedan con el aspecto de la "
+            "DS (puede que un mod haya cambiado tu copia). Lo que falló está en {log}; adjúntalo si lo reportas.",
+            "fr": "Les éléments HD sont prêts, sauf ceux de {tools} : ces écrans gardent l'aspect de la DS (un mod a "
+            "peut-être changé votre copie). Ce qui a échoué est dans {log} ; joignez-le à un rapport.",
+            "de": "Die HD-Teile sind fertig, außer denen von {tools}: Diese Bildschirme behalten das Aussehen der DS "
+            "(vielleicht hat ein Mod deine Kopie verändert). Was schiefging, steht in {log}; häng es an einen Bericht.",
+            "it": "I pezzi HD sono pronti, tranne quelli di {tools}: quelle schermate restano con l'aspetto del DS "
+            "(forse una mod ha cambiato la tua copia). Cosa è andato storto è in {log}; allegalo a una segnalazione.",
         },
     }
 )
@@ -722,7 +767,6 @@ def _build_arguments(p: argparse.ArgumentParser) -> None:
 @command("build-hd", "the HD pieces made from the player's collections", _build_arguments)
 def build_hd(args: argparse.Namespace) -> dict[str, Any]:
     import collection_archive
-    import subprocess
 
     install = args.install.resolve()
     if args.menus and (args.c1525 is None or args.c28 is None):
@@ -778,34 +822,45 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
             with collection_archive.Archive(archive_base(folder, kind, archive), cipher) as a:
                 collection_archive.materialise(a, inputs.get(archive, []), src / f"{archive}.hed_out")
         runs = (HD_MENU_TOOLS if args.menus else []) + (HD_VIDEO_TOOLS if args.videos else [])
-        for i, (tool, template) in enumerate(runs):
-            progress(i, len(runs), words("hd-making", args.language, what=tool))
+
+        def line_of(tool: str, template: list[str]) -> list[str]:
             # (the installed Python is isolated by its ._pth file; -I would hide a developer's own packages)
             line = [sys.executable, str(root / "tools" / "hd" / tool), *tool_arguments(template, places)]
             if (tool, template) in HD_MENU_TOOLS:
                 line += ["--mod", HD_MOD]
             if tool in DATA_TOOLS:
                 line += ["--data", str(data)]
-            done = subprocess.run(line, cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
-            if done.returncode != 0:
-                raise RuntimeError(
-                    f"{tool}: {done.stderr.strip().splitlines()[-1] if done.stderr.strip() else done.returncode}"
-                )
-            pieces.append({"tool": tool, "made": True})
-        # whole, into their places
+            return line
+
+        log = install / "setup" / HD_ERRORS
+        pieces = run_hd_tools(runs, line_of, root, log, args.language)
+        if not any(p["made"] for p in pieces):
+            first = pieces[0]
+            raise RuntimeError(f"{first['tool']}: {first['error']} ({log})")
+        made = {p["tool"] for p in pieces if p["made"]}
+        menus = [tool for tool, _ in HD_MENU_TOOLS if args.menus]
+        videos = [tool for tool, _ in HD_VIDEO_TOOLS if args.videos]
+        # whole, into their places: the menus when any was made (those that were not keep the DS's look,
+        # and the step stays undone so the next run tries them again), the videos when all were
         state = load_state(install)
-        if args.menus:
+        if menus and any(tool in made for tool in menus):
             replace_folder(root / "mods" / HD_MOD, install / "mods" / HD_MOD)
-            mark_step(
-                state, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)}, made_by=made_by("hd-menus")
-            )
-        if args.videos:
+            if all(tool in made for tool in menus):
+                mark_step(
+                    state, "hd-menus", {"1.5+2.5": str(args.c1525), "2.8": str(args.c28)}, made_by=made_by("hd-menus")
+                )
+        if videos and all(tool in made for tool in videos):
             replace_folder(root / "data" / "cutscenes", install / "data" / "cutscenes")
             mark_step(state, "hd-videos", {"1.5+2.5": str(args.c1525)}, made_by=made_by("hd-videos"))
         save_state(install, state)
     finally:
         remove(work)
     progress(1, 1, words("hd-ready", args.language))
+    missing = [p["tool"] for p in pieces if not p["made"]]
+    if missing:
+        log = install / "setup" / HD_ERRORS
+        message = words("hd-partial", args.language, tools=", ".join(missing), log=str(log))
+        return {"pieces": pieces, "missing": ", ".join(missing), "message": message}
     return {"pieces": pieces, "message": words("hd-ready", args.language)}
 
 

@@ -63,7 +63,12 @@ launcher's manifests in `ProgramData/Epic/EpicGamesLauncher/Data/Manifests`), an
 is read: Steam's keeps its language's archives in `Image/dt` and Days's videos in
 `STEAM/Mare/MOVIE/Days/dt`, the Epic Games Store's its archives in `Image/en` and the videos in
 `EPIC/Mare/MOVIE/Days/en` (any `*/Mare/MOVIE/Days/*` holding them is taken). (The page is a text
-page with its own Browse buttons, because Inno's folder page refuses an empty folder.)
+page with its own Browse buttons, because Inno's folder page refuses an empty folder.) A tool that
+fails (a copy a mod changed may lack what it reads) leaves its screens with the DS's look and the
+others are made all the same: the installer says which, keeps what each said whole in
+`setup/hd-errors.log` for a report, and leaves the step undone so the next run tries again. The
+pictures a tool cuts at known places are taken at their places scaled to the copy's picture, as a
+mod may have put a smaller one there.
 
 ## Add to Steam
 
@@ -80,7 +85,9 @@ beside it. The entry's id is the port's own, made from its path, so the same num
 remove it. Turning the option off on a later run, or uninstalling, takes the entry out again.
 
 Under Proton or Wine (a Steam Deck, Linux) the installer runs in a Wine prefix, whose Steam is
-not the computer's: the option is shown off and disabled, with a note, and the helper refuses it
+not the computer's (told by Wine's `wine_get_version` in `ntdll.dll`, which Windows's has not; a
+`Software\Wine` registry key is no sign, Windows programs leave one too): the option is shown off
+and disabled, with a note, and the helper refuses it
 even for a silent `/STEAM=yes`; the game is added to Steam by hand from Desktop Mode (a non-Steam
 game pointing to `khdays-native.exe` in the install folder, Proton forced in its Compatibility
 properties). The folder grant is skipped there too. `steam_shortcut.py` can also map a Proton tool

@@ -502,7 +502,7 @@ def make(mare: Path, data: Path, lang: str, mod: Path, preview: Path | None):
     out_dir.mkdir(parents=True, exist_ok=True)
     Image.fromarray(pixels, "RGBA").save(out_dir / "cine_atlas.png")
     Image.fromarray(font_px, "RGBA").save(out_dir / "cine_font.png")
-    (out_dir / "cine.txt").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    (out_dir / "cine.txt").write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
     print(
         f"{lang}: {len(pieces)} pieces, {len(icons)} icons, {len(codes)} glyphs, {len(movies)} scenes, "
         f"{len(named)} chapters with videos; tracking {tracking:.2f}, space {space:.2f}"

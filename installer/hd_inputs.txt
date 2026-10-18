@@ -1,6 +1,6 @@
 # The collection files the HD tools read (installer/setup_steps.py trace-inputs):
 # '<archive> <entry>' (its data and remastered assets) or 'movies <file>'.
-# tools 2bc02d6176ab8c4f6bee4babb901c38b45335c4644ecd8817023e9420ec9e1b5
+# tools 341bbaab7b18369e7f9f42173a741b24ce8732b693b1a5181def07ae63e2b48d
 Mare bg/artwork/tz000a.tm2
 Mare bg/artwork/tz000b.tm2
 Mare bg/artwork/tz007a.tm2

@@ -398,11 +398,18 @@ end;
 
 { ---- Add to Steam (optional) ---- }
 
+function GetModuleHandle(lpModuleName: String): THandle;
+  external 'GetModuleHandleW@kernel32.dll stdcall';
+function GetProcAddress(hModule: THandle; lpProcName: AnsiString): THandle;
+  external 'GetProcAddress@kernel32.dll stdcall';
+
 { Whether the installer runs under Proton or Wine (a Steam Deck, Linux): it is then in a Wine
-  prefix whose Steam is not the computer's, so the Steam steps and the folder grant are left out. }
+  prefix whose Steam is not the computer's, so the Steam steps and the folder grant are left out.
+  Told as steam_shortcut.py tells it: Wine's ntdll.dll has wine_get_version, Windows's has not (a
+  Software\Wine key is no sign: Windows programs leave one too). }
 function UnderWine: Boolean;
 begin
-  Result := RegKeyExists(HKEY_CURRENT_USER, 'Software\Wine') or RegKeyExists(HKEY_LOCAL_MACHINE, 'Software\Wine');
+  Result := GetProcAddress(GetModuleHandle('ntdll.dll'), 'wine_get_version') <> 0;
 end;
 
 { The port as a non-Steam game: a page with one checkbox (off), shown only when Steam is found.
@@ -629,7 +636,10 @@ begin
       if HdFolder(0) <> '' then Args := Args + ' --1525 "' + HdFolder(0) + '"';
       if HdMenus.Checked then Args := Args + ' --28 "' + HdFolder(1) + '"';
       if RunHelperIn(ExpandConstant('{app}'), Args, Json) <> 0 then
-        SuppressibleMsgBox(CustomMessage('HdFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK);
+        SuppressibleMsgBox(CustomMessage('HdFailed') + #13#10#13#10 + JsonValue(Json, 'message'), mbError, MB_OK, IDOK)
+      else if JsonValue(Json, 'missing') <> '' then
+        { made but for some screens (a tool that failed): said, with where its error was kept }
+        SuppressibleMsgBox(JsonValue(Json, 'message'), mbInformation, MB_OK, IDOK);
     end;
     { the starting settings, when the install has none yet (a player's own are kept on an update);
       if it does not run, the port writes its own defaults on first start, so no error is shown }
