@@ -303,6 +303,7 @@ enum class S {
     map_show_new,
     map_show_game,
     map_show_both,
+    map_yours_not_shown,
     map_scale,
     map_turn,
     map_move,

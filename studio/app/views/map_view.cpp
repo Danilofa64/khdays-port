@@ -97,6 +97,7 @@ struct MapView {
     int picked_list = -1, picked_face = -1, picked_marker = -1;
     std::unique_ptr<Preview> preview;
     Replacing rep;
+    bool open_replace = false;  // the mod's replacement just opened: its panel shown open
 };
 
 MapView m;
@@ -333,6 +334,7 @@ void open(App& app) {
                 return;
             }
             p.active = p.from_mod = true;
+            m.open_replace = true;
             const fs::path folder = change_models(mod->dir, m.world.code, index);
             p.model_source = folder / path_u8(p.r.model);
             if (!import_model(p.model_source, &p.raw, &why))
@@ -1276,10 +1278,31 @@ void choose_room_export(App& app, const Item& item) {
     choose_save_file(app, export_name(item), "glTF", "gltf", app.dialog_room_exports);
 }
 
+// Above the picture while the room is being replaced: which room it shows,
+// and why it is not yours when yours could not be built.
+void draw_shown_room(App& app) {
+    const auto lang = app.language;
+    const Replacing& p = m.rep;
+    if (!p.active)
+        return;
+    const char* views[3] = {tr(lang, S::map_show_new), tr(lang, S::map_show_game), tr(lang, S::map_show_both)};
+    ImGui::SetNextItemWidth(12 * ImGui::GetFontSize());
+    ImGui::Combo(tr(lang, S::map_show), &m.rep.view, views, 3);
+    if (!p.built_ok && !p.dirty) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.4f, 0.4f, 1));
+        ImGui::TextWrapped("%s", fmt(lang, S::map_yours_not_shown, {p.error.empty() ? std::string("-") : p.error}).c_str());
+        ImGui::PopStyleColor();
+    }
+}
+
 void draw_replace(App& app, const Item& item) {
     const auto lang = app.language;
     Replacing& p = m.rep;
     const ImVec4 warn(0.95f, 0.8f, 0.35f, 1), good(0.55f, 0.9f, 0.55f, 1);
+    if (m.open_replace) {
+        ImGui::SetNextItemOpen(true);
+        m.open_replace = false;
+    }
     if (!ImGui::CollapsingHeader(tr(lang, S::map_replace), p.active ? ImGuiTreeNodeFlags_DefaultOpen : 0))
         return;
     const Mod* mod = app.current_mod();
@@ -1316,10 +1339,6 @@ void draw_replace(App& app, const Item& item) {
     ImGui::TextUnformatted(
         fmt(lang, S::map_model_file, {p.model_source.empty() ? std::string("-") : u8(p.model_source.filename())})
             .c_str());
-    const char* views[3] = {tr(lang, S::map_show_new), tr(lang, S::map_show_game), tr(lang, S::map_show_both)};
-    same_line_if_room(12 * ImGui::GetFontSize() + check_width(tr(lang, S::map_show)));
-    ImGui::SetNextItemWidth(12 * ImGui::GetFontSize());
-    ImGui::Combo(tr(lang, S::map_show), &p.view, views, 3);
 
     // 2. where it sits: lined up by the tool when it can, the person's hand otherwise
     ImGui::SeparatorText(tr(lang, S::map_step_place));
@@ -1555,9 +1574,12 @@ void draw_map_view(App& app, const Item& item) {
         ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1), "%s", m.error.c_str());
         return;
     }
+    if (m.rep.dirty)
+        rebuild();  // the modder's room made before it is counted and drawn
     ImGui::TextUnformatted(
         fmt(lang, S::map_room, {std::to_string(m.room->index), std::to_string(m.room->id), world_path(m.world.code)})
             .c_str());
+    draw_shown_room(app);
     if (m.has_collision) {
         ImGui::TextDisabled(
             "%s", fmt(lang, S::map_counts,
@@ -1582,8 +1604,6 @@ void draw_map_view(App& app, const Item& item) {
     ImGui::Checkbox(tr(lang, S::map_ceilings), &m.show_ceilings);
     same_line_if_room(check_width(tr(lang, S::map_markers)));
     ImGui::Checkbox(tr(lang, S::map_markers), &m.show_markers);
-    if (m.rep.dirty)
-        rebuild();  // the modder's model placed before the picture draws it
     const ImVec2 avail = ImGui::GetContentRegionAvail();
     draw_room(app, ImVec2(avail.x, std::max(260.0f, avail.y * 0.5f)));
     ImGui::TextDisabled("%s", tr(lang, S::map_controls));
