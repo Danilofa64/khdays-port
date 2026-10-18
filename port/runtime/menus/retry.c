@@ -28,13 +28,13 @@ u32 khdays_events_vblank_count(void);
 
 #define FIELD_SCENE 2u
 #define SCENE_CURRENT 0x8u
-#define MISSION_MODE 0x4u  /* data_0204c240's first byte: a Mission Mode mission */
-#define CHALLENGE 0x2u     /* ... a challenge (with bit 0, Ov025_MissionList_StartMission) */
+#define MISSION_MODE 0x4u             /* data_0204c240's first byte: a Mission Mode mission */
+#define CHALLENGE 0x2u                /* ... a challenge (with bit 0, Ov025_MissionList_StartMission) */
 #define CHALLENGE_TARGETS 0x0204c254u /* data_0204c254: a challenge's targets, copied as it starts */
 #define TARGETS_KEPT 0xeu             /* its u16 that, when not 0, keeps them as they are */
 #define TARGETS 0x10u                 /* its three targets */
-#define PAUSE_SESSION 0x2u /* the pause's kind: Mission Mode's three entries */
-#define CTX_COUNT 0xd0u    /* the pause context's entries: 3 its first page, 2 "Are you sure?" */
+#define PAUSE_SESSION 0x2u            /* the pause's kind: Mission Mode's three entries */
+#define CTX_COUNT 0xd0u               /* the pause context's entries: 3 its first page, 2 "Are you sure?" */
 #define CTX_CURSOR 0xd4u
 #define SETUP_PLAYERS 0x4u /* the session's setup (Session_GetSetup): the players */
 #define PAUSE_LAYER 2      /* engine A's BG2 */
@@ -106,6 +106,36 @@ static int line_there(int row)
            khdays_bg_cell_shows(0, &l, khdays_bg_map_entry(0, &l, LINE_X + 1, row));
 }
 
+/* Whether the pause up is one the port changes (Mission Mode's or a challenge's, one player): its
+ * context into `ctx_out`. */
+static int pause_ours(u32 *ctx_out)
+{
+    const u32 setup = (u32)Session_GetSetup();
+    if (khdays_ui_mode(KHDAYS_UI_PAUSE) != KHDAYS_UI_ON || rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT) != FIELD_SCENE ||
+        !(rd8(KHDAYS_DS_data_0204c240) & (MISSION_MODE | CHALLENGE)) || !in_ram(setup) ||
+        rd32(setup + SETUP_PLAYERS) != 1u || rd8(KHDAYS_DS_gPauseMode) == 0 ||
+        !(rd16(KHDAYS_DS_data_0204bda4) & PAUSE_SESSION)) {
+        return 0;
+    }
+    *ctx_out = pause_context();
+    return *ctx_out != 0;
+}
+
+/* The first page latched: the port's cursor on Continue as the game opens it, or back on the line
+ * "Are you sure?" came from. Done as soon as the page is up, by whichever comes first of the pause's
+ * pictures, its lines and the buttons, so the page is never drawn without Retry. */
+static void latch(void)
+{
+    if (retry.shown) {
+        return;
+    }
+    retry.cursor = retry.asked ? (retry.chosen ? 1 : GIVE_UP) : 0;
+    retry.chosen = 0;
+    retry.asked = 0;
+    retry.shown = 1;
+    say("first page at vblank, the port's cursor", (int)khdays_events_vblank_count(), retry.cursor);
+}
+
 /* The pause's page: 0 its first page drawn, 1 "Are you sure?", 2 the first page not drawn yet, -1 none
  * (or not a pause the port changes). */
 static int pause_page(u32 *ctx_out)
@@ -143,14 +173,7 @@ static int pause_page(u32 *ctx_out)
                 pause_context() != 0 ? (int)rd32(pause_context() + CTX_COUNT) : -1);
         }
     }
-    if (khdays_ui_mode(KHDAYS_UI_PAUSE) != KHDAYS_UI_ON || rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT) != FIELD_SCENE ||
-        !(rd8(KHDAYS_DS_data_0204c240) & (MISSION_MODE | CHALLENGE)) || !in_ram(setup) ||
-        rd32(setup + SETUP_PLAYERS) != 1u || rd8(KHDAYS_DS_gPauseMode) == 0 ||
-        !(rd16(KHDAYS_DS_data_0204bda4) & PAUSE_SESSION)) {
-        return -1;
-    }
-    ctx = pause_context();
-    if (ctx == 0) {
+    if (!pause_ours(&ctx)) {
         return -1;
     }
     *ctx_out = ctx;
@@ -238,6 +261,11 @@ int khdays_pause_view(KhdaysPauseView *v)
         }
         ++v->count;
     }
+    u32 ours = 0;
+    if (v->count == 3 && v->piece[2].key == KHDAYS_PAUSE_WITHDRAW && pause_ours(&ours) &&
+        rd32(ours + CTX_COUNT) == 3u) {
+        latch(); /* its first page drawn: Retry from its first picture, not from the game's next read of the pad */
+    }
     if (retry.shown && v->count == 3 && v->piece[2].key == KHDAYS_PAUSE_WITHDRAW) {
         /* the port's three lines: Retry where Give Up was, Give Up below, lit as its cursor is */
         const int phase = v->piece[1].lit != 0 ? v->piece[1].lit : v->piece[2].lit != 0 ? v->piece[2].lit : 1;
@@ -262,7 +290,10 @@ static int game_entry(int cursor)
 int khdays_retry_view(KhdaysRetryView *v)
 {
     u32 ctx = 0;
-    v->shown = retry.shown && pause_page(&ctx) == 0;
+    v->shown = pause_page(&ctx) == 0;
+    if (v->shown) {
+        latch(); /* its lines drawn: Retry among them from then on */
+    }
     v->cursor = retry.cursor;
     v->game_cursor = ctx != 0 ? (int)rd32(ctx + CTX_CURSOR) : 0;
     v->language = khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage();
@@ -281,6 +312,10 @@ uint16_t khdays_retry_buttons(uint16_t buttons)
         retry.confirmed = 0; /* the field left another way: the next Give Up is one */
         say("the field left without the Retry", 0, 0);
     }
+    if (page == 2) {
+        retry.rest = 0;
+        return buttons; /* the first page being drawn: latched by its pictures perhaps, left as it is */
+    }
     if (page != 0) {
         if (page < 0 && (retry.shown || retry.asked)) {
             say("pause closed, chosen and confirmed:", retry.chosen, retry.confirmed);
@@ -293,15 +328,7 @@ uint16_t khdays_retry_buttons(uint16_t buttons)
         return buttons;
     }
     game = (int)rd32(ctx + CTX_CURSOR);
-    if (!retry.shown) {
-        /* the first page: just opened (on Continue, as the game opens it), or back from "Are you sure?" (on
-         * the line it came from) */
-        retry.cursor = retry.asked ? (retry.chosen ? 1 : GIVE_UP) : 0;
-        retry.chosen = 0;
-        retry.asked = 0;
-        retry.shown = 1;
-        say("first page, the port's and the game's cursor:", retry.cursor, game);
-    }
+    latch();
     out = (u16)(buttons & ~(KHDAYS_KEY_UP | KHDAYS_KEY_DOWN));
     if (pressed & (KHDAYS_KEY_UP | KHDAYS_KEY_DOWN)) {
         const int to = (retry.cursor + ((pressed & KHDAYS_KEY_DOWN) ? 1 : 2)) % 3;
