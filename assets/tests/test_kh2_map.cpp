@@ -720,15 +720,16 @@ void test_room(const Bytes& file) {
         std::ofstream out(folder / name, std::ios::binary);
         out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     };
-    auto plain = [](unsigned width, unsigned height, std::uint8_t shade) {
+    auto plain = [](unsigned width, unsigned height, std::uint8_t shade, std::uint8_t first_alpha = 255) {
         Bytes body;
         for (unsigned i = 0; i < width * height; ++i)
-            body.insert(body.end(), {static_cast<std::uint8_t>(shade + i), shade, shade, 255});
+            body.insert(body.end(), {static_cast<std::uint8_t>(shade + i), shade, shade,
+                                     static_cast<std::uint8_t>(i == 0 ? first_alpha : 255)});
         return dds(nullptr, width, height, body);
     };
-    write("-0.dds", plain(4, 4, 10));   // the map's GS info 0
-    write("-1.dds", plain(2, 4, 100));  // its sprites, two of 2x2 stacked
-    write("-2.dds", plain(4, 4, 50));   // GS info 1; the piece's (-3) left missing
+    write("-0.dds", plain(4, 4, 10));     // the map's GS info 0
+    write("-1.dds", plain(2, 4, 100));    // its sprites, two of 2x2 stacked
+    write("-2.dds", plain(4, 4, 50, 0));  // GS info 1, one texel clear; the piece's (-3) left missing
     std::map<std::string, khdays::assets::DecodedTexture> pictures;
     const auto room = kh2::room_model(
         file.data(), file.size(), folder, "tt99",
@@ -775,8 +776,8 @@ void test_room(const Bytes& file) {
     const auto* moving = material("map_t0_cut_scroll1");
     expect(one != nullptr && two != nullptr && moving != nullptr, "materials by texture, sides and scroll");
     expect(one->texture == "tt99_2.png" && !one->double_sided && two->double_sided &&
-               one->alpha_mode == khdays::assets::NeutralMesh::AlphaMode::opaque,
-           "an opaque material and its two-sided twin");
+               one->alpha_mode == khdays::assets::NeutralMesh::AlphaMode::mask,
+           "a group not marked translucent, its clear texels cut (the PS2's alpha test), and its two-sided twin");
     expect(moving->texture == "tt99_0.png" && moving->alpha_mode == khdays::assets::NeutralMesh::AlphaMode::mask &&
                !moving->repeat[0],
            "a cut-out, region-clamped material");

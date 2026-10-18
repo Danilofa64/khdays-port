@@ -13,7 +13,9 @@
 #include "khdays/assets/kh2_map.h"
 
 // KH2's map models are drawn as stored (one face, counter-clockwise from the
-// front, as glTF's; a strip vertex flag 0x00 both faces). Placements are in
+// front, as glTF's; a strip vertex flag 0x00 both faces), their texels cut by
+// their alpha (the PS2's alpha test) unless their group is translucent (blended).
+// Leaves, fences and railings are cut out in groups not marked transparent. Placements are in
 // KH2's world axes, (x, -y, -z) of the models': a piece's place is turned into
 // the models' axes, its bones and motion are in them already.
 
@@ -61,6 +63,7 @@ struct Part final {
 struct Picture final {
     std::string file;  // empty: none (vertex colours only)
     bool translucent = false;
+    bool cut = false;  // some texels clear (alpha under half): cut out, else drawn whole
     std::vector<std::string> frame_pictures;
     std::vector<std::array<int, 2>> frames;
     bool frames_loop = true;
@@ -169,6 +172,8 @@ private:
         }
         pic.file = name_ + "_" + std::to_string(hd) + ".png";
         pic.translucent = texels_translucent(base.rgba.data(), base.rgba.size() / 4);
+        for (std::size_t k = 3; k < base.rgba.size() && !pic.cut; k += 4)
+            pic.cut = base.rgba[k] < 128;
         sink_(pic.file, base);
 
         const GsTexture& gs = part.textures.textures[static_cast<std::size_t>(i)];
@@ -248,9 +253,9 @@ private:
         const auto key = std::make_tuple(p, g.texture, g.transparent, two_sided, scroll_index);
         const auto found = materials_.find(key);
         auto upgrade = [&](int m) {
-            // a cut-out surface whose vertex colours fade: blended
+            // a translucent group's cut-out surface whose vertex colours fade: blended
             SceneMaterial& mat = room_.scene.materials[static_cast<std::size_t>(m)];
-            if (vertex_alpha && mat.alpha_mode == NeutralMesh::AlphaMode::mask)
+            if (vertex_alpha && g.transparent && mat.alpha_mode == NeutralMesh::AlphaMode::mask)
                 mat.alpha_mode = NeutralMesh::AlphaMode::blend;
             return m;
         };
@@ -263,7 +268,7 @@ private:
                    (two_sided ? "_2" : "") + (scroll_index >= 0 ? "_scroll" + std::to_string(scroll_index) : "");
         mat.texture = pic.file;
         mat.double_sided = two_sided;
-        mat.alpha_mode = !g.transparent    ? NeutralMesh::AlphaMode::opaque
+        mat.alpha_mode = !g.transparent    ? (pic.cut ? NeutralMesh::AlphaMode::mask : NeutralMesh::AlphaMode::opaque)
                          : pic.translucent ? NeutralMesh::AlphaMode::blend
                                            : NeutralMesh::AlphaMode::mask;
         const GsTexture* gs = g.texture >= 0 && static_cast<std::size_t>(g.texture) < part.textures.textures.size()

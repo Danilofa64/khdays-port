@@ -375,6 +375,14 @@ bool make_kh2_room(const fs::path& folder, const std::string& map, const fs::pat
         made->framed += m.frames.empty() ? 0 : 1;
     }
     made->report.insert(made->report.end(), room.report.begin(), room.report.end());
+    // and the map's own floors and walls beside it (<map>_collision.gltf), for a room change to take
+    try {
+        const auto walls = khdays::assets::kh2::collision_scene(data.data(), data.size(), map);
+        std::ofstream collision(out.parent_path() / path_u8(map + "_collision.gltf"), std::ios::binary);
+        collision << khdays::assets::scene_to_gltf(walls);
+    } catch (const std::exception& e) {
+        made->report.push_back(std::string("no floors and walls of its own: ") + e.what());
+    }
     return true;
 }
 
