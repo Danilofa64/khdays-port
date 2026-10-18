@@ -234,6 +234,20 @@ static int piece_of(u32 ctx, int slot, KhdaysPausePiece *p)
     return p->key >= 0 && p->w > 0 && p->h > 0 && p->w <= 32 && p->h <= 32;
 }
 
+/* The port's last picture of the first page's three lines (count 0: none since the page came up), and
+ * the lit strip's phase it had: shown again while the game redraws its own lines. */
+static KhdaysPauseView last_view;
+static int last_phase;
+
+/* The port's lines as last drawn, lit as its cursor is now. */
+static void last_lines(KhdaysPauseView *v)
+{
+    *v = last_view;
+    for (int k = 0; k < 3; ++k) {
+        v->piece[1 + k].lit = retry.cursor == k ? last_phase : 0;
+    }
+}
+
 int khdays_pause_view(KhdaysPauseView *v)
 {
     const u32 ctx = pause_context();
@@ -259,16 +273,37 @@ int khdays_pause_view(KhdaysPauseView *v)
         KhdaysPausePiece *p = &v->piece[v->count];
         if (!piece_of(ctx, slots[i], p) ||
             !khdays_bg_cell_shows(0, &l, khdays_bg_map_entry(0, &l, p->x + p->w / 2, p->y))) {
+            /* the game redrawing its lines as the port moves its cursor: the port's last picture of them,
+             * rather than a frame of the game's own two (its cursor on Give Up, where the port's is not) */
+            u32 ours = 0;
+            if (retry.shown && last_view.count == 4 && pause_ours(&ours) && ours == ctx &&
+                rd32(ctx + CTX_COUNT) == 3u) {
+                last_lines(v);
+                say("the game's lines not readable at vblank: the port's last picture of them",
+                    (int)khdays_events_vblank_count(), retry.cursor);
+                return 1;
+            }
             return 0; /* not drawn yet, or drawn from a strip the port does not know */
         }
         ++v->count;
     }
     u32 ours = 0;
-    if (v->count == 3 && v->piece[2].key == KHDAYS_PAUSE_WITHDRAW && pause_ours(&ours) &&
-        rd32(ours + CTX_COUNT) == 3u) {
+    const int first_page = pause_ours(&ours) && ours == ctx && rd32(ctx + CTX_COUNT) == 3u;
+    const int its_lines =
+        v->count == 3 && v->piece[1].key == KHDAYS_PAUSE_CONTINUE && v->piece[2].key == KHDAYS_PAUSE_WITHDRAW;
+    if (first_page && its_lines) {
         latch(); /* its first page drawn: Retry from its first picture, not from the game's next read of the pad */
     }
-    if (retry.shown && v->count == 3 && v->piece[2].key == KHDAYS_PAUSE_WITHDRAW) {
+    if (first_page && !its_lines && retry.shown && last_view.count == 4) {
+        /* a line redrawn from another strip as the port moves the game's cursor: the port's last picture,
+         * not the game's two lines with its own lit one (Give Up, on the way from Retry up to Continue) */
+        say("the game's lines redrawn at vblank, the slot of Give Up's strip x and y",
+            (int)khdays_events_vblank_count(),
+            v->count >= 3 ? (int)(rd32(ctx + ENTRY(2) + ENTRY_SRC_X) * 100u + rd32(ctx + ENTRY(2) + ENTRY_SRC_Y)) : -1);
+        last_lines(v);
+        return 1;
+    }
+    if (retry.shown && its_lines) {
         /* the port's three lines: Retry where Give Up was, Give Up below, lit as its cursor is */
         const int phase = v->piece[1].lit != 0 ? v->piece[1].lit : v->piece[2].lit != 0 ? v->piece[2].lit : 1;
         v->piece[3] = v->piece[2];
@@ -278,6 +313,9 @@ int khdays_pause_view(KhdaysPauseView *v)
         for (int k = 0; k < 3; ++k) {
             v->piece[1 + k].lit = retry.cursor == k ? phase : 0;
         }
+        last_view = *v;
+        last_view.shown = 1;
+        last_phase = phase;
         if (tracing()) {
             static int drawn_cursor = -1;
             if (drawn_cursor != retry.cursor) {
@@ -333,6 +371,7 @@ uint16_t khdays_retry_buttons(uint16_t buttons)
         }
         retry.asked |= page == 1 && (retry.shown || retry.asked);
         retry.shown = 0;
+        last_view.count = 0;
         retry.rest = 0;
         return buttons;
     }
