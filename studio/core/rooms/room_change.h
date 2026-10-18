@@ -35,6 +35,7 @@ struct RoomReplacement {
     std::string world;      // its code: tt, aw ...
     int room = -1;          // its index in the world's table
     std::string model;      // the visible model's file, in the change's folder
+    std::string kh2;        // the KH2 map it was made from (tt02); empty: a model of the modder's
     std::string collision;  // a separate collision model's, or empty: the visible one
     // the game's own grounds, walls and ceilings kept: only what is seen is
     // replaced (a room remade in the same place needs no collision of its own)
@@ -81,10 +82,16 @@ struct RoomAlignment {
     // points, twice as many as it has as it is); `in_place` -- it lines up as
     // it is (3% or more: a room remade in the same place keeps some of the
     // game's points); `unrelated` -- it shares nothing worth saying
-    enum Verdict { turned, in_place, unrelated } verdict = unrelated;
+    // `kh2_units` (a KH2 room sharing no points with the room): KH2's units as the game's, its floor under its
+    // middle at the height of the room's ground under the room's middle, the two middles together
+    enum Verdict { turned, in_place, unrelated, kh2_units } verdict = unrelated;
 };
 RoomAlignment align_with_room(const std::vector<std::array<float, 3>>& room_points,
                               const khdays::assets::ImportedModel& model);
+// A KH2 room's first place over a game room (`room` its collision): lined up by its points when it shares
+// them (the Usual Spot is the same place in both games), else by `kh2_units`.
+RoomAlignment kh2_alignment(const std::vector<std::array<float, 3>>& room_points, const RoomCollision& room,
+                            const khdays::assets::ImportedModel& kh2);
 bool placed_model(const std::filesystem::path& model, const RoomPlacement& place, khdays::assets::ImportedModel* out,
                   std::string* why);
 

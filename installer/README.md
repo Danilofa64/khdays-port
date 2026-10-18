@@ -152,7 +152,10 @@ HEARTS II FINAL MIX's `Axa::PackageFile`), nothing taken from other tools:
   entry's header.
 
 `python collection_archive.py <archive without .hed/.pkg> <out folder> <kh2 exe> <path> [<path> ...]`
-writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`.
+writes each path's data as `original/<path>` and its assets as `remastered/<path>/<asset>`; a path the
+archive does not hold is named and left out (exit status 3 when it holds none of them).
+`python collection_archive.py --has <archive without .hed/.pkg> <path> [<path> ...]` prints the paths
+it holds. The studio takes KH2's maps out of the player's copy with both (studio/README.md, `--kh2-room`).
 
 **Steam** (`steam_shortcut.py`) keeps each user's non-Steam games in
 `userdata/<account>/config/shortcuts.vdf` (binary KeyValues) and a game's compatibility tool in

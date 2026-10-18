@@ -217,6 +217,8 @@ std::string change_text(const RoomReplacement& r) {
     o << "world " << r.world << "\n";
     o << "room " << r.room << "\n";
     o << "model " << r.model << "\n";
+    if (!r.kh2.empty())
+        o << "kh2 " << r.kh2 << "\n";
     if (!r.collision.empty())
         o << "collision " << r.collision << "\n";
     if (r.keep_collision)
@@ -270,6 +272,8 @@ bool read_change(const std::filesystem::path& file, RoomReplacement* out, std::s
             v >> r.room;
         else if (word == "model")
             r.model = rest;
+        else if (word == "kh2")
+            r.kh2 = rest;
         else if (word == "collision")
             r.collision = rest;
         else if (word == "collision-kept")
@@ -459,6 +463,108 @@ RoomAlignment align_with_room(const std::vector<std::array<float, 3>>& room_poin
         best.verdict = RoomAlignment::unrelated;
     }
     return best;
+}
+
+RoomAlignment kh2_alignment(const std::vector<std::array<float, 3>>& room_points, const RoomCollision& room,
+                            const assets::ImportedModel& kh2) {
+    RoomAlignment a = align_with_room(room_points, kh2);
+    if (a.verdict != RoomAlignment::unrelated)
+        return a;
+    a = RoomAlignment{};
+    a.verdict = RoomAlignment::kh2_units;
+    a.place.scale = 0.01f;  // KH2's units are a hundredth of the game's (the Usual Spot, room 0 of Twilight Town)
+    // KH2's room: its still meshes but its skies (its pieces may stand far off, waiting)
+    std::array<float, 3> lo{1e30f, 1e30f, 1e30f}, hi{-1e30f, -1e30f, -1e30f};
+    struct Tri {
+        std::array<float, 3> a, b, c;
+    };
+    std::vector<Tri> ups;
+    for (const auto& mesh : kh2.model.meshes) {
+        if (mesh.sky)
+            continue;
+        auto still = [](const assets::NeutralVertex& v) { return v.joints[0] == 0 && v.weights[0] >= 0.999f; };
+        for (const auto& v : mesh.vertices) {
+            if (!still(v))
+                continue;
+            for (std::size_t c = 0; c < 3; ++c)
+                lo[c] = std::min(lo[c], v.position[c]), hi[c] = std::max(hi[c], v.position[c]);
+        }
+        for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+            const auto& p = mesh.vertices[mesh.indices[i]];
+            const auto& q = mesh.vertices[mesh.indices[i + 1]];
+            const auto& r = mesh.vertices[mesh.indices[i + 2]];
+            if (!still(p) || !still(q) || !still(r))
+                continue;
+            const float e0[3] = {q.position[0] - p.position[0], q.position[1] - p.position[1],
+                                 q.position[2] - p.position[2]};
+            const float e1[3] = {r.position[0] - p.position[0], r.position[1] - p.position[1],
+                                 r.position[2] - p.position[2]};
+            const float n[3] = {e0[1] * e1[2] - e0[2] * e1[1], e0[2] * e1[0] - e0[0] * e1[2],
+                                e0[0] * e1[1] - e0[1] * e1[0]};
+            const float len = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+            if (len > 0 && n[1] / len > 0.9f)
+                ups.push_back({p.position, q.position, r.position});
+        }
+    }
+    if (lo[0] > hi[0])
+        return a;
+    const float kx = (lo[0] + hi[0]) / 2, kz = (lo[2] + hi[2]) / 2;
+    // its floor under its middle: the lowest upward triangle holding it, else the nearest one's middle
+    float floor_y = lo[1];
+    bool held = false;
+    float nearest = 1e30f;
+    for (const auto& t : ups) {
+        auto side = [&](const std::array<float, 3>& u, const std::array<float, 3>& w) {
+            return (w[0] - u[0]) * (kz - u[2]) - (w[2] - u[2]) * (kx - u[0]);
+        };
+        const float s0 = side(t.a, t.b), s1 = side(t.b, t.c), s2 = side(t.c, t.a);
+        const bool inside = (s0 >= 0 && s1 >= 0 && s2 >= 0) || (s0 <= 0 && s1 <= 0 && s2 <= 0);
+        const float cy = (t.a[1] + t.b[1] + t.c[1]) / 3;
+        if (inside) {
+            if (!held || cy < floor_y)
+                floor_y = cy;
+            held = true;
+        } else if (!held) {
+            const float dx = (t.a[0] + t.b[0] + t.c[0]) / 3 - kx, dz = (t.a[2] + t.b[2] + t.c[2]) / 3 - kz;
+            if (dx * dx + dz * dz < nearest) {
+                nearest = dx * dx + dz * dz;
+                floor_y = cy;
+            }
+        }
+    }
+    // the game room's middle and its ground under it (20.12 to units)
+    double rlo[3] = {1e30, 1e30, 1e30}, rhi[3] = {-1e30, -1e30, -1e30};
+    for (const auto& list : room.faces) {
+        for (const auto& f : list) {
+            for (std::size_t v = 0; v < f.corners && v < 4; ++v) {
+                for (std::size_t c = 0; c < 3; ++c)
+                    rlo[c] = std::min(rlo[c], static_cast<double>(f.v[v][c])),
+                    rhi[c] = std::max(rhi[c], static_cast<double>(f.v[v][c]));
+            }
+        }
+    }
+    if (rlo[0] > rhi[0])
+        return a;
+    const double dx = (rlo[0] + rhi[0]) / 2, dz = (rlo[2] + rhi[2]) / 2;
+    double ground = rlo[1];
+    if (!ground_under(room, dx, dz, rhi[1] + 4096.0, &ground)) {
+        double best = 1e300;
+        for (const auto& g : room.faces[kGround]) {
+            double cx = 0, cy = 0, cz = 0;
+            for (std::size_t v = 0; v < g.corners && v < 4; ++v)
+                cx += g.v[v][0], cy += g.v[v][1], cz += g.v[v][2];
+            const double k = g.corners > 0 ? 1.0 / g.corners : 0;
+            const double d = (cx * k - dx) * (cx * k - dx) + (cz * k - dz) * (cz * k - dz);
+            if (d < best) {
+                best = d;
+                ground = cy * k;
+            }
+        }
+    }
+    const float s = a.place.scale;
+    a.place.move = {static_cast<float>(dx / 4096.0) - s * kx, static_cast<float>(ground / 4096.0) - s * floor_y,
+                    static_cast<float>(dz / 4096.0) - s * kz};
+    return a;
 }
 
 bool placed_model(const std::filesystem::path& model, const RoomPlacement& place, assets::ImportedModel* out,

@@ -109,6 +109,7 @@ struct App {
     std::vector<std::string> dialog_room_exports;   // where a room is exported
     std::vector<std::string> dialog_model_exports;  // where a game model is exported
     std::vector<std::string> dialog_sheet_folders;  // where every 2D sheet is exported
+    std::vector<std::string> dialog_collections;    // the 1.5+2.5 collection's folder (KH2's rooms)
 
     std::string status;
 

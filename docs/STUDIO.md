@@ -95,6 +95,28 @@ corners, convex, its bounds its corners', a plane the game can build, every slot
 naming a record or none, the tree as the walk wants and no deeper than it goes,
 every name the original had still there.
 
+**A KH2 room** (`core/rooms/kh2_source.h`). A map of KINGDOM HEARTS II FINAL
+MIX is taken out of the player's KINGDOM HEARTS HD 1.5+2.5 ReMIX -- its folder
+the studio's setting `collection_1525`, else the one the install made its HD
+pieces from (`setup/state.json`) -- by the installer's own reader
+(`installer/collection_archive.py`, run with the install's Python,
+`setup/python`, or the system's in the repository's tree), asking kh2_first,
+kh2_fifth and kh2_sixth in the collection's language folder (`Image/dt`,
+Steam's; `Image/en`, the Epic Games Store's) into
+`saves/collection/kh2/original/map/<map>.map` and
+`remastered/map/<map>.map/-N.dds`; `--has` lists the maps a copy holds. The
+map is made into `saves/collection/kh2/made/<map>/<map>.gltf` (assets'
+`kh2_room`: its background, skies and placed pieces with their motion, its HD
+pictures as PNG, docs/RENDERING.md "Mods' graphics" for its extras), and the
+change names it (`kh2 <map>`). Its first place: lined up by its points when it
+shares them with the room (the Usual Spot is the same place in both games), else
+KH2's units as the game's at 0.01, its floor under its middle at the height of
+the room's ground under the room's middle, the two middles together. The
+collision made from it names each marker left in a wall (a wall face within
+0.15 units of the point half a unit above its feet) or with no ground under it.
+What is made is the player's own (Square Enix's work from their copy): the
+panel says so.
+
 ## Missions
 
 A mission is changed in place (`core/missions/mission_edit.h`): a step's

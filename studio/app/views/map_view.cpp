@@ -8,6 +8,7 @@
 #include "core/models/game_model.h"
 #include "core/models/model_files.h"
 #include "core/files/paths.h"
+#include "core/rooms/kh2_source.h"
 #include "core/rooms/room_change.h"
 #include "mods/room_animation.h"  // port/runtime: as the port moves a room
 #include "core/rooms/room_export.h"
@@ -18,6 +19,7 @@
 #include "khdays/vfs/filesystem.h"
 
 #include "imgui.h"
+#include "imgui_stdlib.h"
 
 #include <SDL3/SDL.h>
 
@@ -27,8 +29,11 @@ extern "C" {
 
 #include <algorithm>
 #include <cmath>
+#include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 namespace studio {
 
@@ -94,6 +99,35 @@ struct MapView {
 };
 
 MapView m;
+
+// KH2's rooms of the player's collection, listed and made on a thread of their own (the archives are read
+// by the installer's reader in Python), what it made taken by the window once done. Kept across rooms.
+struct Kh2Picker {
+    bool shown = false;
+    int world = -1;  // in kKh2Worlds
+    std::vector<std::string> maps;
+    std::map<std::string, bool> out;  // a map taken out of the copy already
+    std::map<std::string, assets::DecodedTexture> radars;
+    std::string typed, error;
+    fs::path collection;
+    std::string collection_for = "\x01";  // the setting `collection` was found for
+    std::thread worker;
+    std::atomic<bool> busy{false};
+    std::string working;  // the map being made; empty while listing
+    // left by the worker
+    std::mutex mutex;
+    bool listed = false, made = false;
+    std::vector<std::string> found;
+    std::string done_map, failed;
+    fs::path model;
+    Kh2Made outcome;
+    ~Kh2Picker() {
+        if (worker.joinable())
+            worker.join();
+    }
+};
+Kh2Picker kh2;
+constexpr const char* kKh2Worlds[] = {"tt", "al", "bb", "eh", "he", "nm"};
 
 // The collision drawn and picked: the one made when the modder's is shown
 // (the game's when it is kept).
@@ -992,10 +1026,17 @@ void line_up(App& app) {
     Replacing& p = m.rep;
     if (p.raw.model.meshes.empty())
         return;
-    const RoomAlignment a = align_with_room(game_points(), p.raw);
+    const RoomAlignment a = !p.r.kh2.empty() && m.has_collision ? kh2_alignment(game_points(), m.collision, p.raw)
+                                                                : align_with_room(game_points(), p.raw);
     char share[16];
     std::snprintf(share, sizeof(share), "%.0f", a.share * 100.0);
-    if (a.verdict == RoomAlignment::turned) {
+    if (a.verdict == RoomAlignment::kh2_units) {
+        p.r.place = a.place;
+        char scale[32];
+        std::snprintf(scale, sizeof(scale), "%g", a.place.scale);
+        p.placed_text = fmt(app.language, S::map_align_kh2, {scale});
+        p.placed_ok = true;
+    } else if (a.verdict == RoomAlignment::turned) {
         p.r.place = a.place;
         char turn[64], scale[32];
         std::snprintf(turn, sizeof(turn), "%.0f, %.0f, %.0f", a.place.turn[0], a.place.turn[1], a.place.turn[2]);
@@ -1033,6 +1074,161 @@ void line_up(App& app) {
     p.dirty = true;
 }
 
+// The worker's results taken: its list of maps, or the model it made (offered as the room's model).
+void kh2_take(App& app, const Item& item) {
+    bool listed = false, made = false;
+    std::string failed, map;
+    fs::path model;
+    Kh2Made outcome;
+    {
+        std::lock_guard lock(kh2.mutex);
+        std::swap(listed, kh2.listed);
+        std::swap(made, kh2.made);
+        failed = kh2.failed;
+        map = kh2.done_map;
+        model = kh2.model;
+        outcome = kh2.outcome;
+        if (listed)
+            kh2.maps = kh2.found;
+    }
+    if (kh2.worker.joinable() && !kh2.busy)
+        kh2.worker.join();
+    if (listed) {
+        kh2.error = failed;
+        kh2.out.clear();
+        for (const auto& name : kh2.maps)
+            kh2.out[name] = kh2_map_taken_out(app.settings.root, name);
+    }
+    if (!made)
+        return;
+    if (!failed.empty()) {
+        kh2.error = failed;
+        app.tell(fmt(app.language, S::save_failed, {failed}), false);
+        return;
+    }
+    kh2.error.clear();
+    kh2.out[map] = true;
+    kh2.radars.erase(map);
+    m.rep.next_is_collision = false;
+    m.rep.r.kh2 = map;
+    room_offer(app, item, model);
+    app.tell(fmt(app.language, S::map_kh2_made,
+                 {map, std::to_string(outcome.triangles), std::to_string(outcome.pictures),
+                  std::to_string(outcome.pieces), std::to_string(outcome.animations)}),
+             true);
+    for (const auto& line : outcome.report)
+        app.tell(map + ": " + line, false);
+}
+
+void kh2_start(App& app, const std::string& map, const std::string& world) {
+    if (kh2.busy)
+        return;
+    if (kh2.worker.joinable())
+        kh2.worker.join();
+    kh2.busy = true;
+    kh2.working = map;
+    kh2.error.clear();
+    const Settings settings = app.settings;
+    kh2.worker = std::thread([settings, map, world] {
+        std::vector<std::string> found;
+        std::string why;
+        Kh2Made outcome;
+        const fs::path model = map.empty() ? fs::path() : kh2_made_model(settings.root, map);
+        const bool ok = map.empty() ? kh2_world_maps(settings, world, &found, &why)
+                                    : take_out_kh2_map(settings, map, &why) &&
+                                          make_kh2_room(kh2_folder(settings.root), map, model, &outcome, &why);
+        std::lock_guard lock(kh2.mutex);
+        kh2.failed = ok ? std::string() : why;
+        if (map.empty()) {
+            kh2.found = std::move(found);
+            kh2.listed = true;
+        } else {
+            kh2.done_map = map;
+            kh2.model = model;
+            kh2.outcome = std::move(outcome);
+            kh2.made = true;
+        }
+        kh2.busy = false;
+    });
+}
+
+// The KH2 rooms of the player's copy to take as the room's model: a world's, or one by its name.
+void draw_kh2_picker(App& app) {
+    const auto lang = app.language;
+    const ImVec4 warn(0.95f, 0.8f, 0.35f, 1);
+    ImGui::Indent();
+    ImGui::TextWrapped("%s", tr(lang, S::map_kh2_hint));
+    if (kh2.collection_for != app.settings.collection_1525) {
+        kh2.collection = kh2_collection(app.settings);
+        kh2.collection_for = app.settings.collection_1525;
+    }
+    if (kh2.collection.empty()) {
+        ImGui::TextColored(warn, "%s", tr(lang, S::map_kh2_no_collection));
+        ImGui::Unindent();
+        return;
+    }
+    ImGui::TextDisabled("%s", u8(kh2.collection).c_str());
+    if (kh2.world < 0) {
+        kh2.world = 0;
+        for (int w = 0; w < 6; ++w) {
+            if (m.world.code == kKh2Worlds[w])
+                kh2.world = w;
+        }
+    }
+    ImGui::BeginDisabled(kh2.busy);
+    ImGui::SetNextItemWidth(6 * ImGui::GetFontSize());
+    if (ImGui::Combo(tr(lang, S::map_kh2_world), &kh2.world, kKh2Worlds, 6))
+        kh2.maps.clear();
+    ImGui::SameLine();
+    if (ImGui::Button(tr(lang, S::map_kh2_list)))
+        kh2_start(app, {}, kKh2Worlds[kh2.world]);
+    ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
+    ImGui::InputText(tr(lang, S::map_kh2_by_name), &kh2.typed);
+    ImGui::SameLine();
+    if (ImGui::Button((std::string(tr(lang, S::map_kh2_use)) + "##typed").c_str()) && !kh2.typed.empty())
+        kh2_start(app, kh2.typed, {});
+    ImGui::EndDisabled();
+    if (kh2.busy) {
+        ImGui::TextDisabled("%s", kh2.working.empty() ? tr(lang, S::map_kh2_list)
+                                                      : fmt(lang, S::map_kh2_working, {kh2.working}).c_str());
+    }
+    if (!kh2.error.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.4f, 0.4f, 1));
+        ImGui::TextWrapped("%s", kh2.error.c_str());
+        ImGui::PopStyleColor();
+    }
+    const float side = 4 * ImGui::GetFontSize();
+    for (const auto& name : kh2.maps) {
+        ImGui::PushID(name.c_str());
+        auto radar = kh2.radars.find(name);
+        if (radar == kh2.radars.end() && kh2.out[name]) {
+            assets::DecodedTexture picture;
+            kh2_radar(app.settings.root, name, &picture);
+            radar = kh2.radars.emplace(name, std::move(picture)).first;
+        }
+        if (radar != kh2.radars.end() && !radar->second.rgba.empty()) {
+            const GpuImage& image = app.images->pixels("kh2-radar/" + name, 1, radar->second.rgba, radar->second.width,
+                                                       radar->second.height);
+            ImGui::Image(ImTextureRef(static_cast<ImTextureID>(reinterpret_cast<intptr_t>(image.texture))),
+                         ImVec2(side, side));
+        } else {
+            ImGui::Dummy(ImVec2(side, side));
+        }
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::TextUnformatted(name.c_str());
+        if (!kh2.out[name])
+            ImGui::TextDisabled("%s", tr(lang, S::map_kh2_not_out));
+        ImGui::BeginDisabled(kh2.busy);
+        if (ImGui::SmallButton(tr(lang, S::map_kh2_use)))
+            kh2_start(app, name, {});
+        ImGui::EndDisabled();
+        ImGui::EndGroup();
+        ImGui::PopID();
+    }
+    ImGui::Unindent();
+}
+
 void choose_room_export(App& app, const Item& item) {
     choose_save_file(app, export_name(item), "glTF", "gltf", app.dialog_room_exports);
 }
@@ -1048,8 +1244,10 @@ void draw_replace(App& app, const Item& item) {
     // 1. the model: the person's, or the game's room exported to start from
     ImGui::SeparatorText(tr(lang, S::map_step_model));
     ImGui::TextWrapped("%s", tr(lang, S::map_replace_hint));
+    kh2_take(app, item);
     if (ImGui::Button(tr(lang, S::choose_file))) {
         p.next_is_collision = false;
+        p.r.kh2.clear();  // the modder's own model, not a KH2 room
         choose_file(app, item);
     }
     same_line_if_room(button_width(tr(lang, S::map_export)));
@@ -1059,12 +1257,19 @@ void draw_replace(App& app, const Item& item) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("%s", tr(lang, S::map_export_hint));
+    same_line_if_room(button_width(tr(lang, S::map_kh2_source)));
+    if (ImGui::Button(tr(lang, S::map_kh2_source)))
+        kh2.shown = !kh2.shown;
+    if (kh2.shown)
+        draw_kh2_picker(app);
     if (mod == nullptr) {
         ImGui::TextColored(warn, "%s", tr(lang, S::choose_mod_first));
         return;
     }
     if (!p.active)
         return;
+    if (!p.r.kh2.empty())
+        ImGui::TextColored(warn, "%s %s", p.r.kh2.c_str(), tr(lang, S::map_kh2_note));
     ImGui::TextUnformatted(
         fmt(lang, S::map_model_file, {p.model_source.empty() ? std::string("-") : u8(p.model_source.filename())})
             .c_str());
@@ -1166,8 +1371,8 @@ void draw_replace(App& app, const Item& item) {
         static const S words[] = {S::map_warn_dropped,         S::map_warn_too_big,          S::map_warn_no_ground,
                                   S::map_warn_gate_unplaced,   S::map_warn_wall_unplaced,    S::map_warn_name_kept,
                                   S::map_warn_marker_floating, S::map_warn_collision_shared, S::map_warn_model_shared,
-                                  S::map_warn_passable};
-        static_assert(sizeof(words) / sizeof(words[0]) == RoomWarning::passable + 1, "a word per warning");
+                                  S::map_warn_passable,        S::map_warn_marker_in_wall};
+        static_assert(sizeof(words) / sizeof(words[0]) == RoomWarning::marker_in_wall + 1, "a word per warning");
         std::string text = tr(lang, words[w.kind]);
         for (std::size_t k = 0; k < w.args.size(); ++k) {
             const std::string key = "{" + std::to_string(k) + "}";

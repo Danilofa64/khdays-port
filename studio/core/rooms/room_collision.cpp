@@ -4,6 +4,7 @@
 #include <cctype>
 #include <climits>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <functional>
 #include <map>
@@ -736,6 +737,37 @@ bool build_collision(const CollisionSource& source, const RoomCollision& origina
         }
         if (!under)
             r.warnings.push_back({RoomWarning::marker_floating, {m.name}});
+        // a wall through its body: a wall face within 0.15 units of the point half a unit above its feet,
+        // the point over the face
+        const Vec3d body{static_cast<double>(m.place[0]), m.place[1] + 2048.0, static_cast<double>(m.place[2])};
+        bool in_wall = false;
+        for (const auto& w : c.faces[kWall]) {
+            if (in_wall || w.corners < 3)
+                continue;
+            const Vec3d n = face_normal(w);
+            const double len = length(n);
+            if (len <= 0)
+                continue;
+            const Vec3d d{body[0] - w.v[0][0], body[1] - w.v[0][1], body[2] - w.v[0][2]};
+            if (std::abs(dot(n, d)) / len > 614.0)
+                continue;
+            bool inside = true;
+            for (std::size_t i = 0; i < w.corners && inside; ++i) {
+                const auto& p = w.v[i];
+                const auto& q = w.v[(i + 1) % w.corners];
+                const Vec3d edge{static_cast<double>(q[0]) - p[0], static_cast<double>(q[1]) - p[1],
+                                 static_cast<double>(q[2]) - p[2]};
+                const Vec3d to{body[0] - p[0], body[1] - p[1], body[2] - p[2]};
+                inside = dot(cross(edge, to), n) >= 0;
+            }
+            in_wall = inside;
+        }
+        if (in_wall) {
+            char at[3][32];
+            for (int k = 0; k < 3; ++k)
+                std::snprintf(at[k], sizeof(at[k]), "%.2f", m.place[static_cast<std::size_t>(k)] / 4096.0);
+            r.warnings.push_back({RoomWarning::marker_in_wall, {m.name, at[0], at[1], at[2]}});
+        }
     }
     *out = std::move(c);
     if (report != nullptr)
@@ -761,6 +793,8 @@ std::string warning_text(const RoomWarning& w) {
     case RoomWarning::passable:
         return arg(0) +
                " triangles of translucent materials left out of the collision: nothing stands on them or stops at them";
+    case RoomWarning::marker_in_wall:
+        return "marker " + arg(0) + " stands in a wall (at " + arg(1) + " " + arg(2) + " " + arg(3) + ")";
     }
     return {};
 }

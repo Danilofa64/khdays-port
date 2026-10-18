@@ -200,6 +200,7 @@ add_executable(khdays-studio-tests
     tests/test_sheets.cpp
     tests/test_missions.cpp
     tests/test_worlds.cpp
+    tests/test_kh2.cpp
     tests/test_mods_log.cpp
     app/strings.cpp
     tests/test_strings.cpp)
