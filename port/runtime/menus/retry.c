@@ -276,6 +276,13 @@ int khdays_pause_view(KhdaysPauseView *v)
         for (int k = 0; k < 3; ++k) {
             v->piece[1 + k].lit = retry.cursor == k ? phase : 0;
         }
+        if (tracing()) {
+            static int drawn_cursor = -1;
+            if (drawn_cursor != retry.cursor) {
+                drawn_cursor = retry.cursor;
+                say("the lit line drawn at vblank", (int)khdays_events_vblank_count(), drawn_cursor);
+            }
+        }
     }
     v->shown = 1;
     return 1;
@@ -336,6 +343,7 @@ uint16_t khdays_retry_buttons(uint16_t buttons)
             PlaySound(0, 0); /* the game's cursor sound (TabPanel_HandleUpDown): its own stays */
         }
         retry.cursor = to;
+        say("a direction at vblank, the port's cursor", (int)khdays_events_vblank_count(), to);
     }
     if (game != game_entry(retry.cursor)) {
         /* on the way: either direction takes the game's from one of its lines to the other */

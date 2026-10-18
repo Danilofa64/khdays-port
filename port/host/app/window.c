@@ -4,6 +4,7 @@
  * Closing the window ends the process (docs/PLATFORM.md, "The PC's side"). */
 #include "host.h"
 #include "devices.h"
+#include "press_edges.h"
 #include "../render/gpu_present.h"
 #include "../movies/movie_hd.h"
 #include "profile.h"
@@ -69,6 +70,9 @@ static SDL_AtomicInt scale;   /* the internal resolution the picture is composed
 
 static SDL_Mutex *input_lock;
 static KhdaysInputSnapshot input;
+/* The DS buttons' presses and releases since the game last took its input (input_lock), so that none
+ * is lost between two of its reads (press_edges.h). */
+static KhdaysPressEdges edges, edges_field;
 
 static SDL_Semaphore *ready; /* signalled when the window is up (or failed) */
 static SDL_AtomicInt started;
@@ -81,6 +85,8 @@ static void publish(const KhdaysInputSnapshot *snapshot)
 {
     SDL_LockMutex(input_lock);
     const uint32_t generation = input.generation + 1;
+    khdays_press_edges_note(&edges, input.ds_buttons, snapshot->ds_buttons);
+    khdays_press_edges_note(&edges_field, input.ds_buttons_field, snapshot->ds_buttons_field);
     input = *snapshot;
     input.generation = generation;
     SDL_UnlockMutex(input_lock);
@@ -390,7 +396,7 @@ static void stop_game_for_menu(void)
     if (settings_stopped) {
         khdays_clock_hold(KHDAYS_HOLD_SETTINGS, 1);
         khdays_sound_output_pause(1);
-        khdays_hd_pause(1); /* an HD video playing for a movie pauses too */
+        khdays_hd_pause(1);       /* an HD video playing for a movie pauses too */
         khdays_hd_voice_pause(1); /* and a monologue's voice */
     }
 }
@@ -891,6 +897,19 @@ void khdays_host_input(KhdaysInputSnapshot *out)
     }
     SDL_LockMutex(input_lock);
     *out = input;
+    SDL_UnlockMutex(input_lock);
+}
+
+void khdays_host_input_take(KhdaysInputSnapshot *out)
+{
+    if (input_lock == NULL) {
+        memset(out, 0, sizeof(*out));
+        return;
+    }
+    SDL_LockMutex(input_lock);
+    *out = input;
+    out->ds_buttons = khdays_press_edges_take(&edges, input.ds_buttons);
+    out->ds_buttons_field = khdays_press_edges_take(&edges_field, input.ds_buttons_field);
     SDL_UnlockMutex(input_lock);
 }
 

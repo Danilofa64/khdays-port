@@ -3,6 +3,7 @@
  * enhancements taking their part. */
 #include "../core/language.h"
 #include "input.h"
+#include "../../host/app/press_edges.h"
 #include "../menus/autosave.h"
 #include "../menus/camp.h"
 #include "../menus/charselect.h"
@@ -43,7 +44,8 @@ static Step *script;
 static int script_len;
 static int script_next;
 static u16 script_keys;
-static u32 script_actions; /* the port's own controls the script holds */
+static KhdaysPressEdges script_edges; /* the script's presses between two of the game's reads */
+static u32 script_actions;            /* the port's own controls the script holds */
 static int script_touch_x = -1, script_touch_y;
 static int script_move[2], script_camera[2]; /* the sticks' positions, y up */
 
@@ -260,6 +262,7 @@ void khdays_input_frame(u32 frame)
                     s->kind, s->keys);
         }
         if (s->kind == '+') {
+            khdays_press_edges_note(&script_edges, script_keys, (u16)(script_keys | s->keys));
             script_keys |= s->keys;
             script_actions |= s->actions;
             for (int b = 0; b < 16; ++b) {
@@ -268,6 +271,7 @@ void khdays_input_frame(u32 frame)
                 }
             }
         } else if (s->kind == '-') {
+            khdays_press_edges_note(&script_edges, script_keys, (u16)(script_keys & ~s->keys));
             script_keys &= (u16)~s->keys;
             script_actions &= ~s->actions;
         } else if (s->kind == '~') {
@@ -343,7 +347,7 @@ void khdays_input_pad_sample(void)
                 FRAME_RATE_MODE, latched, PAD_HELD, PAD_PRESSED);
     }
     previous = snapshot;
-    khdays_host_input(&snapshot);
+    khdays_host_input_take(&snapshot); /* a press let go since the last game frame counts too */
     /* The script's sticks and controls, for the enhancements' runs without
      * a gamepad. */
     snapshot.actions |= script_actions;
@@ -357,7 +361,8 @@ void khdays_input_pad_sample(void)
     }
     /* While the settings menu is open the player's input is not the
      * game's (the script's still is: headless runs have no screen). */
-    latched = khdays_movie_hd_game_buttons((u16)(script_keys | (snapshot.ui_open ? 0 : player_buttons())));
+    latched = khdays_movie_hd_game_buttons(
+        (u16)(khdays_press_edges_take(&script_edges, script_keys) | (snapshot.ui_open ? 0 : player_buttons())));
     latched = khdays_newgame_buttons(latched);    /* the port's question in the new game takes them */
     latched = khdays_savelist_buttons(latched);   /* the port's save list takes the files' rows */
     khdays_cinelist_frame();                      /* MODO CINE's list, for the port to draw */
