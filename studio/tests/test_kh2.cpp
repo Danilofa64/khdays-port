@@ -113,6 +113,32 @@ TEST(a_placed_point_goes_back_where_the_model_has_it) {
     CHECK(same_place(place, place) && !same_place(place, RoomPlacement{}));
 }
 
+TEST(a_kh2_floor_is_raised_under_the_markers) {
+    // a floor five units up from -4 to 4, and a roof over it at eight (facing down)
+    khdays::assets::ImportedModel model;
+    khdays::assets::NeutralMesh mesh;
+    for (const auto& p :
+         {std::array<float, 3>{-4, 5, -4}, std::array<float, 3>{-4, 5, 4}, std::array<float, 3>{4, 5, 4},
+          std::array<float, 3>{4, 5, -4}, std::array<float, 3>{-4, 8, -4}, std::array<float, 3>{-4, 8, 4},
+          std::array<float, 3>{4, 8, 4}, std::array<float, 3>{4, 8, -4}}) {
+        khdays::assets::NeutralVertex v;
+        v.position = p;
+        mesh.vertices.push_back(v);
+    }
+    mesh.indices = {0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6};
+    model.model.meshes = {mesh};
+    const SurfaceMap surfaces = surface_map(model);
+    CHECK(surfaces.triangles.size() == 4);
+    const auto heights = surfaces.heights_at(1.5f, -2.5f);
+    CHECK(heights.size() == 2);
+    // three markers on the game's ground, a tenth above 0; one far off, over nothing
+    std::size_t on = 0;
+    const float raise = raise_to_markers(surfaces, {{0, 0.1f, 0}, {1, 0.1f, 1}, {2, 0.1f, -2}, {40, 0.1f, 40}}, &on);
+    CHECK(on == 3 && std::fabs(raise + 5.0f) < 1e-4f);
+    // no floor under any: nothing raised
+    CHECK(raise_to_markers(surfaces, {{40, 0, 40}}, &on) == 0.0f && on == 0);
+}
+
 TEST(a_model_cut_to_its_room_keeps_what_lies_around_it) {
     // the room: a ground from -4 to 4, closed in by walls along z = -4 and z = 4 only
     RoomCollision room;

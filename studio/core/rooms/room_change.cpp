@@ -887,9 +887,10 @@ RoomZone room_zone(const RoomCollision& room, float margin) {
     return zone;
 }
 
-std::size_t cut_to_zone(assets::ImportedModel* placed, const RoomZone& zone) {
-    assets::ImportedModel& m = *placed;
-    // a model that keeps its skeleton: each vertex where its joints put it
+namespace {
+
+// A model's joints at rest: each palette entry its joint's global times its inverse bind.
+std::map<std::uint32_t, M4> rest_palette(const assets::ImportedModel& m) {
     std::map<std::uint32_t, M4> palette;
     for (const auto& j : m.joints) {
         M4 world{}, ibm{};
@@ -897,26 +898,153 @@ std::size_t cut_to_zone(assets::ImportedModel* placed, const RoomZone& zone) {
             world[k] = j.world[k], ibm[k] = j.inverse_bind[k];
         palette[j.palette_index] = mul(world, ibm);
     }
-    auto where = [&](const assets::NeutralVertex& v) {
-        if (palette.empty())
-            return v.position;
-        std::array<float, 3> pos{0, 0, 0};
-        float total = 0;
-        for (std::size_t k = 0; k < 4; ++k) {
-            const auto found = palette.find(v.joints[k]);
-            if (v.weights[k] <= 0 || found == palette.end())
-                continue;
-            const auto q = apply(found->second, v.position, 1);
-            for (std::size_t c = 0; c < 3; ++c)
-                pos[c] += v.weights[k] * q[c];
-            total += v.weights[k];
+    return palette;
+}
+
+// Where a vertex is drawn: through its joints when the model keeps its skeleton, else as it is.
+std::array<float, 3> posed(const std::map<std::uint32_t, M4>& palette, const assets::NeutralVertex& v) {
+    if (palette.empty())
+        return v.position;
+    std::array<float, 3> pos{0, 0, 0};
+    float total = 0;
+    for (std::size_t k = 0; k < 4; ++k) {
+        const auto found = palette.find(v.joints[k]);
+        if (v.weights[k] <= 0 || found == palette.end())
+            continue;
+        const auto q = apply(found->second, v.position, 1);
+        for (std::size_t c = 0; c < 3; ++c)
+            pos[c] += v.weights[k] * q[c];
+        total += v.weights[k];
+    }
+    if (total <= 0)
+        return v.position;
+    for (auto& c : pos)
+        c /= total;
+    return pos;
+}
+
+}  // namespace
+
+std::vector<std::array<std::array<float, 3>, 3>> drawn_triangles(const assets::ImportedModel& placed) {
+    const auto palette = rest_palette(placed);
+    std::vector<std::array<std::array<float, 3>, 3>> out;
+    for (const auto& mesh : placed.model.meshes) {
+        if (mesh.sky)
+            continue;
+        for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+            out.push_back({posed(palette, mesh.vertices[mesh.indices[i]]),
+                           posed(palette, mesh.vertices[mesh.indices[i + 1]]),
+                           posed(palette, mesh.vertices[mesh.indices[i + 2]])});
         }
-        if (total <= 0)
-            return v.position;
-        for (auto& c : pos)
-            c /= total;
-        return pos;
-    };
+    }
+    return out;
+}
+
+SurfaceMap surface_map(const assets::ImportedModel& placed) {
+    SurfaceMap s;
+    for (const auto& t : drawn_triangles(placed)) {
+        const float e0[3] = {t[1][0] - t[0][0], t[1][1] - t[0][1], t[1][2] - t[0][2]};
+        const float e1[3] = {t[2][0] - t[0][0], t[2][1] - t[0][1], t[2][2] - t[0][2]};
+        const float n[3] = {e0[1] * e1[2] - e0[2] * e1[1], e0[2] * e1[0] - e0[0] * e1[2],
+                            e0[0] * e1[1] - e0[1] * e1[0]};
+        const float length = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        if (!(length > 0) || std::fabs(n[1] / length) <= 0.3f)
+            continue;
+        const std::size_t at = s.triangles.size();
+        s.triangles.push_back(t);
+        s.up.push_back(n[1] > 0 ? 1 : 0);
+        const float lo_x = std::min({t[0][0], t[1][0], t[2][0]}), hi_x = std::max({t[0][0], t[1][0], t[2][0]});
+        const float lo_z = std::min({t[0][2], t[1][2], t[2][2]}), hi_z = std::max({t[0][2], t[1][2], t[2][2]});
+        if (hi_x - lo_x > 64 || hi_z - lo_z > 64) {
+            s.wide.push_back(at);  // a ground far and wide: asked every time, not cell by cell
+            continue;
+        }
+        for (auto i = static_cast<std::int64_t>(std::floor(lo_x)); i <= static_cast<std::int64_t>(std::floor(hi_x));
+             ++i) {
+            for (auto k = static_cast<std::int64_t>(std::floor(lo_z)); k <= static_cast<std::int64_t>(std::floor(hi_z));
+                 ++k)
+                s.cells[{i, k}].push_back(at);
+        }
+    }
+    return s;
+}
+
+std::vector<SurfaceMap::Height> SurfaceMap::heights_at(float x, float z) const {
+    std::vector<Height> out;
+    const auto cell = cells.find({static_cast<std::int64_t>(std::floor(x)), static_cast<std::int64_t>(std::floor(z))});
+    std::vector<std::size_t> asked = wide;
+    if (cell != cells.end())
+        asked.insert(asked.end(), cell->second.begin(), cell->second.end());
+    for (const std::size_t i : asked) {
+        const auto& t = triangles[i];
+        // where (x, z) falls on it from above, by its corners' weights
+        const double d = (t[1][2] - t[2][2]) * (t[0][0] - t[2][0]) + (t[2][0] - t[1][0]) * (t[0][2] - t[2][2]);
+        if (std::fabs(d) < 1e-12)
+            continue;
+        const double a = ((t[1][2] - t[2][2]) * (x - t[2][0]) + (t[2][0] - t[1][0]) * (z - t[2][2])) / d;
+        const double b = ((t[2][2] - t[0][2]) * (x - t[2][0]) + (t[0][0] - t[2][0]) * (z - t[2][2])) / d;
+        const double c = 1 - a - b;
+        if (a < -1e-6 || b < -1e-6 || c < -1e-6)
+            continue;
+        out.push_back({static_cast<float>(a * t[0][1] + b * t[1][1] + c * t[2][1]), up[i] != 0});
+    }
+    return out;
+}
+
+float raise_to_markers(const SurfaceMap& surfaces, const std::vector<std::array<float, 3>>& markers, std::size_t* on) {
+    // per marker, each raise that would put a floor under it a tenth below its feet
+    std::vector<std::vector<float>> raises;
+    for (const auto& q : markers) {
+        std::vector<float> r;
+        for (const auto& h : surfaces.heights_at(q[0], q[2])) {
+            const float d = q[1] - 0.1f - h.y;
+            if (h.up && std::fabs(d) <= 50.0f)
+                r.push_back(d);
+        }
+        raises.push_back(std::move(r));
+    }
+    // the raise the most markers agree on (within 0.15), the smallest of equals, then their mean
+    const float near = 0.15f;
+    float best = 0;
+    std::size_t most = 0;
+    for (const auto& r : raises) {
+        for (const float d : r) {
+            std::size_t count = 0;
+            for (const auto& other : raises) {
+                bool agrees = false;
+                for (const float e : other)
+                    agrees = agrees || std::fabs(e - d) <= near;
+                count += agrees ? 1 : 0;
+            }
+            if (count > most || (count == most && std::fabs(d) < std::fabs(best))) {
+                most = count;
+                best = d;
+            }
+        }
+    }
+    if (most > 0) {
+        float sum = 0;
+        for (const auto& r : raises) {
+            float closest = 1e30f;
+            for (const float e : r) {
+                if (std::fabs(e - best) < std::fabs(closest - best))
+                    closest = e;
+            }
+            if (std::fabs(closest - best) <= near)
+                sum += closest;
+        }
+        best = sum / static_cast<float>(most);
+    }
+    if (on != nullptr)
+        *on = most;
+    return best;
+}
+
+std::size_t cut_to_zone(assets::ImportedModel* placed, const RoomZone& zone) {
+    assets::ImportedModel& m = *placed;
+    // a model that keeps its skeleton: each vertex where its joints put it
+    const auto palette = rest_palette(m);
+    auto where = [&](const assets::NeutralVertex& v) { return posed(palette, v); };
     std::size_t dropped = 0;
     std::vector<assets::NeutralMesh> kept;
     for (auto& mesh : m.model.meshes) {

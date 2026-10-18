@@ -116,6 +116,27 @@ RoomZone room_zone(const RoomCollision& room, float margin);
 // how far past the room's floor and walls a cut model is kept, at first (the game's units)
 constexpr float kZoneMargin = 6.0f;
 
+// The model's drawn triangles (its skies left out), each corner where it is drawn at rest.
+std::vector<std::array<std::array<float, 3>, 3>> drawn_triangles(const khdays::assets::ImportedModel& placed);
+
+// A model's surfaces that are not walls (their normal's y past 0.3 either way), found from above.
+struct SurfaceMap {
+    std::vector<std::array<std::array<float, 3>, 3>> triangles;
+    std::vector<char> up;  // per triangle: it faces up (a floor), else down
+    std::map<std::pair<std::int64_t, std::int64_t>, std::vector<std::size_t>> cells;  // a unit from above
+    std::vector<std::size_t> wide;  // those over more than 64 by 64 cells, asked every time
+    struct Height {
+        float y;
+        bool up;
+    };
+    std::vector<Height> heights_at(float x, float z) const;
+};
+SurfaceMap surface_map(const khdays::assets::ImportedModel& placed);
+
+// How far to raise the model so that most of `markers` stand on one of its floors, a tenth above it as the
+// game's do (at most 50 units either way); 0 when none can. `on`: how many markers then do.
+float raise_to_markers(const SurfaceMap& surfaces, const std::vector<std::array<float, 3>>& markers, std::size_t* on);
+
 // `placed` cut to `zone`: each triangle with no corner and no middle over it left out (skies kept), the
 // meshes and pictures left unused removed. The triangles left out.
 std::size_t cut_to_zone(khdays::assets::ImportedModel* placed, const RoomZone& zone);

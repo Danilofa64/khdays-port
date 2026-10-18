@@ -66,6 +66,7 @@ struct Replacing {
     assets::ImportedModel raw, raw_collision;  // as read
     assets::ImportedModel placed;              // placed: what is drawn
     RoomPlacement placed_with;                 // where `placed` was put (drawn moved to the place now while dragged)
+    SurfaceMap surfaces;                       // its floors and roofs from above, as placed_with puts them
     bool dirty = false, built_ok = false;
     RoomCollision built;
     CollisionReport report;
@@ -371,6 +372,7 @@ void rebuild() {
     const RoomZone zone = p.r.zone >= 0 ? room_zone(m.collision, p.r.zone) : RoomZone{};
     if (p.r.zone >= 0)
         cut_to_zone(&p.placed, zone);
+    p.surfaces = surface_map(p.placed);
     assets::ImportedModel collision = p.collision_source.empty() ? p.placed : p.raw_collision;
     if (!p.collision_source.empty()) {
         place_model(&collision, p.r.place);
@@ -438,6 +440,38 @@ std::array<float, 3> face_tint(int list, const RoomFace& f) {
     return list == kGround ? std::array<float, 3>{0.35f, 0.85f, 0.35f}
            : list == kWall ? std::array<float, 3>{0.95f, 0.55f, 0.25f}
                            : std::array<float, 3>{0.4f, 0.55f, 1.0f};
+}
+
+// Where a marker stands on the modder's room: on one of its floors, over it with nothing near above, or under
+// one of its surfaces (in it); `to` the point of that floor or surface over or under it.
+enum class Footing { none, on, floating, under };
+
+Footing footing(const std::array<float, 3>& q, std::array<float, 3>* to) {
+    const Replacing& p = m.rep;
+    // the marker in the room as it was placed (the model may be dragged since)
+    const auto b = placed_point(p.placed_with, unplaced_point(p.r.place, q));
+    float below = -1e30f, above = 1e30f;
+    for (const auto& h : p.surfaces.heights_at(b[0], b[2])) {
+        if (h.up && h.y <= b[1] + 0.05f)
+            below = std::max(below, h.y);
+        if (h.y > b[1] + 0.05f)
+            above = std::min(above, h.y);
+    }
+    const bool has_below = below > -1e29f, has_above = above < 1e29f;
+    auto live = [&](float y) { return placed_point(p.r.place, unplaced_point(p.placed_with, {b[0], y, b[2]})); };
+    if (has_below && b[1] - below <= 0.35f) {
+        *to = live(below);
+        return Footing::on;
+    }
+    if (has_above && (!has_below || above - b[1] < 2.0f)) {
+        *to = live(above);
+        return Footing::under;
+    }
+    if (has_below) {
+        *to = live(below);
+        return Footing::floating;
+    }
+    return Footing::none;
 }
 
 void draw_room(App& app, ImVec2 size) {
@@ -631,29 +665,59 @@ void draw_room(App& app, ImVec2 size) {
         return true;
     };
 
-    // the markers: a dot and the way it faces
+    // the markers: a dot and the way it faces; over the modder's room, coloured by where each stands on it
+    // (green on its floor, yellow over it, red under or in it) with a line to that floor or surface
     int near_marker = -1;
     float best = 9.0f * ImGui::GetStyle().FontScaleDpi;
     const std::vector<Marker> shown_markers = showing_built() ? markers(m.rep.built) : m.markers;
+    const bool footings = yours && !m.rep.surfaces.triangles.empty();
+    const ImU32 footing_colour[4] = {IM_COL32(170, 170, 170, 255), IM_COL32(80, 220, 100, 255),
+                                     IM_COL32(255, 210, 60, 255), IM_COL32(255, 60, 60, 255)};
+    std::array<int, 4> counted{0, 0, 0, 0};
     if (m.show_markers) {
         for (std::size_t k = 0; k < shown_markers.size(); ++k) {
             const Marker& mk = shown_markers[k];
             const std::array<float, 3> q{static_cast<float>(mk.place[0]) * kFx, static_cast<float>(mk.place[1]) * kFx,
                                          static_cast<float>(mk.place[2]) * kFx};
+            ImU32 colour = IM_COL32(255, 60, 60, 255);
+            std::array<float, 3> to{};
+            Footing stands = Footing::none;
+            if (footings) {
+                stands = footing(q, &to);
+                colour = footing_colour[static_cast<int>(stands)];
+                ++counted[static_cast<std::size_t>(stands)];
+            }
             float x, y;
             if (!project(q, &x, &y))
                 continue;
+            float tx, ty;
+            if ((stands == Footing::floating || stands == Footing::under) && project(to, &tx, &ty)) {
+                list->AddLine(ImVec2(x, y), ImVec2(tx, ty), colour, 2.0f);
+                list->AddCircle(ImVec2(tx, ty), 3.0f, colour, 0, 1.5f);
+            }
             const float turn = static_cast<float>(mk.extra) / 65536.0f * 6.2831853f;
             float fx, fy;
             if (project({q[0] + std::sin(turn), q[1], q[2] + std::cos(turn)}, &fx, &fy)) {
-                list->AddLine(ImVec2(x, y), ImVec2(fx, fy), IM_COL32(255, 80, 80, 220), 2.0f);
+                list->AddLine(ImVec2(x, y), ImVec2(fx, fy), (colour & 0x00ffffffu) | 0xdc000000u, 2.0f);
             }
             const bool picked = static_cast<int>(k) == m.picked_marker;
-            list->AddCircleFilled(ImVec2(x, y), picked ? 6.0f : 4.0f,
-                                  picked ? IM_COL32(255, 255, 255, 255) : IM_COL32(255, 60, 60, 255));
+            list->AddCircleFilled(ImVec2(x, y), picked ? 6.0f : 4.0f, picked ? IM_COL32(255, 255, 255, 255) : colour);
             const float d = std::hypot(x - mouse.x, y - mouse.y);
             if (hovered && d < best)
                 best = d, near_marker = static_cast<int>(k);
+        }
+    }
+    if (footings && m.show_markers && !shown_markers.empty()) {
+        // how many stand where, in the picture's corner
+        const S says[3] = {S::map_markers_on, S::map_markers_over, S::map_markers_under};
+        ImVec2 pen(at.x + 8.0f, at.y + 6.0f);
+        for (int s = 0; s < 3; ++s) {
+            const std::string text =
+                fmt(app.language, says[s], {std::to_string(counted[static_cast<std::size_t>(s + 1)])});
+            list->AddCircleFilled(ImVec2(pen.x + 5.0f, pen.y + ImGui::GetFontSize() * 0.5f), 5.0f,
+                                  footing_colour[s + 1]);
+            list->AddText(ImVec2(pen.x + 14.0f, pen.y), IM_COL32(235, 235, 235, 255), text.c_str());
+            pen.x += 14.0f + ImGui::CalcTextSize(text.c_str()).x + 16.0f;
         }
     }
     if (near_marker >= 0)
@@ -1391,6 +1455,30 @@ void draw_replace(App& app, const Item& item) {
     }
     if (ImGui::Button(tr(lang, S::map_align_button)))
         line_up(app);
+    // the height that puts most of the room's markers on one of its floors
+    same_line_if_room(button_width(tr(lang, S::map_raise_to_markers)));
+    if (ImGui::Button(tr(lang, S::map_raise_to_markers)) && p.built_ok) {
+        if (p.dirty)
+            rebuild();
+        std::vector<std::array<float, 3>> feet;
+        for (const auto& mk : showing_built() ? markers(p.built) : m.markers) {
+            feet.push_back({static_cast<float>(mk.place[0]) * kFx, static_cast<float>(mk.place[1]) * kFx,
+                            static_cast<float>(mk.place[2]) * kFx});
+        }
+        std::size_t on = 0;
+        const float raise = raise_to_markers(p.surfaces, feet, &on);
+        char by[32];
+        std::snprintf(by, sizeof(by), "%+.2f", raise);
+        if (on > 0) {
+            p.r.place.move[1] += raise;
+            p.placed_text = fmt(lang, S::map_raised, {by, std::to_string(on), std::to_string(feet.size())});
+            p.placed_ok = on * 2 >= feet.size();
+            p.dirty = true;
+        } else {
+            p.placed_text = tr(lang, S::map_raised_none);
+            p.placed_ok = false;
+        }
+    }
     bool changed = false;
     ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
     ImGui::DragFloat(tr(lang, S::map_scale), &p.r.place.scale, 0.01f, 0.001f, 1000.0f, "%.3f");
