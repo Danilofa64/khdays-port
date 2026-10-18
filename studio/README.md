@@ -406,7 +406,7 @@ kind of face, its names in the material) to a glTF to build on.
 
 replace a room by a model (placed as its change says, or as it is) or by a
 KH2 map of the player's collection (`kh2:tt02`: taken out, made and placed
-first by KH2's units), or make it again from the change the mod holds, and
+first by KH2's units; `kh2-collision` takes the map's own floors and walls), or make it again from the change the mod holds, and
 print what was made and every warning (markers left in a wall or with no
 ground under them named); give a room back to the game; write every world the mod changes
 again from its changes (after a game update, or on another player's copy).

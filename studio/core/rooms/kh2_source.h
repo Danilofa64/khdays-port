@@ -60,6 +60,11 @@ bool make_kh2_room(const std::filesystem::path& folder, const std::string& map, 
 // Where the studio makes a map's model before a room change takes it: kh2_folder()/made/<map>/<map>.gltf.
 std::filesystem::path kh2_made_model(const std::filesystem::path& root, const std::string& map);
 
+// The map's own floors and walls (its ID_ collision) as a glTF beside its model
+// (kh2_made_model()'s folder, <map>_collision.gltf), placed like it by a room change; false with the reason.
+bool make_kh2_collision(const std::filesystem::path& root, const std::string& map, std::filesystem::path* out,
+                        std::string* why);
+
 // The KH2 map a Days room was made from (studio/data/kh2_rooms.txt: `<world> <room> <map> ; <evidence>`).
 struct Kh2Pair {
     std::string world;

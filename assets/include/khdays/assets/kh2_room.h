@@ -31,4 +31,9 @@ using PictureSink = std::function<void(const std::string& file, const DecodedTex
 Room room_model(const std::uint8_t* data, std::size_t size, const std::filesystem::path& hd_folder,
                 const std::string& name, const PictureSink& write_picture);
 
+// The map's own floors and walls (its ID_ collision) as a scene in the map's units and axes, like its
+// model: one mesh drawn from both sides, for a room change to make the room's collision from. Throws
+// std::runtime_error when the map has none.
+Scene collision_scene(const std::uint8_t* data, std::size_t size, const std::string& name);
+
 }  // namespace khdays::assets::kh2

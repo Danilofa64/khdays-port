@@ -803,6 +803,14 @@ void test_room(const Bytes& file) {
                near(tracks[1].values[15], 50.0F) && near(tracks[1].values[16], 5.0F),
            "keys every motion frame");
 
+    // the map's own floors and walls, as a scene in its units and axes
+    const auto walls = kh2::collision_scene(file.data(), file.size(), "tt99");
+    expect(walls.meshes.size() == 1 && walls.meshes[0].primitives.size() == 1 && walls.materials[0].double_sided,
+           "collision scene");
+    const auto& cp = walls.meshes[0].primitives[0];
+    expect(cp.positions.size() == 9 && near(cp.positions[2][2], 100.0F) && near(cp.positions[8][1], 100.0F),
+           "collision triangles in the model's axes");
+
     const std::string gltf = khdays::assets::scene_to_gltf(scene);
     for (const char* part : {"\"khdays_frames\"", "\"khdays_scroll\"", "\"khdays_loop\":true", "\"skins\"",
                              "\"doubleSided\":true", "\"alphaMode\":\"MASK\"", "\"wrapS\":33071"}) {

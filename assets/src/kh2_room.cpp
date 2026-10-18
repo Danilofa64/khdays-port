@@ -477,4 +477,29 @@ Room room_model(const std::uint8_t* data, std::size_t size, const std::filesyste
     return Maker(data, size, hd_folder, name, write_picture).run();
 }
 
+Scene collision_scene(const std::uint8_t* data, std::size_t size, const std::string& name) {
+    const MapFile map = read_map(data, size);
+    if (!map.collision)
+        throw std::runtime_error("KH2 map: no collision (entry 0x06 ID_)");
+    const auto faces = read_collision(data, size, map.entries[*map.collision].offset);
+    Scene scene;
+    scene.name = name + " collision";
+    scene.nodes.push_back({"room"});
+    SceneMaterial mat;
+    mat.name = "kh2 collision";
+    mat.double_sided = true;  // a wall stops from both sides
+    scene.materials.push_back(mat);
+    ScenePrimitive prim;
+    for (const auto& f : faces) {
+        for (const auto& corner : f.corners) {
+            prim.indices.push_back(static_cast<std::uint32_t>(prim.positions.size()));
+            prim.positions.push_back(corner);
+            prim.uvs.push_back({0.0F, 0.0F});
+            prim.colors.push_back({255, 255, 255, 255});
+        }
+    }
+    scene.meshes.push_back({"collision", 0, {}, {std::move(prim)}});
+    return scene;
+}
+
 }  // namespace khdays::assets::kh2

@@ -467,6 +467,13 @@ int replace_room(const fs::path& root, const std::vector<std::string>& args) {
             std::printf("note: %s\n", line.c_str());
         std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
         given[4] = u8(model);
+        // kh2-collision: the map's own floors and walls, placed like its model
+        if (args.size() >= 6 && args[5] == "kh2-collision") {
+            fs::path collision;
+            if (!make_kh2_collision(root, kh2, &collision, &why))
+                return print_outcome(false, {}, why);
+            given[5] = u8(collision);
+        }
     }
     const fs::path file = change_file(mod_dir, code, room);
     if (fs::exists(file, ec)) {
@@ -520,7 +527,7 @@ int replace_room(const fs::path& root, const std::vector<std::string>& args) {
         r.kh2 = kh2;
     WorldOutcome o;
     const bool ok = args.size() >= 5 ? save_change(nitrofs, dump, mod_dir, r, path_u8(given[4]),
-                                                   args.size() >= 6 && !keep ? path_u8(args[5]) : fs::path(), &o, &why)
+                                                   args.size() >= 6 && !keep ? path_u8(given[5]) : fs::path(), &o, &why)
                                      : write_world_outputs(nitrofs, dump, mod_dir, code, &o, &why);
     return print_outcome(ok, o, why);
 }
@@ -1274,7 +1281,7 @@ int run_command_line(const fs::path& root, const std::vector<std::string>& args)
         "                                                  a KH2 map of the player's collection as a model\n"
         "       khdays-studio [--port <dir>] --kh2-maps [<world>]\n"
         "                                                  the KH2 maps of the player's copy, the Days rooms made from each\n"
-        "       khdays-studio [--port <dir>] --replace-room <Mod> <code> <room> [<model> | kh2:<map> [<collision model> | game]]\n"
+        "       khdays-studio [--port <dir>] --replace-room <Mod> <code> <room> [<model> | kh2:<map> [<collision model> | game | kh2-collision]]\n"
         "                                                  a room made from a model (or again from its change)\n"
         "       khdays-studio [--port <dir>] --revert-room <Mod> <code> <room>\n"
         "                                                  a room's change and what it wrote removed\n"

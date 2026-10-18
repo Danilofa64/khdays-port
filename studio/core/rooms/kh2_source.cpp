@@ -209,6 +209,30 @@ bool take_out_kh2_map(const Settings& settings, const std::string& map, std::str
     return false;
 }
 
+bool make_kh2_collision(const fs::path& root, const std::string& map, fs::path* out, std::string* why) {
+    const auto data = read_all(kh2_folder(root) / "original" / "map" / path_u8(map + ".map"));
+    if (data.empty()) {
+        *why = "no " + map + " taken out of the collection";
+        return false;
+    }
+    *out = kh2_made_model(root, map).parent_path() / path_u8(map + "_collision.gltf");
+    try {
+        const auto scene = khdays::assets::kh2::collision_scene(data.data(), data.size(), map);
+        std::error_code ec;
+        fs::create_directories(out->parent_path(), ec);
+        std::ofstream file(*out, std::ios::binary);
+        file << khdays::assets::scene_to_gltf(scene);
+        if (!file) {
+            *why = "cannot write " + u8(*out);
+            return false;
+        }
+    } catch (const std::exception& e) {
+        *why = map + ": " + e.what();
+        return false;
+    }
+    return true;
+}
+
 void read_kh2_pairs(const std::string& text, const std::string& source, std::vector<Kh2Pair>* pairs,
                     std::vector<std::string>* notes) {
     std::istringstream lines(text);

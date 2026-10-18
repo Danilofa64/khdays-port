@@ -119,7 +119,11 @@ panel says so. The KH2 map each room was made from is
 `studio/data/kh2_rooms.txt` (`<world> <room> <map> ; <evidence>`, names only,
 built into the studio; RUNTIME_MAP.md section 4 says how they were found); a mod's
 `studio/kh2_rooms.txt` adds pairs or replaces them line by line. The panel offers
-the room's own pair first, marked, with its evidence.
+the room's own pair first, marked, with its evidence. The map's own floors and walls (its `ID_`
+collision, `kh2_room`'s `collision_scene`) are a fourth choice for a KH2 room's
+collision: written as `<map>_collision.gltf` beside its model and taken like
+another model's, placed as the model is (the Usual Spot's: 334 grounds, 847
+walls, 155 ceilings, a fifth of the floors made from its visible model).
 
 ## Missions
 

@@ -340,6 +340,7 @@ enum class S {
     map_kh2_pair,
     map_kh2_no_pair,
     map_kh2_pair_mark,
+    map_collision_kh2,
     map_align_kh2,
     collection_1525,
     collection_1525_found,

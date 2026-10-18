@@ -73,6 +73,7 @@ struct Replacing {
     int view = 0;  // 0 yours, 1 the game's, 2 both
     bool next_is_collision = false;
     bool other_collision = false;  // the collision from another model, chosen (its file perhaps not yet)
+    bool kh2_collision = false;    // that model the KH2 map's own floors and walls
     std::string placed_text;       // how the model was placed (lined up, as it is, or to place by hand)
     bool placed_ok = true;
 };
@@ -340,6 +341,7 @@ void open(App& app) {
                 p.collision_source = folder / path_u8(p.r.collision);
                 if (!import_model(p.collision_source, &p.raw_collision, &why))
                     p.error = why;
+                p.kh2_collision = !p.r.kh2.empty() && p.r.collision == p.r.kh2 + "_collision.gltf";
             }
             p.dirty = p.error.empty();
         }
@@ -1121,6 +1123,16 @@ void kh2_take(App& app, const Item& item) {
     m.rep.next_is_collision = false;
     m.rep.r.kh2 = map;
     room_offer(app, item, model);
+    if (m.rep.kh2_collision) {
+        // KH2's own floors and walls: the new map's
+        fs::path file;
+        std::string why;
+        if (make_kh2_collision(app.settings.root, map, &file, &why) && import_model(file, &m.rep.raw_collision, &why))
+            m.rep.collision_source = file;
+        else
+            m.rep.error = why;
+        m.rep.dirty = true;
+    }
     app.tell(fmt(app.language, S::map_kh2_made,
                  {map, std::to_string(outcome.triangles), std::to_string(outcome.pictures),
                   std::to_string(outcome.pieces), std::to_string(outcome.animations)}),
@@ -1333,11 +1345,16 @@ void draw_replace(App& app, const Item& item) {
 
     // 3. the floor and walls: the game's kept, made from the model, or from a simpler one
     ImGui::SeparatorText(tr(lang, S::map_step_collision));
-    int source = p.r.keep_collision ? 0 : p.other_collision || !p.collision_source.empty() ? 2 : 1;
+    int source = p.r.keep_collision                                 ? 0
+                 : p.kh2_collision                                  ? 3
+                 : p.other_collision || !p.collision_source.empty() ? 2
+                                                                    : 1;
     const int before = source;
     ImGui::RadioButton(tr(lang, S::map_collision_keep), &source, 0);
     ImGui::RadioButton(tr(lang, S::map_collision_mine), &source, 1);
     ImGui::RadioButton(tr(lang, S::map_collision_other), &source, 2);
+    if (!p.r.kh2.empty())
+        ImGui::RadioButton(tr(lang, S::map_collision_kh2), &source, 3);
     if (source == 2) {
         ImGui::SameLine();
         ImGui::TextUnformatted(p.collision_source.empty() ? "-" : u8(p.collision_source.filename()).c_str());
@@ -1349,11 +1366,23 @@ void draw_replace(App& app, const Item& item) {
     }
     if (source != before) {
         p.r.keep_collision = source == 0;
-        p.other_collision = source == 2;
+        p.other_collision = source == 2 || source == 3;
+        p.kh2_collision = source == 3;
         if (source != 2) {
             p.collision_source.clear();
             p.raw_collision = {};
             p.r.collision.clear();
+        }
+        if (source == 3) {
+            fs::path file;
+            std::string why;
+            if (make_kh2_collision(app.settings.root, p.r.kh2, &file, &why) &&
+                import_model(file, &p.raw_collision, &why)) {
+                p.collision_source = file;
+            } else {
+                p.error = why;
+                p.kh2_collision = p.other_collision = false;
+            }
         }
         p.dirty = true;
     }
