@@ -9,6 +9,7 @@
 #include "core/models/model_files.h"
 #include "core/files/paths.h"
 #include "core/rooms/room_change.h"
+#include "mods/room_animation.h"  // port/runtime: as the port moves a room
 #include "core/rooms/room_export.h"
 #include "core/mods/settings.h"
 #include "core/rooms/worlds.h"
@@ -449,11 +450,30 @@ void draw_room(App& app, ImVec2 size) {
             }
         }
         if (yours) {
-            // the modder's, placed: as the port draws it (its vertex colours, its textures)
-            for (const auto& mesh : m.rep.placed.model.meshes) {
+            // the modder's, placed: as the port draws it (its vertex colours, its textures), moving by itself
+            // as the port moves it, by the studio's clock at 60 frames a second
+            const assets::ImportedModel& placed = m.rep.placed;
+            const auto frames = static_cast<std::uint64_t>(SDL_GetTicks() * 60 / 1000);
+            std::map<std::uint32_t, Mat> moved;  // a joint's palette entry: its node now times its inverse bind
+            if (!placed.joints.empty()) {
+                const auto worlds =
+                    khdays::room::node_worlds(placed.nodes, placed.animations, static_cast<double>(frames) / 60.0);
+                for (const auto& j : placed.joints) {
+                    const bool on_node = j.node >= 0 && static_cast<std::size_t>(j.node) < worlds.size();
+                    moved[j.palette_index] =
+                        mat_mul(on_node ? worlds[static_cast<std::size_t>(j.node)] : j.world, j.inverse_bind);
+                }
+            }
+            for (const auto& mesh : placed.model.meshes) {
+                std::string shown = mesh.texture_name;
+                if (!mesh.texture_frames.empty()) {
+                    shown = mesh.texture_frames[khdays::room::frame_at(mesh.texture_frames, mesh.texture_frames_loop,
+                                                                       mesh.texture_frames_loop_from, frames)]
+                                .first;
+                }
                 const assets::DecodedTexture* t = nullptr;
-                for (const auto& [name, decoded] : m.rep.placed.textures) {
-                    if (name == mesh.texture_name && !decoded.rgba.empty())
+                for (const auto& [name, decoded] : placed.textures) {
+                    if (name == shown && !decoded.rgba.empty())
                         t = &decoded;
                 }
                 PreviewImage image;
@@ -461,11 +481,27 @@ void draw_room(App& app, ImVec2 size) {
                     image = {t->rgba.data(), t->width, t->height};
                 const float tw = t != nullptr ? static_cast<float>(t->width) : 1.0f;
                 const float th = t != nullptr ? static_cast<float>(t->height) : 1.0f;
+                const auto offset = khdays::room::scroll_offset(mesh.scroll, frames, tw, th);
                 auto vertex = [&](const assets::NeutralVertex& v) {
                     PreviewVertex o;
                     o.position = v.position;
                     o.normal = v.normal;
-                    o.uv = {v.texcoord[0] / tw, v.texcoord[1] / th};
+                    std::array<float, 3> pos{0, 0, 0};
+                    float total = 0.0f;
+                    for (std::size_t k = 0; k < 4; ++k) {
+                        const auto found = moved.find(v.joints[k]);
+                        if (v.weights[k] <= 0.0f || found == moved.end())
+                            continue;
+                        const auto q = mat_point(found->second, v.position);
+                        for (std::size_t c = 0; c < 3; ++c)
+                            pos[c] += v.weights[k] * q[c];
+                        total += v.weights[k];
+                    }
+                    if (total > 0.0f) {
+                        for (std::size_t c = 0; c < 3; ++c)
+                            o.position[c] = pos[c] / total;
+                    }
+                    o.uv = {(v.texcoord[0] + offset[0]) / tw, (v.texcoord[1] + offset[1]) / th};
                     o.colour = {v.color[0] / 255.0f, v.color[1] / 255.0f, v.color[2] / 255.0f, v.color[3] / 255.0f};
                     return o;
                 };

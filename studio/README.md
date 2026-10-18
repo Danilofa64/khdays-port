@@ -410,6 +410,19 @@ warning; give a room back to the game; write every world the mod changes
 again from its changes (after a game update, or on another player's copy).
 
 ```powershell
+.\build\studio\release\khdays-studio.exe --kh2-room <map> <out.gltf> [<folder>]
+```
+
+makes a KINGDOM HEARTS II FINAL MIX map (`tt02`, the Usual Spot) of the
+player's own KINGDOM HEARTS HD 1.5+2.5 ReMIX copy into a model to replace a
+room with: its background, skies and pieces (placed, moving as in KH2), its
+remastered pictures as PNG beside it, scrolling and changing textures; from
+`<folder>/original/map/<map>.map` and `<folder>/remastered/map/<map>.map/`
+as the collection's archives give them (`saves/collection/kh2` when not
+given). What it makes is Square Enix's work from the player's copy: theirs to
+play with, not to share.
+
+```powershell
 .\build\studio\release\khdays-studio.exe --check-missions
 .\build\studio\release\khdays-studio.exe --mission-info <number> [<script>|<entry>:<index>]
 .\build\studio\release\khdays-studio.exe --mission-commands

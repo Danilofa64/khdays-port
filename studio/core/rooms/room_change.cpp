@@ -172,7 +172,9 @@ bool write_room_model(const std::filesystem::path& mod_dir, const std::string& k
         refs[texture] = {file, decoded.width, decoded.height,
                          assets::texels_translucent(decoded.rgba.data(), decoded.rgba.size() / 4)};
     }
-    const std::string text = assets::to_gltf(model.model, refs);
+    // a model that moves by itself written as its scene, its skeleton and animation kept
+    const std::string text = assets::moves_by_itself(model) ? assets::scene_to_gltf(assets::scene_of(model, refs))
+                                                            : assets::to_gltf(model.model, refs);
     const auto result = write_into_mod(
         mod_dir, gltf,
         [&](const std::filesystem::path& temporary) -> std::string {
@@ -471,6 +473,46 @@ bool placed_model(const std::filesystem::path& model, const RoomPlacement& place
 
 void place_model(assets::ImportedModel* model, const RoomPlacement& place) {
     assets::ImportedModel& m = *model;
+    if (!m.animations.empty()) {
+        // a model with its own animation keeps its skeleton: the place goes on its roots and joints,
+        // the meshes loading made still are placed
+        const M4 p = placement_matrix(place);
+        M4 pf{};
+        for (std::size_t k = 0; k < 16; ++k)
+            pf[k] = p[k];
+        for (auto& node : m.nodes) {
+            if (node.parent >= 0)
+                continue;
+            M4 local{};
+            for (std::size_t k = 0; k < 16; ++k)
+                local[k] = node.local[k];
+            const M4 placed = mul(pf, local);
+            for (std::size_t k = 0; k < 16; ++k)
+                node.local[k] = static_cast<float>(placed[k]);
+        }
+        std::set<std::uint32_t> skinned;
+        for (auto& j : m.joints) {
+            M4 world{};
+            for (std::size_t k = 0; k < 16; ++k)
+                world[k] = j.world[k];
+            const M4 placed = mul(pf, world);
+            for (std::size_t k = 0; k < 16; ++k)
+                j.world[k] = static_cast<float>(placed[k]);
+            skinned.insert(j.palette_index);
+        }
+        for (auto& mesh : m.model.meshes) {
+            for (auto& v : mesh.vertices) {
+                bool on_joint = false;
+                for (std::size_t k = 0; k < 4; ++k)
+                    on_joint = on_joint || (v.weights[k] > 0 && skinned.count(v.joints[k]) != 0);
+                if (!on_joint) {
+                    v.position = apply(p, v.position, 1);
+                    v.normal = apply(p, v.normal, 0);
+                }
+            }
+        }
+        return;
+    }
     // the palette as the file poses it: each joint's global times its inverse bind
     std::map<std::uint32_t, M4> palette;
     for (const auto& j : m.joints) {
@@ -518,7 +560,39 @@ void place_model(assets::ImportedModel* model, const RoomPlacement& place) {
 
 CollisionSource collision_source(const assets::ImportedModel& placed, bool visible) {
     CollisionSource s;
-    for (const auto& mesh : placed.model.meshes) {
+    // a model that keeps its skeleton (its own animation) at rest: each vertex through its joints
+    std::map<std::uint32_t, M4> palette;
+    for (const auto& j : placed.joints) {
+        M4 world{}, ibm{};
+        for (std::size_t k = 0; k < 16; ++k)
+            world[k] = j.world[k], ibm[k] = j.inverse_bind[k];
+        palette[j.palette_index] = mul(world, ibm);
+    }
+    std::vector<assets::NeutralMesh> posed;
+    if (!palette.empty()) {
+        posed = placed.model.meshes;
+        for (auto& mesh : posed) {
+            for (auto& v : mesh.vertices) {
+                std::array<float, 3> pos{0, 0, 0};
+                float total = 0;
+                for (std::size_t k = 0; k < 4; ++k) {
+                    const auto found = palette.find(v.joints[k]);
+                    if (v.weights[k] <= 0 || found == palette.end())
+                        continue;
+                    const auto q = apply(found->second, v.position, 1);
+                    for (std::size_t c = 0; c < 3; ++c)
+                        pos[c] += v.weights[k] * q[c];
+                    total += v.weights[k];
+                }
+                if (total > 0) {
+                    for (auto& c : pos)
+                        c /= total;
+                    v.position = pos;
+                }
+            }
+        }
+    }
+    for (const auto& mesh : palette.empty() ? placed.model.meshes : posed) {
         const std::string material = !mesh.material_name.empty() ? mesh.material_name : mesh.texture_name;
         const char passable = visible && mesh.alpha_mode == assets::NeutralMesh::AlphaMode::blend ? 1 : 0;
         for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {

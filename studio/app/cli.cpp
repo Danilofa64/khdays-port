@@ -13,6 +13,7 @@
 #include "core/models/clip_import.h"
 #include "core/models/model_export.h"
 #include "core/models/model_files.h"
+#include "core/rooms/kh2_source.h"
 #include "core/rooms/room_change.h"
 #include "core/rooms/room_collision.h"
 #include "core/rooms/room_export.h"
@@ -320,6 +321,26 @@ int room_model(const fs::path& root, const std::vector<std::string>& args) {
     for (const auto& n : notes)
         std::printf("left out: %s\n", n.c_str());
     std::printf("%s written\n", args[3].c_str());
+    return 0;
+}
+
+// --kh2-room <map> <out.gltf> [<folder>]: a KH2 map (tt02) of the player's collection made into a model
+// to replace a room with, its pictures beside it; the folder the collection's archives gave it to
+// (saves/collection/kh2 when not given).
+int kh2_room(const fs::path& root, const std::vector<std::string>& args) {
+    const fs::path folder = args.size() > 3 ? path_u8(args[3]) : kh2_folder(root);
+    Kh2Made made;
+    std::string why;
+    if (!make_kh2_room(folder, args[1], path_u8(args[2]), &made, &why)) {
+        std::fprintf(stderr, "khdays-studio: %s\n", why.c_str());
+        return 1;
+    }
+    std::printf("%s: %zu triangles, %zu pictures, %zu pieces (%zu moving), %zu scrolling and %zu changing textures\n",
+                args[2].c_str(), made.triangles, made.pictures, made.pieces, made.animations, made.scrolling,
+                made.framed);
+    for (const auto& line : made.report)
+        std::printf("note: %s\n", line.c_str());
+    std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
     return 0;
 }
 
@@ -1102,6 +1123,8 @@ int run_command_line(const fs::path& root, const std::vector<std::string>& args)
         return world_info(root, args);
     if (args.size() == 4 && args[0] == "--room-model")
         return room_model(root, args);
+    if ((args.size() == 3 || args.size() == 4) && args[0] == "--kh2-room")
+        return kh2_room(root, args);
     if (args.size() == 1 && args[0] == "--check-missions")
         return check_missions(root);
     if (args.size() == 1 && args[0] == "--check-texts")
@@ -1146,6 +1169,8 @@ int run_command_line(const fs::path& root, const std::vector<std::string>& args)
         "                                                  a mission world's rooms, or one room's collision\n"
         "       khdays-studio [--port <dir>] --room-model <code> <room> <out.gltf>\n"
         "                                                  a room's models and collision, to build on\n"
+        "       khdays-studio [--port <dir>] --kh2-room <map> <out.gltf> [<folder>]\n"
+        "                                                  a KH2 map of the player's collection as a model\n"
         "       khdays-studio [--port <dir>] --replace-room <Mod> <code> <room> [<model> [<collision model> | game]]\n"
         "                                                  a room made from a model (or again from its change)\n"
         "       khdays-studio [--port <dir>] --revert-room <Mod> <code> <room>\n"

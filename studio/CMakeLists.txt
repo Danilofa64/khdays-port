@@ -93,12 +93,16 @@ add_library(khdays-studio-port STATIC
     "${ROOT}/assets/src/font.cpp"               # the game's font: which characters it draws
     "${ROOT}/assets/src/graphics2d.cpp"         # 2D: palettes, tile sheets, screens
     "${ROOT}/assets/src/cell.cpp"               # and sprite cells
+    "${ROOT}/assets/src/kh2_map.cpp"            # KH2's maps, from the player's 1.5+2.5 copy
+    "${ROOT}/assets/src/kh2_room.cpp"           # made into a scene for glTF
+    "${ROOT}/assets/src/dds.cpp"                # and their HD pictures
     "${ROOT}/port/sound/replace.c"            # a mod's sound read as the port reads it
     "${ROOT}/port/sound/third_party_decoders.c"
     "${ROOT}/port/host/render/png_io.c"              # PNG in and out, indexed included
     "${ROOT}/port/host/movies/movie_hd_win.c"        # videos played as the port plays them (Media Foundation)
     "${ROOT}/port/host/movies/theater_music.c"       # ... with the theater's music
-    "${ROOT}/port/host/movies/music_schedule.c")
+    "${ROOT}/port/host/movies/music_schedule.c"
+    "${ROOT}/port/runtime/mods/room_animation.cpp")  # a room that moves by itself, as the port moves it
 target_include_directories(khdays-studio-port PUBLIC "${ROOT}/assets/include")
 target_include_directories(khdays-studio-port PUBLIC "${cgltf_SOURCE_DIR}" "${ufbx_SOURCE_DIR}")
 target_include_directories(khdays-studio-port PRIVATE "${stb_SOURCE_DIR}" "${dr_libs_SOURCE_DIR}")
@@ -114,7 +118,7 @@ set_source_files_properties("${ROOT}/port/sound/third_party_decoders.c" PROPERTI
 # are the port's to decide on, not this build's.
 target_compile_definitions(khdays-studio-port PRIVATE _CRT_SECURE_NO_WARNINGS)
 # The tool's own code reaches these by their directories.
-set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/port/sound" "${ROOT}/port/host")
+set(KHDAYS_STUDIO_PORT_HEADERS "${ROOT}/port/sound" "${ROOT}/port/host" "${ROOT}/port/runtime")
 
 # --- The tool -------------------------------------------------------------------------
 set(KHDAYS_STUDIO_FLAGS /W4 /std:c++20 /EHsc /utf-8 /permissive-)
@@ -144,6 +148,7 @@ add_library(khdays-studio-core STATIC
     core/mods/mods_log.cpp
     core/files/paths.cpp
     core/mods/process.cpp
+    core/rooms/kh2_source.cpp
     core/rooms/room_change.cpp
     core/rooms/room_collision.cpp
     core/rooms/room_export.cpp

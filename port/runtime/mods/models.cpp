@@ -1,19 +1,24 @@
 // A mod's models drawn instead of the game's (models.h): matrices column-major for column vectors;
 // each joint drawn with K_j = T(head now) * linear(D_G) * C_j * T(-head_j), D_G = M_G * inverse(W_G)
 // for the node G it follows and C_j its rest pose correction; faces culled as the file says unless
-// <model>.bones.txt says otherwise (docs/RENDERING.md, "Mods' graphics").
+// <model>.bones.txt says otherwise (docs/RENDERING.md, "Mods' graphics"). A replaced room plays its own
+// animation (its glTF's: moving pieces, scrolling and changing textures; room_animation.cpp) by the game's
+// frames, standing still while the game is paused; its sky drawn behind everything.
 
 #include "models.h"
 
 extern "C" {
 #include "../../gfx/g3d.h"
 #include "../core/origin.h"
-#include "../core/rom.h" // khdays_mods_find
+#include "../core/events.h" // khdays_events_vblank_count
+#include "../core/rom.h"    // khdays_mods_find
 #include "../core/session_log.h"
+#include "../scripts/game_link.h" // khdays_link_paused
 #include "textures.h"
 #include "../core/window.h"
 }
 #include "names.h"
+#include "room_animation.h"
 
 #include "khdays/assets/fbx.h"
 #include "khdays/assets/gltf.h"
@@ -182,6 +187,8 @@ struct Joint {
     float degrees = 0.0F; // its pose's turn from its node's (the session log's diagnosis)
     Mat correction = kIdentity;
     Mat bind = kIdentity; // the joint's vertices to the model at rest: scale * world * inverse bind
+    int room_node = -1;   // its node in the file, which the model's own animation moves
+    Mat inverse_bind = kIdentity;
 };
 
 // How a mesh's vertex colours' alpha counts (glTF: it multiplies the texture's): not at all (an opaque
@@ -197,6 +204,19 @@ struct Mesh {
     bool double_sided = false, translucent = false;
     VertexAlpha vertex_alpha = VertexAlpha::ignored;
     float cutoff = 0.5F;
+    // its own moving texture: texels added a game frame; pictures in turn (the textures made for them,
+    // aligned with `frames`)
+    std::array<float, 2> scroll{0.0F, 0.0F};
+    struct Picture {
+        int replacement = -1;
+        float w = 1.0F, h = 1.0F;
+        bool translucent = false;
+    };
+    std::vector<std::pair<std::string, int>> frames;
+    std::vector<Picture> frame_pictures;
+    bool frames_loop = true;
+    std::size_t frames_loop_from = 0;
+    bool sky = false; // drawn behind everything
 };
 
 struct Model {
@@ -210,6 +230,14 @@ struct Model {
     std::vector<std::string> node_names;
     int draws = 0;     // for the session log's diagnosis
     bool room = false; // a room of a world its own mod replaces: drawn with HD graphics off too
+    // its own animation (a room's): the file's nodes and animations, and its clock in game frames,
+    // counted from its first draw while the game is not paused
+    std::vector<khdays::assets::ImportedNode> nodes;
+    std::vector<khdays::assets::ImportedAnimation> animations;
+    bool own_motion = false;
+    bool clock_started = false;
+    std::uint64_t frames = 0;
+    u32 last_vblank = 0;
 };
 
 int trace = -1;
@@ -347,6 +375,8 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
         Mat s = kIdentity;
         s[0] = s[5] = s[10] = k;
         out.bind = mul(s, mul(world, ibm));
+        out.room_node = in.node;
+        out.inverse_bind = ibm;
         const auto h = translation(world);
         out.head = {h[0] * k, h[1] * k, h[2] * k};
         joint_of_palette[in.palette_index] = static_cast<int>(model->joints.size());
@@ -482,9 +512,57 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
                            : out.translucent                                        ? VertexAlpha::blended
                                                                                     : VertexAlpha::cut;
         out.cutoff = in.alpha_mode == AlphaMode::mask ? in.alpha_cutoff : 0.5F;
+        out.scroll = in.scroll;
+        out.sky = in.sky;
+        for (const auto &[picture, length] : in.texture_frames) {
+            Mesh::Picture shown;
+            if (const Made *t = texture_for(picture, in.alpha_mode, in.alpha_cutoff)) {
+                shown = {t->replacement, static_cast<float>(t->w), static_cast<float>(t->h), t->translucent};
+            }
+            out.frames.emplace_back(picture, length);
+            out.frame_pictures.push_back(shown);
+        }
+        out.frames_loop = in.texture_frames_loop;
+        out.frames_loop_from = in.texture_frames_loop_from;
+        model->own_motion = model->own_motion || in.scroll[0] != 0.0F || in.scroll[1] != 0.0F || !out.frames.empty();
         vertices += out.vertices.size();
         triangles += out.indices.size() / 3;
         model->meshes.push_back(std::move(out));
+    }
+    // its own animation: the nodes its skinned meshes' joints are (with their parents) move; one that moves
+    // another node would move a mesh made still on loading, which is not played
+    if (!mod.animations.empty()) {
+        std::vector<char> moving(mod.nodes.size(), 0);
+        for (const Joint &joint : model->joints) {
+            for (int up = joint.node < 0 ? joint.room_node : -1;
+                 up >= 0 && static_cast<std::size_t>(up) < mod.nodes.size() && !moving[static_cast<std::size_t>(up)];
+                 up = mod.nodes[static_cast<std::size_t>(up)].parent)
+                moving[static_cast<std::size_t>(up)] = 1;
+        }
+        for (const auto &a : mod.animations) {
+            for (const auto &track : a.tracks) {
+                if (track.node < 0 || static_cast<std::size_t>(track.node) >= moving.size() ||
+                    !moving[static_cast<std::size_t>(track.node)]) {
+                    khdays_log("models: %s: animation %s moves a node no skinned mesh follows: not played",
+                               name.c_str(), a.name.c_str());
+                    break;
+                }
+            }
+        }
+        model->nodes = std::move(mod.nodes);
+        model->animations = std::move(mod.animations);
+        model->own_motion = true;
+    }
+    if (model->own_motion) {
+        std::size_t scrolling = 0, framed = 0, sky = 0;
+        for (const Mesh &mesh : model->meshes) {
+            scrolling += mesh.scroll[0] != 0.0F || mesh.scroll[1] != 0.0F ? 1 : 0;
+            framed += mesh.frames.empty() ? 0 : 1;
+            sky += mesh.sky ? 1 : 0;
+        }
+        khdays_log("models: %s: its own animation: %zu moving parts' animations, %zu scrolling and %zu changing "
+                   "textures, %zu sky meshes",
+                   name.c_str(), model->animations.size(), scrolling, framed, sky);
     }
     std::size_t translucent = 0;
     for (const Mesh &mesh : model->meshes)
@@ -614,6 +692,21 @@ void draw(Model &m)
         std::fprintf(stderr, "\n");
     }
 
+    // its own animation's clock: the game's frames since its first draw, standing while the game is paused
+    std::vector<Mat> moved;
+    if (m.own_motion) {
+        const u32 now = khdays_events_vblank_count();
+        if (m.clock_started && !khdays_link_paused())
+            m.frames += now - m.last_vblank;
+        m.clock_started = true;
+        m.last_vblank = now;
+        if (!m.animations.empty())
+            moved = khdays::room::node_worlds(m.nodes, m.animations, static_cast<double>(m.frames) / 60.0);
+    }
+    Mat scale = kIdentity;
+    scale[0] = scale[5] = scale[10] = m.scale;
+    const Mat scaled_root = mul(root, scale);
+
     // each joint, parents first
     k.resize(m.joints.size());
     skin.resize(m.joints.size());
@@ -629,6 +722,8 @@ void draw(Model &m)
             k[j] = parent != nullptr ? *parent : root;
         }
         skin[j] = mul(k[j], joint.bind);
+        if (joint.node < 0 && joint.room_node >= 0 && static_cast<std::size_t>(joint.room_node) < moved.size())
+            skin[j] = mul(scaled_root, mul(moved[static_cast<std::size_t>(joint.room_node)], joint.inverse_bind));
     }
     // the session log's diagnosis, whole: each node's matrix sent and each joint's K, to
     // pose the mod's model again offline (columns 0-3 of the 3x4)
@@ -648,9 +743,17 @@ void draw(Model &m)
         for (std::size_t j = 0; j < m.joints.size(); ++j) {
             khdays_log("models:   K %zu %s %s", j, m.joints[j].name.c_str(), line(k[j]).c_str());
         }
+        // a room's own moving parts: where each moved joint is in the file's space at this frame
+        for (const Joint &joint : m.joints) {
+            if (joint.node < 0 && joint.room_node >= 0 && static_cast<std::size_t>(joint.room_node) < moved.size()) {
+                const Mat &w = moved[static_cast<std::size_t>(joint.room_node)];
+                khdays_log("models:   moved %s at %.1f %.1f %.1f, frame %llu", joint.name.c_str(),
+                           static_cast<double>(w[12]), static_cast<double>(w[13]), static_cast<double>(w[14]),
+                           static_cast<unsigned long long>(m.frames));
+            }
+        }
     }
-    Mat unskinned = root; // a mesh with no skin: placed with the model's first node
-    unskinned = mul(unskinned, Mat{m.scale, 0, 0, 0, 0, m.scale, 0, 0, 0, 0, m.scale, 0, 0, 0, 0, 1});
+    const Mat unskinned = scaled_root; // a mesh with no skin: placed with the model's first node
 
     // the polygons' attributes: the game's material's, the faces the mesh's. A mesh drawn whole (OPAQUE or
     // MASK) is drawn opaque when the game's material is all but opaque: the rooms are drawn at alpha 30 of
@@ -660,8 +763,24 @@ void draw(Model &m)
     const uint32_t tex = (7u << 26) | (7u << 23) | (7u << 20) | (1u << 17) | (1u << 16); // 1024x1024, repeated
     const uint32_t game_alpha = (material.attr >> 16) & 31u;
     for (const Mesh &mesh : m.meshes) {
+        // its picture now, and how far its texture has scrolled
+        int replacement = mesh.replacement;
+        float tex_w = mesh.tex_w, tex_h = mesh.tex_h;
+        bool mesh_translucent = mesh.translucent;
+        if (!mesh.frames.empty()) {
+            const std::size_t shown =
+                khdays::room::frame_at(mesh.frames, mesh.frames_loop, mesh.frames_loop_from, m.frames);
+            const Mesh::Picture &picture = mesh.frame_pictures[shown];
+            if (picture.replacement >= 0) {
+                replacement = picture.replacement;
+                tex_w = picture.w;
+                tex_h = picture.h;
+                mesh_translucent = mesh_translucent || picture.translucent;
+            }
+        }
+        const auto offset = khdays::room::scroll_offset(mesh.scroll, m.frames, tex_w, tex_h);
         uint32_t attr = (material.attr & ~0xc0u) | (mesh.double_sided ? 0xc0u : 0x80u);
-        if (!mesh.translucent && game_alpha >= 30u)
+        if (!mesh_translucent && game_alpha >= 30u)
             attr = (attr & ~(31u << 16)) | (31u << 16);
         clip.resize(mesh.vertices.size());
         for (std::size_t i = 0; i < mesh.vertices.size(); ++i) {
@@ -706,8 +825,10 @@ void draw(Model &m)
             o.r = rgb[0] * static_cast<float>(v.color[0]) / 255.0F;
             o.g = rgb[1] * static_cast<float>(v.color[1]) / 255.0F;
             o.b = rgb[2] * static_cast<float>(v.color[2]) / 255.0F;
-            o.s = v.texcoord[0] / mesh.tex_w * 1024.0F * 16.0F;
-            o.t = v.texcoord[1] / mesh.tex_h * 1024.0F * 16.0F;
+            o.s = (v.texcoord[0] + offset[0]) / tex_w * 1024.0F * 16.0F;
+            o.t = (v.texcoord[1] + offset[1]) / tex_h * 1024.0F * 16.0F;
+            if (mesh.sky && o.w > 0.0F)
+                o.z = o.w * 0.9999F; // as far as can be drawn: behind everything, never past the far plane
         }
         // the session log's diagnosis: where the mesh falls on the screen (x/w and y/w: -1..1
         // the view), and how near (w)
@@ -757,7 +878,7 @@ void draw(Model &m)
                     tri_attr = (attr & ~(31u << 16)) | (a << 16);
                 }
             }
-            khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, mesh.replacement, mesh.translucent);
+            khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, replacement, mesh_translucent);
         }
     }
 }

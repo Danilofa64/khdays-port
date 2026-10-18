@@ -423,6 +423,7 @@ add_executable(khdays-native
     runtime/mods/names.cpp
     runtime/mods/textures.c
     runtime/mods/models.cpp
+    runtime/mods/room_animation.cpp     # a replaced room's own animation (its glTF's)
     runtime/mods/tiles2d.c
     runtime/mods/sheet_colours.c        # the colours each 2D sheet is drawn with, for the studio (specs/018)
     runtime/core/files.c
@@ -535,6 +536,11 @@ add_test(NAME khdays-movie-hd COMMAND khdays-movie-hd-test)
 add_executable(khdays-scenes-test tests/scenes_test.c runtime/movies/scene_map.c)
 target_compile_options(khdays-scenes-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-scenes COMMAND khdays-scenes-test)
+# A replaced room's own animation (runtime/mods/room_animation.cpp): keys, loops, scrolls, frames.
+add_executable(khdays-room-animation-test tests/room_animation_test.cpp runtime/mods/room_animation.cpp)
+target_include_directories(khdays-room-animation-test PRIVATE ../assets/include)
+target_compile_options(khdays-room-animation-test PRIVATE /W4 /std:c++20 /EHsc)
+add_test(NAME khdays-room-animation COMMAND khdays-room-animation-test)
 # The theater's music schedules (host/movies/music_schedule.c): cues, ramps, loops.
 add_executable(khdays-music-schedule-test tests/music_schedule_test.c host/movies/music_schedule.c)
 target_compile_options(khdays-music-schedule-test PRIVATE /W4 /std:c17)
