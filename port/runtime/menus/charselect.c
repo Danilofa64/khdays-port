@@ -8,6 +8,7 @@
 #include "../core/io.h"
 #include "../core/rom.h"
 #include "../core/window.h"
+#include "../../host/screens/ui_text.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -74,6 +75,7 @@ extern int Ov008_CountPlayers(void);
 #define HELP_CHANGE 0x39
 #define HELP_CHANGE_START 0x3a
 #define HELP_HOST 0x3b
+#define GLYPH_Y 0x334du /* the Y button in the game's font (text/font_eu_10.nftr), which its text never writes */
 
 typedef struct Screen {
     int overlay;
@@ -540,6 +542,42 @@ uint16_t khdays_charselect_buttons(uint16_t buttons)
         a_give = 0;
     }
     held = buttons;
+    return out;
+}
+
+void *khdays_charselect_help(int message, void *game, void *out, int units)
+{
+    const u16 *from = (const u16 *)game;
+    u16 *to = (u16 *)out;
+    const char *word = khdays_text_in(TXT_SELECT_RANDOM, language());
+    int n = 0;
+    if (message != HELP_CHOOSE || from == NULL || to == NULL || units < 4) {
+        return game;
+    }
+    if (word == NULL) {
+        word = khdays_text_in(TXT_SELECT_RANDOM, 1);
+    }
+    while (from[n] != 0 && n < units - 1) {
+        to[n] = from[n];
+        ++n;
+    }
+    /* then two spaces, Y and its word, as the game writes its buttons (UTF-8 in, the plane's UTF-16 out) */
+    if (n + 4 < units) {
+        to[n++] = ' ';
+        to[n++] = ' ';
+        to[n++] = GLYPH_Y;
+        to[n++] = ' ';
+    }
+    for (const unsigned char *p = (const unsigned char *)word; *p != 0 && n < units - 1;) {
+        unsigned c = *p++;
+        int more = c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
+        c &= more == 3 ? 0x07u : more == 2 ? 0x0fu : more == 1 ? 0x1fu : 0x7fu;
+        for (; more > 0 && (*p & 0xc0) == 0x80; --more) {
+            c = (c << 6) | (*p++ & 0x3fu);
+        }
+        to[n++] = c > 0xffffu ? (u16)'?' : (u16)c;
+    }
+    to[n] = 0;
     return out;
 }
 

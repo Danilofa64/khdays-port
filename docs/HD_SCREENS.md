@@ -143,8 +143,10 @@ place is on one (then in colour, framed in the place's colour); this copy's
 character large with its name, weapon and gauges; each place's plate along the
 bottom, ringed once its player has chosen; the game's message and help. The
 grid ends with a random choice, a "?" with the player's Y in its corner: A on it
-(or Y anywhere, also on the game's own screen without these pieces) moves to a
-character nobody is on, at random, and chooses it.
+(or Y anywhere, also on the game's own screen without these pieces, whose help
+line then says "Y Random" with the game's own Y, 0x334d in `text/font_eu_10.nftr`,
+which its text never writes) moves to a character nobody is on, at random, and
+chooses it.
 
 ## The settings menu (`layouts/settings/<lang>/settings.txt`)
 

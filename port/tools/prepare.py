@@ -1534,6 +1534,33 @@ _ov008_list, _ov008_members = _rooms2d_hooks(
     "        Ov008_ForwardSevenArgs(data_ov008_02090d0c, 99, visibleRowIndex * 0x18 + 0x23, 1, 1, 0, 0);\n",
     "        visibleRowIndex = (visibleRowIndex + 1) & 0xff;\n    }\n",
 )
+# Mission Mode's character select on the game's own screens: "Y Random" after its help line while the
+# player chooses (runtime/menus/charselect.c), into a buffer on the game's stack until the text is flushed.
+_SELECT_HELP = "extern void *khdays_charselect_help(int message, void *game, void *out, int units);\n"
+HOOKS["ov006@02050fc8"] = [  # Ov006_UpdateMissionMemberMenuScreen
+    (
+        "void *Ov006_UpdateMissionMemberMenuScreen(void)\n{\n",
+        _SELECT_HELP + "void *Ov006_UpdateMissionMemberMenuScreen(void)\n{\n    u16 khdays_help[128];\n",
+    ),
+    (
+        "Ov006_MissionDrawTextRunFwd(record, 0xa, 0xb4, (u8)1, 1, 0, 0);",
+        "Ov006_MissionDrawTextRunFwd(khdays_charselect_help((int)messageId, record, khdays_help, 128), 0xa, 0xb4,"
+        " (u8)1, 1, 0, 0);",
+    ),
+]
+HOOKS["ov008@0207ce84"] = [  # Ov008_LobbyStep
+    (
+        "Ov008LobbyStep Ov008_LobbyStep(void)\n{\n",
+        _SELECT_HELP + "Ov008LobbyStep Ov008_LobbyStep(void)\n{\n    u16 khdays_help[128];\n",
+    ),
+    (
+        "Ov008_ForwardSevenArgs(Ov008_GetVarRecordByIndex(data_ov008_02090fa0->records, bHost != 0 ? 0x3b : 0x38),"
+        " 10, 0xb4, 1, 1, 0, 0);",
+        "Ov008_ForwardSevenArgs(khdays_charselect_help(bHost != 0 ? 0x3b : 0x38,"
+        " Ov008_GetVarRecordByIndex(data_ov008_02090fa0->records, bHost != 0 ? 0x3b : 0x38), khdays_help, 128),"
+        " 10, 0xb4, 1, 1, 0, 0);",
+    ),
+]
 HOOKS["ov006@02050360"] = _ov006_list  # Ov006_UpdateMissionMenuOptionScreen
 HOOKS["ov008@0207c248"] = _ov008_list  # Ov008_UpdateMissionMenuOptionScreen
 HOOKS["ov006@020508e0"] = _ov006_members  # Ov006_UpdateMissionMenuSelectionScreen

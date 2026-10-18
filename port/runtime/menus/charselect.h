@@ -45,6 +45,10 @@ void khdays_charselect_update_ran(uintptr_t update);
 /* The game's thread, once a frame (input.c): the buttons the game gets (the port takes the
  * directions while it shows the screen). */
 uint16_t khdays_charselect_buttons(uint16_t buttons);
+/* The game's thread, from its own screen's text (prepare.py's hooks): its help line `game` (message
+ * `message`), with "Y Random" after it while the player chooses, written into `out` (`units` UTF-16
+ * units on the game's stack); otherwise `game`. */
+void *khdays_charselect_help(int message, void *game, void *out, int units);
 /* Any thread: the screen as last published. */
 void khdays_charselect_view(KhdaysSelectView *out);
 /* The window's thread: the columns of the port's grid (its layout's), for the directions. */
