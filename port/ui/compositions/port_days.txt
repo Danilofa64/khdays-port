@@ -53,8 +53,9 @@ shape upper 0 0 256 24 at top-left margin 0 5 0 0 scale 0.5 fade 0 0 16 0
 # them (ui/badges.c), as the maintainer's sketch has them (2026-10-08). Its
 # lower edge, cut by the DS's screen, is its upper edge turned over. Shown
 # whenever the lower screen has it (mission-panel), with the HUD and at a
-# mission's start, before the game draws the rest of its HUD.
-[field if mission-panel !dialog !challenge]
+# mission's start, before the game draws the rest of its HUD -- in a story's
+# challenge too, whose lower screen is a mission's (challenge 07, 2026-10-18).
+[field if mission-panel !dialog]
 shape lower 4 152 248 40 at top-left margin 5 5 0 0 scale 0.5 key 36 36 36 see-through 0 0 0 0.65
 shape lower 4 152 248 4 at top-left margin 5 25 0 0 scale 0.5 mirror y key 36 36 36 see-through 0 0 0 0.65
 
@@ -69,7 +70,7 @@ shape upper 163 0 93 22 at top-right margin 0 5 5 0 scale 0.666667
 # floor (8-bit 239 239 247) seen through, its walls and markers as they are
 # -- with the panel's black, stretched, half seen through behind it, 3 larger
 # on each side, both fading out at their edges.
-[field if mission-panel !dialog !challenge]
+[field if mission-panel !dialog]
 shape lower 112 64 104 64 at top-right margin 0 5 5 0 scale 0.6 key 248 248 248 see-through 232 232 240 0.55 fade 4 4 4 4
 shape lower 186 156 2 12 at top-right margin 0 3 3 0 scale 33.2 3.533333 see-through 0 0 0 0.5 fade 6 6 6 6
 
@@ -137,7 +138,10 @@ shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 # 0-13: "HOLOMEMORIA" in Mission Mode, a challenge's "RELOJ PARADO"), and a
 # challenge's in play, at the picture's top left corner against its edges, as
 # small as the HUD's pieces (the maintainer, 2026-10-17: it showed at the
-# picture's size in the cutscenes); in an event the rows under it whole.
+# picture's size in the cutscenes); in an event the rows under it whole. In play
+# the mission's panel is at that corner when the lower screen has it (a
+# challenge's is a mission's: challenge 07, 2026-10-18), and the label is then
+# the top of the upper screen's HUD under the panel.
 [field if dialog holo]
 shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
@@ -152,7 +156,7 @@ stop
 [field-3d-both if dialog]
 shape upper at bottom scale 1 at-most fixed(1)
 stop
-[field if hud challenge]
+[field if hud challenge !mission-panel]
 shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 [field-3d-both if hud challenge]
 shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
