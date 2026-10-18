@@ -191,8 +191,13 @@ static uint32_t states_of(const KhdaysSituationInputs *in, int scene)
 #define ST(n) (1u << KHDAYS_ST_##n)
     if (scene == KHDAYS_SIT_FIELD || scene == KHDAYS_SIT_FIELD_3D_BOTH || scene == KHDAYS_SIT_TUTORIAL) {
         /* a dialog: an event's text (ov023's status bit 1, Ov023_SceneRun: story walk f10155-11926;
-         * to confirm on the walks) or a person talking */
-        const int event_text = in->event_status >= 0 && (in->event_status & 2) != 0;
+         * to confirm on the walks) or a person talking. Only while the event runs and before it
+         * closes (bit 3, Ov023_BeginClose): an event over and its overlay still loaded leaves its
+         * scene's last status there (0xa), which hid the day's panel and the map until another
+         * overlay took its place (testers, 2026-10-18: Day 193's start, Demyx's talk, mission 61's
+         * Guard Armor). */
+        const int event_text = in->event_status >= 0 && (in->event_status & 2) != 0 && (in->event_status & 8) == 0 &&
+                               ran(in, KHDAYS_UPD_Ov023_SceneRun);
         if (mission_start_info(in)) {
             s |= ST(INFO_UPPER);
         } else if (event_text || field_talk(in)) {
