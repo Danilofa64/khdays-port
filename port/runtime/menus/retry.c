@@ -10,6 +10,7 @@
 #include "../core/session_log.h"
 #include "../core/window.h"
 #include "../../ui/bg.h"
+#include "../../ui/elements.h"
 #include "../../ui/parts.h"
 
 #include "khdays_ds_symbols.h"
@@ -133,6 +134,7 @@ static void latch(void)
     retry.chosen = 0;
     retry.asked = 0;
     retry.shown = 1;
+    khdays_ui_changed(); /* the lines it draws are the port's: composed again even where the game's are not */
     say("first page at vblank, the port's cursor", (int)khdays_events_vblank_count(), retry.cursor);
 }
 
@@ -343,6 +345,7 @@ uint16_t khdays_retry_buttons(uint16_t buttons)
             PlaySound(0, 0); /* the game's cursor sound (TabPanel_HandleUpDown): its own stays */
         }
         retry.cursor = to;
+        khdays_ui_changed(); /* its line lit at the next VBlank, though the game's picture may not change */
         say("a direction at vblank, the port's cursor", (int)khdays_events_vblank_count(), to);
     }
     if (game != game_entry(retry.cursor)) {
