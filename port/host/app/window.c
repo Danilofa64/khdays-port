@@ -456,19 +456,21 @@ static void close_settings(void)
     }
 }
 
-/* The mouse: its pointer shown over the settings menu alone (the touch screen is not used); with the
- * mouse camera on, the window holds the mouse while the game has the input, its motion turning the
- * camera (devices.c), and the settings menu or another window frees it. */
+/* The mouse: its pointer hidden over the game while its window has the focus (the touch screen is not
+ * used), shown over the settings menu and while another window has the focus; with the mouse camera
+ * on, the window holds the mouse while the game has the input, its motion turning the camera
+ * (devices.c), and the settings menu or another window frees it. */
 static void mouse_follow(SDL_Window *window)
 {
     const int menu = khdays_settings_is_open();
-    const int hold = !menu && khdays_devices_profile()->enh.mouse_camera &&
-                     (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    const int focused = (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    const int hold = !menu && khdays_devices_profile()->enh.mouse_camera && focused;
+    const int shown = menu || !focused;
     if (hold != (int)SDL_GetWindowRelativeMouseMode(window)) {
         SDL_SetWindowRelativeMouseMode(window, hold != 0);
     }
-    if (menu != (int)SDL_CursorVisible()) {
-        if (menu) {
+    if (shown != (int)SDL_CursorVisible()) {
+        if (shown) {
             SDL_ShowCursor();
         } else {
             SDL_HideCursor();
