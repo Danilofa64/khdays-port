@@ -16,6 +16,10 @@ extern "C" { // the host's C headers that say nothing of C++
 #include "pad_icons.h"
 #include "settings_skin.h"
 
+#ifndef KHDAYS_VERSION
+#define KHDAYS_VERSION "0.0.0" /* port/CMakeLists.txt gives the VERSION file's */
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -29,9 +33,9 @@ namespace {
 constexpr Uint64 kCaptureMs = 5000;          // how long a new binding waits for its key or button
 constexpr Uint64 kRepeatDelayMs = 400;       // a held gamepad direction starts repeating after this,
 constexpr Uint64 kRepeatEveryMs = 100;       // and then repeats this often
-constexpr int kClose = KHDAYS_SECTION_COUNT; // the column's last entry
+constexpr int kClose = KHDAYS_SECTION_COUNT; // the column's last entry: Quit the game (B or Escape close the menu)
 
-enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT, MODE_UPDATE };
+enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT, MODE_UPDATE, MODE_QUIT };
 enum { FACE_ACCEPT, FACE_CLEAR, FACE_BACK, FACE_COUNT };
 constexpr int PLACE_VALUE = KHDAYS_PLACE_VALUE;
 
@@ -46,7 +50,7 @@ struct Menu {
     KhdaysProfile work{};     // what the menu edits
     KhdaysProfile original{}; // what it started from
     KhdaysProfile reported{}; // what khdays_settings_take_changes last reported
-    int column = 0;           // the column's entry (kClose: Close)
+    int column = 0;           // the column's entry (kClose: Quit the game)
     int section = 0;          // the section shown
     bool in_rows = false;     // the focus is on the section's rows
     int row = 0, cell = 0;
@@ -425,11 +429,19 @@ void column_move(int dir)
     }
 }
 
-// Enter on a column entry: go into the section's rows, or close the menu.
+// Quit the game: asked first (what was not saved is lost), "Cancel" chosen.
+void ask_quit()
+{
+    m.mode = MODE_QUIT;
+    m.choice = 1;
+}
+
+// Enter on a column entry: go into the section's rows, or ask whether to quit the game.
 bool column_enter()
 {
     if (m.column == kClose) {
-        return try_close(false);
+        ask_quit();
+        return false;
     }
     choose_section(m.column);
     for (int i = 0; i < m.count; ++i) {
@@ -721,6 +733,17 @@ bool answer_prompt(bool yes)
         m.mode = MODE_BROWSE;
         return false;
     }
+    if (m.mode == MODE_QUIT) {
+        m.mode = MODE_BROWSE;
+        if (yes) {
+            // as the window's own close: the settings changed are saved, then the game ends (window.c)
+            SDL_Event quit;
+            SDL_zero(quit);
+            quit.type = SDL_EVENT_QUIT;
+            SDL_PushEvent(&quit);
+        }
+        return false;
+    }
     m.mode = MODE_BROWSE;
     return yes ? try_close(true) : false;
 }
@@ -849,7 +872,8 @@ bool mouse_click(float x, float y)
         m.in_rows = false;
         m.column = entry->index;
         if (entry->index == kClose) {
-            return try_close(false);
+            ask_quit();
+            return false;
         }
         choose_section(entry->index);
         return false;
@@ -1156,7 +1180,7 @@ void draw_column(float row_h, float pad)
         }
         text_at(ImVec2(p.x + pad + moved, p.y + (row_h - ImGui::GetFontSize()) / 2),
                 i == m.section || i == m.column ? kWhite : kGrey,
-                i == kClose ? khdays_text(TXT_CLOSE) : khdays_model_section_title(i));
+                i == kClose ? khdays_text(TXT_QUIT_GAME) : khdays_model_section_title(i));
         ImGui::Dummy(ImVec2(w, row_h));
         record(KHDAYS_PLACE_ENTRY, i, p, q);
     }
@@ -1772,6 +1796,11 @@ void draw_prompt(float w, float h, float row_h, float pad)
         }
         yes = khdays_text(TXT_APPLY);
         no = khdays_text(TXT_CANCEL);
+    } else if (m.mode == MODE_QUIT) {
+        question = khdays_text(TXT_QUIT_GAME_Q);
+        details.push_back(khdays_text(TXT_QUIT_GAME_DETAIL));
+        yes = khdays_text(TXT_QUIT_GAME);
+        no = khdays_text(TXT_CANCEL);
     } else if (m.mode == MODE_UPDATE) {
         question = khdays_text(TXT_UPDATE_TITLE);
         SDL_snprintf(line, sizeof(line), khdays_text(TXT_UPDATE_DETAIL), m.update_have, m.update_new);
@@ -2006,7 +2035,7 @@ int khdays_settings_handle(const SDL_Event *e, SDL_Window *window)
         settle();
         return 0;
     }
-    if (m.mode == MODE_CONFLICT || m.mode == MODE_UNBOUND || m.mode == MODE_PRESET) {
+    if (m.mode == MODE_CONFLICT || m.mode == MODE_UNBOUND || m.mode == MODE_PRESET || m.mode == MODE_QUIT) {
         if (e->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             if (e->button.button == SDL_BUTTON_LEFT) {
                 closed = mouse_click(e->button.x * m.density, e->button.y * m.density);
@@ -2278,7 +2307,7 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         const float body = std::max(row_h, ImGui::GetContentRegionAvail().y - footer);
 
         // the column: as wide as its longest entry
-        float column_w = width_of(khdays_text(TXT_CLOSE));
+        float column_w = width_of(khdays_text(TXT_QUIT_GAME));
         for (int s = 0; s < KHDAYS_SECTION_COUNT; ++s) {
             column_w = std::max(column_w, width_of(khdays_model_section_title(s)));
         }
@@ -2328,8 +2357,11 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         m.rows_height = ImGui::GetWindowHeight();
         ImGui::EndChild();
 
-        // the footer
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + inner);
+        // the footer, clear of the version at its right end
+        char version[64];
+        SDL_snprintf(version, sizeof(version), khdays_text(TXT_VERSION), KHDAYS_VERSION);
+        const float version_w = width_of(version) + pad;
+        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + std::max(inner * 0.5f, inner - version_w));
         ImGui::PushStyleColor(ImGuiCol_Text, m.skin ? kSkinHeading : kGrey);
         if (!note.empty()) {
             ImGui::TextUnformatted(note.c_str());
@@ -2344,6 +2376,13 @@ void khdays_settings_draw(SDL_Renderer *renderer, SDL_Window *window)
         }
         ImGui::PopStyleColor();
         ImGui::PopTextWrapPos();
+        {
+            // the port's version, in the window's bottom right corner
+            const ImVec2 lo = ImGui::GetWindowPos(), extent = ImGui::GetWindowSize();
+            const ImVec2 at(lo.x + extent.x - ImGui::GetStyle().WindowPadding.x - width_of(version),
+                            lo.y + extent.y - ImGui::GetStyle().WindowPadding.y - ImGui::GetFontSize());
+            text_at(at, kGrey, version);
+        }
     }
     ImGui::End();
     ImGui::PopStyleColor(2 + scroll_colours);

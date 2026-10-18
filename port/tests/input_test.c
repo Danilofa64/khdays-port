@@ -1575,9 +1575,14 @@ static void test_settings_mouse(void)
     click(KHDAYS_PLACE_CELL, up * KHDAYS_CELLS + 0);
     key(SDL_SCANCODE_W);
     CHECK(w->input[KB][BASE][KHDAYS_ACT_UP][0] == SDL_SCANCODE_W);
-    /* the right button: from the rows to the column; Close closes */
+    /* the right button: from the rows to the column; the column's last entry asks whether to quit the
+     * game (Cancel stays in the menu); the right button again leaves the menu */
     click_at(1, 1, SDL_BUTTON_RIGHT);
-    CHECK(click(KHDAYS_PLACE_ENTRY, KHDAYS_SECTION_COUNT) == 1);
+    CHECK(click(KHDAYS_PLACE_ENTRY, KHDAYS_SECTION_COUNT) == 0 && khdays_settings_is_open());
+    khdays_settings_draw(screen, NULL); /* the question, its answers placed */
+    CHECK(click(KHDAYS_PLACE_ANSWER, 1) == 0 && khdays_settings_is_open());
+    khdays_settings_draw(screen, NULL);
+    CHECK(click_at(1, 1, SDL_BUTTON_RIGHT) == 1);
     CHECK(!khdays_settings_is_open() && khdays_settings_changed());
 }
 

@@ -337,6 +337,16 @@ static const char *const texts[TXT_COUNT][5] = {
                             "¿Cerrar de todos modos?"},
     [TXT_CLOSE_ANYWAY] = {"Close anyway", "Fermer quand même", "Trotzdem schließen", "Chiudi comunque",
                           "Cerrar igualmente"},
+    [TXT_QUIT_GAME] = {"Quit the game", "Quitter le jeu", "Spiel beenden", "Esci dal gioco", "Salir del juego"},
+    [TXT_QUIT_GAME_Q] = {"Quit the game?", "Quitter le jeu ?", "Spiel beenden?", "Uscire dal gioco?",
+                         "¿Salir del juego?"},
+    [TXT_QUIT_GAME_DETAIL] = {"What has not been saved in the game is lost. The settings changed are kept.",
+                              "Ce qui n'a pas été sauvegardé dans le jeu est perdu. Les réglages modifiés sont gardés.",
+                              "Was im Spiel nicht gespeichert wurde, geht verloren. Geänderte Einstellungen bleiben.",
+                              "Ciò che non è stato salvato nel gioco va perso. Le impostazioni cambiate restano.",
+                              "Lo que no hayas guardado en la partida se pierde. Los ajustes cambiados se conservan."},
+    /* %s: the port's version (the VERSION file's). */
+    [TXT_VERSION] = {"Version %s", "Version %s", "Version %s", "Versione %s", "Versión %s"},
     /* %s: the controller's name. */
     [TXT_NOT_A_GAMEPAD] = {"%s is not recognized as a standard gamepad, so it is not used",
                            "%s n'est pas reconnue comme une manette standard : elle n'est pas utilisée",

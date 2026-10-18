@@ -13,8 +13,9 @@ endif()
 # compares it with the latest release's (host/app/updates.c).
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" KHDAYS_VERSION LIMIT_COUNT 1)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
-# only the file that tells it: a new version rebuilds that file alone
-set_source_files_properties(host/app/updates.c PROPERTIES COMPILE_DEFINITIONS "KHDAYS_VERSION=\"${KHDAYS_VERSION}\"")
+# only the files that tell it (the update check, the settings menu's corner): a new version rebuilds them alone
+set_source_files_properties(host/app/updates.c host/settings/settings_menu.cpp
+                            PROPERTIES COMPILE_DEFINITIONS "KHDAYS_VERSION=\"${KHDAYS_VERSION}\"")
 
 set(KHDAYS_GEN "" CACHE PATH "Output directory of port/tools/prepare.py")
 if(NOT EXISTS "${KHDAYS_GEN}/sources.cmake")
