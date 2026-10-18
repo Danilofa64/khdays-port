@@ -138,12 +138,14 @@ To build the port from source instead:
 
 By default the game is played as on the DS.
 
-- **Keyboard:** arrows = D-pad, Z = A, X = B, S = X, A = Y, Q = L, E = R,
-  Enter = START, right Shift = SELECT.
-- **Mouse:** its buttons (left, middle, right, the side buttons X1 and X2) and
-  its wheel can be bound to any action in Settings -> Controls, in the
-  keyboard's column; a notch of the wheel is a short press. Its pointer shows
-  only over the settings menu (the touch screen is not used).
+- **Keyboard and mouse:** W A S D = D-pad, left button = A, Space = B,
+  Down = X, right button = Y, left Shift or Left = L, middle button or Right =
+  R, M or Enter = START, N = SELECT; in a field, with the command menu on the
+  D-pad, the wheel moves the command menu up and down and Q and E left and
+  right. Any key or mouse button (left, middle, right, the side buttons X1 and
+  X2, the wheel) can be bound to any action in Settings -> Controls; a notch of
+  the wheel is a short press. The pointer hides over the game while its window
+  has the focus (the touch screen is not used).
 - **Gamepad** (Xbox, PlayStation, Switch Pro, Steam Deck, or any controller
   your system recognises as a gamepad): connect it whenever you like, even in
   the middle of a battle. The buttons follow the DS's layout by *position*,

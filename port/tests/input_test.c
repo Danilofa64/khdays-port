@@ -45,24 +45,32 @@ static int first_input(const KhdaysProfile *p, int device, int action)
     return p->input[device][BASE][action][0];
 }
 
-/* The keyboard as it has always been; the gamepad as the
+/* The keyboard and the mouse as PC games have them; the gamepad as the
  * DS, by position. */
 static void test_default_profile(void)
 {
+    const int mouse = KHDAYS_MOUSE_INPUT;
     KhdaysProfile p;
     khdays_profile_default(&p);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_UP) == SDL_SCANCODE_UP);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_DOWN) == SDL_SCANCODE_DOWN);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_LEFT) == SDL_SCANCODE_LEFT);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_RIGHT) == SDL_SCANCODE_RIGHT);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_A) == SDL_SCANCODE_Z);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_B) == SDL_SCANCODE_X);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_X) == SDL_SCANCODE_S);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_Y) == SDL_SCANCODE_A);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_L) == SDL_SCANCODE_Q);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_R) == SDL_SCANCODE_E);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_START) == SDL_SCANCODE_RETURN);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_SELECT) == SDL_SCANCODE_RSHIFT);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_UP) == SDL_SCANCODE_W);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_DOWN) == SDL_SCANCODE_S);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_LEFT) == SDL_SCANCODE_A);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_RIGHT) == SDL_SCANCODE_D);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_A) == mouse + KHDAYS_MOUSE_LEFT);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_B) == SDL_SCANCODE_SPACE);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_X) == SDL_SCANCODE_DOWN);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_Y) == mouse + KHDAYS_MOUSE_RIGHT);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_L) == SDL_SCANCODE_LSHIFT &&
+          p.input[KB][BASE][KHDAYS_ACT_L][1] == SDL_SCANCODE_LEFT);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_R) == mouse + KHDAYS_MOUSE_MIDDLE &&
+          p.input[KB][BASE][KHDAYS_ACT_R][1] == SDL_SCANCODE_RIGHT);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_START) == SDL_SCANCODE_M &&
+          p.input[KB][BASE][KHDAYS_ACT_START][1] == SDL_SCANCODE_RETURN);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_SELECT) == SDL_SCANCODE_N);
+    CHECK(p.input[KB][KHDAYS_LAYER_FIELD][KHDAYS_ACT_MENU_UP][0] == mouse + KHDAYS_MOUSE_WHEEL_UP);
+    CHECK(p.input[KB][KHDAYS_LAYER_FIELD][KHDAYS_ACT_MENU_DOWN][0] == mouse + KHDAYS_MOUSE_WHEEL_DOWN);
+    CHECK(p.input[KB][KHDAYS_LAYER_FIELD][KHDAYS_ACT_MENU_LEFT][0] == SDL_SCANCODE_Q);
+    CHECK(p.input[KB][KHDAYS_LAYER_FIELD][KHDAYS_ACT_MENU_RIGHT][0] == SDL_SCANCODE_E);
 
     CHECK(first_input(&p, PAD, KHDAYS_ACT_A) == KHDAYS_PAD_EAST);
     CHECK(first_input(&p, PAD, KHDAYS_ACT_B) == KHDAYS_PAD_SOUTH);
@@ -95,12 +103,12 @@ static void test_sources_add_up(void)
     KhdaysDeviceState s;
     khdays_profile_default(&p);
     khdays_bindings_reset(&s);
-    s.key[SDL_SCANCODE_Z] = 1;
-    s.pad[KHDAYS_PAD_EAST] = 1;
-    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_A));
-    s.key[SDL_SCANCODE_Z] = 0;
-    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_A)); /* still held on the gamepad */
-    s.pad[KHDAYS_PAD_EAST] = 0;
+    s.key[SDL_SCANCODE_SPACE] = 1;
+    s.pad[KHDAYS_PAD_SOUTH] = 1;
+    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_B));
+    s.key[SDL_SCANCODE_SPACE] = 0;
+    CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_B)); /* still held on the gamepad */
+    s.pad[KHDAYS_PAD_SOUTH] = 0;
     CHECK(resolve(&p, &s).ds_buttons == 0);
     /* Enhancement inputs do nothing while their enhancement is off. */
     s.pad[KHDAYS_PAD_RIGHTSTICK] = 1;
@@ -161,9 +169,9 @@ static void test_binding_rules(void)
     KhdaysProfile p;
     khdays_profile_default(&p);
     /* One input, one action: binding it elsewhere moves it. */
-    CHECK(khdays_profile_set(&p, KB, BASE, KHDAYS_ACT_B, 1, SDL_SCANCODE_Z) == 0);
-    CHECK(khdays_profile_owner(&p, KB, BASE, SDL_SCANCODE_Z) == KHDAYS_ACT_B);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_A) == KHDAYS_NO_INPUT);
+    CHECK(khdays_profile_set(&p, KB, BASE, KHDAYS_ACT_A, 1, SDL_SCANCODE_SPACE) == 0);
+    CHECK(khdays_profile_owner(&p, KB, BASE, SDL_SCANCODE_SPACE) == KHDAYS_ACT_A);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_B) == KHDAYS_NO_INPUT);
     /* Two inputs per action at most. */
     CHECK(khdays_profile_set(&p, KB, BASE, KHDAYS_ACT_B, 2, SDL_SCANCODE_C) == -1);
     /* Esc is the settings key and cannot be bound. */
@@ -534,7 +542,7 @@ static void test_mouse_bindings(void)
     CHECK(resolve(&p, &s).ds_buttons == DS(KHDAYS_ACT_A));
     /* an unbound mouse input does nothing */
     khdays_bindings_reset(&s);
-    s.mouse[KHDAYS_MOUSE_MIDDLE] = 1;
+    s.mouse[KHDAYS_MOUSE_X1] = 1;
     CHECK(resolve(&p, &s).ds_buttons == 0);
 }
 
@@ -1193,8 +1201,8 @@ static void test_settings_screen(void)
         }
     }
 
-    /* Bind D-pad Up on the keyboard to C (free), then its second cell to Z,
-     * which A has: the menu asks, and "Move it here" moves it. */
+    /* Bind D-pad Up on the keyboard to C (free), then its second cell to Space,
+     * which B has: the menu asks, and "Move it here" moves it. */
     to_section(KHDAYS_SECTION_CONTROLS);
     to_row(KHDAYS_SET_BINDING, KHDAYS_ACT_UP);
     to_cell(0);
@@ -1203,27 +1211,27 @@ static void test_settings_screen(void)
     CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][0] == SDL_SCANCODE_C);
     key(SDL_SCANCODE_RIGHT); /* second cell */
     key(SDL_SCANCODE_RETURN);
-    key(SDL_SCANCODE_Z); /* A's: a question */
+    key(SDL_SCANCODE_SPACE); /* B's: a question */
     shot("2-conflict");
     CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][1] == KHDAYS_NO_INPUT);
     key(SDL_SCANCODE_RETURN); /* "Move it here" */
-    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][1] == SDL_SCANCODE_Z);
-    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_A][0] == KHDAYS_NO_INPUT);
+    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][1] == SDL_SCANCODE_SPACE);
+    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_B][0] == KHDAYS_NO_INPUT);
     /* Esc while waiting for a key cancels. */
     key(SDL_SCANCODE_RETURN);
     key(SDL_SCANCODE_ESCAPE);
-    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][1] == SDL_SCANCODE_Z);
+    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][1] == SDL_SCANCODE_SPACE);
     CHECK(khdays_settings_is_open());
 
-    /* A is now on nothing on the keyboard but still on the gamepad: closing
+    /* B is now on nothing on the keyboard but still on the gamepad: closing
      * is fine. Clear the gamepad's too (its first cell), and closing asks
      * first. */
-    to_row(KHDAYS_SET_BINDING, KHDAYS_ACT_A);
+    to_row(KHDAYS_SET_BINDING, KHDAYS_ACT_B);
     to_cell(2);
     key(SDL_SCANCODE_DELETE);
-    CHECK(khdays_settings_profile()->input[PAD][BASE][KHDAYS_ACT_A][0] == KHDAYS_NO_INPUT);
+    CHECK(khdays_settings_profile()->input[PAD][BASE][KHDAYS_ACT_B][0] == KHDAYS_NO_INPUT);
     key(SDL_SCANCODE_ESCAPE);             /* to the column */
-    CHECK(key(SDL_SCANCODE_ESCAPE) == 0); /* "No input would press: A" */
+    CHECK(key(SDL_SCANCODE_ESCAPE) == 0); /* "No input would press: B" */
     shot("3-unbound");
     CHECK(khdays_settings_is_open());
     CHECK(key(SDL_SCANCODE_RETURN) == 0); /* the safe answer, "Back", is chosen */

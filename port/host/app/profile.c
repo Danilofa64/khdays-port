@@ -151,20 +151,26 @@ void khdays_profile_default(KhdaysProfile *p)
     p->preset = KHDAYS_PRESET_DS;
     empty(p);
 
-    /* The keyboard: the layout the port has always had. Keys are scancodes,
-     * so they are the same physical keys on every keyboard layout. */
-    bind(p, K, BASE, KHDAYS_ACT_UP, SDL_SCANCODE_UP, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_DOWN, SDL_SCANCODE_DOWN, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_LEFT, SDL_SCANCODE_LEFT, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_RIGHT, SDL_SCANCODE_RIGHT, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_A, SDL_SCANCODE_Z, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_B, SDL_SCANCODE_X, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_X, SDL_SCANCODE_S, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_Y, SDL_SCANCODE_A, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_L, SDL_SCANCODE_Q, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_R, SDL_SCANCODE_E, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_START, SDL_SCANCODE_RETURN, NONE);
-    bind(p, K, BASE, KHDAYS_ACT_SELECT, SDL_SCANCODE_RSHIFT, NONE);
+    /* The keyboard and the mouse, as PC games have them (the maintainer's, 2026-10-19): WASD for the
+     * D-pad, the mouse's left button A and right Y, Space B, the wheel and Q and E the command menu in
+     * a field (with the command menu on the D-pad on); the arrows and Return beside L, R and START.
+     * Keys are scancodes, so they are the same physical keys on every keyboard layout. */
+    bind(p, K, BASE, KHDAYS_ACT_UP, SDL_SCANCODE_W, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_DOWN, SDL_SCANCODE_S, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_LEFT, SDL_SCANCODE_A, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_RIGHT, SDL_SCANCODE_D, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_A, KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_LEFT, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_B, SDL_SCANCODE_SPACE, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_X, SDL_SCANCODE_DOWN, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_Y, KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_RIGHT, NONE);
+    bind(p, K, BASE, KHDAYS_ACT_L, SDL_SCANCODE_LSHIFT, SDL_SCANCODE_LEFT);
+    bind(p, K, BASE, KHDAYS_ACT_R, KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_MIDDLE, SDL_SCANCODE_RIGHT);
+    bind(p, K, BASE, KHDAYS_ACT_START, SDL_SCANCODE_M, SDL_SCANCODE_RETURN);
+    bind(p, K, BASE, KHDAYS_ACT_SELECT, SDL_SCANCODE_N, NONE);
+    bind(p, K, FIELD, KHDAYS_ACT_MENU_UP, KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_WHEEL_UP, NONE);
+    bind(p, K, FIELD, KHDAYS_ACT_MENU_DOWN, KHDAYS_MOUSE_INPUT + KHDAYS_MOUSE_WHEEL_DOWN, NONE);
+    bind(p, K, FIELD, KHDAYS_ACT_MENU_LEFT, SDL_SCANCODE_Q, NONE);
+    bind(p, K, FIELD, KHDAYS_ACT_MENU_RIGHT, SDL_SCANCODE_E, NONE);
 
     /* The gamepad: the DS's own layout, by position (the right-hand face
      * button is DS A on every controller, as on the DS and the Switch Pro). */
