@@ -38,6 +38,7 @@ including it, the types `uint` and `int` (32 bits) and `float`, and:
 | `KD_HD_FIRST(id)`, `KD_HD_WIDTH(id)`, `KD_HD_HEIGHT(id)`, `KD_HD_INFO(id)` | replacement id's first texel, size and info (`textures.h`) |
 | `KD_HD_TEXEL(i)` | texel i of the replacements |
 | `KD_SUB_X`, `KD_SUB_Y` | where the output pixel lies inside its DS pixel (0-1, float) |
+| `KD_PIXEL` | the output pixel's size in DS pixels (1 / N, float) |
 | `KD_ELEMENT(i)` | word i of the screen's elements (`gfx/elements.h`) |
 | `KD_EL_TEXEL(image, i)` | texel i of element image `image` (`KE_IMAGE`) |
 | `KD_ASFLOAT(u)` | the float whose bits `u` holds |
@@ -218,8 +219,8 @@ The replacement graphics (`runtime/mods/textures.h`: mods' 3D textures, 2D tile
 sheets, models' textures) share one buffer the 3D pass and the 2D composition
 both read (SDL's GPU API binds at most 8 storage buffers to a pass): a table of
 four words per replacement (its first texel's place, width, height, what it is),
-then all the texels, one word each; a still picture's are followed by smaller
-copies, each half the one before (info bit 0x8).
+then all the texels, one word each; a still picture's and a 2D sheet in its own
+colours are followed by smaller copies, each half the one before (info bit 0x8).
 
 With the 3D on both screens the game moves engine A to the other screen at
 every VBlank (POWCNT1 bit 15), drawing each screen's view in turn while the
@@ -271,7 +272,13 @@ named by where its bytes came from: its file's tile sheet
 (any whole multiple of the original's size) is drawn instead at its own
 resolution -- indexed, with the game's palettes (its fades and palette effects
 kept), or in colour -- only while the tile's bytes are still the sheet's: tiles
-the game draws over itself (its text) stay its own. The map of replaced tiles
+the game draws over itself (its text) stay its own. An indexed sheet's pixel is
+its nearest texel's. In colour, every texel under the output pixel counts by how
+much of it the pixel covers (its colour weighted by its alpha), read from the
+smaller copy with one to two texels to the pixel while a copy's texel still
+comes from one tile: a sheet larger than shown keeps its lines, and its soft
+edges show what is under them by their alpha (`KD_SEE_THROUGH`), the pixel
+composed with the tile and without it, as the elements are. The map of replaced tiles
 holds, where a replaced sheet's tile starts, the replacement's id + 1 in bits
 20-31 and the tile's number in bits 0-19; a page is mapped again when its
 memory, its bank or its bytes' origin changed.

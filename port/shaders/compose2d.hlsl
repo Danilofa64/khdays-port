@@ -73,6 +73,7 @@ uint layer3d_at(uint x, int row)
 #define KD_HD_TEXEL(i) hd.Load((i) * 4u)
 #define KD_SUB_X (((float)g_fx + 0.5f) / (float)scale)
 #define KD_SUB_Y (((float)g_fy + 0.5f) / (float)scale)
+#define KD_PIXEL (1.0f / (float)scale) // an output pixel's size, in DS pixels
 // the port's elements (gfx/elements.h): after the description and its palettes; their images are
 // replacements (host/render/gpu_hd.h), their texels where the replacement's table puts them
 #define KD_ELEMENT(i) desc.Load((KHDAYS_DESC_WORDS + 256u + (i)) * 4u)
