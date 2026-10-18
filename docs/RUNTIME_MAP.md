@@ -2542,6 +2542,13 @@ the five walks every 300 frames (Release, 2026-10-04):
   The port draws the badges in the three cells left of the chest icon, as
   in the list, lit by the saved bits or by the field context's byte at
   +0x8d4e + 4 x the bit (`Ov002_RequestMode`, set when one is picked up);
+  a mission with no chests (11 with badges: 10, 33, 37, 53, 58, 71, 77, 78,
+  80, 92, 93, their room keys not in `mi/mi/trbox`) has no chest icon nor
+  counter, the panel's cells there as its layout has them (mission 58, Day
+  194-197, seen 2026-10-18: row 19 the panel's upper edge, characters 0x090,
+  0x091, then 0x092 across; row 20 the name, columns 27-30 blank characters
+  0xce-0xd1, palette 10), so the badges take the icon's and the counter's
+  place, columns 27-29 of the row under the edge;
   none in Mission Mode (`data_0204c240` bit 1), nor for a number the list
   does not give the room key's mission (a challenge's). The panel's text is
   the list's name of the mission with a full stop in missions 17 and 18
