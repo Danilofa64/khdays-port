@@ -261,9 +261,24 @@ void read_kh2_pairs(const std::string& text, const std::string& source, std::vec
         const auto bad = [&] {
             if (notes != nullptr)
                 notes->push_back(source + " line " + std::to_string(number) +
-                                 ": not <world> <room> <map> ; <evidence>");
+                                 ": not <world> <room> <map> [turn <degrees>] [move <x> <y> <z>] ; <evidence>");
         };
-        if (!(words >> room >> p.map) || (words >> rest) || p.world.size() != 2) {
+        if (!(words >> room >> p.map) || p.world.size() != 2) {
+            bad();
+            continue;
+        }
+        // where Days put the map, when given
+        bool fine = true;
+        while (fine && (words >> rest)) {
+            if (rest == "turn")
+                fine = static_cast<bool>(words >> p.turn_y);
+            else if (rest == "move")
+                fine = static_cast<bool>(words >> p.move[0] >> p.move[1] >> p.move[2]);
+            else
+                fine = false;
+            p.placed = true;
+        }
+        if (!fine) {
             bad();
             continue;
         }

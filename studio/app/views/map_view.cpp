@@ -65,6 +65,7 @@ struct Replacing {
     fs::path model_source, collision_source;   // the files as given (or the mod's copies)
     assets::ImportedModel raw, raw_collision;  // as read
     assets::ImportedModel placed;              // placed: what is drawn
+    RoomPlacement placed_with;                 // where `placed` was put (drawn moved to the place now while dragged)
     bool dirty = false, built_ok = false;
     RoomCollision built;
     CollisionReport report;
@@ -361,12 +362,20 @@ void rebuild() {
         return;
     p.placed = p.raw;
     place_model(&p.placed, p.r.place);
-    assets::ImportedModel collision = p.collision_source.empty() ? p.placed : p.raw_collision;
-    if (!p.collision_source.empty())
-        place_model(&collision, p.r.place);
+    p.placed_with = p.r.place;
     if (!m.has_collision) {
         p.error = "this room has no collision in the game's data to replace";
         return;
+    }
+    // only what lies around the room, as the save keeps it
+    const RoomZone zone = p.r.zone >= 0 ? room_zone(m.collision, p.r.zone) : RoomZone{};
+    if (p.r.zone >= 0)
+        cut_to_zone(&p.placed, zone);
+    assets::ImportedModel collision = p.collision_source.empty() ? p.placed : p.raw_collision;
+    if (!p.collision_source.empty()) {
+        place_model(&collision, p.r.place);
+        if (p.r.zone >= 0)
+            cut_to_zone(&collision, zone);
     }
     if (p.r.keep_collision) {
         // only the look replaced: the game's own floor and walls are the ones shown and saved
@@ -493,6 +502,8 @@ void draw_room(App& app, ImVec2 size) {
             // the modder's, placed: as the port draws it (its vertex colours, its textures), moving by itself
             // as the port moves it, by the studio's clock at 60 frames a second
             const assets::ImportedModel& placed = m.rep.placed;
+            // while its scale, turn or move is dragged: shown where the place now puts it
+            const bool moving = !same_place(m.rep.placed_with, m.rep.r.place);
             const auto frames = static_cast<std::uint64_t>(SDL_GetTicks() * 60 / 1000);
             std::map<std::uint32_t, Mat> moved;  // a joint's palette entry: its node now times its inverse bind
             if (!placed.joints.empty()) {
@@ -541,6 +552,8 @@ void draw_room(App& app, ImVec2 size) {
                         for (std::size_t c = 0; c < 3; ++c)
                             o.position[c] = pos[c] / total;
                     }
+                    if (moving)
+                        o.position = placed_point(m.rep.r.place, unplaced_point(m.rep.placed_with, o.position));
                     o.uv = {(v.texcoord[0] + offset[0]) / tw, (v.texcoord[1] + offset[1]) / th};
                     o.colour = {v.color[0] / 255.0f, v.color[1] / 255.0f, v.color[2] / 255.0f, v.color[3] / 255.0f};
                     return o;
@@ -1027,11 +1040,39 @@ std::vector<std::array<float, 3>> game_points() {
     return out;
 }
 
+// The KH2 map this room was made from (the studio's pairs, then the mod's), or null.
+const Kh2Pair* room_pair(App& app) {
+    if (kh2.pairs_for != app.mod) {
+        const Mod* mod = app.current_mod();
+        std::vector<std::string> notes;
+        kh2.pairs = kh2_pairs(mod != nullptr ? mod->dir : fs::path(), &notes);
+        kh2.pairs_for = app.mod;
+        for (const auto& note : notes)
+            app.tell(note, false);
+    }
+    return m.room != nullptr ? kh2_pair_of(kh2.pairs, m.world.code, m.room->index) : nullptr;
+}
+
 // The modder's model lined up with the room when it is made from it, and the person told what was done.
 void line_up(App& app) {
     Replacing& p = m.rep;
     if (p.raw.model.meshes.empty())
         return;
+    // the KH2 map this room was made from, where Days put it
+    const Kh2Pair* pair = !p.r.kh2.empty() ? room_pair(app) : nullptr;
+    if (pair != nullptr && pair->placed && pair->map == p.r.kh2) {
+        p.r.place = RoomPlacement{};
+        p.r.place.scale = 0.01f;
+        p.r.place.turn = {0, pair->turn_y, 0};
+        p.r.place.move = pair->move;
+        char turn[32], move[96];
+        std::snprintf(turn, sizeof(turn), "%g", pair->turn_y);
+        std::snprintf(move, sizeof(move), "%.2f %.2f %.2f", pair->move[0], pair->move[1], pair->move[2]);
+        p.placed_text = fmt(app.language, S::map_align_pair, {turn, move});
+        p.placed_ok = true;
+        p.dirty = true;
+        return;
+    }
     const RoomAlignment a = !p.r.kh2.empty() && m.has_collision ? kh2_alignment(game_points(), m.collision, p.raw)
                                                                 : align_with_room(game_points(), p.raw);
     char share[16];
@@ -1124,6 +1165,14 @@ void kh2_take(App& app, const Item& item) {
     kh2.radars.erase(map);
     m.rep.next_is_collision = false;
     m.rep.r.kh2 = map;
+    // the game's floor and walls kept, unless KH2's were chosen
+    if (!m.rep.kh2_collision) {
+        m.rep.r.keep_collision = true;
+        m.rep.other_collision = false;
+        m.rep.collision_source.clear();
+        m.rep.raw_collision = {};
+        m.rep.r.collision.clear();
+    }
     room_offer(app, item, model);
     if (m.rep.kh2_collision) {
         // KH2's own floors and walls: the new map's
@@ -1192,15 +1241,7 @@ void draw_kh2_picker(App& app) {
     }
     ImGui::TextDisabled("%s", u8(kh2.collection).c_str());
     // the KH2 room this room was made from, when it is known
-    if (kh2.pairs_for != app.mod) {
-        const Mod* mod = app.current_mod();
-        std::vector<std::string> notes;
-        kh2.pairs = kh2_pairs(mod != nullptr ? mod->dir : fs::path(), &notes);
-        kh2.pairs_for = app.mod;
-        for (const auto& note : notes)
-            app.tell(note, false);
-    }
-    const Kh2Pair* pair = m.room != nullptr ? kh2_pair_of(kh2.pairs, m.world.code, m.room->index) : nullptr;
+    const Kh2Pair* pair = room_pair(app);
     if (pair != nullptr) {
         ImGui::TextWrapped("%s", fmt(lang, S::map_kh2_pair, {pair->map, pair->evidence}).c_str());
         ImGui::BeginDisabled(kh2.busy);
@@ -1290,7 +1331,8 @@ void draw_shown_room(App& app) {
     ImGui::Combo(tr(lang, S::map_show), &m.rep.view, views, 3);
     if (!p.built_ok && !p.dirty) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.4f, 0.4f, 1));
-        ImGui::TextWrapped("%s", fmt(lang, S::map_yours_not_shown, {p.error.empty() ? std::string("-") : p.error}).c_str());
+        ImGui::TextWrapped("%s",
+                           fmt(lang, S::map_yours_not_shown, {p.error.empty() ? std::string("-") : p.error}).c_str());
         ImGui::PopStyleColor();
     }
 }
@@ -1361,6 +1403,20 @@ void draw_replace(App& app, const Item& item) {
     changed |= ImGui::IsItemDeactivatedAfterEdit();
     if (p.r.place.scale <= 0.0f)
         p.r.place.scale = 0.001f;
+    // only what lies around the room: a KH2 map is a whole place, the room a part of it
+    bool cut = p.r.zone >= 0;
+    if (ImGui::Checkbox(tr(lang, S::map_zone), &cut)) {
+        p.r.zone = cut ? kZoneMargin : -1.0f;
+        changed = true;
+    }
+    if (cut) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(6 * ImGui::GetFontSize());
+        ImGui::DragFloat(tr(lang, S::map_zone_margin), &p.r.zone, 0.25f, 0.0f, 1000.0f, "%.1f");
+        changed |= ImGui::IsItemDeactivatedAfterEdit();
+        if (p.r.zone < 0)
+            p.r.zone = 0;
+    }
 
     // 3. the floor and walls: the game's kept, made from the model, or from a simpler one
     ImGui::SeparatorText(tr(lang, S::map_step_collision));

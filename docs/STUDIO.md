@@ -108,16 +108,25 @@ Steam's; `Image/en`, the Epic Games Store's) into
 map is made into `saves/collection/kh2/made/<map>/<map>.gltf` (assets'
 `kh2_room`: its background, skies and placed pieces with their motion, its HD
 pictures as PNG, docs/RENDERING.md "Mods' graphics" for its extras), and the
-change names it (`kh2 <map>`). Its first place: lined up by its points when it
-shares them with the room (the Usual Spot is the same place in both games), else
-KH2's units as the game's at 0.01, its floor under its middle at the height of
-the room's ground under the room's middle, the two middles together. The
+change names it (`kh2 <map>`). Its first place: where Days put the map when the
+pair says (below), else lined up by its points when it shares them with the room
+(the Usual Spot is the same place in both games), else KH2's units as the game's at
+0.01, its floor under its middle at the height of the room's ground under the
+room's middle, the two middles together. Days rebuilt many rooms with their own
+geometry, often at another height: those are lined up by eye -- dragging Scale,
+Turn or Move shows the model where it goes as it is dragged (the collision made
+again once let go), "Both" shows the game's room with it. "Only what lies around
+the room" (`zone <units>` in the change) keeps of the model only what lies within
+so many units of the game's grounds and walls, or between them, from above. The
 collision made from it names each marker left in a wall (a wall face within
 0.15 units of the point half a unit above its feet) or with no ground under it.
 What is made is the player's own (Square Enix's work from their copy): the
 panel says so. The KH2 map each room was made from is
-`studio/data/kh2_rooms.txt` (`<world> <room> <map> ; <evidence>`, names only,
-built into the studio; RUNTIME_MAP.md section 4 says how they were found); a mod's
+`studio/data/kh2_rooms.txt` (`<world> <room> <map> [turn <degrees>] [move <x> <y>
+<z>] ; <evidence>`, names only, built into the studio; RUNTIME_MAP.md section 4 says
+how they were found). Where Days moved a map (ten rooms of Beast's Castle, The World
+That Never Was and Twilight Town's underground), the turn and move are the ones most
+of the room model's corners agree on with the map's, at KH2's scale; a mod's
 `studio/kh2_rooms.txt` adds pairs or replaces them line by line. The panel offers
 the room's own pair first, marked, with its evidence. The map's own floors and walls (its `ID_`
 collision, `kh2_room`'s `collision_scene`) are a fourth choice for a KH2 room's

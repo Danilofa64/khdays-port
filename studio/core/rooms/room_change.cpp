@@ -226,6 +226,8 @@ std::string change_text(const RoomReplacement& r) {
     o << "scale " << r.place.scale << "\n";
     o << "turn " << r.place.turn[0] << " " << r.place.turn[1] << " " << r.place.turn[2] << "\n";
     o << "move " << r.place.move[0] << " " << r.place.move[1] << " " << r.place.move[2] << "\n";
+    if (r.zone >= 0)
+        o << "zone " << r.zone << "\n";
     o << "ground-limit " << r.ground_limit << "\n";
     for (const auto& [member, use] : r.objects)
         o << "object " << member << " " << use_word(use) << "\n";
@@ -284,6 +286,8 @@ bool read_change(const std::filesystem::path& file, RoomReplacement* out, std::s
             v >> r.place.turn[0] >> r.place.turn[1] >> r.place.turn[2];
         else if (word == "move")
             v >> r.place.move[0] >> r.place.move[1] >> r.place.move[2];
+        else if (word == "zone")
+            v >> r.zone;
         else if (word == "ground-limit")
             v >> r.ground_limit;
         else if (word == "object") {
@@ -567,6 +571,25 @@ RoomAlignment kh2_alignment(const std::vector<std::array<float, 3>>& room_points
     return a;
 }
 
+std::array<float, 3> placed_point(const RoomPlacement& place, const std::array<float, 3>& v) {
+    return apply(placement_matrix(place), v, 1);
+}
+
+std::array<float, 3> unplaced_point(const RoomPlacement& place, const std::array<float, 3>& v) {
+    // the matrix's columns are the turned axes times the scale: back along each, over the scale squared
+    const M4 m = placement_matrix(place);
+    const double d[3] = {v[0] - m[12], v[1] - m[13], v[2] - m[14]};
+    const double s2 = static_cast<double>(place.scale) * place.scale;
+    std::array<float, 3> out{};
+    for (std::size_t c = 0; c < 3; ++c)
+        out[c] = static_cast<float>((m[c * 4] * d[0] + m[c * 4 + 1] * d[1] + m[c * 4 + 2] * d[2]) / s2);
+    return out;
+}
+
+bool same_place(const RoomPlacement& a, const RoomPlacement& b) {
+    return a.scale == b.scale && a.turn == b.turn && a.move == b.move;
+}
+
 bool placed_model(const std::filesystem::path& model, const RoomPlacement& place, assets::ImportedModel* out,
                   std::string* why) {
     assets::ImportedModel m;
@@ -727,6 +750,220 @@ CollisionSource collision_source(const assets::ImportedModel& placed, bool visib
     return s;
 }
 
+bool RoomZone::holds(float x, float z) const {
+    const auto i = static_cast<std::int64_t>(std::floor(x / cell)) - x0;
+    const auto k = static_cast<std::int64_t>(std::floor(z / cell)) - z0;
+    if (i < 0 || k < 0 || i >= width || k >= depth)
+        return false;
+    return in[static_cast<std::size_t>(k * width + i)] != 0;
+}
+
+RoomZone room_zone(const RoomCollision& room, float margin) {
+    RoomZone zone;
+    const float c = zone.cell;
+    double lo[2] = {1e30, 1e30}, hi[2] = {-1e30, -1e30};
+    for (const auto& list : room.faces) {
+        for (const auto& f : list) {
+            for (std::size_t v = 0; v < f.corners && v < 4; ++v) {
+                const double x = f.v[v][0] / 4096.0, z = f.v[v][2] / 4096.0;
+                lo[0] = std::min(lo[0], x), hi[0] = std::max(hi[0], x);
+                lo[1] = std::min(lo[1], z), hi[1] = std::max(hi[1], z);
+            }
+        }
+    }
+    if (lo[0] > hi[0])
+        return zone;
+    const double pad = std::max(0.0f, margin) + 2 * c;
+    zone.x0 = static_cast<std::int64_t>(std::floor((lo[0] - pad) / c));
+    zone.z0 = static_cast<std::int64_t>(std::floor((lo[1] - pad) / c));
+    zone.width = static_cast<int>(std::floor((hi[0] + pad) / c) - zone.x0 + 1);
+    zone.depth = static_cast<int>(std::floor((hi[1] + pad) / c) - zone.z0 + 1);
+    const int w = zone.width, d = zone.depth;
+    std::vector<char> covered(static_cast<std::size_t>(w) * static_cast<std::size_t>(d), 0);
+    auto mark = [&](double x, double z) {
+        const auto i = static_cast<std::int64_t>(std::floor(x / c)) - zone.x0;
+        const auto k = static_cast<std::int64_t>(std::floor(z / c)) - zone.z0;
+        if (i >= 0 && k >= 0 && i < w && k < d)
+            covered[static_cast<std::size_t>(k * w + i)] = 1;
+    };
+    for (const auto& list : room.faces) {
+        for (const auto& f : list) {
+            const std::size_t n = std::min<std::size_t>(f.corners, 4);
+            if (n < 3)
+                continue;
+            double px[4], pz[4];
+            for (std::size_t v = 0; v < n; ++v)
+                px[v] = f.v[v][0] / 4096.0, pz[v] = f.v[v][2] / 4096.0;
+            // its edges (a wall from above is one), then the cells whose middles it holds
+            for (std::size_t v = 0; v < n; ++v) {
+                const std::size_t u = (v + 1) % n;
+                const double length = std::hypot(px[u] - px[v], pz[u] - pz[v]);
+                const int steps = static_cast<int>(length / (c / 2)) + 1;
+                for (int s = 0; s <= steps; ++s) {
+                    const double t = static_cast<double>(s) / steps;
+                    mark(px[v] + t * (px[u] - px[v]), pz[v] + t * (pz[u] - pz[v]));
+                }
+            }
+            double flo[2] = {px[0], pz[0]}, fhi[2] = {px[0], pz[0]};
+            for (std::size_t v = 1; v < n; ++v) {
+                flo[0] = std::min(flo[0], px[v]), fhi[0] = std::max(fhi[0], px[v]);
+                flo[1] = std::min(flo[1], pz[v]), fhi[1] = std::max(fhi[1], pz[v]);
+            }
+            for (auto i = static_cast<std::int64_t>(std::floor(flo[0] / c)); i * c <= fhi[0]; ++i) {
+                for (auto k = static_cast<std::int64_t>(std::floor(flo[1] / c)); k * c <= fhi[1]; ++k) {
+                    const double x = (static_cast<double>(i) + 0.5) * c, z = (static_cast<double>(k) + 0.5) * c;
+                    bool above = false, below = false;
+                    for (std::size_t v = 0; v < n; ++v) {
+                        const std::size_t u = (v + 1) % n;
+                        const double side = (px[u] - px[v]) * (z - pz[v]) - (pz[u] - pz[v]) * (x - px[v]);
+                        above = above || side > 0;
+                        below = below || side < 0;
+                    }
+                    if (!(above && below))
+                        mark(x, z);
+                }
+            }
+        }
+    }
+    // the cells they close in: those the outside does not reach
+    std::vector<char> outside(covered.size(), 0);
+    std::vector<std::size_t> stack;
+    auto reach = [&](int i, int k) {
+        const auto at = static_cast<std::size_t>(k) * static_cast<std::size_t>(w) + static_cast<std::size_t>(i);
+        if (covered[at] == 0 && outside[at] == 0) {
+            outside[at] = 1;
+            stack.push_back(at);
+        }
+    };
+    for (int i = 0; i < w; ++i)
+        reach(i, 0), reach(i, d - 1);
+    for (int k = 0; k < d; ++k)
+        reach(0, k), reach(w - 1, k);
+    while (!stack.empty()) {
+        const std::size_t at = stack.back();
+        stack.pop_back();
+        const int i = static_cast<int>(at % static_cast<std::size_t>(w)),
+                  k = static_cast<int>(at / static_cast<std::size_t>(w));
+        if (i > 0)
+            reach(i - 1, k);
+        if (i + 1 < w)
+            reach(i + 1, k);
+        if (k > 0)
+            reach(i, k - 1);
+        if (k + 1 < d)
+            reach(i, k + 1);
+    }
+    // and those within the margin: each cell's distance (in cells) to the nearest held one, in two sweeps
+    const float far = 1e30f;
+    std::vector<float> dist(covered.size(), far);
+    for (std::size_t at = 0; at < covered.size(); ++at) {
+        if (outside[at] == 0)
+            dist[at] = 0;
+    }
+    const float diagonal = std::sqrt(2.0f);
+    auto relax = [&](int i, int k, int di, int dk, float step) {
+        const int ni = i + di, nk = k + dk;
+        if (ni < 0 || nk < 0 || ni >= w || nk >= d)
+            return;
+        float& here = dist[static_cast<std::size_t>(k) * static_cast<std::size_t>(w) + static_cast<std::size_t>(i)];
+        here = std::min(
+            here,
+            dist[static_cast<std::size_t>(nk) * static_cast<std::size_t>(w) + static_cast<std::size_t>(ni)] + step);
+    };
+    for (int k = 0; k < d; ++k) {
+        for (int i = 0; i < w; ++i) {
+            relax(i, k, -1, 0, 1), relax(i, k, 0, -1, 1), relax(i, k, -1, -1, diagonal), relax(i, k, 1, -1, diagonal);
+        }
+    }
+    for (int k = d - 1; k >= 0; --k) {
+        for (int i = w - 1; i >= 0; --i) {
+            relax(i, k, 1, 0, 1), relax(i, k, 0, 1, 1), relax(i, k, 1, 1, diagonal), relax(i, k, -1, 1, diagonal);
+        }
+    }
+    zone.in.assign(covered.size(), 0);
+    const float reach_cells = std::max(0.0f, margin) / c;
+    for (std::size_t at = 0; at < covered.size(); ++at)
+        zone.in[at] = dist[at] <= reach_cells ? 1 : 0;
+    return zone;
+}
+
+std::size_t cut_to_zone(assets::ImportedModel* placed, const RoomZone& zone) {
+    assets::ImportedModel& m = *placed;
+    // a model that keeps its skeleton: each vertex where its joints put it
+    std::map<std::uint32_t, M4> palette;
+    for (const auto& j : m.joints) {
+        M4 world{}, ibm{};
+        for (std::size_t k = 0; k < 16; ++k)
+            world[k] = j.world[k], ibm[k] = j.inverse_bind[k];
+        palette[j.palette_index] = mul(world, ibm);
+    }
+    auto where = [&](const assets::NeutralVertex& v) {
+        if (palette.empty())
+            return v.position;
+        std::array<float, 3> pos{0, 0, 0};
+        float total = 0;
+        for (std::size_t k = 0; k < 4; ++k) {
+            const auto found = palette.find(v.joints[k]);
+            if (v.weights[k] <= 0 || found == palette.end())
+                continue;
+            const auto q = apply(found->second, v.position, 1);
+            for (std::size_t c = 0; c < 3; ++c)
+                pos[c] += v.weights[k] * q[c];
+            total += v.weights[k];
+        }
+        if (total <= 0)
+            return v.position;
+        for (auto& c : pos)
+            c /= total;
+        return pos;
+    };
+    std::size_t dropped = 0;
+    std::vector<assets::NeutralMesh> kept;
+    for (auto& mesh : m.model.meshes) {
+        if (!mesh.sky) {
+            std::vector<std::array<float, 3>> at(mesh.vertices.size());
+            for (std::size_t v = 0; v < mesh.vertices.size(); ++v)
+                at[v] = where(mesh.vertices[v]);
+            std::vector<std::uint32_t> indices;
+            for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+                const auto& a = at[mesh.indices[i]];
+                const auto& b = at[mesh.indices[i + 1]];
+                const auto& c = at[mesh.indices[i + 2]];
+                const bool over = zone.holds(a[0], a[2]) || zone.holds(b[0], b[2]) || zone.holds(c[0], c[2]) ||
+                                  zone.holds((a[0] + b[0] + c[0]) / 3, (a[2] + b[2] + c[2]) / 3);
+                if (over)
+                    indices.insert(indices.end(), {mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]});
+                else
+                    ++dropped;
+            }
+            // only the vertices still used
+            std::map<std::uint32_t, std::uint32_t> renumbered;
+            std::vector<assets::NeutralVertex> vertices;
+            for (auto& index : indices) {
+                const auto found = renumbered.emplace(index, static_cast<std::uint32_t>(vertices.size()));
+                if (found.second)
+                    vertices.push_back(mesh.vertices[index]);
+                index = found.first->second;
+            }
+            mesh.indices = std::move(indices);
+            mesh.vertices = std::move(vertices);
+        }
+        if (!mesh.indices.empty())
+            kept.push_back(std::move(mesh));
+    }
+    m.model.meshes = std::move(kept);
+    std::set<std::string> used;
+    for (const auto& mesh : m.model.meshes) {
+        used.insert(mesh.texture_name);
+        for (const auto& frame : mesh.texture_frames)
+            used.insert(frame.first);
+    }
+    m.textures.erase(
+        std::remove_if(m.textures.begin(), m.textures.end(), [&](const auto& t) { return used.count(t.first) == 0; }),
+        m.textures.end());
+    return dropped;
+}
+
 std::vector<std::pair<int, ObjectUse>> object_uses(const WorldRoom& room, const RoomReplacement& r) {
     std::vector<std::pair<int, ObjectUse>> out;
     bool first = true;
@@ -783,6 +1020,8 @@ bool build_room(const World& w, const std::filesystem::path& mod_dir, const Room
     assets::ImportedModel placed;
     if (!placed_model(folder / path_u8(r.collision.empty() ? r.model : r.collision), r.place, &placed, why))
         return false;
+    if (r.zone >= 0)
+        cut_to_zone(&placed, room_zone(original, r.zone));
     CollisionRules rules;
     rules.ground_limit = r.ground_limit;
     rules.names_by_material = r.names_by_material;
@@ -959,6 +1198,18 @@ bool write_world_outputs(const std::filesystem::path& nitrofs, const std::filesy
                 assets::ImportedModel m;
                 if (!placed_model(change_models(mod_dir, r.world, r.room) / path_u8(r.model), r.place, &m, why))
                     return false;
+                if (r.zone >= 0) {
+                    // only what lies around the room
+                    const WorldRoom& room = w.rooms[static_cast<std::size_t>(r.room)];
+                    const auto& data = w.archive.entries[static_cast<std::size_t>(room.collision_member)].data;
+                    RoomCollision floor;
+                    std::string problem;
+                    if (data.empty() || !parse_collision(data, &floor, &problem))
+                        return fail_with(why, "room " + std::to_string(r.room) + ": no floor to cut the model to");
+                    o.lines.push_back("room " + std::to_string(r.room) + ": " +
+                                      std::to_string(cut_to_zone(&m, room_zone(floor, r.zone))) +
+                                      " triangles away from the room left out");
+                }
                 it = placed.emplace(id, std::move(m)).first;
             }
             model = it->second;

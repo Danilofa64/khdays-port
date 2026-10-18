@@ -79,12 +79,69 @@ TEST(the_pairs_are_read_and_a_mods_line_replaces_one) {
     read_kh2_pairs("tt 0 tt09 ; mine\nnm 3 nm06\ntt zero tt02\ntt 1 tt03 extra\n", "mod", &pairs, &notes);
     CHECK(pairs.size() == 3 && kh2_pair_of(pairs, "tt", 0)->map == "tt09");
     CHECK(kh2_pair_of(pairs, "nm", 3) != nullptr);
-    CHECK(notes.size() == 2 && notes[0] == "mod line 3: not <world> <room> <map> ; <evidence>" &&
+    CHECK(notes.size() == 2 &&
+          notes[0] == "mod line 3: not <world> <room> <map> [turn <degrees>] [move <x> <y> <z>] ; <evidence>" &&
           notes[1].rfind("mod line 4:", 0) == 0);
+    // where Days put a map: a turn and a move, or a move alone; none, not placed
+    notes.clear();
+    read_kh2_pairs("eh 16 eh18 turn 180 move 0.15 0.09 30.05 ; corners\nbb 2 bb08 move 14.93 0 0\nbb 3 bb08 move 1\n",
+                   "placed", &pairs, &notes);
+    const Kh2Pair* turned = kh2_pair_of(pairs, "eh", 16);
+    CHECK(turned != nullptr && turned->placed && turned->turn_y == 180.0f && turned->move[2] == 30.05f &&
+          turned->evidence == "corners");
+    CHECK(kh2_pair_of(pairs, "bb", 2)->placed && kh2_pair_of(pairs, "bb", 2)->move[0] == 14.93f);
+    CHECK(!kh2_pair_of(pairs, "tt", 0)->placed);
+    CHECK(notes.size() == 1 && notes[0].rfind("placed line 3:", 0) == 0);
     // the studio's own: the Usual Spot is Twilight Town's room 0
     notes.clear();
     const auto own = kh2_pairs({}, &notes);
     CHECK(notes.empty() && kh2_pair_of(own, "tt", 0) != nullptr && kh2_pair_of(own, "tt", 0)->map == "tt02");
+}
+
+TEST(a_placed_point_goes_back_where_the_model_has_it) {
+    RoomPlacement place;
+    place.scale = 0.01f;
+    place.turn = {0, 90, 0};
+    place.move = {14.93f, -2, 3};
+    const std::array<float, 3> v{100, 200, 300};
+    const auto at = placed_point(place, v);
+    // KH2's units to the game's, turned a quarter about y (x takes z), then moved
+    CHECK(std::fabs(at[0] - (3 + 14.93f)) < 1e-4f && std::fabs(at[1] - 0) < 1e-4f &&
+          std::fabs(at[2] - (-1 + 3)) < 1e-4f);
+    const auto back = unplaced_point(place, at);
+    CHECK(std::fabs(back[0] - 100) < 1e-2f && std::fabs(back[1] - 200) < 1e-2f && std::fabs(back[2] - 300) < 1e-2f);
+    CHECK(same_place(place, place) && !same_place(place, RoomPlacement{}));
+}
+
+TEST(a_model_cut_to_its_room_keeps_what_lies_around_it) {
+    // the room: a ground from -4 to 4, closed in by walls along z = -4 and z = 4 only
+    RoomCollision room;
+    room.faces[kGround] = {flat(-4, -4, 4, 4, 0)};
+    const RoomZone zone = room_zone(room, 2.0f);
+    CHECK(zone.holds(0, 0) && zone.holds(5.5f, 0) && !zone.holds(7, 0) && !zone.holds(0, -30));
+    // a triangle over it, one 3 units past its edge, one far off, and a sky far off
+    khdays::assets::ImportedModel model;
+    auto triangle = [](float x, float z) {
+        khdays::assets::NeutralMesh mesh;
+        for (const auto& p :
+             {std::array<float, 3>{x, 0, z}, std::array<float, 3>{x + 1, 0, z}, std::array<float, 3>{x, 0, z + 1}}) {
+            khdays::assets::NeutralVertex v;
+            v.position = p;
+            mesh.vertices.push_back(v);
+        }
+        mesh.indices = {0, 1, 2};
+        return mesh;
+    };
+    khdays::assets::NeutralMesh near = triangle(0, 0), past = triangle(5, 0), far = triangle(40, 40),
+                                sky = triangle(60, 60);
+    far.texture_name = "far.png";
+    sky.sky = true;
+    model.model.meshes = {near, past, far, sky};
+    model.textures = {{"far.png", {}}};
+    CHECK(cut_to_zone(&model, zone) == 1);
+    CHECK(model.model.meshes.size() == 3 && model.model.meshes[2].sky && model.textures.empty());
+    // no ground, no zone: nothing is held
+    CHECK(!room_zone(RoomCollision{}, 5.0f).holds(0, 0));
 }
 
 TEST(a_kh2_room_sharing_no_points_is_placed_by_its_units) {

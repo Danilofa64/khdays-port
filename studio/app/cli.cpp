@@ -501,7 +501,17 @@ int replace_room(const fs::path& root, const std::vector<std::string>& args) {
             const RoomAlignment a = !kh2.empty() && has_collision
                                         ? kh2_alignment(room_points(nitrofs, dump, w, room), collision, model)
                                         : align_with_room(room_points(nitrofs, dump, w, room), model);
-            if (a.verdict == RoomAlignment::kh2_units) {
+            // the KH2 map this room was made from, where Days put it
+            std::vector<std::string> notes;
+            const auto pairs = kh2_pairs(mod_dir, &notes);
+            const Kh2Pair* pair = kh2.empty() ? nullptr : kh2_pair_of(pairs, code, room);
+            if (pair != nullptr && pair->placed && pair->map == kh2) {
+                r.place.scale = 0.01f;
+                r.place.turn = {0, pair->turn_y, 0};
+                r.place.move = pair->move;
+                std::printf("placed where Days put %s: turned %g, moved %.2f %.2f %.2f\n", kh2.c_str(), pair->turn_y,
+                            pair->move[0], pair->move[1], pair->move[2]);
+            } else if (a.verdict == RoomAlignment::kh2_units) {
                 r.place = a.place;
                 std::printf("placed by KH2's units (scale %g), its floor at the room's, the middles together: move "
                             "%.2f %.2f %.2f\n",

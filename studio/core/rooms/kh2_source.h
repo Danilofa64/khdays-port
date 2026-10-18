@@ -10,6 +10,7 @@
 
 #include "khdays/assets/texture.h"
 
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <string>
@@ -65,11 +66,16 @@ std::filesystem::path kh2_made_model(const std::filesystem::path& root, const st
 bool make_kh2_collision(const std::filesystem::path& root, const std::string& map, std::filesystem::path* out,
                         std::string* why);
 
-// The KH2 map a Days room was made from (studio/data/kh2_rooms.txt: `<world> <room> <map> ; <evidence>`).
+// The KH2 map a Days room was made from (studio/data/kh2_rooms.txt:
+// `<world> <room> <map> [turn <degrees>] [move <x> <y> <z>] ; <evidence>`), and where Days put it when
+// it is known: at KH2's scale (0.01), turned about y, then moved (the game's units).
 struct Kh2Pair {
     std::string world;
     int room = -1;
     std::string map;
+    bool placed = false;  // a turn or a move given
+    float turn_y = 0;
+    std::array<float, 3> move{0, 0, 0};
     std::string evidence;
 };
 
