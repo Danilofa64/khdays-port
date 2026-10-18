@@ -3,6 +3,8 @@
 #include "core/files/paths.h"
 #include "core/mods/process.h"
 
+#include "kh2_rooms_data.h"
+
 #include "khdays/assets/gltf_export.h"
 #include "khdays/assets/kh2_map.h"
 #include "khdays/assets/kh2_room.h"
@@ -13,7 +15,9 @@ extern "C" {
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -160,6 +164,7 @@ bool kh2_world_maps(const Settings& settings, const std::string& world, std::vec
                 maps->push_back(line.substr(4, line.size() - 8));
         }
     }
+    std::sort(maps->begin(), maps->end());
     return true;
 }
 
@@ -202,6 +207,80 @@ bool take_out_kh2_map(const Settings& settings, const std::string& map, std::str
     }
     *why = "no map " + map + " in this copy's KH2 archives";
     return false;
+}
+
+void read_kh2_pairs(const std::string& text, const std::string& source, std::vector<Kh2Pair>* pairs,
+                    std::vector<std::string>* notes) {
+    std::istringstream lines(text);
+    std::string line;
+    int number = 0;
+    while (std::getline(lines, line)) {
+        ++number;
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        const auto hash = line.find('#');
+        std::string body = line.substr(0, hash);
+        std::string evidence;
+        const auto semicolon = body.find(';');
+        if (semicolon != std::string::npos) {
+            evidence = body.substr(semicolon + 1);
+            body.erase(semicolon);
+            const auto first = evidence.find_first_not_of(" \t");
+            evidence = first == std::string::npos ? std::string() : evidence.substr(first);
+        }
+        std::istringstream words(body);
+        Kh2Pair p;
+        std::string room, rest;
+        if (!(words >> p.world)) {
+            continue;  // an empty line, a comment
+        }
+        const auto bad = [&] {
+            if (notes != nullptr)
+                notes->push_back(source + " line " + std::to_string(number) +
+                                 ": not <world> <room> <map> ; <evidence>");
+        };
+        if (!(words >> room >> p.map) || (words >> rest) || p.world.size() != 2) {
+            bad();
+            continue;
+        }
+        char* end = nullptr;
+        const long n = std::strtol(room.c_str(), &end, 10);
+        if (end == room.c_str() || *end != '\0' || n < 0) {
+            bad();
+            continue;
+        }
+        p.room = static_cast<int>(n);
+        p.evidence = evidence;
+        bool replaced = false;
+        for (auto& q : *pairs) {
+            if (q.world == p.world && q.room == p.room) {
+                q = p;
+                replaced = true;
+            }
+        }
+        if (!replaced)
+            pairs->push_back(std::move(p));
+    }
+}
+
+std::vector<Kh2Pair> kh2_pairs(const fs::path& mod_dir, std::vector<std::string>* notes) {
+    std::vector<Kh2Pair> pairs;
+    read_kh2_pairs(kKh2RoomsText, "the studio's kh2_rooms.txt", &pairs, notes);
+    if (!mod_dir.empty()) {
+        const auto data = read_all(mod_dir / "studio" / "kh2_rooms.txt");
+        if (!data.empty())
+            read_kh2_pairs(std::string(data.begin(), data.end()), u8(mod_dir / "studio" / "kh2_rooms.txt"), &pairs,
+                           notes);
+    }
+    return pairs;
+}
+
+const Kh2Pair* kh2_pair_of(const std::vector<Kh2Pair>& pairs, const std::string& world, int room) {
+    for (const auto& p : pairs) {
+        if (p.world == world && p.room == room)
+            return &p;
+    }
+    return nullptr;
 }
 
 bool kh2_radar(const fs::path& root, const std::string& map, khdays::assets::DecodedTexture* out) {

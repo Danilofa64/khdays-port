@@ -3,6 +3,7 @@
 // markers a made collision leaves inside a wall or with no ground under them, named. Synthetic only.
 #include "test.h"
 
+#include "core/rooms/kh2_source.h"
 #include "core/rooms/room_change.h"
 #include "core/rooms/room_collision.h"
 #include "core/rooms/worlds.h"
@@ -63,6 +64,27 @@ TEST(a_room_change_keeps_its_kh2_map) {
     CHECK(read_change(file, &back, &why));
     CHECK(back.kh2 == "tt02" && back.model == "tt02.gltf" && back.place.scale == 0.01f);
     CHECK(change_text(back) == change_text(r));
+}
+
+TEST(the_pairs_are_read_and_a_mods_line_replaces_one) {
+    std::vector<Kh2Pair> pairs;
+    std::vector<std::string> notes;
+    read_kh2_pairs("# a comment\n\ntt 0 tt02 ; model tt_02, textures tt02_*\r\nbb 5 bb04\n", "studio", &pairs, &notes);
+    CHECK(notes.empty() && pairs.size() == 2);
+    const Kh2Pair* p = kh2_pair_of(pairs, "tt", 0);
+    CHECK(p != nullptr && p->map == "tt02" && p->evidence == "model tt_02, textures tt02_*");
+    CHECK(kh2_pair_of(pairs, "bb", 5) != nullptr && kh2_pair_of(pairs, "bb", 5)->evidence.empty());
+    CHECK(kh2_pair_of(pairs, "tt", 1) == nullptr);
+    // a mod's file: one room taken to another map, one added, two lines it cannot read named
+    read_kh2_pairs("tt 0 tt09 ; mine\nnm 3 nm06\ntt zero tt02\ntt 1 tt03 extra\n", "mod", &pairs, &notes);
+    CHECK(pairs.size() == 3 && kh2_pair_of(pairs, "tt", 0)->map == "tt09");
+    CHECK(kh2_pair_of(pairs, "nm", 3) != nullptr);
+    CHECK(notes.size() == 2 && notes[0] == "mod line 3: not <world> <room> <map> ; <evidence>" &&
+          notes[1].rfind("mod line 4:", 0) == 0);
+    // the studio's own: the Usual Spot is Twilight Town's room 0
+    notes.clear();
+    const auto own = kh2_pairs({}, &notes);
+    CHECK(notes.empty() && kh2_pair_of(own, "tt", 0) != nullptr && kh2_pair_of(own, "tt", 0)->map == "tt02");
 }
 
 TEST(a_kh2_room_sharing_no_points_is_placed_by_its_units) {

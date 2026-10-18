@@ -21,6 +21,7 @@
 #include "core/texts/texts.h"
 #include "core/rooms/worlds.h"
 
+#include "khdays/assets/kh2_map.h"
 #include "khdays/vfs/filesystem.h"
 
 extern "C" {
@@ -32,6 +33,8 @@ extern "C" {
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -342,6 +345,66 @@ int kh2_room(const fs::path& root, const std::vector<std::string>& args) {
         std::printf("note: %s\n", line.c_str());
     std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
     return 0;
+}
+
+// --kh2-maps [<world>]: the KH2 maps of the player's copy (of the worlds Days shares, or one), each with
+// the Days rooms made from it and, once taken out, its pieces and moving textures.
+int kh2_maps(const fs::path& root, const std::vector<std::string>& args) {
+    std::string note, why;
+    const Settings settings = load_settings(root, &note);
+    std::vector<std::string> notes;
+    const auto pairs = kh2_pairs({}, &notes);
+    for (const auto& n : notes)
+        std::fprintf(stderr, "khdays-studio: %s\n", n.c_str());
+    const std::vector<std::string> worlds = args.size() > 1
+                                                ? std::vector<std::string>{args[1]}
+                                                : std::vector<std::string>{"al", "bb", "eh", "he", "nm", "tt"};
+    int status = 0;
+    for (const auto& world : worlds) {
+        std::vector<std::string> maps;
+        if (!kh2_world_maps(settings, world, &maps, &why)) {
+            std::fprintf(stderr, "khdays-studio: %s\n", why.c_str());
+            return 1;
+        }
+        std::printf("%s: %zu maps\n", world.c_str(), maps.size());
+        for (const auto& map : maps) {
+            std::string rooms;
+            for (const auto& pair : pairs) {
+                if (pair.map == map)
+                    rooms += (rooms.empty() ? " Days " : ", ") + pair.world + " " + std::to_string(pair.room);
+            }
+            std::string what = "  (not taken out)";
+            std::ifstream in(kh2_folder(root) / "original" / "map" / path_u8(map + ".map"), std::ios::binary);
+            const std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(in)),
+                                                 std::istreambuf_iterator<char>());
+            if (!data.empty()) {
+                namespace kh2 = khdays::assets::kh2;
+                try {
+                    const auto m = kh2::read_map(data.data(), data.size());
+                    std::size_t pieces = 0, moving = 0, scrolls = 0, frames = 0, skies = 0;
+                    for (const auto& part : m.parts) {
+                        pieces += part.name == "BOB" ? 1 : 0;
+                        moving += part.motion_entry ? 1 : 0;
+                        skies += part.name.rfind("SK", 0) == 0 ? 1 : 0;
+                        const auto t =
+                            kh2::read_textures(data.data(), data.size(), m.entries[part.texture_entry].offset);
+                        scrolls += t.scrolls.size();
+                        frames += t.animations.size();
+                    }
+                    char text[160];
+                    std::snprintf(text, sizeof(text),
+                                  "  %zu pieces (%zu moving), %zu skies, %zu scrolls, %zu texture animations", pieces,
+                                  moving, skies, scrolls, frames);
+                    what = text;
+                } catch (const std::exception& e) {
+                    what = std::string("  (cannot be read: ") + e.what() + ")";
+                    status = 1;
+                }
+            }
+            std::printf("  %s%s%s\n", map.c_str(), rooms.c_str(), what.c_str());
+        }
+    }
+    return status;
 }
 
 // The mod a room command works in, and the game files it reads; false (said) when either is missing.
@@ -1161,6 +1224,8 @@ int run_command_line(const fs::path& root, const std::vector<std::string>& args)
         return room_model(root, args);
     if ((args.size() == 3 || args.size() == 4) && args[0] == "--kh2-room")
         return kh2_room(root, args);
+    if ((args.size() == 1 || args.size() == 2) && args[0] == "--kh2-maps")
+        return kh2_maps(root, args);
     if (args.size() == 1 && args[0] == "--check-missions")
         return check_missions(root);
     if (args.size() == 1 && args[0] == "--check-texts")
@@ -1207,6 +1272,8 @@ int run_command_line(const fs::path& root, const std::vector<std::string>& args)
         "                                                  a room's models and collision, to build on\n"
         "       khdays-studio [--port <dir>] --kh2-room <map> <out.gltf> [<folder>]\n"
         "                                                  a KH2 map of the player's collection as a model\n"
+        "       khdays-studio [--port <dir>] --kh2-maps [<world>]\n"
+        "                                                  the KH2 maps of the player's copy, the Days rooms made from each\n"
         "       khdays-studio [--port <dir>] --replace-room <Mod> <code> <room> [<model> | kh2:<map> [<collision model> | game]]\n"
         "                                                  a room made from a model (or again from its change)\n"
         "       khdays-studio [--port <dir>] --revert-room <Mod> <code> <room>\n"

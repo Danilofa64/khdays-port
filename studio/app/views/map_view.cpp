@@ -109,6 +109,8 @@ struct Kh2Picker {
     std::map<std::string, bool> out;  // a map taken out of the copy already
     std::map<std::string, assets::DecodedTexture> radars;
     std::string typed, error;
+    std::vector<Kh2Pair> pairs;  // the studio's, then the mod's
+    int pairs_for = -2;          // the mod they were read for
     fs::path collection;
     std::string collection_for = "\x01";  // the setting `collection` was found for
     std::thread worker;
@@ -1095,6 +1097,13 @@ void kh2_take(App& app, const Item& item) {
         kh2.worker.join();
     if (listed) {
         kh2.error = failed;
+        // this room's own KH2 room first
+        const Kh2Pair* pair = m.room != nullptr ? kh2_pair_of(kh2.pairs, m.world.code, m.room->index) : nullptr;
+        if (pair != nullptr) {
+            const auto at = std::find(kh2.maps.begin(), kh2.maps.end(), pair->map);
+            if (at != kh2.maps.end())
+                std::rotate(kh2.maps.begin(), at, at + 1);
+        }
         kh2.out.clear();
         for (const auto& name : kh2.maps)
             kh2.out[name] = kh2_map_taken_out(app.settings.root, name);
@@ -1168,6 +1177,25 @@ void draw_kh2_picker(App& app) {
         return;
     }
     ImGui::TextDisabled("%s", u8(kh2.collection).c_str());
+    // the KH2 room this room was made from, when it is known
+    if (kh2.pairs_for != app.mod) {
+        const Mod* mod = app.current_mod();
+        std::vector<std::string> notes;
+        kh2.pairs = kh2_pairs(mod != nullptr ? mod->dir : fs::path(), &notes);
+        kh2.pairs_for = app.mod;
+        for (const auto& note : notes)
+            app.tell(note, false);
+    }
+    const Kh2Pair* pair = m.room != nullptr ? kh2_pair_of(kh2.pairs, m.world.code, m.room->index) : nullptr;
+    if (pair != nullptr) {
+        ImGui::TextWrapped("%s", fmt(lang, S::map_kh2_pair, {pair->map, pair->evidence}).c_str());
+        ImGui::BeginDisabled(kh2.busy);
+        if (ImGui::Button((std::string(tr(lang, S::map_kh2_use)) + " " + pair->map + "##pair").c_str()))
+            kh2_start(app, pair->map, {});
+        ImGui::EndDisabled();
+    } else {
+        ImGui::TextDisabled("%s", tr(lang, S::map_kh2_no_pair));
+    }
     if (kh2.world < 0) {
         kh2.world = 0;
         for (int w = 0; w < 6; ++w) {
@@ -1216,7 +1244,10 @@ void draw_kh2_picker(App& app) {
         }
         ImGui::SameLine();
         ImGui::BeginGroup();
-        ImGui::TextUnformatted(name.c_str());
+        if (pair != nullptr && pair->map == name)
+            ImGui::Text("%s  (%s)", name.c_str(), tr(lang, S::map_kh2_pair_mark));
+        else
+            ImGui::TextUnformatted(name.c_str());
         if (!kh2.out[name])
             ImGui::TextDisabled("%s", tr(lang, S::map_kh2_not_out));
         ImGui::BeginDisabled(kh2.busy);

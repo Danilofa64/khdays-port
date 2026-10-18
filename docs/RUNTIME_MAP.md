@@ -327,6 +327,20 @@ pressing X". The route there is `port/tools/regress_walks/config.input`
 The save file is a 64 KB raw backup that starts with `KH358DAY` (a player's
 day-357 save, which the game loads, and writes to a new slot and reads back).
 
+**The mission worlds' rooms are KINGDOM HEARTS II's maps** (spec 030, seen
+2026-10-18 in the graphics dump and the player's KH2 copy). A room's model is
+named after the KH2 map it was made from (`mi/wd/wd_tt#2/mdl/tt_02` from KH2's
+`map/tt02.map`, the Usual Spot), often its textures too (`tt02_000` ...), the
+room's id is mostly the map's number (Twilight Town's 2, 3, 4, 6, 7, 8, 13,
+14, 36, 37; ids from 84 up are variants and Days's own), and its floor lies on
+the KH2 map's floor at KH2's units x 0.01 with the same axes and no move (the
+Usual Spot: 67% of its floor; Beast's Castle, The World That Never Was and
+Olympus Coliseum's rooms mostly 50-100%; Agrabah's textures carry no map's name
+and its floors match little, its rooms remade). The pairs, with that evidence,
+are `studio/data/kh2_rooms.txt` (82 rooms of al, bb, eh, he, nm, tt; aw, pp, tw
+and zz are worlds KH2 lacks, and `dp_00`, `zz_46*`, `zz_53`, `eh_90/91`,
+`tt_95` and `al_16b` are Days's own rooms).
+
 ## 5. How to see it
 
 The native build prints these to stderr when the variable is set:

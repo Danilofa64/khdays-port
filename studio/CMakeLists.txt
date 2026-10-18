@@ -156,6 +156,11 @@ add_library(khdays-studio-core STATIC
     core/sheets/sheets.cpp
     core/rooms/worlds.cpp)
 target_include_directories(khdays-studio-core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" ${KHDAYS_STUDIO_PORT_HEADERS})
+# The KH2 rooms' pairs (data/kh2_rooms.txt, names only) built into the studio.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/data/kh2_rooms.txt")
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/data/kh2_rooms.txt" KH2_ROOMS_TEXT)
+configure_file(core/rooms/kh2_rooms_data.h.in "${CMAKE_CURRENT_BINARY_DIR}/generated/kh2_rooms_data.h" @ONLY)
+target_include_directories(khdays-studio-core PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_link_libraries(khdays-studio-core PUBLIC khdays-studio-port SDL3::SDL3)
 target_compile_options(khdays-studio-core PRIVATE ${KHDAYS_STUDIO_FLAGS})
 

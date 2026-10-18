@@ -60,4 +60,23 @@ bool make_kh2_room(const std::filesystem::path& folder, const std::string& map, 
 // Where the studio makes a map's model before a room change takes it: kh2_folder()/made/<map>/<map>.gltf.
 std::filesystem::path kh2_made_model(const std::filesystem::path& root, const std::string& map);
 
+// The KH2 map a Days room was made from (studio/data/kh2_rooms.txt: `<world> <room> <map> ; <evidence>`).
+struct Kh2Pair {
+    std::string world;
+    int room = -1;
+    std::string map;
+    std::string evidence;
+};
+
+// The pairs of `text` (`source` names it in `notes`, one line for each that cannot be read), added to
+// `pairs`: a room already there takes the new line's map.
+void read_kh2_pairs(const std::string& text, const std::string& source, std::vector<Kh2Pair>* pairs,
+                    std::vector<std::string>* notes);
+
+// The studio's own pairs (built in), then those of the mod `mod_dir` (its studio/kh2_rooms.txt), when given.
+std::vector<Kh2Pair> kh2_pairs(const std::filesystem::path& mod_dir, std::vector<std::string>* notes);
+
+// The pair of Days room `room` of world `world`, or null.
+const Kh2Pair* kh2_pair_of(const std::vector<Kh2Pair>& pairs, const std::string& world, int room);
+
 }  // namespace studio

@@ -115,7 +115,11 @@ the room's ground under the room's middle, the two middles together. The
 collision made from it names each marker left in a wall (a wall face within
 0.15 units of the point half a unit above its feet) or with no ground under it.
 What is made is the player's own (Square Enix's work from their copy): the
-panel says so.
+panel says so. The KH2 map each room was made from is
+`studio/data/kh2_rooms.txt` (`<world> <room> <map> ; <evidence>`, names only,
+built into the studio; RUNTIME_MAP.md section 4 says how they were found); a mod's
+`studio/kh2_rooms.txt` adds pairs or replaces them line by line. The panel offers
+the room's own pair first, marked, with its evidence.
 
 ## Missions
 

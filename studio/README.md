@@ -413,6 +413,7 @@ again from its changes (after a game update, or on another player's copy).
 
 ```powershell
 .\build\studio\release\khdays-studio.exe --kh2-room <map> <out.gltf> [<folder>]
+.\build\studio\release\khdays-studio.exe --kh2-maps [<world>]
 ```
 
 makes a KINGDOM HEARTS II FINAL MIX map (`tt02`, the Usual Spot) of the
@@ -426,6 +427,9 @@ play with, not to share. The window's Maps view does the same from the room's
 Replace panel ("A KH2 room": the world's maps of the copy with their radar
 pictures, or one by its name); the collection's folder is in the settings
 (`collection_1525`, empty: the one the install used for its HD pieces).
+`--kh2-maps` lists the maps of the player's copy of the worlds Days shares (or
+one), each with the Days rooms made from it (`studio/data/kh2_rooms.txt`) and,
+once taken out, its pieces and moving textures.
 
 ```powershell
 .\build\studio\release\khdays-studio.exe --check-missions
