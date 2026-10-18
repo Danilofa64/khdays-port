@@ -132,6 +132,7 @@ typedef struct Peer {
     Route address;
     u64 heard, pinged; /* when it was last heard from, and last pinged */
     double rtt_ms;     /* round trip; < 0 until measured */
+    int level;         /* host: this guest's level as its pings give it (0 not known) */
     double loss;       /* share of pings unanswered in the last report period */
     unsigned int pings, pongs;
     /* For the session log's report (every REPORT_EVERY): records resent, and
@@ -244,6 +245,11 @@ static struct {
     unsigned int ssid_size;
     u64 join_started, join_sent;
     unsigned int own_aid;
+    /* the players' levels (the game's own, 0 not known): this copy's, set by the game's thread; on a
+     * guest, the members' as the host's pings list them, by aid */
+    volatile int own_level;
+    int *levels;
+    int level_room;
     /* to the game */
     Queued *events;
     int event_count, event_room;
@@ -331,6 +337,8 @@ static u64 since(u64 now, u64 then)
 
 /* Makes room for `need` items, doubling, the new part zeroed. Out of memory,
  * the process stops. */
+static void ping_levels(Peer *p, const unsigned char *body, unsigned int size); /* the members' levels */
+
 static void *grow(void *items, int *room, int need, size_t item)
 {
     if (need <= *room) {
@@ -1350,6 +1358,9 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
         net.joining = 0;
         net.role = GUEST;
         net.own_aid = body[0];
+        for (int i = 0; i < net.level_room; ++i) {
+            net.levels[i] = 0; /* this room's come with the host's pings */
+        }
         /* from now on, reach the host the way its welcome came: directly or
          * through the server */
         new_peer(peer_slot(0), 0, sender, from);
@@ -1403,6 +1414,9 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
     case PING:
         if (p != NULL && size >= 8) {
             send_kind(&p->address, PONG, body, 8);
+            if (p->state == MEMBER) {
+                ping_levels(p, body, size);
+            }
         } else if (p == NULL && net.role == HOST && from->relay == 0 && size >= 8) {
             /* a guest looking at our room (its list's ping) */
             if (since(now, net.probes_since) >= 1000 * MS) {
@@ -1653,6 +1667,61 @@ static void join_step(u64 now)
     }
 }
 
+/* A ping's body: when it was sent (the pong gives it back), then the players' levels for the members'
+ * screen -- a guest's own (u16), or on the host a count (u8) and an aid (u8) and a level (u16) for each
+ * member whose level it knows, itself too. Its size. */
+static unsigned int ping_body(u64 now, unsigned char **body, int *room)
+{
+    const int own = net.own_level;
+    unsigned int size = 8, count = 0;
+    if (net.role == HOST) {
+        for (int i = 0; i < net.peer_room; ++i) {
+            count += net.peers[i].used && net.peers[i].state == MEMBER && net.peers[i].level > 0;
+        }
+        count += own > 0;
+    }
+    *body = (unsigned char *)grow(*body, room, (int)(8 + 3 + 3 * count), 1);
+    put64(*body, now);
+    if (net.role == GUEST) {
+        put16(*body + 8, (unsigned int)(own > 0 ? own : 0));
+        return 10;
+    }
+    (*body)[8] = (unsigned char)count;
+    size = 9;
+    if (own > 0) {
+        (*body)[size] = 0;
+        put16(*body + size + 1, (unsigned int)own);
+        size += 3;
+    }
+    for (int i = 0; i < net.peer_room; ++i) {
+        const Peer *q = &net.peers[i];
+        if (q->used && q->state == MEMBER && q->level > 0) {
+            (*body)[size] = (unsigned char)q->aid;
+            put16(*body + size + 1, (unsigned int)q->level);
+            size += 3;
+        }
+    }
+    return size;
+}
+
+/* A member's ping: on the host a guest's level, on a guest the members' levels (ping_body). */
+static void ping_levels(Peer *p, const unsigned char *body, unsigned int size)
+{
+    if (net.role == HOST && size >= 10) {
+        p->level = (int)get16(body + 8);
+    } else if (net.role == GUEST && size >= 9) {
+        const unsigned int count = body[8];
+        for (int i = 0; i < net.level_room; ++i) {
+            net.levels[i] = 0;
+        }
+        for (unsigned int k = 0; k < count && 9 + 3 * k + 3 <= size; ++k) {
+            const unsigned int aid = body[9 + 3 * k];
+            net.levels = (int *)grow(net.levels, &net.level_room, (int)aid + 1, sizeof(*net.levels));
+            net.levels[aid] = (int)get16(body + 9 + 3 * k + 1);
+        }
+    }
+}
+
 /* Keeps one peer's link alive: drops it if it fell silent, pings it, sends
  * owed acknowledgements, resends what was not acknowledged in time, and
  * writes its line of the session log every REPORT_EVERY. */
@@ -1663,9 +1732,10 @@ static void peer_step(Peer *p, u64 now)
         return;
     }
     if (since(now, p->pinged) >= PING_EVERY) {
-        unsigned char body[8];
-        put64(body, now);
-        send_kind(&p->address, PING, body, sizeof(body));
+        static unsigned char *body;
+        static int body_room;
+        const unsigned int size = ping_body(now, &body, &body_room);
+        send_kind(&p->address, PING, body, size);
         p->pinged = now;
         ++p->pings;
     }
@@ -1889,6 +1959,9 @@ static void leave_locked(void)
         }
     }
     drop_peers();
+    for (int i = 0; i < net.level_room; ++i) {
+        net.levels[i] = 0;
+    }
     net.role = NONE;
     net.joining = 0;
     net.join_online = net.join_relayed = 0;
@@ -2147,6 +2220,57 @@ int khdays_net_link_level(void)
     }
     SDL_UnlockMutex(net.lock);
     return level;
+}
+
+void khdays_net_set_level(int level)
+{
+    net.own_level = level > 0 && level <= 0xffff ? level : 0;
+}
+
+int khdays_net_levels(unsigned int *aids, int *levels, int room)
+{
+    int count = 0;
+    if (!net.started) {
+        return 0;
+    }
+    SDL_LockMutex(net.lock);
+    if (net.role == HOST) {
+        if (net.own_level > 0 && count < room) {
+            aids[count] = 0;
+            levels[count] = net.own_level;
+        }
+        count += net.own_level > 0;
+        for (int i = 0; i < net.peer_room; ++i) {
+            const Peer *p = &net.peers[i];
+            if (p->used && p->state == MEMBER && p->level > 0) {
+                if (count < room) {
+                    aids[count] = p->aid;
+                    levels[count] = p->level;
+                }
+                ++count;
+            }
+        }
+    } else if (net.role == GUEST) {
+        for (int aid = 0; aid < net.level_room; ++aid) {
+            const int level = aid == (int)net.own_aid && net.own_level > 0 ? net.own_level : net.levels[aid];
+            if (level > 0) {
+                if (count < room) {
+                    aids[count] = (unsigned int)aid;
+                    levels[count] = level;
+                }
+                ++count;
+            }
+        }
+        if ((int)net.own_aid >= net.level_room && net.own_level > 0) {
+            if (count < room) {
+                aids[count] = net.own_aid;
+                levels[count] = net.own_level;
+            }
+            ++count;
+        }
+    }
+    SDL_UnlockMutex(net.lock);
+    return count;
 }
 
 int khdays_net_round_trips(unsigned int *aids, int *ms, int room)

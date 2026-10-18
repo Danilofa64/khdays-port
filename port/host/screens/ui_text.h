@@ -270,6 +270,8 @@ enum {
     TXT_ROOM_HOST_TAG,
     TXT_ROOM_PLACE,
     TXT_ROOM_YOU,
+    TXT_ROOM_LEVEL,    /* a member's level on the members' screen (%d) */
+    TXT_SELECT_RANDOM, /* the character select's random choice */
     /* The camps' Title Screen question, in the port's words. */
     TXT_CAMP_BACK_TO_MENU,
     /* Mission Mode's pause: the port's Retry line (runtime/menus/retry.c, ui/pause.cpp) */

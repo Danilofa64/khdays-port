@@ -73,6 +73,9 @@ int khdays_savelist_file_number(int slot);
 enum { KHDAYS_PLAYED_NONE = -1, KHDAYS_PLAYED_GUEST = -2 };
 int khdays_savelist_played_file(void);
 void khdays_savelist_set_played_file(int file);
+/* The level of the file the title loaded, as its list counted it (the game's own count of its panels;
+ * 1 for Mission Mode's guest game); 0 when not known. */
+int khdays_savelist_played_level(void);
 
 /* The camp whose menu waits for the player now (8 Mission Mode's, ov008; 25 the story's, ov025): its
  * screen 0 with an option or a question's answer under its cursor. 0 when none. `*screen` and `*entry`

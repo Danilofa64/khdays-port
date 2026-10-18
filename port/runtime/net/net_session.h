@@ -82,6 +82,13 @@ int khdays_net_link_level(void);
  * how many members there are. */
 int khdays_net_round_trips(unsigned int *aids, int *ms, int room);
 
+/* The game's thread: this copy's level (the game's own, 0 not known), which its pings carry to the
+ * room for the members' screen. */
+void khdays_net_set_level(int level);
+/* The members' levels known, this copy's too (the host's pings give a guest everyone's): up to `room`
+ * aids and levels. Returns how many are known. */
+int khdays_net_levels(unsigned int *aids, int *levels, int room);
+
 /* Whether we are in a room or joining one (the settings menu does not pause the game then). */
 int khdays_net_in_session(void);
 

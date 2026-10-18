@@ -8,6 +8,7 @@
 #include "../core/io.h"
 #include "../core/rom.h"
 #include "../core/window.h"
+#include "../menus/savelist.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +45,11 @@ u32 khdays_events_vblank_count(void);
 #define MEMBERS_PRESENT 0x434u
 #define MEMBERS_NAMES 0x436u
 #define MEMBER_NAME 11u /* UTF-16 characters a name takes (the game's) */
-#define PLACES 4        /* the game's group: its host and three guests */
+#define PARTY_MEMBER                                                                                                   \
+    0x0204c678u  /* this copy's player in gPartyMembers: +2 its level less one (the camp's
+                                 * status shows it plus one, Ov008_RefreshEquipPanel), +6 a figure its
+                                 * level gives (PartyMember_Reset), 0 until the game made the record */
+#define PLACES 4 /* the game's group: its host and three guests */
 #define JOIN_WAIT                                                                                                      \
     300u                     /* VBlanks a chosen room may take to reach the game's list (it is told
                              * of it at once on the local network, within a second online) */
@@ -408,11 +413,22 @@ static void build_rows(void)
 
 /* The members' screen's rows: the group's four places, each its player's name (the game's) and
  * the ping to it as the session measures it (the host's guests; a guest's host). */
+/* This copy's level: the game's record of its player once it made it (in Mission Mode's camp, from its
+ * panels), else the level the title's list counted for the file loaded (the group made from the
+ * title, before the camp). */
+static int own_level(void)
+{
+    if (*(const volatile u16 *)KHDAYS_W(PARTY_MEMBER + 6u) != 0) {
+        return *(const volatile u8 *)KHDAYS_W(PARTY_MEMBER + 2u) + 1;
+    }
+    return khdays_savelist_played_level();
+}
+
 static void build_members(void)
 {
     const u32 session = rd32(screens[members_on].session), menu = rd32(screens[members_on].menu);
-    unsigned int aids[PLACES * 2];
-    int ms[PLACES * 2], measured, present, count = 0;
+    unsigned int aids[PLACES * 2], level_aids[PLACES * 2];
+    int ms[PLACES * 2], levels[PLACES * 2], measured, leveled, present, count = 0;
     row_count = 0;
     text_clear(&names);
     host_view = self_view = proceed_view = 0;
@@ -420,6 +436,9 @@ static void build_members(void)
         return;
     }
     present = *(const volatile u16 *)KHDAYS_W(session + MEMBERS_PRESENT);
+    /* this copy's level goes to the room with its pings; everyone's come back */
+    khdays_net_set_level(own_level());
+    leveled = khdays_net_levels(level_aids, levels, PLACES * 2);
     measured = khdays_net_round_trips(aids, ms, PLACES * 2);
     for (int place = 0; place < PLACES; ++place) {
         unsigned short name[MEMBER_NAME];
@@ -430,6 +449,12 @@ static void build_members(void)
         }
         r->room.players = (present >> place) & 1;
         r->room.ping_ms = -1;
+        r->level = 0;
+        for (int i = 0; i < leveled && i < PLACES * 2; ++i) {
+            if ((int)level_aids[i] == place) {
+                r->level = levels[i];
+            }
+        }
         for (int i = 0; i < measured && i < PLACES * 2; ++i) {
             if ((int)aids[i] == place) {
                 r->room.ping_ms = ms[i];

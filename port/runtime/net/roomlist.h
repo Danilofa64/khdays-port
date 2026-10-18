@@ -26,6 +26,7 @@ typedef struct KhdaysRoomRow {
     int which;              /* a field's (KHDAYS_ROOMFIELD_*), an action's (KHDAYS_ROOMACTION_*) or a
                               * member's place (0 the host) */
     KhdaysNetRoomView room; /* a room's; a member's: players 1 when there, its ping_ms */
+    int level;              /* a member's level (the game's own), 0 when not known */
     const char *text;       /* a room's or member's name, or a field's text (UTF-8; in the view's own
                               * memory) */
 } KhdaysRoomRow;

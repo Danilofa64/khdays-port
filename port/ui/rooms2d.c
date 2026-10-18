@@ -336,13 +336,23 @@ void *khdays_rooms2d_member_detail(int row, void *out_buffer, int units)
                 continue;
             }
             clear(&built);
+            if (r->level > 0) {
+                /* the player's level first, then the rest */
+                char line[32];
+                snprintf(line, sizeof(line), word(TXT_ROOM_LEVEL, v->language), r->level);
+                from_utf8(&built, line);
+                if (r->which == v->self || r->room.ping_ms >= 0) {
+                    from_ascii(&built, "  ");
+                }
+            }
             if (r->which == v->self) {
                 from_utf8(&built, word(TXT_ROOM_YOU, v->language));
-                out = give(&built, out_buffer, units);
             } else if (r->room.ping_ms >= 0) {
                 char line[32];
                 snprintf(line, sizeof(line), "%d ms", r->room.ping_ms);
                 from_ascii(&built, line);
+            }
+            if (built.n > 0) {
                 out = give(&built, out_buffer, units);
             }
             break;

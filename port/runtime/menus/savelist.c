@@ -185,6 +185,7 @@ static KhdaysSaveView shown; /* under the lock */
 static int active; /* the screen shown last frame (KHDAYS_SAVELIST_*) */
 static int cursor;
 static int current_file = KHDAYS_PLAYED_NONE; /* the file this game was loaded from or saved to last */
+static int played_level; /* the level of the file the title loaded, as its list counted it (0 not known) */
 static u16 held, handed;      /* the buttons held last frame; the ones given to the game */
 static u32 steer_field;       /* the game's cursor the port takes to a place before a button, 0 none */
 static int steer_to;
@@ -873,6 +874,7 @@ static void follow_played(void)
     const u32 save = in_camp != NULL ? camp_save(in_camp, ctx) : 0;
     if (title_there && !title_was) {
         current_file = KHDAYS_PLAYED_NONE;
+        played_level = 0;
     }
     title_was = title_there;
     if (title != 0) {
@@ -880,6 +882,10 @@ static void follow_played(void)
         if (state == 6 && title_state_was != 6) {
             const int row = (int)rd32(title + PAGE);
             current_file = row >= GUEST_PAGE ? KHDAYS_PLAYED_GUEST : khdays_slots_file_of(row);
+            /* (the guest game starts anew, at level 1) */
+            played_level = current_file == KHDAYS_PLAYED_GUEST                     ? 1
+                           : current_file >= 0 && current_file < KHDAYS_SLOT_COUNT ? rows[current_file].level
+                                                                                   : 0;
             if (current_file == KHDAYS_PLAYED_GUEST) {
                 khdays_log("save list: the guest game begins (no file)");
             } else {
@@ -899,6 +905,11 @@ static void follow_played(void)
     } else {
         camp_phase_was = -1;
     }
+}
+
+int khdays_savelist_played_level(void)
+{
+    return played_level;
 }
 
 int khdays_savelist_played_file(void)

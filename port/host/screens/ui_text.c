@@ -735,6 +735,8 @@ static const char *const texts[TXT_COUNT][5] = {
     /* a group's places as the game's own bars label them (UI/mlt/res_&.p2) */
     [TXT_ROOM_PLACE] = {"%dP", "J%d", "S%d", "G%d", "J%d"},
     [TXT_ROOM_YOU] = {"You", "Vous", "Du", "Tu", "Tú"},
+    [TXT_ROOM_LEVEL] = {"Lv. %d", "Niv. %d", "Lv. %d", "Liv. %d", "Nv. %d"},
+    [TXT_SELECT_RANDOM] = {"Random", "Aléatoire", "Zufällig", "Casuale", "Aleatorio"},
     [TXT_NEEDS_GAME_DATA] =
         {"The game's data is not here. The port looks for it in:\n%s\n\nExtract it from your own copy of "
          "the game with tools/extract_data.py (the README's \"Getting started\"), and start the "
