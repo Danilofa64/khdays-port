@@ -187,10 +187,13 @@ stop
 # ----------------------------------------------------------------------------
 # A tutorial's page (the lower screen) at the DS's size in the middle, the
 # field behind it dimmed -- its 2D and its 3D (`3d`) -- and the HUD's 3D not
-# drawn (the maintainer's choice from the pictures, 2026-10-14).
+# drawn (the maintainer's choice from the pictures, 2026-10-14). Each piece
+# with its own screen's brightness: the game darkens the upper screen behind
+# a tutorial and fades the lower one in, so the page took the field's
+# darkness with the upper's (story walk f11621, 2026-10-19).
 [tutorial]
 screens upper
-brightness upper
+brightness own
 hide3d hud
 shape lower at centre scale fixed(1)
 shape upper at centre scale fixed(1) dim 0.35
