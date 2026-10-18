@@ -141,7 +141,10 @@ Written by `tools/hd/theater_mission.py`, in the theater's pieces; drawn by
 It shows the characters the game lets be chosen, in its order, grey unless a
 place is on one (then in colour, framed in the place's colour); this copy's
 character large with its name, weapon and gauges; each place's plate along the
-bottom, ringed once its player has chosen; the game's message and help.
+bottom, ringed once its player has chosen; the game's message and help. The
+grid ends with a random choice, a "?" with the player's Y in its corner: A on it
+(or Y anywhere, also on the game's own screen without these pieces) moves to a
+character nobody is on, at random, and chooses it.
 
 ## The settings menu (`layouts/settings/<lang>/settings.txt`)
 
