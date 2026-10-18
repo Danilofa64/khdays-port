@@ -7,6 +7,7 @@
 #include "../core/window.h"
 #include "analog.h"
 #include "input.h"
+#include "../net/net_session.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -242,14 +243,44 @@ void khdays_trace_camera_request(int found, int x, int y, int kind, int state)
 
 /* ---- Movement (Ov022_HeadingFromHeldDpad, Ov022_SteerIdleByAim) ---------------- */
 
+/* A movement stick and its player's settings. */
+typedef struct Stick {
+    int x, y, run_threshold, walk_speed;
+} Stick;
+
+#define PARTY 4 /* the game's members: the host's and three guests' */
+
 /* Whether analog movement drives this actor now, and its stick. An actor's buttons come from the
  * control packet a game frame after Pad_Sample read them, so its stick is the snapshot before this
- * frame's. */
-static int analog_moving(int actor, const KhdaysInputSnapshot **in)
+ * frame's. On the host a guest's actor takes the stick its copy sent with its controls (the DS's
+ * control packet has only the D-pad), with that player's settings. */
+static int analog_moving(int actor, Stick *s)
 {
-    *in = khdays_input_previous_snapshot();
-    return ((*in)->enhancements & KHDAYS_ENH_ANALOG_MOVEMENT) != 0 && ((*in)->move_x != 0 || (*in)->move_y != 0) &&
-           actor == local_actor();
+    const KhdaysInputSnapshot *in = khdays_input_previous_snapshot();
+    if (actor == local_actor()) {
+        if ((in->enhancements & KHDAYS_ENH_ANALOG_MOVEMENT) == 0 || (in->move_x == 0 && in->move_y == 0)) {
+            return 0;
+        }
+        s->x = in->move_x;
+        s->y = in->move_y;
+        s->run_threshold = in->run_threshold;
+        s->walk_speed = in->walk_speed;
+        return 1;
+    }
+    for (int member = 1; member < PARTY; ++member) {
+        KhdaysNetStick n;
+        if (GetEntryField20ByIndex(member) == actor) {
+            if (!khdays_net_stick((unsigned int)member, &n) || !n.on || (n.x == 0 && n.y == 0)) {
+                return 0;
+            }
+            s->x = n.x;
+            s->y = n.y;
+            s->run_threshold = n.run_threshold;
+            s->walk_speed = n.walk_speed;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 /* The heading the game made from the D-pad (-1 for none). With analog movement it becomes the stick's
@@ -257,10 +288,13 @@ static int analog_moving(int actor, const KhdaysInputSnapshot **in)
 int khdays_controls_move_heading(int actor, int heading)
 {
     static int last_heading = -2, last_buttons = -1;
-    const KhdaysInputSnapshot *in;
+    Stick in;
     int result = heading;
     if (heading != -1 && analog_moving(actor, &in)) {
-        result = khdays_analog_heading(in->move_x, in->move_y);
+        result = khdays_analog_heading(in.x, in.y);
+        if (trace_on() && actor != local_actor()) {
+            trace("heading: %d from a guest's stick %d,%d (actor %08x)", result, in.x, in.y, actor);
+        }
     }
     if (trace_on() && actor == local_actor()) {
         const int buttons = *(u16 *)KHDAYS_W(actor + 0x18) | *(u16 *)KHDAYS_W(actor + 0x1a) << 16;
@@ -285,11 +319,11 @@ static struct {
  * threshold, the walk speed's share of it, never more than the game's own. */
 int khdays_controls_move_rate(int actor, int rate)
 {
-    const KhdaysInputSnapshot *in;
+    Stick in;
     walking.actor = 0;
     if (rate > 0 && analog_moving(actor, &in)) {
-        const int tilt = khdays_analog_tilt(in->move_x, in->move_y);
-        const int walk = khdays_analog_rate(rate, tilt, in->run_threshold, in->walk_speed);
+        const int tilt = khdays_analog_tilt(in.x, in.y);
+        const int walk = khdays_analog_rate(rate, tilt, in.run_threshold, in.walk_speed);
         if (walk < rate) {
             walking.actor = actor;
             walking.frame = khdays_input_game_frames();

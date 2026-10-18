@@ -24,7 +24,12 @@ in `RUNTIME_MAP.md` section 16. Running a server: `port/server/README.md`.
 
 A control packet (gate 3, `Ov022_SendControlPacket`) holds a halfword, then the
 slot and the buttons held, the command chosen (its kind in the low 4 bits of
-the second word; 7 means none) and the target.
+the second word; 7 means none) and the target. It has only the D-pad, so a guest
+also sends its movement stick (a STICK datagram, not acknowledged: x and y,
+its run threshold and walk speed, and whether analog movement is on) with its
+controls, when the stick changed or a fifth of a second after the last; the
+host moves that guest's actor with it (its exact angle, and its walk when the
+stick is pushed less than the run threshold), as it does its own.
 
 ### The playout store
 

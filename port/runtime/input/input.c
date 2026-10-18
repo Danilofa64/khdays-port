@@ -9,6 +9,7 @@
 #include "../menus/charselect.h"
 #include "../menus/cinelist.h"
 #include "../net/roomlist.h"
+#include "../net/net_session.h"
 #include "controls_hooks.h"
 #include "../movies/movie_hd.h"
 #include "../menus/newgame.h"
@@ -358,6 +359,17 @@ void khdays_input_pad_sample(void)
     if (script_camera[0] != 0 || script_camera[1] != 0) {
         snapshot.camera_x = (int16_t)script_camera[0];
         snapshot.camera_y = (int16_t)script_camera[1];
+    }
+    {
+        /* the movement stick goes with a guest's controls to the host, which moves its actor (the DS's
+         * control packet has only the D-pad) */
+        KhdaysNetStick stick;
+        stick.x = snapshot.move_x;
+        stick.y = snapshot.move_y;
+        stick.run_threshold = snapshot.run_threshold;
+        stick.walk_speed = snapshot.walk_speed;
+        stick.on = (snapshot.enhancements & KHDAYS_ENH_ANALOG_MOVEMENT) != 0;
+        khdays_net_set_stick(&stick);
     }
     /* While the settings menu is open the player's input is not the
      * game's (the script's still is: headless runs have no screen). */

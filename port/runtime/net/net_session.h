@@ -82,6 +82,18 @@ int khdays_net_link_level(void);
  * how many members there are. */
 int khdays_net_round_trips(unsigned int *aids, int *ms, int room);
 
+/* A player's movement stick for analog movement, which the DS's control packet has no room for: its
+ * position (-32767..32767, y up, 0 0 at rest), the player's run threshold and walk speed (percent)
+ * and whether analog movement is on in its settings. */
+typedef struct KhdaysNetStick {
+    short x, y;
+    unsigned char run_threshold, walk_speed, on;
+} KhdaysNetStick;
+/* The game's thread, on a guest: this copy's stick now, sent to the host with its controls. */
+void khdays_net_set_stick(const KhdaysNetStick *stick);
+/* On the host: member `aid`'s stick as it last sent it (a second at most ago); 0 when none. */
+int khdays_net_stick(unsigned int aid, KhdaysNetStick *out);
+
 /* The game's thread: this copy's level (the game's own, 0 not known), which its pings carry to the
  * room for the members' screen. */
 void khdays_net_set_level(int level);

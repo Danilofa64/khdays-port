@@ -32,6 +32,10 @@ typedef unsigned long long u64;
 enum { ANNOUNCE = 1, GONE, JOIN, WELCOME, REFUSE, RECORD, ACK, PING, PONG, LEAVE };
 /* the kinds khdays-server uses */
 enum { REGISTER = 11, REGISTERED, LIST, ROOMS, CONNECT, PEER, PUNCH, RELAY, UNREGISTER };
+/* a guest's movement stick, beside its controls (khdays_net_set_stick): x i16, y i16, the run
+ * threshold u8, the walk speed u8, analog movement on u8. Not acknowledged: the next one replaces it. */
+enum { STICK = 20 };
+#define STICK_BODY 7
 
 /* The server players meet through online: the player's settings name it (host/app/profile.c),
  * KHDAYS_NET_SERVER overrides it (empty: no server). This is the port used when the address gives
@@ -130,10 +134,12 @@ typedef struct Peer {
     unsigned int aid; /* its player number (0 is the host) */
     unsigned char id[ID_SIZE];
     Route address;
-    u64 heard, pinged; /* when it was last heard from, and last pinged */
-    double rtt_ms;     /* round trip; < 0 until measured */
-    int level;         /* host: this guest's level as its pings give it (0 not known) */
-    double loss;       /* share of pings unanswered in the last report period */
+    u64 heard, pinged;    /* when it was last heard from, and last pinged */
+    double rtt_ms;        /* round trip; < 0 until measured */
+    int level;            /* host: this guest's level as its pings give it (0 not known) */
+    KhdaysNetStick stick; /* host: this guest's movement stick as it last sent it, */
+    u64 stick_at;         /* and when (0 never) */
+    double loss;          /* share of pings unanswered in the last report period */
     unsigned int pings, pongs;
     /* For the session log's report (every REPORT_EVERY): records resent, and
      * the most records that waited for the game, and for an acknowledgement. */
@@ -250,6 +256,9 @@ static struct {
     volatile int own_level;
     int *levels;
     int level_room;
+    /* guest: this copy's movement stick (the game's thread sets it), the one sent last and when */
+    KhdaysNetStick own_stick, sent_stick;
+    u64 stick_sent;
     /* to the game */
     Queued *events;
     int event_count, event_room;
@@ -338,6 +347,7 @@ static u64 since(u64 now, u64 then)
 /* Makes room for `need` items, doubling, the new part zeroed. Out of memory,
  * the process stops. */
 static void ping_levels(Peer *p, const unsigned char *body, unsigned int size); /* the members' levels */
+static void send_stick(void);                                                   /* a guest's stick */
 
 static void *grow(void *items, int *room, int need, size_t item)
 {
@@ -1266,7 +1276,7 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
         }
         return;
     }
-    if (kind >= REGISTER) {
+    if (kind >= REGISTER && kind <= UNREGISTER) {
         return; /* server kinds from anyone but the server are ignored; a PUNCH only opens the routers */
     }
     if (memcmp(sender, net.id, ID_SIZE) == 0) {
@@ -1445,6 +1455,16 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
     case LEAVE:
         if (p != NULL) {
             left(p, "said goodbye");
+        }
+        return;
+    case STICK:
+        if (net.role == HOST && p != NULL && p->state == MEMBER && size >= STICK_BODY) {
+            p->stick.x = (short)get16(body);
+            p->stick.y = (short)get16(body + 2);
+            p->stick.run_threshold = body[4];
+            p->stick.walk_speed = body[5];
+            p->stick.on = body[6];
+            p->stick_at = now;
         }
         return;
     default: return;
@@ -2157,6 +2177,7 @@ int khdays_net_send(unsigned int destinations, unsigned int port, const void *da
                 length <= sizeof(net.own_control)) {
                 memcpy(net.own_control, control, length);
                 net.own_control_size = length;
+                send_stick();
             }
         }
         if (trace_messages()) {
@@ -2220,6 +2241,55 @@ int khdays_net_link_level(void)
     }
     SDL_UnlockMutex(net.lock);
     return level;
+}
+
+/* A guest's stick to the host, with a control packet: when it changed, or a fifth of a second after
+ * the last (the caller holds net.lock). */
+static void send_stick(void)
+{
+    const KhdaysNetStick *s = &net.own_stick;
+    const u64 now = now_ns();
+    unsigned char body[STICK_BODY];
+    if (net.role != GUEST || net.peers == NULL || !net.peers[0].used ||
+        (memcmp(s, &net.sent_stick, sizeof(*s)) == 0 && since(now, net.stick_sent) < 200 * MS)) {
+        return;
+    }
+    put16(body, (unsigned int)(unsigned short)s->x);
+    put16(body + 2, (unsigned int)(unsigned short)s->y);
+    body[4] = s->run_threshold;
+    body[5] = s->walk_speed;
+    body[6] = s->on;
+    send_kind(&net.peers[0].address, STICK, body, sizeof(body));
+    net.sent_stick = *s;
+    net.stick_sent = now;
+}
+
+void khdays_net_set_stick(const KhdaysNetStick *stick)
+{
+    if (!net.started) {
+        return;
+    }
+    SDL_LockMutex(net.lock);
+    net.own_stick = *stick;
+    SDL_UnlockMutex(net.lock);
+}
+
+int khdays_net_stick(unsigned int aid, KhdaysNetStick *out)
+{
+    int known = 0;
+    if (!net.started) {
+        return 0;
+    }
+    SDL_LockMutex(net.lock);
+    if (net.role == HOST) {
+        const Peer *p = peer_by_aid(aid);
+        if (p != NULL && p->state == MEMBER && p->stick_at != 0 && since(now_ns(), p->stick_at) < 1000 * MS) {
+            *out = p->stick;
+            known = 1;
+        }
+    }
+    SDL_UnlockMutex(net.lock);
+    return known;
 }
 
 void khdays_net_set_level(int level)
