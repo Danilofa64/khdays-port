@@ -8,10 +8,10 @@
 
 namespace studio {
 
-// Opens it with `item`'s export name, showing the files of `pattern` (`png`,
-// `gltf`); the path chosen goes to `queue` (one of app's dialog lists).
-// Replacing a file is always asked first.
-void choose_save_file(App& app, const Item& item, const char* filter, const char* pattern,
+// Opens it with `name` in its name box, showing the files of `pattern`
+// (`png`, `gltf`); the path chosen goes to `queue` (one of app's dialog
+// lists). Replacing a file is always asked first.
+void choose_save_file(App& app, const std::string& name, const char* filter, const char* pattern,
                       std::vector<std::string>& queue);
 
 }  // namespace studio

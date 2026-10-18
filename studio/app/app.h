@@ -105,6 +105,7 @@ struct App {
     std::vector<std::string> dialog_files;
     std::vector<std::string> dialog_clips;          // animation clips
     std::vector<std::string> dialog_exports;        // where an assembled sheet is exported
+    std::vector<std::string> dialog_grids;          // where its tile grid is exported
     std::vector<std::string> dialog_room_exports;   // where a room is exported
     std::vector<std::string> dialog_model_exports;  // where a game model is exported
     std::vector<std::string> dialog_sheet_folders;  // where every 2D sheet is exported
@@ -176,11 +177,13 @@ void clip_offer(App& app, const std::filesystem::path& file);
 void choose_clip(App& app);
 // A 2D sheet assembled: the mode switch (true: assembled), the view,
 // an edited picture offered while it is shown (false: not taken -- the
-// sheet is replaced as tiles), its export and the dialog choosing where.
+// sheet is replaced as tiles), its export, its tile grid's and the dialog
+// choosing where.
 bool draw_sheet_mode(App& app);
 void draw_sheet_assembled(App& app, const Item& item);
 bool sheet_offer(App& app, const std::filesystem::path& file);
 void sheet_export_to(App& app, const std::filesystem::path& file);
+void sheet_grid_export_to(App& app, const std::filesystem::path& file);
 void choose_export(App& app);
 // Lets go of the model view's pictures before the graphics device goes.
 void model_view_shutdown();

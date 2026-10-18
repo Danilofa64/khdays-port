@@ -208,6 +208,8 @@ enum class S {
     sheet_from_game,
     sheet_overlaps,
     sheet_export,
+    sheet_export_grid,
+    sheet_export_grid_hint,
     sheet_export_size,
     sheet_exported,
     sheet_bring_back,

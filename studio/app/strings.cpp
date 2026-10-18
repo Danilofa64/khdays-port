@@ -637,6 +637,20 @@ constexpr Row rows[] =
           "{0} píxeles donde se solapan piezas de celda: se muestra y se edita la de delante."}},
         {S::sheet_export,
          {"Export PNG...", "Exporter en PNG...", "Als PNG exportieren...", "Esporta PNG...", "Exportar PNG..."}},
+        {S::sheet_export_grid,
+         {"Export grid...", "Exporter la grille...", "Raster exportieren...", "Esporta griglia...",
+          "Exportar rejilla..."}},
+        {S::sheet_export_grid_hint,
+         {"The 8x8 tiles' borders at the export's size, the tiles marked here in their colours, on a transparent "
+          "picture: lay it over the exported one to see that your edit lines up with the tiles.",
+          "Les bords des tuiles 8x8 à la taille de l'export, les tuiles marquées ici dans leurs couleurs, sur une "
+          "image transparente : posez-la sur celle exportée pour voir si votre retouche suit les tuiles.",
+          "Die Ränder der 8x8-Kacheln in der Exportgröße, die hier markierten Kacheln in ihren Farben, auf einem "
+          "transparenten Bild: über das exportierte gelegt zeigt es, ob deine Bearbeitung zu den Kacheln passt.",
+          "I bordi delle tile 8x8 alla dimensione dell'esportazione, le tile segnate qui nei loro colori, su "
+          "un'immagine trasparente: sovrapponila a quella esportata per vedere se la modifica segue le tile.",
+          "Los bordes de las losetas de 8x8 al tamaño de la exportación, las marcadas aquí en sus colores, en una "
+          "imagen transparente: ponla encima de la exportada para ver que tu edición cuadra con las losetas."}},
         {S::sheet_export_size, {"Size", "Taille", "Größe", "Dimensione", "Tamaño"}},
         {S::sheet_exported, {"Exported: {0}", "Exporté : {0}", "Exportiert: {0}", "Esportato: {0}", "Exportado: {0}"}},
         {S::sheet_bring_back,

@@ -822,7 +822,7 @@ void draw_model_view(App& app, const Item& item) {
     ImGui::SameLine();
     // asked first whether its animations go with it, when it has some
     const auto choose_export_file = [&app, &item]() {
-        choose_save_file(app, item, "glTF", "gltf", app.dialog_model_exports);
+        choose_save_file(app, export_name(item), "glTF", "gltf", app.dialog_model_exports);
     };
     const int animations = exported_animation_count(s.game);
     if (ImGui::Button(tr(app.language, S::model_export))) {

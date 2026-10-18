@@ -30,6 +30,12 @@ namespace {
 
 namespace assets = khdays::assets;
 
+// the marks, as the view outlines them and the exported grid draws them
+constexpr ImU32 kUnseen = IM_COL32(90, 170, 255, 255);
+constexpr ImU32 kRepeated = IM_COL32(240, 200, 60, 255);
+constexpr ImU32 kConflict = IM_COL32(240, 70, 70, 255);
+constexpr ImU32 kGrid = IM_COL32(128, 128, 128, 255);
+
 struct SheetView {
     bool assembled = true;  // the mode, kept from one sheet to the next
     int item = -1;
@@ -418,6 +424,26 @@ void sheet_export_to(App& app, const fs::path& chosen) {
              e == nullptr);
 }
 
+void sheet_grid_export_to(App& app, const fs::path& chosen) {
+    if (v.item != app.selected || v.assembly.width == 0)
+        return;
+    fs::path file = chosen;
+    if (lower(u8(file.extension())) != ".png")
+        file += ".png";
+    const int scale = v.export_scale > 0 ? v.export_scale : v.current.scale;
+    std::vector<TileMark> marks;  // those the view shows
+    if (v.mark_unseen)
+        marks.push_back({v.unseen, kUnseen});
+    if (v.have_result && v.marks) {
+        marks.push_back({v.result.repeated, kRepeated});
+        marks.push_back({v.result.conflicts, kConflict});
+    }
+    const auto rgba = render_tile_grid(v.assembly, scale, kGrid, marks);
+    const char* e = khdays_png_write(u8(file).c_str(), rgba.data(), v.assembly.width * scale, v.assembly.height * scale);
+    app.tell(e != nullptr ? fmt(app.language, S::save_failed, {e}) : fmt(app.language, S::sheet_exported, {u8(file)}),
+             e == nullptr);
+}
+
 bool draw_sheet_mode(App& app) {
     if (ImGui::RadioButton(tr(app.language, S::sheet_as_tiles), !v.assembled))
         v.assembled = false;
@@ -428,7 +454,6 @@ bool draw_sheet_mode(App& app) {
 }
 
 void draw_sheet_assembled(App& app, const Item& item) {
-    (void)item;
     const std::string mod = app.current_mod() != nullptr ? app.current_mod()->name : std::string();
     if (v.item != app.selected || v.mod != mod)
         open(app);
@@ -602,7 +627,7 @@ void draw_sheet_assembled(App& app, const Item& item) {
         if (v.painting)
             paint_rows(app, game);
         if (v.mark_unseen)
-            mark(game, v.game.scale, v.unseen, IM_COL32(90, 170, 255, 255));
+            mark(game, v.game.scale, v.unseen, kUnseen);
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted(tr(app.language, S::replacement));
         if (!v.have_result && !v.current_from.empty()) {
@@ -614,8 +639,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
                 show(app, key + ":new", v.result_version, v.result_picture, v.assembly.width * v.result.scale,
                      v.assembly.height * v.result.scale, ImVec2(half, box_h));
             if (v.marks) {
-                mark(s, v.result.scale, v.result.repeated, IM_COL32(240, 200, 60, 255));
-                mark(s, v.result.scale, v.result.conflicts, IM_COL32(240, 70, 70, 255));
+                mark(s, v.result.scale, v.result.repeated, kRepeated);
+                mark(s, v.result.scale, v.result.conflicts, kConflict);
             }
         } else {
             ImGui::Dummy(ImVec2(half, box_h));
@@ -639,6 +664,14 @@ void draw_sheet_assembled(App& app, const Item& item) {
     same_line_if_room(button_width(tr(app.language, S::sheet_export)));
     if (ImGui::Button(tr(app.language, S::sheet_export)))
         choose_export(app);
+    same_line_if_room(button_width(tr(app.language, S::sheet_export_grid)));
+    if (ImGui::Button(tr(app.language, S::sheet_export_grid))) {
+        std::string name = export_name(item);
+        name.insert(name.size() - 4, "_grid");  // before ".png"
+        choose_save_file(app, name, "PNG", "png", app.dialog_grids);
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", tr(app.language, S::sheet_export_grid_hint));
     same_line_if_room(button_width(tr(app.language, S::sheet_bring_back)));
     if (ImGui::Button(tr(app.language, S::sheet_bring_back)))
         choose_file(app, app.catalog.items[static_cast<std::size_t>(v.item)]);
@@ -802,7 +835,8 @@ void draw_sheets_export(App& app) {
 void choose_export(App& app) {
     if (v.item < 0 || v.item >= static_cast<int>(app.catalog.items.size()))
         return;
-    choose_save_file(app, app.catalog.items[static_cast<std::size_t>(v.item)], "PNG", "png", app.dialog_exports);
+    choose_save_file(app, export_name(app.catalog.items[static_cast<std::size_t>(v.item)]), "PNG", "png",
+                     app.dialog_exports);
 }
 
 }  // namespace studio

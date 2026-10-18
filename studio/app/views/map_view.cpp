@@ -998,7 +998,7 @@ void line_up(App& app) {
 }
 
 void choose_room_export(App& app, const Item& item) {
-    choose_save_file(app, item, "glTF", "gltf", app.dialog_room_exports);
+    choose_save_file(app, export_name(item), "glTF", "gltf", app.dialog_room_exports);
 }
 
 void draw_replace(App& app, const Item& item) {

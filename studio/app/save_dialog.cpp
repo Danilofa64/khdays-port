@@ -85,9 +85,9 @@ void open(SDL_Window* window, const char* filter, const char* pattern, const std
 
 }  // namespace
 
-void choose_save_file(App& app, const Item& item, const char* filter, const char* pattern,
+void choose_save_file(App& app, const std::string& name, const char* filter, const char* pattern,
                       std::vector<std::string>& queue) {
-    open(app.window, filter, pattern, export_name(item), [a = &app, q = &queue](const std::string& file) {
+    open(app.window, filter, pattern, name, [a = &app, q = &queue](const std::string& file) {
         std::lock_guard lock(a->dialog_mutex);
         q->push_back(file);
     });
