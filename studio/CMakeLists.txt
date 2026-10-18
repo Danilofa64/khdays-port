@@ -96,7 +96,9 @@ add_library(khdays-studio-port STATIC
     "${ROOT}/port/sound/replace.c"            # a mod's sound read as the port reads it
     "${ROOT}/port/sound/third_party_decoders.c"
     "${ROOT}/port/host/render/png_io.c"              # PNG in and out, indexed included
-    "${ROOT}/port/host/movies/movie_hd_win.c")       # videos played as the port plays them (Media Foundation)
+    "${ROOT}/port/host/movies/movie_hd_win.c"        # videos played as the port plays them (Media Foundation)
+    "${ROOT}/port/host/movies/theater_music.c"       # ... with the theater's music
+    "${ROOT}/port/host/movies/music_schedule.c")
 target_include_directories(khdays-studio-port PUBLIC "${ROOT}/assets/include")
 target_include_directories(khdays-studio-port PUBLIC "${cgltf_SOURCE_DIR}" "${ufbx_SOURCE_DIR}")
 target_include_directories(khdays-studio-port PRIVATE "${stb_SOURCE_DIR}" "${dr_libs_SOURCE_DIR}")
