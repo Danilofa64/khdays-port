@@ -139,7 +139,7 @@ To build the port from source instead:
 By default the game is played as on the DS.
 
 - **Keyboard and mouse:** W A S D = D-pad, left button = A, Space = B,
-  Down = X, right button = Y, left Shift or Left = L, middle button or Right =
+  C = X, right button = Y, left Shift or Left = L, middle button or Right =
   R, M or Enter = START, N = SELECT; in a field, with the command menu on the
   D-pad, the wheel moves the command menu up and down and Q and E left and
   right. Any key or mouse button (left, middle, right, the side buttons X1 and

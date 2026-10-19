@@ -58,7 +58,7 @@ static void test_default_profile(void)
     CHECK(first_input(&p, KB, KHDAYS_ACT_RIGHT) == SDL_SCANCODE_D);
     CHECK(first_input(&p, KB, KHDAYS_ACT_A) == mouse + KHDAYS_MOUSE_LEFT);
     CHECK(first_input(&p, KB, KHDAYS_ACT_B) == SDL_SCANCODE_SPACE);
-    CHECK(first_input(&p, KB, KHDAYS_ACT_X) == SDL_SCANCODE_DOWN);
+    CHECK(first_input(&p, KB, KHDAYS_ACT_X) == SDL_SCANCODE_C);
     CHECK(first_input(&p, KB, KHDAYS_ACT_Y) == mouse + KHDAYS_MOUSE_RIGHT);
     CHECK(first_input(&p, KB, KHDAYS_ACT_L) == SDL_SCANCODE_LSHIFT &&
           p.input[KB][BASE][KHDAYS_ACT_L][1] == SDL_SCANCODE_LEFT);
@@ -408,8 +408,8 @@ static void test_settings_file(void)
     CHECK(load_text("version = 1\nthis is not a setting\n", &q) == 1 && memcmp(&p, &q, sizeof(p)) == 0);
 
     /* CRLF, a byte order mark, comments, spaces, any case. */
-    CHECK(load_text("\xef\xbb\xbf# mine\r\n[Keyboard]\r\n  A =  C  \r\n; also mine\r\n", &q) == 0);
-    CHECK(q.input[KB][BASE][KHDAYS_ACT_A][0] == SDL_SCANCODE_C);
+    CHECK(load_text("\xef\xbb\xbf# mine\r\n[Keyboard]\r\n  A =  V  \r\n; also mine\r\n", &q) == 0);
+    CHECK(q.input[KB][BASE][KHDAYS_ACT_A][0] == SDL_SCANCODE_V);
 
     /* Two inputs, and a comment after a value. */
     CHECK(load_text("[gamepad]\nb = south, north   # jump twice over\n", &q) == 0);
@@ -483,7 +483,7 @@ static void test_settings_file(void)
     CHECK(khdays_profile_owner(&q, KB, BASE, SDL_SCANCODE_Z) == KHDAYS_ACT_A);
 
     /* The same action twice: the last one counts. */
-    CHECK(load_text("[keyboard]\na = C\na = V\n", &q) == 1 && q.input[KB][BASE][KHDAYS_ACT_A][0] == SDL_SCANCODE_V);
+    CHECK(load_text("[keyboard]\na = K\na = V\n", &q) == 1 && q.input[KB][BASE][KHDAYS_ACT_A][0] == SDL_SCANCODE_V);
 
     /* Escape is never bound; the gamepad never loses its way to the settings. */
     CHECK(load_text("[keyboard]\nstart = Escape\n", &q) == 1);
@@ -1201,14 +1201,14 @@ static void test_settings_screen(void)
         }
     }
 
-    /* Bind D-pad Up on the keyboard to C (free), then its second cell to Space,
+    /* Bind D-pad Up on the keyboard to V (free), then its second cell to Space,
      * which B has: the menu asks, and "Move it here" moves it. */
     to_section(KHDAYS_SECTION_CONTROLS);
     to_row(KHDAYS_SET_BINDING, KHDAYS_ACT_UP);
     to_cell(0);
     key(SDL_SCANCODE_RETURN); /* D-pad Up, first cell: waits for a key */
-    key(SDL_SCANCODE_C);
-    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][0] == SDL_SCANCODE_C);
+    key(SDL_SCANCODE_V);
+    CHECK(khdays_settings_profile()->input[KB][BASE][KHDAYS_ACT_UP][0] == SDL_SCANCODE_V);
     key(SDL_SCANCODE_RIGHT); /* second cell */
     key(SDL_SCANCODE_RETURN);
     key(SDL_SCANCODE_SPACE); /* B's: a question */
