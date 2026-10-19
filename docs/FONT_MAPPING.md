@@ -56,6 +56,12 @@ itself cancels an inherited rule. Mappings do not chain (A → B does not apply 
 | `camp.mission.screen.N` | One Mission Mode camp screen class |
 | `camp.save` | Standalone camp save (ov009), excluding title-screen load |
 | `field.tutorial` | Field tutorial text, during initial drawing and page turns |
+| `field.hud.information` | INFORMATION message: initial crawl, skip, restoration and retained line |
+| `field.hud.status` | Shared day/status panel, mission objective/progress text and replay caption |
+| `field.hud.area` | Area name, including its measurement and narrow-font choice |
+| `mission.results` | Mission results: summary/status and reward pages |
+| `mission.results.summary` | Result title and status text, including abort/completion |
+| `mission.results.rewards` | Reward headings, item names/counts, descriptions and prompts |
 
 | N | Screen handler class / typical page |
 | --- | --- |
@@ -89,8 +95,8 @@ text retain their usual fonts, even while a tutorial is open.
 
 `KHDAYS_TRACE_TEXT=1` logs scope/binding changes. Startup diagnostics report
 configuration and selected targets. Pre-rendered graphics, the PC menu's host
-fonts, separate camp handles outside these four slots, and other non-camp text
-are outside this implementation.
+fonts, separate camp handles outside these four slots, and other field text
+are outside this implementation. Field HUD and results text are covered below.
 
 ## Mission selection elements
 
@@ -126,6 +132,45 @@ Objectives and Rewards have separate original canvases/drawing functions, so
 use their separate scope keys when they should change too. Their initial text
 is captured separately even before those tabs are selected. Switching tabs only
 publishes the corresponding canvas; it does not change another tab's font.
+
+## Field HUD and mission results
+
+HUD overrides apply only while the corresponding draw/measurement operation runs.
+They do not change dialogue, tutorials, camp choices, or the shared field fonts
+globally. Initial drawing, the INFORMATION crawl and skip, returning from a held
+panel, asynchronous area/status graphics loads, and later status updates all use
+the same scopes. Captured glyphs retain their chosen font after the draw returns.
+
+The day line and the mission's objective/progress text use the same status-panel
+surfaces and are intentionally one `field.hud.status` setting. The area name and
+INFORMATION message are independent. Mission completion and abort results share
+the same result drawing paths, so a `mission.results` parent rule covers both.
+Use its `.summary` and `.rewards` children if those pages need different fonts.
+
+For example, add these entries to `scopes` to use 10all for all these elements:
+
+```json
+"field.hud.information": {
+  "text/font_eu_10.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_10s.nftr": "text/font_eu_10all.nftr"
+},
+"field.hud.status": {
+  "text/font_eu_10.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_10s.nftr": "text/font_eu_10all.nftr"
+},
+"field.hud.area": {
+  "text/font_eu_10.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_10s.nftr": "text/font_eu_10all.nftr"
+},
+"mission.results": {
+  "text/font_eu_10.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_10s.nftr": "text/font_eu_10all.nftr"
+}
+```
+
+Artwork containing lettering, such as the static INFORMATION banner, and result
+counters/ranks drawn from sprite sequences are graphics, not NFTR glyphs. Font
+mappings do not replace those; use the existing texture replacement system.
 
 ## Design and provenance
 
@@ -181,6 +226,29 @@ compositing. Mission scopes extend the active camp screen scope; verified
 mission draw functions can also resolve that scope for fonts outside the four
 common handles. No extra rasterization or per-frame redraw was introduced.
 
+Field HUD/result hooks at the same decompilation revision:
+
+- `Ov002_BeginTextCrawl` measures the INFORMATION line; `StepTextCrawl` draws
+  timed/skipped characters. `HoldPanelScreen` reconstructs the reached prefix
+  when returning from a hold. `SetCaptionText` draws/measures the retained line;
+  `BuildRunSummary` adds replay summary text on a sibling canvas.
+- `Ov002_DrawLoadedCaption` draws the area string cached at caption-context
+  `+0xb4`, including a font_eu_10s fitting test at 120 logical pixels.
+- `Ov002_DrawLoadedPortrait` fills the status canvas at `+0xfc`, formatting the
+  current day in the wide-layout branch or drawing the stored `+0xb8` string.
+  `DrawMessageCaption` refreshes its replay variant. `ShowNoticeText` populates
+  the notice on that surface; `DrawLoadedTally` writes range/progress text into
+  the adjacent `+0x138` canvas. Both use `field.hud.status`.
+- ov005 owns two result contexts. `UpdateResultLabels` draws the result status
+  and configured title. `RenderTextSurface` handles reward headings, names,
+  quantities, descriptions and prompts, including font selection based on text
+  width. Both contexts load font_eu_10; the rewards context also loads 10s.
+  `DrawResultNumber` instead selects sprite sequences and has no font to map.
+
+These are operation scopes, not per-frame renderer callbacks. They use the
+existing scope stack and route cache without changing canvas tracking, VRAM
+ownership, compositing, glyph rasterization or font metrics.
+
 ## Verification
 
 Run `port\tests\run_hd_fonts.cmd` (discovers VS2022 x64); add `asan` for
@@ -195,7 +263,7 @@ of a pre-existing camp scope.
 Mission tests cover all seven roles, inherited defaults for non-body elements,
 explicit original-font cancellation for the three bodies, nested tutorial/mission
 scope restoration, bounded stack overflow recovery, and retained captured fonts.
-Run `python port/tests/font_scope_hooks_test.py` for the three generator tests.
+Run `python port/tests/font_scope_hooks_test.py` for the four generator tests.
 They check both overlays' twelve element wrappers and initial instruction/world
 draws, including parameter comments containing commas or identifier-like words.
 The generated wrapper always pops its scope after the game function returns,
@@ -207,3 +275,12 @@ root → Panels → diary/profiles → Save → root → dialogue, including Mis
 Check initial drawing, alignment, wrapping, and scrolling. Scope changes affect
 new layout/draw operations; text intentionally retained without redrawing keeps
 its captured choice. Editing mappings requires a restart.
+
+HUD/results regression tests also cover each absolute scope on a shared font,
+nested tutorial restoration, return to an enclosing camp scope, retained captured
+identities, parent-rule inheritance, per-area cancellation, and dialogue
+isolation. Generator tests validate all twelve new wrappers against their actual
+source definitions, including early-return functions. In-game verification:
+visit the hub day/area display, receive and skip INFORMATION messages, hold/resume
+the panel via a menu, enter a mission and observe progress changes, then abort
+and complete missions and inspect both results and rewards pages.

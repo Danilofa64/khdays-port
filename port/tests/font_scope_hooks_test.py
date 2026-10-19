@@ -20,7 +20,7 @@ class ScopeHooks(unittest.TestCase):
     def test_mission_hooks(self):
         count = 0
         for rel, hooks in prepare.UI_HOOKS.items():
-            if not any(hook[3] == "scope" for hook in hooks):
+            if not any(hook[3] == "scope" and hook[2].startswith("mission_select.") for hook in hooks):
                 continue
             text = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
             for hook in hooks:
@@ -33,6 +33,36 @@ class ScopeHooks(unittest.TestCase):
                 text = text.replace(before, after)
             count += 1
         self.assertEqual(count, 12)
+
+    def test_field_and_results_hooks(self):
+        expected = {
+            "Ov002_BeginTextCrawl": "field.hud.information",
+            "Ov002_StepTextCrawl": "field.hud.information",
+            "Ov002_HoldPanelScreen": "field.hud.information",
+            "Ov002_SetCaptionText": "field.hud.information",
+            "Ov002_BuildRunSummary": "field.hud.information",
+            "Ov002_DrawLoadedCaption": "field.hud.area",
+            "Ov002_DrawLoadedPortrait": "field.hud.status",
+            "Ov002_DrawLoadedTally": "field.hud.status",
+            "Ov002_DrawMessageCaption": "field.hud.status",
+            "Ov002_ShowNoticeText": "field.hud.status",
+            "Ov005_UpdateResultLabels": "mission.results.summary",
+            "Ov005_RenderTextSurface": "mission.results.rewards",
+        }
+        found = set()
+        for rel, hooks in prepare.UI_HOOKS.items():
+            for name, part, scope, kind in hooks:
+                if name not in expected:
+                    continue
+                self.assertEqual((part, scope, kind), ("text", expected[name], "scope"))
+                source = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+                output = prepare.ui_hook(source, rel, name, part, scope, kind)
+                wrapper = output[output.rfind(f"void {name}(") :]
+                self.assertIn(f'scope_push("{scope}")', wrapper)
+                self.assertLess(wrapper.index("scope_push("), wrapper.index(f"{name}__khdays_game("))
+                self.assertLess(wrapper.index(f"{name}__khdays_game("), wrapper.index("scope_pop("))
+                found.add(name)
+        self.assertEqual(found, set(expected))
 
     def test_initial_instruction_and_world(self):
         count = 0

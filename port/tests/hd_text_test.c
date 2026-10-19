@@ -37,6 +37,10 @@ int khdays_hd_font_select(const char *resource, const char *scope, char *selecte
         snprintf(selected, (size_t)size, "@font-route/mission-body");
         return 1;
     }
+    if (strncmp(scope, "field.hud.", 10) == 0 || strncmp(scope, "mission.results.", 16) == 0) {
+        snprintf(selected, (size_t)size, "@font-route/hud-results");
+        return 1;
+    }
     if (strcmp(scope, "field.tutorial") == 0) {
         snprintf(selected, (size_t)size, "@font-route/tutorial");
         return 1;
@@ -1025,6 +1029,24 @@ int main(void)
     CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
     khdays_ui_text_field_tutorial(0, 0);
     CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+    /* Absolute HUD/results scopes isolate shared fonts from camp and dialogue.
+       Captured choices survive scope exit, and nested draws restore their owner. */
+    const char *hud_scopes[] = {"field.hud.information", "field.hud.status", "field.hud.area",
+                                "mission.results.summary", "mission.results.rewards"};
+    for (int role = 0; role < 5; ++role) {
+        khdays_ui_text_scope_push(hud_scopes[role]);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/hud-results") == 0);
+        CHECK(strcmp(selected_scope, hud_scopes[role]) == 0);
+        draw(0);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/hud-results") == 0);
+        khdays_ui_text_field_tutorial_before(0, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
+        khdays_ui_text_field_tutorial(0, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/hud-results") == 0);
+        khdays_ui_text_scope_pop();
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/hud-results") == 0);
+    }
     test_scope = "camp.story.screen.1";
     const char *roles[] = {"instruction", "world", "header", "summary", "objectives", "rewards", "buttons"};
     for (int role = 0; role < 7; ++role) {

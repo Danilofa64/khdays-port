@@ -1519,6 +1519,29 @@ for _module, _prefix in (
         UI_HOOKS[f"src/overlays/{_module}/{_name}.c"] = [(_name, "text", f"mission_select.{_role}", "scope")]
 
 
+# Field HUD text shares fonts with dialogue; scope only layout/drawing operations.
+for _function, _scope in (
+    ("BeginTextCrawl", "field.hud.information"),
+    ("StepTextCrawl", "field.hud.information"),
+    ("HoldPanelScreen", "field.hud.information"),
+    ("SetCaptionText", "field.hud.information"),
+    ("BuildRunSummary", "field.hud.information"),
+    ("DrawLoadedCaption", "field.hud.area"),
+    ("DrawLoadedPortrait", "field.hud.status"),
+    ("DrawLoadedTally", "field.hud.status"),
+    ("DrawMessageCaption", "field.hud.status"),
+    ("ShowNoticeText", "field.hud.status"),
+):
+    _name = f"Ov002_{_function}"
+    UI_HOOKS[f"src/overlays/scenes/ov002_field/{_name}.c"] = [(_name, "text", _scope, "scope")]
+
+for _function, _role in (("UpdateResultLabels", "summary"), ("RenderTextSurface", "rewards")):
+    _name = f"Ov005_{_function}"
+    UI_HOOKS[f"src/overlays/scenes/ov005_mission_result/{_name}.c"] = [
+        (_name, "text", f"mission.results.{_role}", "scope")
+    ]
+
+
 def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "replace") -> str:
     """`name`'s definition in `text` split in two: the game's body under a
     second name, static, and `name` asking `part`'s mode (UI_HOOKS)."""
