@@ -83,7 +83,6 @@ struct TextureFrame final {
 // TEXA: sprites drawn over part of a texture in turn (blinking lights, eyes).
 struct TextureAnimation final {
     int target = 0;  // GS info index in the container
-    int bits_per_pixel = 0;
     int sprite_count = 0;
     int x = 0;  // where the sprites go in the texture, texels
     int y = 0;
@@ -136,7 +135,6 @@ struct Group final {
 };
 
 struct Bone final {
-    int index = 0;
     int parent = -1;
     std::array<float, 3> scale{1.0F, 1.0F, 1.0F};
     std::array<float, 3> rotation{};  // radians, x y z
@@ -194,7 +192,6 @@ struct PoseValue final {
 // An interpolated motion (the only kind seen in pieces: F-curves, no
 // constraints or expressions), in KH2's world axes like the placements.
 struct Motion final {
-    int joints = 0;
     float start = 0.0F;  // motion frames
     float end = 0.0F;
     float fps = 0.0F;
@@ -204,7 +201,6 @@ struct Motion final {
     bool has_constraints = false;  // not played; reported
 };
 
-Motion read_motion(const std::uint8_t* data, std::size_t size, std::size_t at);
 // The motions of a piece's motion BAR, in its order (empty entries skipped).
 std::vector<Motion> read_motions(const std::uint8_t* data, std::size_t size, std::size_t at);
 float evaluate(const MotionCurve& curve, float time);

@@ -940,6 +940,9 @@ RoomZone room_zone(const RoomCollision& room, float margin) {
     return zone;
 }
 
+namespace {
+
+// The model's drawn triangles (its skies left out), each corner where it is drawn at rest.
 std::vector<std::array<std::array<float, 3>, 3>> drawn_triangles(const assets::ImportedModel& placed) {
     const auto palette = rest_palette(placed);
     std::vector<std::array<std::array<float, 3>, 3>> out;
@@ -954,6 +957,8 @@ std::vector<std::array<std::array<float, 3>, 3>> drawn_triangles(const assets::I
     }
     return out;
 }
+
+}  // namespace
 
 SurfaceMap surface_map(const assets::ImportedModel& placed) {
     SurfaceMap s;

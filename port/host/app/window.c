@@ -889,7 +889,8 @@ void khdays_host_frame_publish(KhdaysFramePackage *package)
     }
 }
 
-void khdays_host_input(KhdaysInputSnapshot *out)
+/* Copies the latest snapshot. Headless (no window), everything is 0. */
+static void khdays_host_input(KhdaysInputSnapshot *out)
 {
     if (input_lock == NULL) {
         memset(out, 0, sizeof(*out));

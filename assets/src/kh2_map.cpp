@@ -249,7 +249,6 @@ void read_object_model(const Bytes& b, const std::size_t h, Model& model) {
     for (std::uint16_t i = 0; i < bones; ++i) {
         const std::size_t o = h + bone_table + i * 0x40U;
         Bone bone;
-        bone.index = b.u16(o);
         bone.parent = b.i32(o + 4);
         bone.scale = {b.f32(o + 0x10), b.f32(o + 0x14), b.f32(o + 0x18)};
         bone.rotation = {b.f32(o + 0x20), b.f32(o + 0x24), b.f32(o + 0x28)};
@@ -343,7 +342,6 @@ TextureAnimation read_texa(const Bytes& b, const std::size_t t, const std::size_
     TextureAnimation a;
     a.target = b.u16(t + 2);
     const std::uint16_t stride = b.u16(t + 4);
-    a.bits_per_pixel = b.u16(t + 6);
     const std::uint16_t animations = b.u16(t + 12);
     a.sprite_count = b.u16(t + 14);
     a.x = b.u16(t + 16);
@@ -628,6 +626,8 @@ std::vector<Placement> read_placements(const std::uint8_t* data, const std::size
     return rows;
 }
 
+namespace {
+
 Motion read_motion(const std::uint8_t* data, const std::size_t size, const std::size_t at) {
     const Bytes b(data, size);
     const std::size_t base = at + 0x90;  // the tables' offsets count from here
@@ -637,7 +637,6 @@ Motion read_motion(const std::uint8_t* data, const std::size_t size, const std::
     }
     const std::size_t h = base + 16;
     Motion m;
-    m.joints = b.i16(h);
     const std::int32_t pose_at = b.i32(h + 0x14);
     const std::int32_t pose_count = b.i32(h + 0x18);
     const std::int32_t curves_at = b.i32(h + 0x20);
@@ -683,6 +682,8 @@ Motion read_motion(const std::uint8_t* data, const std::size_t size, const std::
     }
     return m;
 }
+
+}  // namespace
 
 std::vector<Motion> read_motions(const std::uint8_t* data, const std::size_t size, const std::size_t at) {
     std::vector<Motion> out;

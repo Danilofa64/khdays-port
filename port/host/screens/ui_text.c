@@ -69,8 +69,6 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_ENHANCEMENTS] = {"Enhancements", "Améliorations", "Verbesserungen", "Miglioramenti", "Mejoras"},
     [TXT_STICKS_AND_CAMERA] = {"Sticks and camera", "Sticks et caméra", "Sticks und Kamera", "Levette e telecamera",
                                "Palancas y cámara"},
-    [TXT_RESTORE_DEFAULTS] = {"Restore defaults", "Valeurs par défaut", "Standard wiederherstellen",
-                              "Ripristina predefiniti", "Restablecer valores"},
     [TXT_LANGUAGE] = {"Language", "Langue", "Sprache", "Lingua", "Idioma"},
     /* a scene keeps the language it was built in */
     [TXT_LANGUAGE_NOTE] = {"This menu changes at once; the game's own text when the screen you are on ends (a "
@@ -103,9 +101,6 @@ static const char *const texts[TXT_COUNT][5] = {
     [TXT_SYSTEM] = {"System", "Système", "System", "Sistema", "Sistema"},
     [TXT_CLOSE] = {"Close", "Fermer", "Schließen", "Chiudi", "Cerrar"},
     [TXT_BACK] = {"Back", "Retour", "Zurück", "Indietro", "Volver"},
-    [TXT_TITLE_SETTINGS] = {"Settings - %s", "Réglages - %s", "Einstellungen - %s", "Impostazioni - %s",
-                            "Ajustes - %s"},
-    [TXT_TITLE_CONTROLS] = {"Controls - %s", "Commandes - %s", "Steuerung - %s", "Comandi - %s", "Controles - %s"},
     [TXT_NO_GAMEPAD] = {"No gamepad connected", "Aucune manette connectée", "Kein Controller verbunden",
                         "Nessun controller collegato", "Ningún mando conectado"},
     [TXT_NOTHING] = {"Nothing", "Rien", "Nichts", "Niente", "Nada"},
@@ -447,11 +442,6 @@ static const char *const texts[TXT_COUNT][5] = {
                                  "Der DS zeichnet Texturen ohne Glättung.", "Il DS disegna le texture senza filtro.",
                                  "La DS dibuja las texturas sin suavizado."},
     [TXT_VIDEO_HD] = {"HD graphics", "Graphismes HD", "HD-Grafiken", "Grafica HD", "Gráficos HD"},
-    [TXT_VIDEO_HD_NOTE] = {"Uses the replacements in your mods' folders.",
-                           "Utilise les remplacements des dossiers de vos mods.",
-                           "Verwendet die Ersatzgrafiken in den Ordnern deiner Mods.",
-                           "Usa le sostituzioni nelle cartelle delle tue mod.",
-                           "Usa los reemplazos de las carpetas de tus mods."},
     [TXT_VIDEO_DUMP] = {"Dump graphics", "Extraire les graphismes", "Grafiken ausgeben", "Esporta grafica",
                         "Volcar gráficos"},
     [TXT_VIDEO_DUMP_NOTE] = {"Writes every texture and graphic shown to saves/dump, and the colours each 2D sheet is "

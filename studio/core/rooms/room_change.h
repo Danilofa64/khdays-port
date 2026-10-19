@@ -116,9 +116,6 @@ RoomZone room_zone(const RoomCollision& room, float margin);
 // how far past the room's floor and walls a cut model is kept, at first (the game's units)
 constexpr float kZoneMargin = 6.0f;
 
-// The model's drawn triangles (its skies left out), each corner where it is drawn at rest.
-std::vector<std::array<std::array<float, 3>, 3>> drawn_triangles(const khdays::assets::ImportedModel& placed);
-
 // A model's surfaces that are not walls (their normal's y past 0.3 either way), found from above.
 struct SurfaceMap {
     std::vector<std::array<std::array<float, 3>, 3>> triangles;

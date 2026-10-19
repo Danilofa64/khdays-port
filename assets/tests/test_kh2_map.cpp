@@ -641,9 +641,7 @@ void test_map() {
            "UVSC");
     expect(textures.animations.size() == 1, "TEXA");
     const auto& a = textures.animations[0];
-    expect(a.target == 0 && a.bits_per_pixel == 4 && a.sprite_count == 2 && a.x == 64 && a.width == 32 &&
-               a.height == 32,
-           "TEXA header");
+    expect(a.target == 0 && a.sprite_count == 2 && a.x == 64 && a.width == 32 && a.height == 32, "TEXA header");
     expect(a.animations.size() == 1 && a.animations[0].size() == 3, "TEXA frames");
     const auto& f = a.animations[0];
     expect(f[0].kind == kh2::TextureFrame::Kind::Sprite && f[0].min_length == 10 && f[0].sprite == 0, "frame 0");
@@ -688,7 +686,7 @@ void test_map() {
     const auto moves = kh2::read_motions(file.data(), file.size(), e[6].offset);
     expect(moves.size() == 1, "motions (empty skipped)");
     const auto& m = moves[0];
-    expect(m.joints == 1 && near(m.end, 20.0F) && near(m.fps, 30.0F) && !m.has_constraints, "motion header");
+    expect(near(m.end, 20.0F) && near(m.fps, 30.0F) && !m.has_constraints, "motion header");
     expect(m.pose.size() == 1 && m.pose[0].channel == 7 && near(m.pose[0].value, 5.0F), "pose");
     expect(m.curves.size() == 2 && m.curves[0].channel == 6 && m.curves[0].post == 2 && m.curves[0].keys.size() == 3,
            "curves");

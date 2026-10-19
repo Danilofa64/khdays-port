@@ -40,10 +40,6 @@ std::filesystem::path kh2_folder(const std::filesystem::path& root);
 // made its HD pieces from (setup/state.json); empty when neither names a folder that is there.
 std::filesystem::path kh2_collection(const Settings& settings);
 
-// The collection's archives that hold KH2's maps, in the order they are asked: kh2_first, kh2_fifth,
-// kh2_sixth, in its language folder (Image/dt: Steam's, Image/en: the Epic Games Store's).
-std::vector<std::filesystem::path> kh2_archives(const std::filesystem::path& collection);
-
 // The maps of KH2's world `world` (tt) the copy holds (<world>00 to <world>99), in order; false with
 // the reason (no collection, no archive, the reader not run).
 bool kh2_world_maps(const Settings& settings, const std::string& world, std::vector<std::string>* maps,

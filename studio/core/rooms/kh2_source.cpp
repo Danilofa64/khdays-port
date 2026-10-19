@@ -147,6 +147,23 @@ fs::path kh2_collection(const Settings& settings) {
 
 namespace {
 
+// The collection's archives that hold KH2's maps, in the order they are asked: kh2_first, kh2_fifth,
+// kh2_sixth, in its language folder (Image/dt: Steam's, Image/en: the Epic Games Store's).
+std::vector<fs::path> kh2_archives(const fs::path& collection) {
+    std::vector<fs::path> out;
+    std::error_code ec;
+    for (const char* archive : {"kh2_first", "kh2_fifth", "kh2_sixth"}) {
+        for (const char* language : {"dt", "en"}) {
+            const fs::path base = collection / "Image" / language / archive;
+            if (fs::is_regular_file(fs::path(base).concat(".hed"), ec)) {
+                out.push_back(base);
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 // The player's collection and its KH2 archives; false with the reason when either is missing.
 bool collection_archives(const Settings& settings, fs::path* collection, std::vector<fs::path>* archives,
                          std::string* why) {
@@ -164,21 +181,6 @@ bool collection_archives(const Settings& settings, fs::path* collection, std::ve
 }
 
 }  // namespace
-
-std::vector<fs::path> kh2_archives(const fs::path& collection) {
-    std::vector<fs::path> out;
-    std::error_code ec;
-    for (const char* archive : {"kh2_first", "kh2_fifth", "kh2_sixth"}) {
-        for (const char* language : {"dt", "en"}) {
-            const fs::path base = collection / "Image" / language / archive;
-            if (fs::is_regular_file(fs::path(base).concat(".hed"), ec)) {
-                out.push_back(base);
-                break;
-            }
-        }
-    }
-    return out;
-}
 
 bool kh2_world_maps(const Settings& settings, const std::string& world, std::vector<std::string>* maps,
                     std::string* why) {

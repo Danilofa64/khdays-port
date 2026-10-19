@@ -108,11 +108,8 @@ typedef struct KhdaysInputSnapshot {
     uint16_t enhancements;     /* KHDAYS_ENH_* switched on */
 } KhdaysInputSnapshot;
 
-/* Copies the latest snapshot. Headless (no window), everything is 0. */
-void khdays_host_input(KhdaysInputSnapshot *out);
-
-/* The same for the game's own read of the pad, once a game frame: a button pressed and let go since
- * the last read still counts as held this once (press_edges.h). */
+/* The latest snapshot, for the game's own read of the pad once a game frame: a button pressed and let
+ * go since the last read still counts as held this once (press_edges.h). Headless, everything is 0. */
 void khdays_host_input_take(KhdaysInputSnapshot *out);
 
 /* The DS buttons held (KHDAYS_KEY_* bits, runtime/input/input.h), from the latest
