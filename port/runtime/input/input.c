@@ -314,8 +314,9 @@ static u16 player_buttons(void)
     /* Lock-on on its own buttons: while the game's lock-on logic takes the buttons (it did last frame),
      * their presses become the DS's R presses for them; anywhere else they are the DS's R and L. */
     const int lock_on = (snapshot.enhancements & KHDAYS_ENH_SEPARATE_LOCK_ON) != 0;
-    const int lock_field =
-        lock_on && pad_samples > 0 && game->selection_frame == pad_samples && game->selection_live_frame == pad_samples;
+    /* (with the 3D on both screens it runs on every other frame: the frame before counts too) */
+    const int lock_field = lock_on && pad_samples > 0 && pad_samples - game->selection_frame <= 1u &&
+                           pad_samples - game->selection_live_frame <= 1u;
     const uint32_t lock_actions = ((snapshot.actions & KHDAYS_ACTION_LOCK_ON) ? 1u << KHDAYS_LOCK_ON : 0) |
                                   ((snapshot.actions & KHDAYS_ACTION_TARGET_NEXT) ? 1u << KHDAYS_LOCK_NEXT : 0) |
                                   ((snapshot.actions & KHDAYS_ACTION_TARGET_PREV) ? 1u << KHDAYS_LOCK_PREV : 0);

@@ -3443,6 +3443,11 @@ event shows the lower screen in the picture's place while they last (as KH Melon
 battle the two screens as one, joined in the middle (`halves`: Roxas's left half and Sora's right
 half, the fights in step, each at its own brightness), the HUD over them. The route: the door north of the exterior's start
 (x 0, z -19.6) to the first event, Phil's "¿Todo listo?" answered Sí (UP then A), then A all along.
+The two fights take turns, a frame each: `Ov023_Dual3DUpdate` publishes the screen it draws in
+`data_0204be04`, and `Ov022_ReadSelectionInput` drops L and R on the memory's frames (not 0), so a
+lock-on press made then was lost (the testers: "it does not let me lock on"). The port keeps such a
+press for the player's next frame, and reads the lock-on's state on the player's frames alone
+(`port/tools/prepare.py`, `runtime/input/controls_hooks.c`).
 Then the credits (2026-10-15, through the Theater's last entry, "El lugar de siempre", with a copy
 of the maintainer's save and `movies = ds`): after the movie, ov011's staff roll runs up both
 screens as one -- the names, the characters' pictures at the left, the game's logo, last the END

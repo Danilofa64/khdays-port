@@ -79,6 +79,30 @@ void khdays_controls_selection(int locked, int scheme, int held, int pressed, in
     last_selected = selected;
 }
 
+/* With the 3D on both screens (Sora's memories) the game runs the memory's battle on every other frame,
+ * whose lock-on logic drops the buttons (data_0204be04, the screen shown, is not 0 there): an L or R
+ * press read then is kept for the player's next frame, so none is lost. */
+#define KEPT_FRAMES 4
+
+int khdays_controls_selection_pressed(int pressed, int other_screen)
+{
+    static int kept;
+    static uint32_t kept_at;
+    const uint32_t now = khdays_input_game_frames();
+    if (other_screen) {
+        if ((pressed & 0x300) != 0) {
+            kept |= pressed & 0x300;
+            kept_at = now;
+        }
+        return pressed;
+    }
+    if (kept != 0 && now - kept_at <= KEPT_FRAMES) {
+        pressed |= kept;
+    }
+    kept = 0;
+    return pressed;
+}
+
 void khdays_controls_selection_live(int live)
 {
     if (live) {

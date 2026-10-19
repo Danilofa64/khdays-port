@@ -1193,21 +1193,30 @@ HOOKS = {
             '#include "nitro/types.h"\n'
             "extern void khdays_trace_call(const char *what);\n"
             "extern void khdays_trace_call_arg(const char *what, int arg);\n"
-            "extern void *khdays_trace_pointer(const char *what, void *result);\n",
+            "extern void *khdays_trace_pointer(const char *what, void *result);\n"
+            "extern int khdays_controls_selection_pressed(int pressed, int other_screen);\n",
         ),
         (
+            # the player's battle only: with the 3D on both screens Sora's memory's runs on the other frames
+            # (data_0204be04 1), and the L and R pressed then are kept for the player's next frame
             "    held = gPadHeld;\n",
             "    { extern void khdays_controls_selection(int locked, int scheme, int held, int pressed, int flags,"
             " int active, int selected, int repeat100, int repeat200, int repeat_any);\n"
+            "      if (runtimeMode == 0)\n"
             "      khdays_controls_selection(context->flags0 & 4, GameState_GetField(0x37c4, 1), gPadHeld,"
             " gPadPressed, context->flags0, context->activationState, context->selectedIndex,"
             " context->repeat100, context->repeat200, context->repeatAny); }\n"
             "    held = gPadHeld;\n",
         ),
         (
+            "    pressed = gPadPressed;\n",
+            "    pressed = (s16)khdays_controls_selection_pressed(gPadPressed, runtimeMode != 0);\n",
+        ),
+        (
             "    if (suppressInput != 0) {\n        held = 0;\n        pressed = 0;\n    }\n",
             "    if (suppressInput != 0) {\n        held = 0;\n        pressed = 0;\n    }\n"
-            "    { extern void khdays_controls_selection_live(int live); khdays_controls_selection_live(!suppressInput); }\n",
+            "    { extern void khdays_controls_selection_live(int live);\n"
+            "      if (runtimeMode == 0) khdays_controls_selection_live(!suppressInput); }\n",
         ),
         (
             "Ov022_SetSelectionEnabled(0);",
