@@ -61,7 +61,7 @@ Source: "{#Stage}\setup\python\*"; DestDir: "{tmp}\helper\setup\python"; Exclude
 Source: "{#Stage}\installer\*"; DestDir: "{tmp}\helper\installer"; Flags: dontcopy recursesubdirs
 Source: "{#Stage}\tools\*"; DestDir: "{tmp}\helper\tools"; Flags: dontcopy
 ; the port, its tools and its Python (the studio is apart, installed only when chosen)
-Source: "{#Stage}\*"; DestDir: "{app}"; Excludes: "studio\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#Stage}\*"; DestDir: "{app}"; Excludes: "\studio"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; the mod studio, beside the port so it shares the game's data, only if the player chose it
 Source: "{#Stage}\studio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: studio
 
@@ -77,6 +77,8 @@ Name: "{autoprograms}\KH Studio"; Filename: "{app}\khdays-studio.exe"; WorkingDi
 ; the shortcut earlier versions made, its name cut at the "/" into a folder of its own
 Type: files; Name: "{autoprograms}\KH 358\2 Days Port.lnk"
 Type: dirifempty; Name: "{autoprograms}\KH 358"
+; the empty studio folder earlier versions left (the studio goes beside the port)
+Type: dirifempty; Name: "{app}\studio"
 
 [Run]
 ; make the install folder writable by the player (the SID is the Users group, name-independent),
