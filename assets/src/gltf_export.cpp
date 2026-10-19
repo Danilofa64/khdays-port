@@ -523,17 +523,21 @@ std::string to_gltf(const NeutralModel& model, const std::map<std::string, GltfT
     return out.str();
 }
 
-std::string scene_to_gltf(const Scene& scene) {
-    Writer w;
-    w.accessors << std::setprecision(9);
-    const std::size_t nnodes = scene.nodes.size();
+namespace {
 
-    // the materials, their pictures and samplers (one per way past 0..1)
+// The scene's materials, with the images, textures and samplers they take (a sampler per way past 0..1).
+struct SceneMaterials final {
     std::ostringstream materials, images, textures, samplers;
-    materials << std::setprecision(9);
     std::map<std::string, int> image_of;
+};
+
+void write_materials(const Scene& scene, SceneMaterials& out) {
+    std::ostringstream &materials = out.materials, &images = out.images, &textures = out.textures,
+                       &samplers = out.samplers;
+    std::map<std::string, int>& image_of = out.image_of;
     std::map<std::pair<bool, bool>, int> sampler_of;
     std::map<std::pair<std::string, int>, int> texture_of;
+    materials << std::setprecision(9);
     for (std::size_t m = 0; m < scene.materials.size(); ++m) {
         const SceneMaterial& mat = scene.materials[m];
         using AlphaMode = NeutralMesh::AlphaMode;
@@ -590,13 +594,24 @@ std::string scene_to_gltf(const Scene& scene) {
         }
         materials << "}";
     }
+}
 
-    // the meshes, each on a node of its own under the node it hangs from; a skin per skinned mesh
+// The scene's meshes and their skins, their data into `w`: each mesh's place in the file and its skin's
+// (-1 none).
+struct SceneMeshes final {
     std::ostringstream meshes, skins;
-    std::vector<int> mesh_skin(scene.meshes.size(), -1);
     int nmeshes = 0;
     int nskins = 0;
-    std::vector<int> mesh_of(scene.meshes.size(), -1);
+    std::vector<int> mesh_of, mesh_skin;
+};
+
+void write_meshes(const Scene& scene, Writer& w, SceneMeshes& out) {
+    std::ostringstream &meshes = out.meshes, &skins = out.skins;
+    int &nmeshes = out.nmeshes, &nskins = out.nskins;
+    std::vector<int>& mesh_of = out.mesh_of;
+    std::vector<int>& mesh_skin = out.mesh_skin;
+    mesh_of.assign(scene.meshes.size(), -1);
+    mesh_skin.assign(scene.meshes.size(), -1);
     for (std::size_t m = 0; m < scene.meshes.size(); ++m) {
         const SceneMesh& mesh = scene.meshes[m];
         std::ostringstream primitives;
@@ -658,10 +673,14 @@ std::string scene_to_gltf(const Scene& scene) {
             mesh_skin[m] = nskins++;
         }
     }
+}
 
-    // the nodes: the scene's, then one per mesh
+// The nodes: the scene's, then one per mesh under the node it hangs from; the scene's roots into `roots`.
+std::string write_nodes(const Scene& scene, const SceneMeshes& written, std::vector<std::size_t>& roots) {
+    const std::size_t nnodes = scene.nodes.size();
+    const std::vector<int>& mesh_of = written.mesh_of;
+    const std::vector<int>& mesh_skin = written.mesh_skin;
     std::vector<std::vector<std::size_t>> children(nnodes);
-    std::vector<std::size_t> roots;
     for (std::size_t n = 0; n < nnodes; ++n) {
         const int p = scene.nodes[n].parent;
         if (p >= 0 && static_cast<std::size_t>(p) < nnodes && p != static_cast<int>(n))
@@ -712,7 +731,12 @@ std::string scene_to_gltf(const Scene& scene) {
         nodes << "}";
     }
 
-    // the animations: linear keys; rotations kept on the side of the key before (the short way)
+    return nodes.str();
+}
+
+// The animations, their keys into `w`: linear, rotations kept on the side of the key before (the short
+// way). How many into `count`.
+std::string write_animations(const Scene& scene, Writer& w, int& count) {
     std::ostringstream anims;
     anims << std::setprecision(9);
     int nanims = 0;
@@ -757,24 +781,42 @@ std::string scene_to_gltf(const Scene& scene) {
         ++nanims;
     }
 
+    count = nanims;
+    return anims.str();
+}
+
+}  // namespace
+
+std::string scene_to_gltf(const Scene& scene) {
+    Writer w;
+    w.accessors << std::setprecision(9);
+    SceneMaterials materials;
+    write_materials(scene, materials);
+    SceneMeshes meshes;
+    write_meshes(scene, w, meshes);
+    std::vector<std::size_t> roots;
+    const std::string nodes = write_nodes(scene, meshes, roots);
+    int nanims = 0;
+    const std::string anims = write_animations(scene, w, nanims);
+
     std::ostringstream out;
     out << std::setprecision(9);
     out << "{\"asset\":{\"version\":\"2.0\",\"generator\":\"khdays-studio\"},\"scene\":0,\"scenes\":[{\"name\":"
         << json_string(scene.name) << ",\"nodes\":[";
     for (std::size_t r = 0; r < roots.size(); ++r)
         out << (r ? "," : "") << roots[r];
-    out << "]}],\"nodes\":[" << nodes.str() << "]";
-    if (nmeshes)
-        out << ",\"meshes\":[" << meshes.str() << "]";
-    if (nskins)
-        out << ",\"skins\":[" << skins.str() << "]";
+    out << "]}],\"nodes\":[" << nodes << "]";
+    if (meshes.nmeshes)
+        out << ",\"meshes\":[" << meshes.meshes.str() << "]";
+    if (meshes.nskins)
+        out << ",\"skins\":[" << meshes.skins.str() << "]";
     if (nanims)
-        out << ",\"animations\":[" << anims.str() << "]";
+        out << ",\"animations\":[" << anims << "]";
     if (!scene.materials.empty())
-        out << ",\"materials\":[" << materials.str() << "]";
-    if (!image_of.empty()) {
-        out << ",\"samplers\":[" << samplers.str() << "],\"images\":[" << images.str() << "],\"textures\":["
-            << textures.str() << "]";
+        out << ",\"materials\":[" << materials.materials.str() << "]";
+    if (!materials.image_of.empty()) {
+        out << ",\"samplers\":[" << materials.samplers.str() << "],\"images\":[" << materials.images.str()
+            << "],\"textures\":[" << materials.textures.str() << "]";
     }
     out << ",\"buffers\":[{\"byteLength\":" << w.buffer.size() << ",\"uri\":\"data:application/octet-stream;base64,"
         << base64(w.buffer) << "\"}],\"bufferViews\":[" << w.views.str() << "],\"accessors\":[" << w.accessors.str()

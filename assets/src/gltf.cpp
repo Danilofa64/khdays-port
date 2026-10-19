@@ -35,6 +35,10 @@
 
 namespace {
 
+using khdays::assets::ImportedAnimation;
+using khdays::assets::ImportedTrack;
+using khdays::assets::NeutralMesh;
+
 const cgltf_accessor* find_attribute(const cgltf_primitive& primitive, const cgltf_attribute_type type) {
     for (cgltf_size i = 0; i < primitive.attributes_count; ++i) {
         const auto& attr = primitive.attributes[i];
@@ -193,6 +197,93 @@ Json extras(const cgltf_extras& e) {
     } catch (const std::exception&) {
         return {};
     }
+}
+
+// A material's moving textures (the port's extras khdays_scroll and khdays_frames) into `mesh`: a
+// scroll in 0..1 a game frame, kept as texels of its `w` x `h` texture, and pictures shown in turn.
+// `picture` loads a picture the frames name; one it cannot is drawn as the mesh's own texture.
+template <typename LoadPicture>
+void read_moving_textures(const Json& e, float w, float h, const std::string& own, const LoadPicture& picture,
+                          NeutralMesh& mesh) {
+    const Json* scroll = e.get("khdays_scroll");
+    if (scroll != nullptr && scroll->items.size() == 2) {
+        mesh.scroll = {static_cast<float>(scroll->items[0].number) * w,
+                       static_cast<float>(scroll->items[1].number) * h};
+    }
+    const Json* frames = e.get("khdays_frames");
+    const Json* pictures = frames != nullptr ? frames->get("pictures") : nullptr;
+    const Json* steps = frames != nullptr ? frames->get("frames") : nullptr;
+    if (pictures == nullptr || steps == nullptr) {
+        return;
+    }
+    std::vector<std::string> names;
+    for (const Json& name : pictures->items) {
+        names.push_back(picture(name.text) ? name.text : own);
+    }
+    for (const Json& step : steps->items) {
+        if (step.items.size() != 2) {
+            continue;
+        }
+        const auto shown = static_cast<std::size_t>(step.items[0].number);
+        mesh.texture_frames.emplace_back(shown < names.size() ? names[shown] : own,
+                                         static_cast<int>(step.items[1].number));
+    }
+    const Json* loop = frames->get("loop");
+    mesh.texture_frames_loop = loop == nullptr || loop->is_true();
+    const Json* from = frames->get("loop_from");
+    mesh.texture_frames_loop_from = from != nullptr ? static_cast<std::size_t>(from->number) : 0U;
+}
+
+// The file's own animations of its nodes (the port's extras khdays_loop and khdays_loop_from say how
+// they loop; morph weights are not read).
+std::vector<ImportedAnimation> read_animations(const cgltf_data* data) {
+    std::vector<ImportedAnimation> animations;
+    for (cgltf_size a = 0; a < data->animations_count; ++a) {
+        const cgltf_animation& animation = data->animations[a];
+        ImportedAnimation out;
+        out.name = animation.name != nullptr ? animation.name : "animation_" + std::to_string(a);
+        const Json e = extras(animation.extras);
+        const Json* loop = e.get("khdays_loop");
+        out.loop = loop != nullptr && loop->is_true();
+        const Json* from = e.get("khdays_loop_from");
+        out.loop_from = from != nullptr ? static_cast<float>(from->number) : 0.0F;
+        for (cgltf_size c = 0; c < animation.channels_count; ++c) {
+            const cgltf_animation_channel& channel = animation.channels[c];
+            const cgltf_animation_sampler* sampler = channel.sampler;
+            if (sampler == nullptr || channel.target_node == nullptr || sampler->input == nullptr ||
+                sampler->output == nullptr) {
+                continue;
+            }
+            ImportedTrack track;
+            track.node = static_cast<int>(channel.target_node - data->nodes);
+            cgltf_size n = 3;
+            switch (channel.target_path) {
+            case cgltf_animation_path_type_translation: track.path = ImportedTrack::Path::translation; break;
+            case cgltf_animation_path_type_rotation:
+                track.path = ImportedTrack::Path::rotation;
+                n = 4;
+                break;
+            case cgltf_animation_path_type_scale: track.path = ImportedTrack::Path::scale; break;
+            default: continue;
+            }
+            track.step = sampler->interpolation == cgltf_interpolation_type_step;
+            // a cubic spline's keys hold (in tangent, value, out tangent): its values, drawn linear
+            const bool cubic = sampler->interpolation == cgltf_interpolation_type_cubic_spline;
+            const cgltf_size keys = sampler->input->count;
+            track.times.resize(keys);
+            track.values.resize(keys * n);
+            for (cgltf_size k = 0; k < keys; ++k) {
+                cgltf_accessor_read_float(sampler->input, k, &track.times[k], 1);
+                cgltf_accessor_read_float(sampler->output, cubic ? k * 3 + 1 : k, &track.values[k * n], n);
+                out.duration = std::max(out.duration, track.times[k]);
+            }
+            out.tracks.push_back(std::move(track));
+        }
+        if (!out.tracks.empty()) {
+            animations.push_back(std::move(out));
+        }
+    }
+    return animations;
 }
 
 std::string image_key(const cgltf_image* image, std::size_t fallback_index) {
@@ -465,34 +556,7 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
             }
             out_mesh.sky = sky[n] != 0;
             if (primitive.material != nullptr) {
-                // the port's moving textures: a scroll in 0..1 a game frame (as texels here), pictures in turn
-                const Json e = extras(primitive.material->extras);
-                const Json* scroll = e.get("khdays_scroll");
-                if (scroll != nullptr && scroll->items.size() == 2) {
-                    out_mesh.scroll = {static_cast<float>(scroll->items[0].number) * tex_w,
-                                       static_cast<float>(scroll->items[1].number) * tex_h};
-                }
-                const Json* frames = e.get("khdays_frames");
-                const Json* pictures = frames != nullptr ? frames->get("pictures") : nullptr;
-                const Json* steps = frames != nullptr ? frames->get("frames") : nullptr;
-                if (pictures != nullptr && steps != nullptr) {
-                    std::vector<std::string> names;
-                    for (const Json& name : pictures->items) {
-                        names.push_back(picture(name.text) ? name.text : texture_key);
-                    }
-                    for (const Json& step : steps->items) {
-                        if (step.items.size() != 2) {
-                            continue;
-                        }
-                        const auto shown = static_cast<std::size_t>(step.items[0].number);
-                        out_mesh.texture_frames.emplace_back(shown < names.size() ? names[shown] : texture_key,
-                                                             static_cast<int>(step.items[1].number));
-                    }
-                    const Json* loop = frames->get("loop");
-                    out_mesh.texture_frames_loop = loop == nullptr || loop->is_true();
-                    const Json* from = frames->get("loop_from");
-                    out_mesh.texture_frames_loop_from = from != nullptr ? static_cast<std::size_t>(from->number) : 0U;
-                }
+                read_moving_textures(extras(primitive.material->extras), tex_w, tex_h, texture_key, picture, out_mesh);
             }
 
             const auto vertex_count = positions->count;
@@ -567,52 +631,7 @@ ImportedModel import_gltf(const std::filesystem::path& input_path) {
         }
     }
 
-    // The file's own animations of its nodes (morph weights are not read).
-    for (cgltf_size a = 0; a < data->animations_count; ++a) {
-        const cgltf_animation& animation = data->animations[a];
-        ImportedAnimation out;
-        out.name = animation.name != nullptr ? animation.name : "animation_" + std::to_string(a);
-        const Json e = extras(animation.extras);
-        const Json* loop = e.get("khdays_loop");
-        out.loop = loop != nullptr && loop->is_true();
-        const Json* from = e.get("khdays_loop_from");
-        out.loop_from = from != nullptr ? static_cast<float>(from->number) : 0.0F;
-        for (cgltf_size c = 0; c < animation.channels_count; ++c) {
-            const cgltf_animation_channel& channel = animation.channels[c];
-            const cgltf_animation_sampler* sampler = channel.sampler;
-            if (sampler == nullptr || channel.target_node == nullptr || sampler->input == nullptr ||
-                sampler->output == nullptr) {
-                continue;
-            }
-            ImportedTrack track;
-            track.node = node_index(channel.target_node);
-            cgltf_size n = 3;
-            switch (channel.target_path) {
-            case cgltf_animation_path_type_translation: track.path = ImportedTrack::Path::translation; break;
-            case cgltf_animation_path_type_rotation:
-                track.path = ImportedTrack::Path::rotation;
-                n = 4;
-                break;
-            case cgltf_animation_path_type_scale: track.path = ImportedTrack::Path::scale; break;
-            default: continue;
-            }
-            track.step = sampler->interpolation == cgltf_interpolation_type_step;
-            // a cubic spline's keys hold (in tangent, value, out tangent): its values, drawn linear
-            const bool cubic = sampler->interpolation == cgltf_interpolation_type_cubic_spline;
-            const cgltf_size keys = sampler->input->count;
-            track.times.resize(keys);
-            track.values.resize(keys * n);
-            for (cgltf_size k = 0; k < keys; ++k) {
-                cgltf_accessor_read_float(sampler->input, k, &track.times[k], 1);
-                cgltf_accessor_read_float(sampler->output, cubic ? k * 3 + 1 : k, &track.values[k * n], n);
-                out.duration = std::max(out.duration, track.times[k]);
-            }
-            out.tracks.push_back(std::move(track));
-        }
-        if (!out.tracks.empty()) {
-            result.animations.push_back(std::move(out));
-        }
-    }
+    result.animations = read_animations(data);
 
     for (auto& [key, texture] : loaded) {
         result.textures.emplace_back(key, std::move(texture));

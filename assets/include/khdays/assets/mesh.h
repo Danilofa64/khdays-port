@@ -61,8 +61,8 @@ struct NeutralMesh final {
     std::array<bool, 2> repeat{true, true};
     std::array<bool, 2> mirror{false, false};
     // An imported room's moving textures (its glTF's extras): texture coordinates (texels) added each
-    // game frame; textures shown in turn (texture name, game frames), from texture_frames_loop_from
-    // again after the last when looping. Drawn around the camera, behind everything: a sky.
+    // game frame, and textures shown in turn (name, game frames), from texture_frames_loop_from again
+    // after the last when looping. `sky`: drawn around the camera, behind everything.
     std::array<float, 2> scroll{0.0F, 0.0F};
     std::vector<std::pair<std::string, int>> texture_frames;
     bool texture_frames_loop = true;

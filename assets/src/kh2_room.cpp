@@ -15,17 +15,17 @@
 // KH2's map models are drawn as stored (one face, counter-clockwise from the
 // front, as glTF's; a strip vertex flag 0x00 both faces), their texels cut by
 // their alpha (the PS2's alpha test) unless their group is translucent (blended).
-// Leaves, fences and railings are cut out in groups not marked transparent. Placements are in
-// KH2's world axes, (x, -y, -z) of the models': a piece's place is turned into
-// the models' axes, its bones and motion are in them already.
+// Leaves, fences and railings are cut out in groups not marked transparent.
+// Placements are in KH2's world axes, (x, -y, -z) of the models': a piece's
+// place is turned into the models' axes, its bones and motion are in them already.
 
 namespace khdays::assets::kh2 {
 
 namespace {
 
-// R4: a UVSC speed read as 2^31 a texture's width per game frame (the values
-// are 2^31 / N: 13421.77 = 2^31/160000, 2236962.25 = 2^31/960); to check
-// against KH2 in motion.
+// A UVSC speed read as 2^31 = a texture's width per game frame (the values are
+// 2^31 / N: 13421.77 = 2^31/160000, 2236962.25 = 2^31/960); not yet compared
+// with KH2 in motion.
 constexpr float kScrollUnit = 2147483648.0F;
 // A piece placed this far down waits for an event to be shown (y 1,000,000 seen).
 constexpr float kHiddenHeight = 100000.0F;
@@ -58,6 +58,13 @@ struct Part final {
     Model model;
     TextureContainer textures;
 };
+
+// The part's GS info `texture`, or nullptr when its container has none of that number.
+const GsTexture* gs_of(const Part& part, int texture) {
+    if (texture < 0 || static_cast<std::size_t>(texture) >= part.textures.textures.size())
+        return nullptr;
+    return &part.textures.textures[static_cast<std::size_t>(texture)];
+}
 
 // A GS info's picture as the scene uses it.
 struct Picture final {
@@ -133,8 +140,8 @@ private:
     }
 
     std::optional<UvScroll> scroll(std::size_t p, int index) const {
-        // the part's own container first, then the map's others in order (R4: whether
-        // the index is the map's or the container's is to see)
+        // the part's own container first, then the map's others in order (whether
+        // the index is the map's or the container's is not known yet)
         for (const auto& s : parts_[p].textures.scrolls) {
             if (static_cast<int>(s.index) == index)
                 return s;
@@ -149,7 +156,7 @@ private:
     }
 
     // The picture of part p's GS info i: its HD picture as a PNG, and its texture
-    // animation's pictures (the base with each sprite over it) and frames.
+    // animation's pictures and frames.
     const Picture& picture(std::size_t p, int i) {
         const auto key = std::make_pair(p, i);
         const auto found = pictures_.find(key);
@@ -158,7 +165,8 @@ private:
         Picture& pic = pictures_[key];
         const Part& part = parts_[p];
         const std::string where = lower(part.info.name) + " texture " + std::to_string(i);
-        if (i < 0 || static_cast<std::size_t>(i) >= part.textures.textures.size()) {
+        const GsTexture* gs = gs_of(part, i);
+        if (gs == nullptr) {
             note(where + ": not in its container, vertex colours only");
             return pic;
         }
@@ -176,7 +184,6 @@ private:
             pic.cut = base.rgba[k] < 128;
         sink_(pic.file, base);
 
-        const GsTexture& gs = part.textures.textures[static_cast<std::size_t>(i)];
         const TextureAnimation* anim = nullptr;
         for (const auto& a : part.textures.animations) {
             if (a.target != i)
@@ -186,24 +193,31 @@ private:
             else
                 note(where + ": several texture animations, the first played");
         }
-        if (anim == nullptr || anim->animations.empty() || anim->sprite_count <= 0)
-            return pic;
+        if (anim != nullptr && !anim->animations.empty() && anim->sprite_count > 0)
+            animate(pic, part, *gs, *anim, base, hd, where);
+        return pic;
+    }
+
+    // A texture animation: the base picture with each of its sprites over it, a PNG each, and the
+    // frames that show them in turn.
+    void animate(Picture& pic, const Part& part, const GsTexture& gs, const TextureAnimation& a,
+                 const DecodedTexture& base, int hd, const std::string& where) {
         DecodedTexture sheet;
-        const int sheet_hd = part.info.first_hd_picture + anim->hd_sheet;
+        const int sheet_hd = part.info.first_hd_picture + a.hd_sheet;
         try {
             sheet = read_dds(hd_ / ("-" + std::to_string(sheet_hd) + ".dds"));
         } catch (const std::exception& e) {
             note(where + ": no HD sprites (-" + std::to_string(sheet_hd) + ".dds: " + e.what() + "), still");
-            return pic;
+            return;
         }
         // the sprites stacked upright at the picture's scale, drawn over its region
         const float sx = static_cast<float>(base.width) / static_cast<float>(std::max(1, gs.region_width));
         const float sy = static_cast<float>(base.height) / static_cast<float>(std::max(1, gs.region_height));
-        const int sprite_h = sheet.height / anim->sprite_count;
-        const int at_x = static_cast<int>(std::lround(static_cast<float>(anim->x - gs.region_x) * sx));
-        const int at_y = static_cast<int>(std::lround(static_cast<float>(anim->y - gs.region_y) * sy));
+        const int sprite_h = sheet.height / a.sprite_count;
+        const int at_x = static_cast<int>(std::lround(static_cast<float>(a.x - gs.region_x) * sx));
+        const int at_y = static_cast<int>(std::lround(static_cast<float>(a.y - gs.region_y) * sy));
         pic.frame_pictures.push_back(pic.file);
-        for (int s = 0; s < anim->sprite_count; ++s) {
+        for (int s = 0; s < a.sprite_count; ++s) {
             DecodedTexture frame = base;
             for (int y = 0; y < sprite_h; ++y) {
                 for (int x = 0; x < sheet.width; ++x) {
@@ -222,10 +236,10 @@ private:
             sink_(file, frame);
             pic.frame_pictures.push_back(file);
         }
-        const auto chosen = static_cast<std::size_t>(anim->default_animation) < anim->animations.size()
-                                ? static_cast<std::size_t>(anim->default_animation)
+        const auto chosen = static_cast<std::size_t>(a.default_animation) < a.animations.size()
+                                ? static_cast<std::size_t>(a.default_animation)
                                 : 0;
-        const auto& steps = anim->animations[chosen];
+        const auto& steps = a.animations[chosen];
         pic.frames_loop = true;
         for (std::size_t k = 0; k < steps.size(); ++k) {
             const TextureFrame& f = steps[k];
@@ -242,10 +256,9 @@ private:
             if (f.min_length != f.max_length)
                 note(where + ": frames of random length drawn at their middle");
             const int length = std::max(1, (f.min_length + f.max_length + 1) / 2);
-            const int shown = f.kind == TextureFrame::Kind::Sprite && f.sprite < anim->sprite_count ? 1 + f.sprite : 0;
+            const int shown = f.kind == TextureFrame::Kind::Sprite && f.sprite < a.sprite_count ? 1 + f.sprite : 0;
             pic.frames.push_back({shown, length});
         }
-        return pic;
     }
 
     int material(std::size_t p, const Group& g, bool two_sided, bool vertex_alpha) {
@@ -271,9 +284,7 @@ private:
         mat.alpha_mode = !g.transparent    ? (pic.cut ? NeutralMesh::AlphaMode::mask : NeutralMesh::AlphaMode::opaque)
                          : pic.translucent ? NeutralMesh::AlphaMode::blend
                                            : NeutralMesh::AlphaMode::mask;
-        const GsTexture* gs = g.texture >= 0 && static_cast<std::size_t>(g.texture) < part.textures.textures.size()
-                                  ? &part.textures.textures[static_cast<std::size_t>(g.texture)]
-                                  : nullptr;
+        const GsTexture* gs = gs_of(part, g.texture);
         if (gs != nullptr) {
             mat.repeat = {gs->wrap_u == 0 || gs->wrap_u == 3, gs->wrap_v == 0 || gs->wrap_v == 3};
         }
@@ -320,10 +331,7 @@ private:
                 const int m = material(p, g, two_sided, fading);
                 ScenePrimitive& prim = primitives[m];
                 prim.material = m;
-                const GsTexture* gs =
-                    g.texture >= 0 && static_cast<std::size_t>(g.texture) < part.textures.textures.size()
-                        ? &part.textures.textures[static_cast<std::size_t>(g.texture)]
-                        : nullptr;
+                const GsTexture* gs = gs_of(part, g.texture);
                 for (const Triangle& t : g.triangles) {
                     if (t.two_sided != two_sided)
                         continue;

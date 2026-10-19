@@ -66,7 +66,7 @@ std::array<float, 2> region_uv(const GsTexture& texture, float u, float v);
 // UVSC: a scroll speed by its index (the model's groups name the index).
 struct UvScroll final {
     std::uint32_t index = 0;
-    float u = 0.0F;  // as stored; R4: 2^31 a texture's width per game frame (to check by eye)
+    float u = 0.0F;  // as stored: 2^31 = a texture's width per game frame (not yet checked in motion)
     float v = 0.0F;
 };
 
@@ -129,7 +129,7 @@ struct Triangle final {
 struct Group final {
     int texture = 0;  // GS info index in the model's container
     bool transparent = false;
-    std::uint8_t uv_option = 0;  // as stored: bit 1 scrolls, bits 2-5 the UVSC index (R4)
+    std::uint8_t uv_option = 0;  // as stored: bit 1 scrolls, bits 2-5 the UVSC index
     std::vector<Triangle> triangles;
 
     std::optional<int> scroll_index() const;
