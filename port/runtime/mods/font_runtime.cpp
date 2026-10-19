@@ -4,6 +4,23 @@
 #include "font_raster.h"
 #include <cstdint>
 #include <cmath>
+#include <cstring>
+
+extern "C" int khdays_hd_font_mappings_enabled(void)
+{
+    return khdays::hd_fonts::mappings_enabled();
+}
+
+extern "C" int khdays_hd_font_select(const char *resource, const char *scope, char *selected, int size)
+{
+    if (!resource || !scope || !selected || size <= 0)
+        return 0;
+    const auto result = khdays::hd_fonts::select(resource, scope);
+    if (result.empty() || result.size() >= static_cast<std::size_t>(size))
+        return 0;
+    std::memcpy(selected, result.c_str(), result.size() + 1);
+    return 1;
+}
 
 namespace {
 double exact_units(const khdays::hd_fonts::Atlas &atlas, int value)
@@ -52,6 +69,8 @@ extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t
         const auto found = by_code.find(codes[i]);
         if (found != by_code.end())
             indices[i] = found->second;
+        if (indices[i] < 0 || atlas->glyphs[indices[i]].original)
+            atlas->original_codes.insert(codes[i]);
     }
     atlas->original_glyphs = std::move(indices);
     atlas->codes_bound = true;

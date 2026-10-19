@@ -11,6 +11,41 @@ int khdays_game_ram_ref(unsigned int reference)
 static const char *font_origin;
 static uint32_t font_origin_info, font_origin_offset;
 static int font_probes;
+static const char *test_scope = "";
+static int test_camp_screen = KHDAYS_CAMP_NONE, test_camp_story = 1;
+static char selected_scope[80];
+int khdays_camp_screen(int *story)
+{
+    *story = test_camp_story;
+    return test_camp_screen;
+}
+int khdays_hd_font_mappings_enabled(void)
+{
+    return 1;
+}
+void khdays_camp_font_scope(uint32_t font, char *scope, int size)
+{
+    (void)font;
+    snprintf(scope, (size_t)size, "%s", test_scope);
+}
+int khdays_hd_font_select(const char *resource, const char *scope, char *selected, int size)
+{
+    (void)resource;
+    snprintf(selected_scope, sizeof(selected_scope), "%s", scope);
+    if (strstr(scope, ".mission_select.summary") || strstr(scope, ".mission_select.objectives") ||
+        strstr(scope, ".mission_select.rewards")) {
+        snprintf(selected, (size_t)size, "@font-route/mission-body");
+        return 1;
+    }
+    if (strcmp(scope, "field.tutorial") == 0) {
+        snprintf(selected, (size_t)size, "@font-route/tutorial");
+        return 1;
+    }
+    if (strcmp(scope, "camp.story.screen.2") != 0)
+        return 0;
+    snprintf(selected, (size_t)size, "@font-route/test");
+    return 1;
+}
 static int metric_override, text_mode = KHDAYS_UI_ON;
 static int glyph_width_override = -1;
 static int large_geometry;
@@ -958,6 +993,70 @@ int main(void)
     bind_font(font, "/text/synthetic.nftr");
     const char *bound = font_path(KHDAYS_REF(font));
     CHECK(bound && strcmp(bound, "text/synthetic.nftr") == 0);
+    test_scope = "camp.story.screen.2";
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+    draw(0);
+    CHECK(c->op_count && strcmp(c->ops[c->op_count - 1].resource, "@font-route/test") == 0);
+    test_scope = "camp.story.screen.4";
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "text/synthetic.nftr") == 0);
+    CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/test") == 0);
+    test_scope = "";
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "text/synthetic.nftr") == 0);
+    font_bindings[binding_count - 1].replacement = 0;
+    test_scope = "camp.story.screen.2";
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+    test_scope = "";
+    CHECK(font_path(KHDAYS_REF(font)) == NULL); /* Alternate works without a global HD replacement. */
+    font_bindings[binding_count - 1].replacement = 1;
+    for (int page = 0; page < 3; ++page) {
+        khdays_ui_text_field_tutorial_before(page, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
+        draw(page * 2);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/tutorial") == 0);
+        khdays_ui_text_field_tutorial_before(page, 1);
+        khdays_ui_text_field_tutorial(page, 1);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
+        khdays_ui_text_field_tutorial(page, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "text/synthetic.nftr") == 0);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/tutorial") == 0);
+    }
+    test_scope = "camp.story.screen.2";
+    khdays_ui_text_field_tutorial_before(0, 0);
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
+    khdays_ui_text_field_tutorial(0, 0);
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+    test_scope = "camp.story.screen.1";
+    const char *roles[] = {"instruction", "world", "header", "summary", "objectives", "rewards", "buttons"};
+    for (int role = 0; role < 7; ++role) {
+        char operation[48], expected_scope[80];
+        snprintf(operation, sizeof(operation), "mission_select.%s", roles[role]);
+        snprintf(expected_scope, sizeof(expected_scope), "camp.story.screen.1.%s", operation);
+        khdays_ui_text_scope_push(operation);
+        const char *expected = role >= 3 && role <= 5 ? "@font-route/mission-body" : "text/synthetic.nftr";
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), expected) == 0);
+        CHECK(strcmp(selected_scope, expected_scope) == 0);
+        draw(0);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, expected) == 0);
+        khdays_ui_text_field_tutorial_before(0, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
+        khdays_ui_text_field_tutorial(0, 0);
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), expected) == 0);
+        khdays_ui_text_scope_pop();
+        CHECK(strcmp(font_path(KHDAYS_REF(font)), "text/synthetic.nftr") == 0);
+        CHECK(strcmp(c->ops[c->op_count - 1].resource, expected) == 0);
+    }
+    test_scope = "";
+    test_camp_screen = 1;
+    khdays_ui_text_scope_push("mission_select.summary");
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/mission-body") == 0);
+    CHECK(strcmp(selected_scope, "camp.story.screen.1.mission_select.summary") == 0);
+    khdays_ui_text_scope_pop();
+    test_camp_screen = KHDAYS_CAMP_NONE;
+    for (int depth = 0; depth < 20; ++depth)
+        khdays_ui_text_scope_push("mission_select.summary");
+    for (int depth = 0; depth < 20; ++depth)
+        khdays_ui_text_scope_pop();
+    CHECK(operation_depth == 0 && operation_overflow == 0);
     khdays_ui_text_font_init(font, NULL);
     CHECK(font_path(KHDAYS_REF(font)) != NULL);
     uint32_t *copied_font = (uint32_t *)(ram + 700);

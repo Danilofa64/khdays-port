@@ -7,6 +7,7 @@
 #include "parts.h"
 #include "../gpu/gpu2d.h"
 #include "../runtime/mods/font_runtime.h"
+#include "../runtime/menus/camp.h"
 #include "../runtime/core/io.h"
 #include "../runtime/core/origin.h"
 #include "../runtime/core/session_log.h"
@@ -60,6 +61,8 @@ typedef struct FontBinding {
     KhdaysRef info, file;
     int replacement;
     char path[160];
+    char scope[80], selected[160];
+    int scoped, route_enabled;
 } FontBinding;
 
 static FontBinding font_bindings[256];
@@ -368,6 +371,77 @@ static Canvas *canvas_of(const void *cc_host, const char *made_by)
 
 /* --- Glyph recordings. Source names are original NitroFS paths. -------------------- */
 static const char *font_from_origin(const void *font, const void *file);
+static void bind_charmap(const char *path, const void *font);
+static const char *operation_scopes[16];
+static unsigned operation_depth, operation_overflow;
+
+void khdays_ui_text_scope_push(const char *scope)
+{
+    if (operation_depth == 16)
+        ++operation_overflow;
+    else
+        operation_scopes[operation_depth++] = scope;
+}
+
+void khdays_ui_text_scope_pop(void)
+{
+    if (operation_overflow)
+        --operation_overflow;
+    else if (operation_depth)
+        --operation_depth;
+}
+
+void khdays_ui_text_field_tutorial_before(int step, int arg)
+{
+    (void)step;
+    (void)arg;
+    khdays_ui_text_scope_push("field.tutorial");
+}
+
+void khdays_ui_text_field_tutorial(int step, int arg)
+{
+    (void)step;
+    (void)arg;
+    khdays_ui_text_scope_pop();
+}
+
+static const char *selected_font_path(FontBinding *binding, KhdaysRef font)
+{
+    if (!binding->route_enabled)
+        return binding->replacement ? binding->path : NULL;
+    char scope[80];
+    const char *operation = operation_depth && !operation_overflow ? operation_scopes[operation_depth - 1] : NULL;
+    if (operation && strncmp(operation, "mission_select.", 15) != 0)
+        snprintf(scope, sizeof(scope), "%s", operation);
+    else {
+        khdays_camp_font_scope(font, scope, sizeof(scope));
+        if (operation) {
+            char base[80];
+            snprintf(base, sizeof(base), "%s", scope);
+            if (!base[0]) {
+                int story;
+                const int screen = khdays_camp_screen(&story);
+                if (screen != KHDAYS_CAMP_NONE)
+                    snprintf(base, sizeof(base), "camp.%s.screen.%d", story ? "story" : "mission", screen);
+            }
+            if (base[0])
+                snprintf(scope, sizeof(scope), "%s.%s", base, operation);
+        }
+    }
+    if (strcmp(scope, binding->scope) != 0) {
+        snprintf(binding->scope, sizeof(binding->scope), "%s", scope);
+        binding->scoped =
+            scope[0] && khdays_hd_font_select(binding->path, scope, binding->selected, sizeof(binding->selected));
+        if (binding->scoped) {
+            bind_charmap(binding->selected, KHDAYS_W(font));
+            binding->scoped = khdays_hd_font_map_ready(binding->selected);
+        }
+        if (tracing() && scope[0])
+            say("HD font scope %s: %s -> %s", scope, binding->path,
+                binding->scoped ? binding->selected : binding->path);
+    }
+    return binding->scoped ? binding->selected : binding->replacement ? binding->path : NULL;
+}
 
 static const char *font_path(KhdaysRef font)
 {
@@ -376,10 +450,10 @@ static const char *font_path(KhdaysRef font)
     const KhdaysRef info = *(const uint32_t *)KHDAYS_W(font);
     for (int i = binding_count - 1; i >= 0; --i)
         if (font_bindings[i].font == font && font_bindings[i].info == info)
-            return font_bindings[i].replacement ? font_bindings[i].path : NULL;
+            return selected_font_path(&font_bindings[i], font);
     for (int i = binding_count - 1; i >= 0; --i)
         if (info && font_bindings[i].info == info)
-            return font_bindings[i].replacement ? font_bindings[i].path : NULL;
+            return selected_font_path(&font_bindings[i], font);
     return font_from_origin(KHDAYS_W(font), NULL);
 }
 
@@ -491,10 +565,13 @@ static const char *bind_font_file(const void *font, const char *name, KhdaysRef 
     font_bindings[pos].info = *(const uint32_t *)font;
     font_bindings[pos].file = file;
     font_bindings[pos].replacement = replacement;
+    font_bindings[pos].scope[0] = 0;
+    font_bindings[pos].scoped = 0;
+    font_bindings[pos].route_enabled = khdays_hd_font_mappings_enabled();
     memcpy(font_bindings[pos].path, path, n + 1);
     if (tracing() && replacement)
         say("HD font %08x bound to %s", ref, path);
-    return replacement ? font_bindings[pos].path : NULL;
+    return selected_font_path(&font_bindings[pos], ref);
 }
 
 static void bind_font(void *font, const char *name)

@@ -1463,13 +1463,18 @@ HOOKS["ov008@0207c7c8"] = _ov008_members  # Ov008_UpdateMissionMenuSelectionScre
 # then the port's with what it returned; "around" also observes the input. Parts: port/ui/parts.h; docs/BUILD.md.
 UI_PARTS = {"text": 0, "hud": 1, "pause": 2, "camp": 3, "save": 4, "mission": 5, "shop": 6}
 UI_HOOKS: dict[str, list[tuple[str, str, str, str]]] = {
+    "src/overlays/scenes/ov002_field/Ov002_LinkPageRefresh.c": [
+        ("Ov002_LinkPageRefresh", "text", "khdays_ui_text_field_tutorial", "around")
+    ],
     # NitroSystem BG text operations. These are followed, never replaced:
     # original DS text logic and canvases remain authoritative.
     "libs/nns/g2d/calls/DrawGlyphLine.c": [("DrawGlyphLine", "text", "khdays_ui_text_glyph", "around")],
     "libs/nns/g2d/calls/ClearContinuous.c": [("ClearContinuous", "text", "khdays_ui_text_clear", "follow")],
     "libs/nns/g2d/calls/ClearAreaLine.c": [("ClearAreaLine", "text", "khdays_ui_text_clear_area", "follow")],
     "src/engine/TextWindow_ScrollUp.c": [("TextWindow_ScrollUp", "text", "khdays_ui_text_scroll", "around")],
-    "libs/nns/g2d/calls/NNS_G2dFontInitUTF16.c": [("NNS_G2dFontInitUTF16", "text", "khdays_ui_text_font_init", "follow")],
+    "libs/nns/g2d/calls/NNS_G2dFontInitUTF16.c": [
+        ("NNS_G2dFontInitUTF16", "text", "khdays_ui_text_font_init", "follow")
+    ],
     "src/engine/Font_LoadUTF16.c": [("Font_LoadUTF16", "text", "khdays_ui_text_font_loaded", "follow")],
     "src/engine/Resource_BindByName.c": [("Resource_BindByName", "text", "khdays_ui_text_font_bound", "follow")],
     # The text: the two text surfaces that make
@@ -1498,6 +1503,21 @@ UI_HOOKS: dict[str, list[tuple[str, str, str, str]]] = {
     "libs/nitro/gx/calls/GXS_LoadOBJ.c": [("GXS_LoadOBJ", "text", "khdays_ui_text_obj_b", "follow")],
 }
 
+for _module, _prefix in (
+    ("scenes/ov008_camp_menu", "Ov008"),
+    ("screens/ov025_camp_menu_2", "Ov025"),
+):
+    for _function, _role in (
+        ("DrawMissionSummaryHeading", "instruction"),
+        ("MainMenu_UpdateSelectionText", "world"),
+        ("DrawMissionDetail", "header"),
+        ("MissionMenu_DrawMissionText", "summary"),
+        ("MissionMenu_DrawInfo", "objectives"),
+        ("DrawMissionInfoText", "rewards"),
+    ):
+        _name = f"{_prefix}_{_function}"
+        UI_HOOKS[f"src/overlays/{_module}/{_name}.c"] = [(_name, "text", f"mission_select.{_role}", "scope")]
+
 
 def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "replace") -> str:
     """`name`'s definition in `text` split in two: the game's body under a
@@ -1507,7 +1527,7 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
     if d is None:
         raise SystemExit(f"UI hook: no definition of {name} in {rel}")
     head = text[d.ret_start : d.name_start]
-    params = abi_repair.param_list(text, d)
+    params = abi_repair.param_list("".join(ch if code else " " for ch, code in zip(text, mask)), d)
     names = [abi_repair.param_name(p) for p in params]
     if any(not n for n in names):
         raise SystemExit(f"UI hook: {name} in {rel} has an unnamed parameter")
@@ -1516,7 +1536,13 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
     args = ", ".join(names)
     result_type = re.sub(r"\b(?:static|inline|extern)\b", "", head).strip()
     param_text = text[d.params[0] : d.params[1]].strip()
-    if kind in ("follow", "around"):
+    if kind == "scope":
+        if not void:
+            raise SystemExit("UI scope hooks require a void function")
+        port_decl = (
+            "extern void khdays_ui_text_scope_push(const char *scope);\nextern void khdays_ui_text_scope_pop(void);"
+        )
+    elif kind in ("follow", "around"):
         told = ([param_text] if param_text not in ("", "void") else []) + (
             [] if void else [f"{result_type} khdays_result"]
         )
@@ -1538,7 +1564,13 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
         + text[d.name_start + len(name) : d.body[1] + 1]
     )
     mode = f"    const int khdays_mode = khdays_ui_mode({UI_PARTS[part]});  /* the port's {part} (prepare.py UI_HOOKS) */\n"
-    if kind == "around":
+    if kind == "scope":
+        body = (
+            f'\n{{\n{mode}    if (khdays_mode != 0) khdays_ui_text_scope_push("{port}");\n'
+            f"    {name}__khdays_game({args});\n"
+            "    if (khdays_mode != 0) khdays_ui_text_scope_pop();\n}"
+        )
+    elif kind == "around":
         body = (
             f"\n{{\n{mode}    if (khdays_mode != 0) {{\n        {port}_before({args});\n    }}\n"
             f"    {name}__khdays_game({args});\n"
@@ -1735,6 +1767,46 @@ FILE_HOOKS = {
         ),
     ],
 }
+
+
+for _module, _prefix in (
+    ("scenes/ov008_camp_menu", "Ov008"),
+    ("screens/ov025_camp_menu_2", "Ov025"),
+):
+    _root = f"src/overlays/{_module}/{_prefix}_"
+    FILE_HOOKS[_root + "MainMenu_SetupTextSurfaces.c"] = [
+        (
+            f"void {_prefix}_MainMenu_SetupTextSurfaces(int obj)",
+            "extern void khdays_ui_text_scope_push(const char *scope);\n"
+            "extern void khdays_ui_text_scope_pop(void);\n"
+            f"void {_prefix}_MainMenu_SetupTextSurfaces(int obj)",
+        ),
+        (
+            "    if (*(int *)(obj + 0x14e0) == 0 || Session_IsReady() != 0) {",
+            '    khdays_ui_text_scope_push("mission_select.instruction");\n'
+            "    if (*(int *)(obj + 0x14e0) == 0 || Session_IsReady() != 0) {",
+        ),
+        (
+            "    EnqueueObjGfxCommand(obj + 0x1420);",
+            "    EnqueueObjGfxCommand(obj + 0x1420);\n    khdays_ui_text_scope_pop();\n"
+            '    khdays_ui_text_scope_push("mission_select.world");',
+        ),
+        (
+            "    EnqueueObjGfxCommand(obj + 0x145c);",
+            "    EnqueueObjGfxCommand(obj + 0x145c);\n    khdays_ui_text_scope_pop();",
+        ),
+    ]
+    FILE_HOOKS[_root + "DrawMissionDetail.c"] = [
+        (
+            "        Obj_InvokeInnerVtable4(pMenu->hintSurface);",
+            '        khdays_ui_text_scope_push("mission_select.buttons");\n'
+            "        Obj_InvokeInnerVtable4(pMenu->hintSurface);",
+        ),
+        (
+            f"        {_prefix}_MarkSlotUsed(SLOT_A);",
+            "        khdays_ui_text_scope_pop();\n" + f"        {_prefix}_MarkSlotUsed(SLOT_A);",
+        ),
+    ]
 
 
 # Calls whose native form the ROM shows but no mechanical rule gives (see

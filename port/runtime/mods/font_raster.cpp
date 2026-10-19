@@ -66,7 +66,7 @@ struct Sample {
 
 static Sample at(const Atlas &atlas, int x, int y)
 {
-    const auto *p = &atlas.rgba[(static_cast<std::size_t>(y) * atlas.width + x) * 4];
+    const auto *p = &atlas.pixels()[(static_cast<std::size_t>(y) * atlas.width + x) * 4];
     const double a = p[3] / 255.0;
     return {p[0] / 255.0 * a, p[1] / 255.0 * a, p[2] / 255.0 * a, a};
 }
@@ -149,7 +149,7 @@ static std::shared_ptr<const Cached::Tile> glyph_tile(const Atlas &atlas, int in
 {
     const Glyph &g = atlas.glyphs[index];
     const bool native = g.image_w <= logical_w + 1e-8 && g.image_h <= logical_h + 1e-8;
-    const Key key{&atlas, index, width, height, native};
+    const Key key{atlas.artwork ? atlas.artwork.get() : &atlas, index, width, height, native};
     {
         std::lock_guard<std::mutex> guard(cache_mutex);
         auto it = cache_index.find(key);
@@ -208,7 +208,7 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
     if (!rgba || width <= 0 || height <= 0 || scale <= 0 || stride < static_cast<std::int64_t>(width) * 4 ||
         paint.glyph_index < 0 || static_cast<std::size_t>(paint.glyph_index) >= atlas.glyphs.size() ||
         paint.logical_width <= 0 || paint.logical_height <= 0 || atlas.width <= 0 || atlas.height <= 0 ||
-        atlas.rgba.size() != static_cast<std::size_t>(atlas.width) * atlas.height * 4)
+        atlas.pixels().size() != static_cast<std::size_t>(atlas.width) * atlas.height * 4)
         return false;
     const Glyph &g = atlas.glyphs[paint.glyph_index];
     if (g.original)

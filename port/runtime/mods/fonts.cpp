@@ -423,6 +423,103 @@ struct Entry {
 };
 std::mutex cache_mutex;
 std::unordered_map<std::string, Entry> cache;
+using FontRules = std::map<std::string, std::map<std::string, std::string>>;
+FontRules rules;
+bool rules_read;
+std::map<std::pair<std::string, std::string>, std::string> routed;
+
+bool font_path_valid(const std::string &path)
+{
+    return !path.empty() && path.size() < 160 && path.front() != '/' && path.find('\\') == std::string::npos &&
+           path.find(':') == std::string::npos && path.find("..") == std::string::npos &&
+           path.find_first_of("\r\n\t@") == std::string::npos && path.size() > 5 &&
+           path.compare(path.size() - 5, 5, ".nftr") == 0;
+}
+
+FontRules read_rules(const Value &doc)
+{
+    if (integer(doc, "version", 1, 1) != 1)
+        throw std::runtime_error("unsupported font mapping version");
+    const auto &scopes = field(doc, "scopes", Value::Object).object;
+    if (scopes.size() > 64)
+        throw std::runtime_error("at most 64 font scopes are allowed");
+    FontRules result;
+    std::size_t count = 0;
+    for (const auto &[scope, mappings] : scopes) {
+        if (scope.empty() || scope.size() >= 80 || scope.front() == '.' || scope.back() == '.' ||
+            scope.find("..") != std::string::npos ||
+            scope.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789._-") != std::string::npos ||
+            mappings.type != Value::Object)
+            throw std::runtime_error("invalid font scope: " + scope);
+        for (const auto &[source, target] : mappings.object) {
+            const auto from = resource_path(source);
+            const auto to = resource_path(target.str);
+            if (++count > 256 || target.type != Value::String || !font_path_valid(from) || !font_path_valid(to))
+                throw std::runtime_error("invalid font mapping in scope: " + scope);
+            if (!result[scope].emplace(from, to).second)
+                throw std::runtime_error("duplicate normalized font path in scope: " + scope);
+        }
+    }
+    return result;
+}
+
+void load_rules()
+{
+    if (rules_read)
+        return;
+    rules_read = true;
+    char path[4096]{};
+    if (!khdays_mods_find("fonts/mappings.json", path, sizeof(path)))
+        return;
+    try {
+        rules = read_rules(Reader(text_file(path)).read());
+        std::fprintf(stderr, "HD font mappings: %s (%zu scopes)\n", path, rules.size());
+    } catch (const std::exception &e) {
+        std::fprintf(stderr, "HD font mappings: rejected %s: %s\n", path, e.what());
+    }
+}
+
+std::string target_for(const std::string &original, std::string scope)
+{
+    while (!scope.empty()) {
+        const auto group = rules.find(scope);
+        if (group != rules.end()) {
+            const auto entry = group->second.find(original);
+            if (entry != group->second.end())
+                return entry->second;
+        }
+        const auto dot = scope.rfind('.');
+        if (dot == std::string::npos)
+            break;
+        scope.resize(dot);
+    }
+    return {};
+}
+
+std::shared_ptr<Atlas> routed_view(const std::shared_ptr<const Atlas> &base)
+{
+    auto view = std::make_shared<Atlas>();
+    view->source = base->source;
+    view->png_path = base->png_path;
+    view->width = base->width;
+    view->height = base->height;
+    view->reference_width = base->reference_width;
+    view->reference_height = base->reference_height;
+    view->cell_width = base->cell_width;
+    view->cell_height = base->cell_height;
+    view->baseline = base->baseline;
+    view->line_feed = base->line_feed;
+    view->baseline_offset = base->baseline_offset;
+    view->max_width = base->max_width;
+    view->sized = base->sized;
+    view->scale = base->scale;
+    view->glyphs = base->glyphs;
+    view->charmap = base->charmap;
+    view->has_original = base->has_original;
+    view->kerning = base->kerning;
+    view->artwork = base;
+    return view;
+}
 
 Entry load_uncached(const std::string &original)
 {
@@ -465,5 +562,45 @@ int probe(const std::string &original_resource)
     if (inserted)
         it->second = load_uncached(resource);
     return !it->second.found ? 0 : it->second.invalid ? -1 : 1;
+}
+
+std::string select(const std::string &original_resource, const std::string &scope)
+{
+    const auto original = resource_path(original_resource);
+    std::string target;
+    {
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        load_rules();
+        target = target_for(original, scope);
+    }
+    if (target.empty() || target == original)
+        return {}; // Explicit identity mapping also cancels an inherited rule.
+    const auto base = load(target);
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    const auto pair = std::make_pair(original, target);
+    const auto found = routed.find(pair);
+    if (found != routed.end())
+        return found->second;
+    if (routed.size() >= 256)
+        return {};
+    std::string key;
+    if (base && !base->charmap.empty()) {
+        key = "@font-route/" + std::to_string(routed.size());
+        cache.emplace(key, Entry{routed_view(base), true, false});
+        std::fprintf(stderr, "HD font mapping: %s [%s] -> %s\n", original.c_str(), scope.c_str(), target.c_str());
+    } else {
+        std::fprintf(stderr,
+                     "HD font mapping: %s [%s] -> %s unavailable or missing charmap; keeping original binding\n",
+                     original.c_str(), scope.c_str(), target.c_str());
+    }
+    routed.emplace(pair, key);
+    return key;
+}
+
+bool mappings_enabled()
+{
+    std::lock_guard<std::mutex> lock(cache_mutex);
+    load_rules();
+    return !rules.empty();
 }
 } // namespace khdays::hd_fonts

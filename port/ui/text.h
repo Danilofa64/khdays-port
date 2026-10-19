@@ -53,5 +53,9 @@ void khdays_ui_text_position(const void *font, double x, double y);
 double khdays_ui_text_pen_x(int x);
 void khdays_ui_text_crawl_begin(const void *context, const void *text, int index, int x, int y, double kerning);
 int khdays_ui_text_crawl_advance(double advance);
+void khdays_ui_text_field_tutorial_before(int step, int arg);
+void khdays_ui_text_field_tutorial(int step, int arg);
+void khdays_ui_text_scope_push(const char *scope);
+void khdays_ui_text_scope_pop(void);
 
 #endif

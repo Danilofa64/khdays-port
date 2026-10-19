@@ -9,6 +9,12 @@ if errorlevel 1 exit /b %errorlevel%
 if not exist build\tests mkdir build\tests
 set "KHDAYS_TEST_FLAGS=/Od /Zi"
 if "%~1"=="asan" set "KHDAYS_TEST_FLAGS=/Od /Zi /fsanitize=address"
+cl /nologo /W1 /std:c17 /Gy /Gw %KHDAYS_TEST_FLAGS% /c port\runtime\menus\camp.c /Fobuild\tests\camp_font_scope_impl.obj /Fdbuild\tests\camp_font_scope_impl.pdb
+if errorlevel 1 exit /b %errorlevel%
+cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% port\tests\camp_font_scope_test.c build\tests\camp_font_scope_impl.obj /Febuild\tests\camp_font_scope_test.exe /Fobuild\tests\camp_font_scope_test.obj /Fdbuild\tests\camp_font_scope_test.pdb /link /OPT:REF
+if errorlevel 1 exit /b %errorlevel%
+build\tests\camp_font_scope_test.exe
+if errorlevel 1 exit /b %errorlevel%
 cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% /D_CRT_SECURE_NO_WARNINGS port\tests\hd_text_test.c /Fobuild\tests\hd_text_test.obj /Febuild\tests\hd_text_test.exe /Fdbuild\tests\hd_text_test.pdb
 if errorlevel 1 exit /b %errorlevel%
 build\tests\hd_text_test.exe

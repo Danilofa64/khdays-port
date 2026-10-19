@@ -1,5 +1,7 @@
 # HD font rendering
 
+For menu-specific font choices, see [Scoped HD font mappings](FONT_MAPPING.md).
+
 The PNG and JSON still live at `mods/<Mod>/fonts/<original-resource-path>.png`
 and `.json`, for example `fonts/text/font_eu_10.nftr.png`. Atlas rectangles and
 physical image resolution do not change the game's pen advances, cell size,

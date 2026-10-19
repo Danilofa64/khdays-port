@@ -7,6 +7,8 @@ extern "C" {
 int khdays_hd_font_map_ready(const char *resource);
 void khdays_hd_font_bind_charmap(const char *resource, const uint32_t *codes, int count);
 int khdays_hd_font_has(const char *resource);
+int khdays_hd_font_select(const char *resource, const char *scope, char *selected, int size);
+int khdays_hd_font_mappings_enabled(void);
 int khdays_hd_font_glyph_width(const char *resource, int index);
 int khdays_hd_font_glyph_available(const char *resource, int index);
 enum { KHDF_LEFT, KHDF_WIDTH, KHDF_ADVANCE, KHDF_LINE_FEED, KHDF_SIZED, KHDF_CELL_WIDTH, KHDF_CELL_HEIGHT };

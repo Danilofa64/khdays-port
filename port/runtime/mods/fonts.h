@@ -40,6 +40,11 @@ struct Atlas {
     mutable std::vector<int> original_glyphs;       // Original NFTR index -> replacement index, -1 when absent.
     std::unordered_map<std::uint64_t, int> kerning; // Unicode pair: left << 32 | right
     std::vector<std::uint8_t> rgba;                 // actual_width * actual_height * 4
+    std::shared_ptr<const Atlas> artwork;           // Routed views share pixels but bind their own original CMAP.
+    const std::vector<std::uint8_t> &pixels() const
+    {
+        return artwork ? artwork->pixels() : rgba;
+    }
 };
 
 // Finds mods/<Mod>/fonts/<original-resource-path>.png, reading a .json beside it
@@ -50,6 +55,10 @@ std::shared_ptr<const Atlas> load(const std::string &original_resource);
 // Called by the offline graphics dump for an initial independent smoke test.
 // Return: 0=no override, 1=valid, -1=invalid override.
 int probe(const std::string &original_resource);
+
+// Stable session identity for a scoped replacement; an empty result means no mapping.
+std::string select(const std::string &original_resource, const std::string &scope);
+bool mappings_enabled();
 
 } // namespace khdays::hd_fonts
 #endif

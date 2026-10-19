@@ -6,10 +6,15 @@
 #include <cstring>
 
 static int lookups;
+static bool mapping_file;
 static int png_w = 8, png_h = 8;
 extern "C" int khdays_mods_find(const char *relative, char *path, int size)
 {
     ++lookups;
+    if (mapping_file && std::strcmp(relative, "fonts/mappings.json") == 0) {
+        std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-mappings.json");
+        return 1;
+    }
     if (std::strcmp(relative, "fonts/text/paths.nftr.png") != 0)
         return 0;
     const char *file = "build/tests/font-paths.nftr.png";
@@ -106,6 +111,84 @@ static bool original_fallback(const char *json)
         }
         ok = ok && rejected;
     }
+    return ok;
+}
+
+static bool mapping_rules_test(const char *json)
+{
+    using namespace khdays::hd_fonts;
+    std::ofstream(json) << R"({"source":"text/paths.nftr","format":"NFTR","scale":0.35,
+        "atlas":{"width":8,"height":8},"cell_width":8,"cell_height":8,
+        "baseline":6,"line_feed":8,"max_width":8,
+        "glyphs":[{"index":0,"x":0,"y":0,"w":4,"h":8,"left":-1,"width":4,"advance":9},
+        {"index":1,"fallback":"original"}],
+        "charmap":[{"codepoint":65,"glyph":0},{"codepoint":66,"glyph":1}],
+        "kerning":[{"left":65,"right":66,"adjust":-1}]})";
+    std::ofstream("build/tests/font-mappings.json") << R"({"version":1,"scopes":{
+        "camp":{"text/small.nftr":"/text/paths.NFTR","text/other.nftr":"text/paths.nftr"},
+        "camp.story.screen.2":{"text/small.nftr":"text/small.nftr"},
+        "camp.story.screen.1.mission_select.summary":{"text/small.nftr":"text/small.nftr"},
+        "camp.story.screen.1.mission_select.objectives":{"text/small.nftr":"text/small.nftr"},
+        "camp.story.screen.1.mission_select.rewards":{"text/small.nftr":"text/small.nftr"},
+        "camp.save":{"text/small.nftr":"text/absent.nftr"},
+        "field.tutorial":{"text/small.nftr":"text/paths.nftr"}}})";
+    cache.clear();
+    routed.clear();
+    rules.clear();
+    rules_read = false;
+    mapping_file = true;
+    png_w = png_h = 8;
+    char selected[160] = {0}, second[160] = {0};
+    bool ok = khdays_hd_font_select("text/small.nftr", "camp.story.screen.0", selected, sizeof(selected)) &&
+              khdays_hd_font_select("text/other.nftr", "camp.mission.screen.2", second, sizeof(second)) &&
+              std::strcmp(selected, second) != 0;
+    const std::uint32_t first_codes[] = {65, 66, 67};
+    const std::uint32_t second_codes[] = {67, 65, 66};
+    khdays_hd_font_bind_charmap(selected, first_codes, 3);
+    khdays_hd_font_bind_charmap(second, second_codes, 3);
+    auto first = load(selected);
+    auto other = load(second);
+    ok = ok && first && other && &first->pixels() == &other->pixels() && first->rgba.empty() && other->rgba.empty() &&
+         khdays_hd_font_glyph_available(selected, 0) && !khdays_hd_font_glyph_available(selected, 1) &&
+         !khdays_hd_font_glyph_available(selected, 2) && !khdays_hd_font_glyph_available(second, 0) &&
+         khdays_hd_font_glyph_available(second, 1) && !khdays_hd_font_glyph_available(second, 2) &&
+         std::abs(khdays_hd_font_metric_f(selected, 0, KHDF_ADVANCE, 8) - 3.15) < 1e-12 &&
+         khdays_hd_font_metric_f(selected, 1, KHDF_ADVANCE, 8) == 8 &&
+         khdays_hd_font_kerning_f(selected, 65, 66) == 0 &&
+         !khdays_hd_font_select("text/small.nftr", "dialogue", second, sizeof(second)) &&
+         !khdays_hd_font_select("text/small.nftr", "camp.story.screen.2", second, sizeof(second)) &&
+         !khdays_hd_font_select("text/small.nftr", "camp.save", second, sizeof(second)) &&
+         !khdays_hd_font_select("text/small.nftr", "camp", second, 2);
+    std::uint32_t pixels[64] = {0};
+    ok = ok && khdays_hd_font_paint(selected, 0, .25, .25, 3, 3, 0xffffffffu, pixels, 8, 8, 1);
+    const int before = lookups;
+    for (const char *role : {"instruction", "world", "header", "summary", "objectives", "rewards", "buttons"}) {
+        const std::string scope = std::string("camp.story.screen.1.mission_select.") + role;
+        const bool body = std::strcmp(role, "summary") == 0 || std::strcmp(role, "objectives") == 0 ||
+                          std::strcmp(role, "rewards") == 0;
+        const int mapped = khdays_hd_font_select("text/small.nftr", scope.c_str(), second, sizeof(second));
+        ok = ok && (body ? !mapped : mapped && std::strcmp(selected, second) == 0);
+    }
+    ok = ok && khdays_hd_font_select("text/small.nftr", "field.tutorial", second, sizeof(second)) &&
+         std::strcmp(selected, second) == 0 &&
+         !khdays_hd_font_select("text/small.nftr", "field.dialogue", second, sizeof(second));
+    for (int i = 0; i < 100; ++i)
+        ok = ok && khdays_hd_font_select("text/small.nftr", "camp.mission.screen.5", second, sizeof(second)) &&
+             std::strcmp(selected, second) == 0;
+    ok = ok && lookups == before && first->original_glyphs[0] == 0; // No repeated file probes or remapping.
+    for (const char *bad :
+         {R"({"version":2,"scopes":{}})", R"({"version":1,"scopes":{"camp":{"text/a.nftr":"../escape.nftr"}}})",
+          R"({"version":1,"scopes":{"camp":{"text/a.nftr":12}}})", R"({"version":1,"scopes":{"camp..bad":{}}})"}) {
+        bool rejected = false;
+        try {
+            (void)read_rules(Reader(bad).read());
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        ok = ok && rejected;
+    }
+    std::filesystem::remove("build/tests/font-mappings.json");
+    std::printf("HD font scoped mappings: %s\n", ok ? "PASS" : "FAIL");
     return ok;
 }
 
@@ -245,6 +328,7 @@ int main()
     cache.clear();
     ok = ok && std::abs(khdays_hd_font_metric_f("text/paths.nftr", 0, KHDF_ADVANCE, 0) - 6.3) < 1e-12;
     ok = original_fallback(json) && ok;
+    ok = mapping_rules_test(json) && ok;
     std::filesystem::remove(json);
     std::printf("HD font paths: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
