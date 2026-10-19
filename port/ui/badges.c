@@ -26,8 +26,8 @@ extern int GetLanguage(void);
 #define FIRST_ICON 0x80
 
 #define COUNTER_CHARACTER 0xd3
-#define PANEL_EDGE 0x090         /* the mission panel's upper edge (find_counter) */
-#define COUNTER_COLUMN 28        /* the counter's first cell, from the panel's edge */
+#define PANEL_EDGE 0x090         /* the mission panel's upper-left corner tile, then +1 and +2 along its edge */
+#define COUNTER_COLUMN 28        /* the counter's first cell, counted from that corner */
 #define COUNTER_PAGE 0x0207f634u /* the counter's state (Ov002_DrawPageCounter) */
 
 #define MODE_FLAGS 0x0204c240u /* +2: the mission's room key */
@@ -71,14 +71,15 @@ static int read_graphics(void)
 
 /* --- On the panel ------------------------------------------------------------------------ */
 
-/* The chests' counter's first cell on the lower screen (DS dots) and its map
- * entry, looked for where the mission panel is (y 152-192, hud.c). A mission
- * with no chests (its room not in the chests' table: 58's 902, 10's 1354, ...)
- * has no counter, its cells left as the panel's layout has them: then the
- * place the counter would have, *chests 0 -- the cell COUNTER_COLUMN of the
- * row under the panel's upper edge (its corner PANEL_EDGE at y 152, then
- * PANEL_EDGE + 1 and a row of PANEL_EDGE + 2; seen in mission 58, the counter
- * of mission 18 at that cell). */
+/* Text layer l's map entry at the screen's cell (i, j). */
+static uint32_t cell(const KhdaysBgLayer *l, int i, int j)
+{
+    return khdays_bg_map_entry(1, l, (l->hofs >> 3) + i, (l->vofs >> 3) + j);
+}
+
+/* The chests' counter's first cell on the lower screen (DS dots) and its map entry, looked for where
+ * the mission panel is (y 152-192, hud.c), with *chests 1. A mission without chests (58, 10, ...) has
+ * no counter: then the cell where it would be, a row under the panel's corner, with *chests 0. */
 static int find_counter(const KhdaysBgLayer *l, int *x, int *y, uint32_t *entry, int *chests)
 {
     const int fx = l->hofs & 7, fy = l->vofs & 7;
@@ -86,7 +87,7 @@ static int find_counter(const KhdaysBgLayer *l, int *x, int *y, uint32_t *entry,
     for (int j = 0; j < 25; ++j) {
         for (int i = 0; i < 33; ++i) {
             const int my = j * 8 - fy + 4;
-            const uint32_t e = khdays_bg_map_entry(1, l, (l->hofs >> 3) + i, (l->vofs >> 3) + j);
+            const uint32_t e = cell(l, i, j);
             if (my >= 152 && my < 192 && (e & 0x3ffu) == COUNTER_CHARACTER) {
                 *x = i * 8 - fx;
                 *y = j * 8 - fy;
@@ -95,8 +96,7 @@ static int find_counter(const KhdaysBgLayer *l, int *x, int *y, uint32_t *entry,
                 return 1;
             }
             if (edge_i < 0 && my >= 144 && my < 168 && (e & 0x3ffu) == PANEL_EDGE &&
-                (khdays_bg_map_entry(1, l, (l->hofs >> 3) + i + 1, (l->vofs >> 3) + j) & 0x3ffu) == PANEL_EDGE + 1 &&
-                (khdays_bg_map_entry(1, l, (l->hofs >> 3) + i + 2, (l->vofs >> 3) + j) & 0x3ffu) == PANEL_EDGE + 2) {
+                (cell(l, i + 1, j) & 0x3ffu) == PANEL_EDGE + 1 && (cell(l, i + 2, j) & 0x3ffu) == PANEL_EDGE + 2) {
                 edge_i = i;
                 edge_j = j;
             }
@@ -107,7 +107,7 @@ static int find_counter(const KhdaysBgLayer *l, int *x, int *y, uint32_t *entry,
     }
     *x = (edge_i + COUNTER_COLUMN) * 8 - fx;
     *y = (edge_j + 1) * 8 - fy;
-    *entry = khdays_bg_map_entry(1, l, (l->hofs >> 3) + edge_i + COUNTER_COLUMN, (l->vofs >> 3) + edge_j + 1);
+    *entry = cell(l, edge_i + COUNTER_COLUMN, edge_j + 1);
     *chests = 0;
     return 1;
 }
@@ -263,8 +263,8 @@ void khdays_ui_badges_emit(void)
     e.id = "hud.badges";
     e.screen = 1;
     e.slot = KES_DIRECT | 2u; /* above the panel, in its layer (BG2) */
-    /* left of the chest icon (on one screen 4 dots from it, as its counter is); with no chests in the
-     * place of the icon and its counter */
+    /* left of the chest icon (4 dots from it on one screen, as its counter is); with no chests, where
+     * the icon would be */
     e.x = (float)(x - (!chests ? 8 : now.one ? 36 : 32));
     e.y = (float)y;
     e.w = 24.0f;

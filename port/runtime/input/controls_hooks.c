@@ -250,10 +250,9 @@ typedef struct Stick {
 
 #define PARTY 4 /* the game's members: the host's and three guests' */
 
-/* Whether analog movement drives this actor now, and its stick. An actor's buttons come from the
- * control packet a game frame after Pad_Sample read them, so its stick is the snapshot before this
- * frame's. On the host a guest's actor takes the stick its copy sent with its controls (the DS's
- * control packet has only the D-pad), with that player's settings. */
+/* Whether analog movement drives this actor now, and its stick. The local actor's stick is the
+ * snapshot before this frame's (its buttons reach the game a frame later); on the host a guest's actor
+ * takes the stick that guest sent with its controls (net_session.c). */
 static int analog_moving(int actor, Stick *s)
 {
     const KhdaysInputSnapshot *in = khdays_input_previous_snapshot();

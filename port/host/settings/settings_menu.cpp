@@ -30,10 +30,10 @@ extern "C" { // the host's C headers that say nothing of C++
 
 namespace {
 
-constexpr Uint64 kCaptureMs = 5000;          // how long a new binding waits for its key or button
-constexpr Uint64 kRepeatDelayMs = 400;       // a held gamepad direction starts repeating after this,
-constexpr Uint64 kRepeatEveryMs = 100;       // and then repeats this often
-constexpr int kClose = KHDAYS_SECTION_COUNT; // the column's last entry: Quit the game (B or Escape close the menu)
+constexpr Uint64 kCaptureMs = 5000;         // how long a new binding waits for its key or button
+constexpr Uint64 kRepeatDelayMs = 400;      // a held gamepad direction starts repeating after this,
+constexpr Uint64 kRepeatEveryMs = 100;      // and then repeats this often
+constexpr int kQuit = KHDAYS_SECTION_COUNT; // the column's last entry, Quit the game (B or Escape close the menu)
 
 enum Mode { MODE_BROWSE, MODE_CAPTURE, MODE_CONFLICT, MODE_UNBOUND, MODE_PRESET, MODE_TEXT, MODE_UPDATE, MODE_QUIT };
 enum { FACE_ACCEPT, FACE_CLEAR, FACE_BACK, FACE_COUNT };
@@ -50,7 +50,7 @@ struct Menu {
     KhdaysProfile work{};     // what the menu edits
     KhdaysProfile original{}; // what it started from
     KhdaysProfile reported{}; // what khdays_settings_take_changes last reported
-    int column = 0;           // the column's entry (kClose: Quit the game)
+    int column = 0;           // the column's entry (kQuit: Quit the game)
     int section = 0;          // the section shown
     bool in_rows = false;     // the focus is on the section's rows
     int row = 0, cell = 0;
@@ -417,19 +417,19 @@ void choose_section(int section)
 void column_move(int dir)
 {
     int next = m.column + dir;
-    while (next >= 0 && next < kClose && !khdays_model_section_shown(next)) {
+    while (next >= 0 && next < kQuit && !khdays_model_section_shown(next)) {
         next += dir;
     }
     if (next < 0) {
         return;
     }
-    m.column = std::clamp(next, 0, kClose);
-    if (m.column < kClose) {
+    m.column = std::clamp(next, 0, kQuit);
+    if (m.column < kQuit) {
         choose_section(m.column);
     }
 }
 
-// Quit the game: asked first (what was not saved is lost), "Cancel" chosen.
+// Quit the game: asked first, with "Cancel" chosen.
 void ask_quit()
 {
     m.mode = MODE_QUIT;
@@ -439,7 +439,7 @@ void ask_quit()
 // Enter on a column entry: go into the section's rows, or ask whether to quit the game.
 bool column_enter()
 {
-    if (m.column == kClose) {
+    if (m.column == kQuit) {
         ask_quit();
         return false;
     }
@@ -736,7 +736,7 @@ bool answer_prompt(bool yes)
     if (m.mode == MODE_QUIT) {
         m.mode = MODE_BROWSE;
         if (yes) {
-            // as the window's own close: the settings changed are saved, then the game ends (window.c)
+            // as closing the window: the settings are saved, then the game ends (window.c)
             SDL_Event quit;
             SDL_zero(quit);
             quit.type = SDL_EVENT_QUIT;
@@ -871,7 +871,7 @@ bool mouse_click(float x, float y)
     if (const Place *entry = place_at(KHDAYS_PLACE_ENTRY, x, y)) {
         m.in_rows = false;
         m.column = entry->index;
-        if (entry->index == kClose) {
+        if (entry->index == kQuit) {
             ask_quit();
             return false;
         }
@@ -1151,11 +1151,11 @@ std::string footer_warning()
 void draw_column(float row_h, float pad)
 {
     const float w = ImGui::GetContentRegionAvail().x;
-    for (int i = 0; i <= kClose; ++i) {
-        if (i < kClose && !khdays_model_section_shown(i)) {
+    for (int i = 0; i <= kQuit; ++i) {
+        if (i < kQuit && !khdays_model_section_shown(i)) {
             continue;
         }
-        if (i == kClose) {
+        if (i == kQuit) {
             ImGui::Dummy(ImVec2(w, row_h * 0.5f));
         }
         const ImVec2 p = ImGui::GetCursorScreenPos();
@@ -1180,7 +1180,7 @@ void draw_column(float row_h, float pad)
         }
         text_at(ImVec2(p.x + pad + moved, p.y + (row_h - ImGui::GetFontSize()) / 2),
                 i == m.section || i == m.column ? kWhite : kGrey,
-                i == kClose ? khdays_text(TXT_QUIT_GAME) : khdays_model_section_title(i));
+                i == kQuit ? khdays_text(TXT_QUIT_GAME) : khdays_model_section_title(i));
         ImGui::Dummy(ImVec2(w, row_h));
         record(KHDAYS_PLACE_ENTRY, i, p, q);
     }

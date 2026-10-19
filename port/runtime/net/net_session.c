@@ -136,10 +136,10 @@ typedef struct Peer {
     Route address;
     u64 heard, pinged;    /* when it was last heard from, and last pinged */
     double rtt_ms;        /* round trip; < 0 until measured */
+    double loss;          /* share of pings unanswered in the last report period */
     int level;            /* host: this guest's level as its pings give it (0 not known) */
     KhdaysNetStick stick; /* host: this guest's movement stick as it last sent it, */
     u64 stick_at;         /* and when (0 never) */
-    double loss;          /* share of pings unanswered in the last report period */
     unsigned int pings, pongs;
     /* For the session log's report (every REPORT_EVERY): records resent, and
      * the most records that waited for the game, and for an acknowledgement. */
@@ -344,11 +344,11 @@ static u64 since(u64 now, u64 then)
     return now > then ? now - then : 0;
 }
 
+static void ping_levels(Peer *p, const unsigned char *body, unsigned int size);
+static void send_stick(void);
+
 /* Makes room for `need` items, doubling, the new part zeroed. Out of memory,
  * the process stops. */
-static void ping_levels(Peer *p, const unsigned char *body, unsigned int size); /* the members' levels */
-static void send_stick(void);                                                   /* a guest's stick */
-
 static void *grow(void *items, int *room, int need, size_t item)
 {
     if (need <= *room) {
@@ -1687,13 +1687,13 @@ static void join_step(u64 now)
     }
 }
 
-/* A ping's body: when it was sent (the pong gives it back), then the players' levels for the members'
- * screen -- a guest's own (u16), or on the host a count (u8) and an aid (u8) and a level (u16) for each
- * member whose level it knows, itself too. Its size. */
+/* A ping's body, and its size: when it was sent (the pong gives it back), then the players' levels
+ * for the members' screen. A guest sends its own (u16); the host a count (u8), then an aid (u8) and a
+ * level (u16) for each member whose level it knows, itself included. */
 static unsigned int ping_body(u64 now, unsigned char **body, int *room)
 {
     const int own = net.own_level;
-    unsigned int size = 8, count = 0;
+    unsigned int size, count = 0;
     if (net.role == HOST) {
         for (int i = 0; i < net.peer_room; ++i) {
             count += net.peers[i].used && net.peers[i].state == MEMBER && net.peers[i].level > 0;
@@ -2297,6 +2297,19 @@ void khdays_net_set_level(int level)
     net.own_level = level > 0 && level <= 0xffff ? level : 0;
 }
 
+/* One more known level for khdays_net_levels. */
+static void add_level(unsigned int *aids, int *levels, int room, int *count, unsigned int aid, int level)
+{
+    if (level <= 0) {
+        return;
+    }
+    if (*count < room) {
+        aids[*count] = aid;
+        levels[*count] = level;
+    }
+    ++*count;
+}
+
 int khdays_net_levels(unsigned int *aids, int *levels, int room)
 {
     int count = 0;
@@ -2305,38 +2318,23 @@ int khdays_net_levels(unsigned int *aids, int *levels, int room)
     }
     SDL_LockMutex(net.lock);
     if (net.role == HOST) {
-        if (net.own_level > 0 && count < room) {
-            aids[count] = 0;
-            levels[count] = net.own_level;
-        }
-        count += net.own_level > 0;
+        add_level(aids, levels, room, &count, 0, net.own_level);
         for (int i = 0; i < net.peer_room; ++i) {
             const Peer *p = &net.peers[i];
-            if (p->used && p->state == MEMBER && p->level > 0) {
-                if (count < room) {
-                    aids[count] = p->aid;
-                    levels[count] = p->level;
-                }
-                ++count;
+            if (p->used && p->state == MEMBER) {
+                add_level(aids, levels, room, &count, p->aid, p->level);
             }
         }
     } else if (net.role == GUEST) {
+        /* its own as it knows it, else as the host's pings give it back */
+        const int own = net.own_level > 0                   ? net.own_level
+                        : (int)net.own_aid < net.level_room ? net.levels[net.own_aid]
+                                                            : 0;
+        add_level(aids, levels, room, &count, net.own_aid, own);
         for (int aid = 0; aid < net.level_room; ++aid) {
-            const int level = aid == (int)net.own_aid && net.own_level > 0 ? net.own_level : net.levels[aid];
-            if (level > 0) {
-                if (count < room) {
-                    aids[count] = (unsigned int)aid;
-                    levels[count] = level;
-                }
-                ++count;
+            if (aid != (int)net.own_aid) {
+                add_level(aids, levels, room, &count, (unsigned int)aid, net.levels[aid]);
             }
-        }
-        if ((int)net.own_aid >= net.level_room && net.own_level > 0) {
-            if (count < room) {
-                aids[count] = net.own_aid;
-                levels[count] = net.own_level;
-            }
-            ++count;
         }
     }
     SDL_UnlockMutex(net.lock);

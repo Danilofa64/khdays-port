@@ -70,8 +70,7 @@ static SDL_AtomicInt scale;   /* the internal resolution the picture is composed
 
 static SDL_Mutex *input_lock;
 static KhdaysInputSnapshot input;
-/* The DS buttons' presses and releases since the game last took its input (input_lock), so that none
- * is lost between two of its reads (press_edges.h). */
+/* Presses and releases since the game's last read of the pad (press_edges.h), under input_lock. */
 static KhdaysPressEdges edges, edges_field;
 
 static SDL_Semaphore *ready; /* signalled when the window is up (or failed) */
@@ -456,10 +455,9 @@ static void close_settings(void)
     }
 }
 
-/* The mouse: its pointer hidden over the game while its window has the focus (the touch screen is not
- * used), shown over the settings menu and while another window has the focus; with the mouse camera
- * on, the window holds the mouse while the game has the input, its motion turning the camera
- * (devices.c), and the settings menu or another window frees it. */
+/* The mouse pointer is hidden over the game while its window has the focus (the touch screen is not
+ * used) and shown over the settings menu or when another window has the focus. With the mouse camera
+ * on, the window also holds the mouse while the game has the input (devices.c). */
 static void mouse_follow(SDL_Window *window)
 {
     const int menu = khdays_settings_is_open();

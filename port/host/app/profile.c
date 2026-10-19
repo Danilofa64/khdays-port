@@ -151,10 +151,9 @@ void khdays_profile_default(KhdaysProfile *p)
     p->preset = KHDAYS_PRESET_DS;
     empty(p);
 
-    /* The keyboard and the mouse, as PC games have them (the maintainer's, 2026-10-19): WASD for the
-     * D-pad, the mouse's left button A and right Y, Space B, the wheel and Q and E the command menu in
-     * a field (with the command menu on the D-pad on); the arrows and Return beside L, R and START.
-     * Keys are scancodes, so they are the same physical keys on every keyboard layout. */
+    /* The keyboard and mouse, as in PC games: WASD for the D-pad, the left mouse button A, the right
+     * one Y, Space B; in a field the wheel and Q/E move the command menu (when it is on the D-pad).
+     * Keys are scancodes: the same physical keys on every keyboard layout. */
     bind(p, K, BASE, KHDAYS_ACT_UP, SDL_SCANCODE_W, NONE);
     bind(p, K, BASE, KHDAYS_ACT_DOWN, SDL_SCANCODE_S, NONE);
     bind(p, K, BASE, KHDAYS_ACT_LEFT, SDL_SCANCODE_A, NONE);

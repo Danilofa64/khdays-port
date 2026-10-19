@@ -26,7 +26,7 @@ std::vector<Mat> node_worlds(const std::vector<assets::ImportedNode> &nodes,
 std::array<float, 2> scroll_offset(const std::array<float, 2> &scroll, std::uint64_t frames, float width, float height);
 
 // Which of `frames` (texture, game frames each) shows after `frame` game frames: shown in order, then
-// from `loop_from` again when looping, else the last held. frames.size() when there are none.
+// from `loop_from` again when looping, else the last held. 0 when there are none.
 std::size_t frame_at(const std::vector<std::pair<std::string, int>> &frames, bool loop, std::size_t loop_from,
                      std::uint64_t frame);
 

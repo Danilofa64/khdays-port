@@ -2,8 +2,7 @@
 // each joint drawn with K_j = T(head now) * linear(D_G) * C_j * T(-head_j), D_G = M_G * inverse(W_G)
 // for the node G it follows and C_j its rest pose correction; faces culled as the file says unless
 // <model>.bones.txt says otherwise (docs/RENDERING.md, "Mods' graphics"). A replaced room plays its own
-// animation (its glTF's: moving pieces, scrolling and changing textures; room_animation.cpp) by the game's
-// frames, standing still while the game is paused; its sky drawn behind everything.
+// animation (room_animation.cpp) by the game's frames, stopped while the game is paused.
 
 #include "models.h"
 
@@ -613,6 +612,49 @@ std::vector<char> node_sent;
 std::vector<Mat> d, k, skin;
 std::vector<KhdaysG3dClipVertex> clip;
 
+// A room's joint that its own animation moves: its node's matrix now (node_worlds), else nullptr.
+const Mat *moved_world(const Joint &joint, const std::vector<Mat> &moved)
+{
+    if (joint.node >= 0 || joint.room_node < 0 || static_cast<std::size_t>(joint.room_node) >= moved.size())
+        return nullptr;
+    return &moved[static_cast<std::size_t>(joint.room_node)];
+}
+
+// The picture a mesh shows after `frames` game frames: its own, or the one its changing texture is on.
+Mesh::Picture picture_now(const Mesh &mesh, std::uint64_t frames)
+{
+    Mesh::Picture now{mesh.replacement, mesh.tex_w, mesh.tex_h, mesh.translucent};
+    if (!mesh.frames.empty()) {
+        const Mesh::Picture &p =
+            mesh.frame_pictures[khdays::room::frame_at(mesh.frames, mesh.frames_loop, mesh.frames_loop_from, frames)];
+        if (p.replacement >= 0)
+            now = {p.replacement, p.w, p.h, mesh.translucent || p.translucent};
+    }
+    return now;
+}
+
+// Triangle `t`'s polygon attributes, from the mesh's `attr` and its corners' vertex alpha; false when
+// the triangle is not drawn (under a mask's cutoff, or blended down to nothing).
+bool triangle_attr(const Mesh &mesh, std::size_t t, uint32_t attr, uint32_t &out)
+{
+    out = attr;
+    if (mesh.vertex_alpha == VertexAlpha::ignored)
+        return true;
+    const float alpha = (static_cast<float>(mesh.vertices[mesh.indices[t]].color[3]) +
+                         static_cast<float>(mesh.vertices[mesh.indices[t + 1]].color[3]) +
+                         static_cast<float>(mesh.vertices[mesh.indices[t + 2]].color[3])) /
+                        (3.0F * 255.0F);
+    if (mesh.vertex_alpha == VertexAlpha::cut)
+        return alpha >= mesh.cutoff;
+    if (alpha < 1.0F) {
+        const auto a = static_cast<uint32_t>(std::lround(static_cast<float>((attr >> 16) & 31u) * alpha));
+        if (a == 0u)
+            return false; // the DS draws a polygon of alpha 0 as its outline: nothing of it here
+        out = (attr & ~(31u << 16)) | (a << 16);
+    }
+    return true;
+}
+
 void draw(Model &m)
 {
     float pos[16], vecm[16], proj_f[16];
@@ -721,9 +763,8 @@ void draw(Model &m)
         } else {
             k[j] = parent != nullptr ? *parent : root;
         }
-        skin[j] = mul(k[j], joint.bind);
-        if (joint.node < 0 && joint.room_node >= 0 && static_cast<std::size_t>(joint.room_node) < moved.size())
-            skin[j] = mul(scaled_root, mul(moved[static_cast<std::size_t>(joint.room_node)], joint.inverse_bind));
+        const Mat *w = moved_world(joint, moved);
+        skin[j] = w != nullptr ? mul(scaled_root, mul(*w, joint.inverse_bind)) : mul(k[j], joint.bind);
     }
     // the session log's diagnosis, whole: each node's matrix sent and each joint's K, to
     // pose the mod's model again offline (columns 0-3 of the 3x4)
@@ -745,10 +786,9 @@ void draw(Model &m)
         }
         // a room's own moving parts: where each moved joint is in the file's space at this frame
         for (const Joint &joint : m.joints) {
-            if (joint.node < 0 && joint.room_node >= 0 && static_cast<std::size_t>(joint.room_node) < moved.size()) {
-                const Mat &w = moved[static_cast<std::size_t>(joint.room_node)];
+            if (const Mat *w = moved_world(joint, moved)) {
                 khdays_log("models:   moved %s at %.1f %.1f %.1f, frame %llu", joint.name.c_str(),
-                           static_cast<double>(w[12]), static_cast<double>(w[13]), static_cast<double>(w[14]),
+                           static_cast<double>((*w)[12]), static_cast<double>((*w)[13]), static_cast<double>((*w)[14]),
                            static_cast<unsigned long long>(m.frames));
             }
         }
@@ -764,23 +804,11 @@ void draw(Model &m)
     const uint32_t game_alpha = (material.attr >> 16) & 31u;
     for (const Mesh &mesh : m.meshes) {
         // its picture now, and how far its texture has scrolled
-        int replacement = mesh.replacement;
-        float tex_w = mesh.tex_w, tex_h = mesh.tex_h;
-        bool mesh_translucent = mesh.translucent;
-        if (!mesh.frames.empty()) {
-            const std::size_t shown =
-                khdays::room::frame_at(mesh.frames, mesh.frames_loop, mesh.frames_loop_from, m.frames);
-            const Mesh::Picture &picture = mesh.frame_pictures[shown];
-            if (picture.replacement >= 0) {
-                replacement = picture.replacement;
-                tex_w = picture.w;
-                tex_h = picture.h;
-                mesh_translucent = mesh_translucent || picture.translucent;
-            }
-        }
+        const Mesh::Picture picture = picture_now(mesh, m.frames);
+        const float tex_w = picture.w, tex_h = picture.h;
         const auto offset = khdays::room::scroll_offset(mesh.scroll, m.frames, tex_w, tex_h);
         uint32_t attr = (material.attr & ~0xc0u) | (mesh.double_sided ? 0xc0u : 0x80u);
-        if (!mesh_translucent && game_alpha >= 30u)
+        if (!picture.translucent && game_alpha >= 30u)
             attr = (attr & ~(31u << 16)) | (31u << 16);
         clip.resize(mesh.vertices.size());
         for (std::size_t i = 0; i < mesh.vertices.size(); ++i) {
@@ -863,22 +891,9 @@ void draw(Model &m)
         for (std::size_t t = 0; t + 2 < mesh.indices.size(); t += 3) {
             const KhdaysG3dClipVertex tri[3] = {clip[mesh.indices[t]], clip[mesh.indices[t + 1]],
                                                 clip[mesh.indices[t + 2]]};
-            uint32_t tri_attr = attr;
-            if (mesh.vertex_alpha != VertexAlpha::ignored) {
-                const float alpha = (static_cast<float>(mesh.vertices[mesh.indices[t]].color[3]) +
-                                     static_cast<float>(mesh.vertices[mesh.indices[t + 1]].color[3]) +
-                                     static_cast<float>(mesh.vertices[mesh.indices[t + 2]].color[3])) /
-                                    (3.0F * 255.0F);
-                if (mesh.vertex_alpha == VertexAlpha::cut && alpha < mesh.cutoff)
-                    continue;
-                if (mesh.vertex_alpha == VertexAlpha::blended && alpha < 1.0F) {
-                    const auto a = static_cast<uint32_t>(std::lround(static_cast<float>((attr >> 16) & 31u) * alpha));
-                    if (a == 0u)
-                        continue; // the DS draws a polygon of alpha 0 as its outline: nothing of it here
-                    tri_attr = (attr & ~(31u << 16)) | (a << 16);
-                }
-            }
-            khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, replacement, mesh_translucent);
+            uint32_t tri_attr;
+            if (triangle_attr(mesh, t, attr, tri_attr))
+                khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, picture.replacement, picture.translucent);
         }
     }
 }

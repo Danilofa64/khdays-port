@@ -338,6 +338,19 @@ static u16 xy_word(u16 buttons)
     return (u16)(0x2c00 & ~(buttons & (KHDAYS_KEY_X | KHDAYS_KEY_Y)));
 }
 
+/* The movement stick, for a guest to send with its controls: the host moves the guest's actor with it,
+ * as the DS's control packet holds only the D-pad. */
+static void share_stick(const KhdaysInputSnapshot *s)
+{
+    KhdaysNetStick stick;
+    stick.x = s->move_x;
+    stick.y = s->move_y;
+    stick.run_threshold = s->run_threshold;
+    stick.walk_speed = s->walk_speed;
+    stick.on = (s->enhancements & KHDAYS_ENH_ANALOG_MOVEMENT) != 0;
+    khdays_net_set_stick(&stick);
+}
+
 void khdays_input_pad_sample(void)
 {
     khdays_autosave_frame(); /* an owed autosave, before the save list maps the game's slots */
@@ -360,17 +373,7 @@ void khdays_input_pad_sample(void)
         snapshot.camera_x = (int16_t)script_camera[0];
         snapshot.camera_y = (int16_t)script_camera[1];
     }
-    {
-        /* the movement stick goes with a guest's controls to the host, which moves its actor (the DS's
-         * control packet has only the D-pad) */
-        KhdaysNetStick stick;
-        stick.x = snapshot.move_x;
-        stick.y = snapshot.move_y;
-        stick.run_threshold = snapshot.run_threshold;
-        stick.walk_speed = snapshot.walk_speed;
-        stick.on = (snapshot.enhancements & KHDAYS_ENH_ANALOG_MOVEMENT) != 0;
-        khdays_net_set_stick(&stick);
-    }
+    share_stick(&snapshot);
     /* While the settings menu is open the player's input is not the
      * game's (the script's still is: headless runs have no screen). */
     latched = khdays_movie_hd_game_buttons(

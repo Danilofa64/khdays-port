@@ -5,6 +5,7 @@
 #include "rooms2d.h"
 
 #include "../host/screens/ui_text.h"
+#include "../runtime/core/utf8.h"
 #include "../runtime/net/roomlist.h"
 
 #include <stdio.h>
@@ -52,13 +53,7 @@ static void clear(Wide *w)
 static void from_utf8(Wide *w, const char *s)
 {
     for (const unsigned char *p = (const unsigned char *)(s != NULL ? s : ""); *p != 0;) {
-        unsigned c = *p++;
-        int more = c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
-        c &= more == 3 ? 0x07u : more == 2 ? 0x0fu : more == 1 ? 0x1fu : 0x7fu;
-        for (; more > 0 && (*p & 0xc0) == 0x80; --more) {
-            c = (c << 6) | (*p++ & 0x3fu);
-        }
-        put(w, c > 0xffffu ? (unsigned short)'?' : (unsigned short)c);
+        put(w, khdays_utf8_next(&p));
     }
 }
 

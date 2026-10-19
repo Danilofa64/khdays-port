@@ -1,8 +1,7 @@
-/* The theater's music over an HD video (theater_music.h). Two locks: `control` guards the tracks and
- * the schedule (the video's thread, and whoever opens and closes videos); `decoder` guards each
- * track's decoding against the audio thread, which decodes on demand. The audio thread takes only
- * `decoder`, and nothing calls into a stream while holding `decoder` (the audio thread holds the
- * stream's own lock while it waits for it). */
+/* The theater's music over an HD video (theater_music.h). `control` guards the tracks and the
+ * schedule; `decoder` guards each track's decoding, which the audio thread does on demand. Nothing
+ * calls into an SDL stream while holding `decoder`: the audio thread holds the stream's lock while it
+ * waits for `decoder`. */
 #include "theater_music.h"
 
 #include "music_schedule.h"

@@ -1534,8 +1534,8 @@ _ov008_list, _ov008_members = _rooms2d_hooks(
     "        Ov008_ForwardSevenArgs(data_ov008_02090d0c, 99, visibleRowIndex * 0x18 + 0x23, 1, 1, 0, 0);\n",
     "        visibleRowIndex = (visibleRowIndex + 1) & 0xff;\n    }\n",
 )
-# Mission Mode's character select on the game's own screens: "Y Random" after its help line while the
-# player chooses (runtime/menus/charselect.c), into a buffer on the game's stack until the text is flushed.
+# Mission Mode's character select on the game's own screens: "Y Random" added to its help line
+# (runtime/menus/charselect.c), written into a buffer on the function's stack.
 _SELECT_HELP = "extern void *khdays_charselect_help(int message, void *game, void *out, int units);\n"
 HOOKS["ov006@02050fc8"] = [  # Ov006_UpdateMissionMemberMenuScreen
     (
@@ -1826,30 +1826,26 @@ FILE_HOOKS = {
     ],
 }
 
-# A new game's Config "Command list" (option 6): X with the D-pad, where the DS starts with X alone,
-# so the command menu on the D-pad (runtime/input/sequencers.c) moves up, left and right too (the
-# maintainer, 2026-10-19). Each overlay that makes a fresh game state sets it; a saved game keeps its own.
-for _rel in (
-    "src/overlays/scenes/ov000_title/Ov000_SetupWorkArea.c",
-    "src/overlays/scenes/ov008_camp_menu/Ov008_SetupWorkArea.c",
-    "src/overlays/scenes/ov009_camp_save/Ov009_SetupWorkArea.c",
-    "src/overlays/screens/ov025_camp_menu_2/Ov025_SetupWorkArea.c",
-):
-    FILE_HOOKS[_rel] = FILE_HOOKS.get(_rel, []) + [
-        (
-            "GameState_SetField(CONFIG_COMMAND_LIST, 1, 1);",
-            "GameState_SetField(CONFIG_COMMAND_LIST, 1, 0); /* the port's: X with the D-pad */",
-        )
-    ]
-# Mission Mode's guest game is a game state the ROM holds ready (ttl.p2), copied in whole: the same.
-_rel = "src/overlays/scenes/ov000_title/Ov000_HandleLoadConfirm.c"
-FILE_HOOKS[_rel] = FILE_HOOKS.get(_rel, []) + [
+# New games start with Config's "Command list" (option 6) on X with the D-pad, not X alone, so the
+# command menu moves in all four directions (runtime/input/sequencers.c). Every place that makes a
+# fresh game state sets it, Mission Mode's guest game too (a whole state copied from /ttl/ttl.p2).
+# Saved games keep their own.
+_X_ALONE = "GameState_SetField(CONFIG_COMMAND_LIST, 1, 1);"
+_X_WITH_DPAD = "GameState_SetField(CONFIG_COMMAND_LIST, 1, 0); /* the port's: X with the D-pad */"
+_COMMAND_LIST = [
+    ("src/overlays/scenes/ov000_title/Ov000_SetupWorkArea.c", _X_ALONE, _X_WITH_DPAD),
+    ("src/overlays/scenes/ov008_camp_menu/Ov008_SetupWorkArea.c", _X_ALONE, _X_WITH_DPAD),
+    ("src/overlays/scenes/ov009_camp_save/Ov009_SetupWorkArea.c", _X_ALONE, _X_WITH_DPAD),
+    ("src/overlays/screens/ov025_camp_menu_2/Ov025_SetupWorkArea.c", _X_ALONE, _X_WITH_DPAD),
     (
+        "src/overlays/scenes/ov000_title/Ov000_HandleLoadConfirm.c",
         "GameState_SetFlag(0x200b);",
         "GameState_SetFlag(0x200b);"
         " GameState_SetField(0x37c6, 1, 0); /* the port's: the guest's Command list, X with the D-pad */",
-    )
+    ),
 ]
+for _rel, _old, _new in _COMMAND_LIST:
+    FILE_HOOKS.setdefault(_rel, []).append((_old, _new))
 
 
 # Calls whose native form the ROM shows but no mechanical rule gives (see

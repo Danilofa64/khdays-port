@@ -1500,8 +1500,7 @@ void khdays_display_vblank(u32 frame)
         return;
     }
     /* The same frame again: nothing to swap in, nothing new to draw (the parts' elements follow VRAM and
-     * the registers, so they are the same too -- unless a part's own state changed: the pause's Retry
-     * cursor moving where the game's does not). */
+     * the registers, so they are the same too, unless a part said its own state changed). */
     const int parts_changed = khdays_ui_take_changed();
     if (only_shown(frame) && !parts_changed && unchanged()) {
         gpu_input(&in);

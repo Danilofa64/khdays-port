@@ -45,10 +45,9 @@ u32 khdays_events_vblank_count(void);
 #define MEMBERS_PRESENT 0x434u
 #define MEMBERS_NAMES 0x436u
 #define MEMBER_NAME 11u /* UTF-16 characters a name takes (the game's) */
-#define PARTY_MEMBER                                                                                                   \
-    0x0204c678u  /* this copy's player in gPartyMembers: +2 its level less one (the camp's
-                                 * status shows it plus one, Ov008_RefreshEquipPanel), +6 a figure its
-                                 * level gives (PartyMember_Reset), 0 until the game made the record */
+/* this copy's player in gPartyMembers: +2 its level less one (Ov008_RefreshEquipPanel shows it plus
+ * one), +6 a figure its level gives (PartyMember_Reset), 0 until the game made the record */
+#define PARTY_MEMBER 0x0204c678u
 #define PLACES 4 /* the game's group: its host and three guests */
 #define JOIN_WAIT                                                                                                      \
     300u                     /* VBlanks a chosen room may take to reach the game's list (it is told
@@ -411,11 +410,8 @@ static void build_rows(void)
     }
 }
 
-/* The members' screen's rows: the group's four places, each its player's name (the game's) and
- * the ping to it as the session measures it (the host's guests; a guest's host). */
-/* This copy's level: the game's record of its player once it made it (in Mission Mode's camp, from its
- * panels), else the level the title's list counted for the file loaded (the group made from the
- * title, before the camp). */
+/* This copy's level: the game's record of its player once made (in Mission Mode's camp), else the
+ * level the title's list counted for the file loaded (a group made from the title, before the camp). */
 static int own_level(void)
 {
     if (*(const volatile u16 *)KHDAYS_W(PARTY_MEMBER + 6u) != 0) {
@@ -424,6 +420,8 @@ static int own_level(void)
     return khdays_savelist_played_level();
 }
 
+/* The members' screen's rows: the group's four places, each its player's name (the game's), level and
+ * the ping to it as the session measures it (the host's guests; a guest's host). */
 static void build_members(void)
 {
     const u32 session = rd32(screens[members_on].session), menu = rd32(screens[members_on].menu);

@@ -25,9 +25,8 @@ typedef struct KhdaysUiElement {
 void khdays_ui_register(int part, void (*emit)(void));
 void khdays_ui_emit(int part, const KhdaysUiElement *element);
 
-/* A part whose elements follow the port's own state too, not only VRAM and the registers (the pause's
- * Retry cursor), says so when that state changes: the next VBlank composes the frame again even if
- * the game's picture is the same. The display takes the word once a VBlank. */
+/* For a part drawn from the port's own state (the pause's Retry cursor): when that state changes, the
+ * next VBlank composes the frame again even if the game's picture is the same. */
 void khdays_ui_changed(void);
 int khdays_ui_take_changed(void);
 /* cell (cx, cy) of text layer `layer`'s map (0-63 each, gfx/elements.h

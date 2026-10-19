@@ -1,8 +1,7 @@
-/* Presses and releases between two reads of the pad by a game that reads it less often than they come
- * (30 times a second in the field): each press is read down at least once, and a button let go and
- * pressed again between two reads is read up once, then down, so neither a quick tap nor a quick
- * press again is lost. For the player's buttons (host/app/window.c) and the input scripts'
- * (runtime/input/input.c). */
+/* Button presses and releases between two reads of the pad. The game reads it 30 times a second in
+ * the field, so a quick tap can fall between two reads: here every press is read down at least once,
+ * and a release followed by a new press is read up once, then down. Used for the player's buttons
+ * (host/app/window.c) and the input scripts' (runtime/input/input.c). */
 #ifndef KHDAYS_PRESS_EDGES_H
 #define KHDAYS_PRESS_EDGES_H
 
@@ -16,7 +15,7 @@ typedef struct KhdaysPressEdges {
     uint16_t pending;  /* down at the next read: let go and pressed again before the last one */
 } KhdaysPressEdges;
 
-/* The buttons went from `before` to `now`. */
+/* Records that the held buttons went from `before` to `now`. */
 static inline void khdays_press_edges_note(KhdaysPressEdges *e, uint16_t before, uint16_t now)
 {
     const uint16_t down = (uint16_t)(now & ~before), up = (uint16_t)(before & ~now);
@@ -25,8 +24,7 @@ static inline void khdays_press_edges_note(KhdaysPressEdges *e, uint16_t before,
     e->released |= up;
 }
 
-/* What a read is given, the buttons held `now`: a press since the last read down even if let go, a
- * release since then up even if pressed again (that press down at the next read). */
+/* The buttons a read gets, given those held `now`. */
 static inline uint16_t khdays_press_edges_take(KhdaysPressEdges *e, uint16_t now)
 {
     const uint16_t up_now = (uint16_t)(e->reported & e->released);

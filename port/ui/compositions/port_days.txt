@@ -53,8 +53,8 @@ shape upper 0 0 256 24 at top-left margin 0 5 0 0 scale 0.5 fade 0 0 16 0
 # them (ui/badges.c), as the maintainer's sketch has them (2026-10-08). Its
 # lower edge, cut by the DS's screen, is its upper edge turned over. Shown
 # whenever the lower screen has it (mission-panel), with the HUD and at a
-# mission's start, before the game draws the rest of its HUD -- in a story's
-# challenge too, whose lower screen is a mission's (challenge 07, 2026-10-18).
+# mission's start, before the game draws the rest of its HUD; in a story's
+# challenge too, whose lower screen is a mission's.
 [field if mission-panel !dialog]
 shape lower 4 152 248 40 at top-left margin 5 5 0 0 scale 0.5 key 36 36 36 see-through 0 0 0 0.65
 shape lower 4 152 248 4 at top-left margin 5 25 0 0 scale 0.5 mirror y key 36 36 36 see-through 0 0 0 0.65
@@ -139,9 +139,8 @@ shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 # challenge's in play, at the picture's top left corner against its edges, as
 # small as the HUD's pieces (the maintainer, 2026-10-17: it showed at the
 # picture's size in the cutscenes); in an event the rows under it whole. In play
-# the mission's panel is at that corner when the lower screen has it (a
-# challenge's is a mission's: challenge 07, 2026-10-18), and the label is then
-# the top of the upper screen's HUD under the panel.
+# the mission's panel takes that corner when the lower screen has one (a
+# challenge's too), and the label then stays in the upper screen's HUD.
 [field if dialog holo]
 shape upper 0 0 132 14 at top-left margin 0 0 0 0 scale 0.666667
 shape upper 0 14 256 178 at bottom scale 1 at-most fixed(1)
@@ -187,10 +186,8 @@ stop
 # ----------------------------------------------------------------------------
 # A tutorial's page (the lower screen) at the DS's size in the middle, the
 # field behind it dimmed -- its 2D and its 3D (`3d`) -- and the HUD's 3D not
-# drawn (the maintainer's choice from the pictures, 2026-10-14). Each piece
-# with its own screen's brightness: the game darkens the upper screen behind
-# a tutorial and fades the lower one in, so the page took the field's
-# darkness with the upper's (story walk f11621, 2026-10-19).
+# drawn. Each piece keeps its own screen's brightness: the game darkens the
+# upper screen behind a tutorial, which must not darken the page.
 [tutorial]
 screens upper
 brightness own

@@ -7,6 +7,7 @@
 #include "../input/input.h"
 #include "../core/io.h"
 #include "../core/rom.h"
+#include "../core/utf8.h"
 #include "../core/window.h"
 #include "../../host/screens/ui_text.h"
 
@@ -263,7 +264,7 @@ static int roll(uint32_t choosable, uint32_t busy, int now_on)
         return now_on >= 0 && (choosable & (1u << now_on)) ? now_on : -1;
     }
     if (state == 0) {
-        state = (khdays_events_vblank_count() ^ (u32)GetTickCount()) * 2654435761u | 1u;
+        state = (khdays_events_vblank_count() ^ (u32)GetTickCount64()) * 2654435761u | 1u;
     }
     state ^= state << 13; /* xorshift32 */
     state ^= state >> 17;
@@ -561,7 +562,7 @@ void *khdays_charselect_help(int message, void *game, void *out, int units)
         to[n] = from[n];
         ++n;
     }
-    /* then two spaces, Y and its word, as the game writes its buttons (UTF-8 in, the plane's UTF-16 out) */
+    /* then two spaces, Y and its word, as the game writes its buttons */
     if (n + 4 < units) {
         to[n++] = ' ';
         to[n++] = ' ';
@@ -569,13 +570,7 @@ void *khdays_charselect_help(int message, void *game, void *out, int units)
         to[n++] = ' ';
     }
     for (const unsigned char *p = (const unsigned char *)word; *p != 0 && n < units - 1;) {
-        unsigned c = *p++;
-        int more = c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
-        c &= more == 3 ? 0x07u : more == 2 ? 0x0fu : more == 1 ? 0x1fu : 0x7fu;
-        for (; more > 0 && (*p & 0xc0) == 0x80; --more) {
-            c = (c << 6) | (*p++ & 0x3fu);
-        }
-        to[n++] = c > 0xffffu ? (u16)'?' : (u16)c;
+        to[n++] = khdays_utf8_next(&p);
     }
     to[n] = 0;
     return out;
