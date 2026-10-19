@@ -3395,6 +3395,7 @@ beside it and logs every frame where they differ.
 | hud | the field, tutorial or field-3d-both otherwise | -- |
 | challenge | the story's camp started the mission as a challenge: `data_0204c240` bit 1 (`Ov025_MissionList_StartMission`: 3 with the challenge's thresholds copied, 1 otherwise); after Mission Mode's camp the byte is its session's (`Ov008SessionInfo`: 3 a wireless host), so not a challenge | run07 walk from f5359; the multiplayer walk (host, 3) not one |
 | lower-3d | engine A on the lower screen (POWCNT1 bit 15 clear) and not changing screens | story walk f11933-11943 |
+| lower-shown | field-3d-both and the lower screen shows a picture: a quarter of its dots or more lit and its brightness not faded past 12 of 16, kept until 8 decisions dark (`host/render/onescreen.c`) | Holo-Missions 61 (mission 304), the Guard Armor in area 71: Sora's memories under the game's noise |
 | party-4 | ov022's member count (`func_ov022_020882f8`'s root +0x34) >= 4 | -- |
 | event | the pause opened while an event of the field runs (ov023's scene there: `data_ov023_0208a784[1]` set): a cutscene's pause, "Continue" and "Skip", the lower screen without the field's HUD | story walk with START in its dialog, f10737-11034; none in the mission walk's battle pause (f5029-5529) |
 
@@ -3434,6 +3435,14 @@ DS's 256 columns at 4:3, which the port does only for wider pictures). `repeat x
 along its own rows only (before, it claimed every row as well, and its black strip covered the
 world's band). The 3D on the lower screen alone (lower-3d) was seen only in a fade to black
 (story walk f11929-11953): no layout of its own.
+Then Sora's memories (2026-10-19, Holo-Missions 61 = mission 304 from the player's 100% save: the
+Coliseum's games, areas 21-61 a round each, the Guard Armor in area 71): with the 3D on both screens
+the lower screen shows Sora's own fight with the Guard Armor in Traverse Town under the game's noise,
+in step with Roxas's -- before the battle in its event, and a few seconds into it. On one screen the
+event shows the lower screen in the picture's place while they last (as KH Melon Mix does), and the
+battle the two screens as one, joined in the middle (`halves`: Roxas's left half and Sora's right
+half, the fights in step, each at its own brightness), the HUD over them. The route: the door north of the exterior's start
+(x 0, z -19.6) to the first event, Phil's "¿Todo listo?" answered Sí (UP then A), then A all along.
 Then the credits (2026-10-15, through the Theater's last entry, "El lugar de siempre", with a copy
 of the maintainer's save and `movies = ds`): after the movie, ov011's staff roll runs up both
 screens as one -- the names, the characters' pictures at the left, the game's logo, last the END

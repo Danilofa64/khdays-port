@@ -47,6 +47,8 @@ enum {
     KHDAYS_ST_HOLO,          /* a mission played again: the Holo-Missions, a challenge or Mission Mode
                               * (data_0204c240's bits 0-2); its events show their label at the upper
                               * screen's top left ("HOLOMEMORIA", a challenge's "RELOJ PARADO") */
+    KHDAYS_ST_LOWER_SHOWN,   /* with the 3D on both screens, the lower screen shows a picture: Sora's
+                              * memories under the game's noise (host/render/onescreen.c) */
     KHDAYS_STATES
 };
 

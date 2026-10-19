@@ -105,6 +105,25 @@ shape upper 128 84 128 107 at bottom-right margin 0 0 5 6 scale 0.766667
 shape upper 128 64 128 127 at bottom-right margin 0 0 5 6 scale 0.766667
 
 # ----------------------------------------------------------------------------
+# Sora's memories: the 3D on both screens, the lower screen showing a picture
+# under the game's noise (mission 61's Guard Armor). In an event the lower
+# screen takes the picture's place while they show, at the DS's size, an event's
+# dialog over it; in a battle (the HUD) the two screens as one, joined in the
+# middle -- Roxas's left half and Sora's right half, the fights in step -- each
+# at its own brightness, the HUD over them.
+[field-3d-both if lower-shown !hud dialog]
+shape upper at bottom scale 1 at-most fixed(1)
+[field-3d-both if lower-shown !hud]
+screens lower
+brightness own
+hide3d all
+shape lower at centre scale fixed(1) force
+stop
+[field-3d-both if lower-shown hud]
+halves
+brightness halves
+
+# ----------------------------------------------------------------------------
 # The field with the 3D on both screens: the field's upper HUD and its
 # INFORMATION banner, in the same places (the lower screen's panels are not
 # there).
