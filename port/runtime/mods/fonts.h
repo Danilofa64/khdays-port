@@ -5,13 +5,16 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace khdays::hd_fonts {
 
 struct Glyph {
-    int x = 0, y = 0, w = 0, h = 0; // reference-atlas pixels, NOT output size
-    int left = 0, width = 0, advance = 0; // original logical (DS) metrics
+    bool original = false;                // Explicit native artwork and metrics; the index remains reserved.
+    int x = 0, y = 0, w = 0, h = 0;       // reference-atlas pixels, NOT output size
+    int left = 0, width = 0, advance = 0; // replacement logical (DS) metrics
     // Actual image-pixel rectangle, scaled from the reference atlas.
     double image_x = 0, image_y = 0, image_w = 0, image_h = 0;
 };
@@ -25,10 +28,18 @@ struct Atlas {
     int width = 0, height = 0; // actual replacement PNG dimensions
     int reference_width = 0, reference_height = 0;
     int cell_width = 0, cell_height = 0, baseline = 0, line_feed = 0;
+    int baseline_offset = 0; // Final logical pixels; positive moves artwork down.
     int max_width = 0;
+    bool sized = false; // Explicit scale opts into replacement cell/metric units.
+    double scale = 1;
     std::vector<Glyph> glyphs;
     std::vector<Mapping> charmap;
-    std::vector<std::uint8_t> rgba; // actual_width * actual_height * 4
+    bool has_original = false;
+    mutable bool codes_bound = false;
+    mutable std::unordered_set<std::uint32_t> original_codes; // No replacement kerning across native glyphs.
+    mutable std::vector<int> original_glyphs;       // Original NFTR index -> replacement index, -1 when absent.
+    std::unordered_map<std::uint64_t, int> kerning; // Unicode pair: left << 32 | right
+    std::vector<std::uint8_t> rgba;                 // actual_width * actual_height * 4
 };
 
 // Finds mods/<Mod>/fonts/<original-resource-path>.png, reading a .json beside it

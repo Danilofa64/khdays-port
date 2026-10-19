@@ -388,6 +388,8 @@ add_executable(khdays-native
     runtime/core/origin.c
     runtime/mods/names.cpp
     runtime/mods/fonts.cpp
+    runtime/mods/font_raster.cpp
+    runtime/mods/font_runtime.cpp
     runtime/mods/textures.c
     runtime/mods/models.cpp
     runtime/mods/tiles2d.c

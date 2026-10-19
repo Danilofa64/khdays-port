@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import abi_repair  # noqa: E402
 import registers  # noqa: E402
+import font_layout  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DECOMP = ROOT / "external" / "khdays-decomp"
@@ -1459,9 +1460,18 @@ HOOKS["ov008@0207c7c8"] = _ov008_members  # Ov008_UpdateMissionMenuSelectionScre
 
 # The routines whose drawing the port takes over: (function, part, the port's function, kind).
 # "replace" runs the game's body (off), the port's (on) or both (check); "follow" runs the game's,
-# then the port's with what it returned. Parts: port/ui/parts.h; docs/BUILD.md.
+# then the port's with what it returned; "around" also observes the input. Parts: port/ui/parts.h; docs/BUILD.md.
 UI_PARTS = {"text": 0, "hud": 1, "pause": 2, "camp": 3, "save": 4, "mission": 5, "shop": 6}
 UI_HOOKS: dict[str, list[tuple[str, str, str, str]]] = {
+    # NitroSystem BG text operations. These are followed, never replaced:
+    # original DS text logic and canvases remain authoritative.
+    "libs/nns/g2d/calls/DrawGlyphLine.c": [("DrawGlyphLine", "text", "khdays_ui_text_glyph", "around")],
+    "libs/nns/g2d/calls/ClearContinuous.c": [("ClearContinuous", "text", "khdays_ui_text_clear", "follow")],
+    "libs/nns/g2d/calls/ClearAreaLine.c": [("ClearAreaLine", "text", "khdays_ui_text_clear_area", "follow")],
+    "src/engine/TextWindow_ScrollUp.c": [("TextWindow_ScrollUp", "text", "khdays_ui_text_scroll", "around")],
+    "libs/nns/g2d/calls/NNS_G2dFontInitUTF16.c": [("NNS_G2dFontInitUTF16", "text", "khdays_ui_text_font_init", "follow")],
+    "src/engine/Font_LoadUTF16.c": [("Font_LoadUTF16", "text", "khdays_ui_text_font_loaded", "follow")],
+    "src/engine/Resource_BindByName.c": [("Resource_BindByName", "text", "khdays_ui_text_font_bound", "follow")],
     # The text: the two text surfaces that make
     # NitroSystem character canvases, the frees that end them, and the SDK's
     # loads of characters into VRAM that show them (the transfer queue's,
@@ -1506,13 +1516,17 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
     args = ", ".join(names)
     result_type = re.sub(r"\b(?:static|inline|extern)\b", "", head).strip()
     param_text = text[d.params[0] : d.params[1]].strip()
-    if kind == "follow":
+    if kind in ("follow", "around"):
         told = ([param_text] if param_text not in ("", "void") else []) + (
             [] if void else [f"{result_type} khdays_result"]
         )
         port_decl = f"extern void {port}({', '.join(told) or 'void'});"
     else:
         port_decl = f"extern {head.strip()} {port}({text[d.params[0] : d.params[1]]});"
+    if kind == "around":
+        if not void:
+            raise SystemExit("UI around hooks require a void function")
+        port_decl += f"\nextern void {port}_before({param_text});"
     game = (
         text[: d.ret_start]
         + port_decl
@@ -1524,7 +1538,13 @@ def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "r
         + text[d.name_start + len(name) : d.body[1] + 1]
     )
     mode = f"    const int khdays_mode = khdays_ui_mode({UI_PARTS[part]});  /* the port's {part} (prepare.py UI_HOOKS) */\n"
-    if kind == "follow" and void:
+    if kind == "around":
+        body = (
+            f"\n{{\n{mode}    if (khdays_mode != 0) {{\n        {port}_before({args});\n    }}\n"
+            f"    {name}__khdays_game({args});\n"
+            f"    if (khdays_mode != 0) {{\n        {port}({args});\n    }}\n}}"
+        )
+    elif kind == "follow" and void:
         body = (
             f"\n{{\n{mode}    {name}__khdays_game({args});\n"
             f"    if (khdays_mode != 0) {{\n        {port}({args});\n    }}\n}}"
@@ -2703,6 +2723,7 @@ def main() -> int:
             # Anything still carrying ARM assembly after the transforms is
             # hardware-level code the HAL replaces.
             new = transform(text)
+            new = font_layout.patch(new, rel)
             file_hooks = hooks.get(Path(rel).stem, []) + FILE_HOOKS.get(rel, [])
             for ui_name, ui_part, ui_port, ui_kind in UI_HOOKS.get(rel, []):
                 new = ui_hook(new, rel, ui_name, ui_part, ui_port, ui_kind)

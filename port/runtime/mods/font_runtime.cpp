@@ -1,0 +1,236 @@
+// Native PNG artwork and scalar layout overrides for original game glyph identities.
+#include "font_runtime.h"
+#include "fonts.h"
+#include "font_raster.h"
+#include <cstdint>
+#include <cmath>
+
+namespace {
+double exact_units(const khdays::hd_fonts::Atlas &atlas, int value)
+{
+    return value * (atlas.sized ? atlas.scale : 1.0);
+}
+
+int atlas_index(const khdays::hd_fonts::Atlas &atlas, int original)
+{
+    if (original < 0)
+        return original;
+    const int index = atlas.original_glyphs.empty() ? original
+                                                    : (static_cast<std::size_t>(original) < atlas.original_glyphs.size()
+                                                           ? atlas.original_glyphs[original]
+                                                           : -1);
+    return index >= 0 && static_cast<std::size_t>(index) < atlas.glyphs.size() && !atlas.glyphs[index].original ? index
+                                                                                                                : -1;
+}
+} // namespace
+
+extern "C" int khdays_hd_font_map_ready(const char *resource)
+{
+    const auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
+    return !atlas || (atlas->charmap.empty() && !atlas->has_original) || atlas->codes_bound;
+}
+
+extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t *codes, int count)
+{
+    if (!resource || !codes || count <= 0 || count > 16384)
+        return;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (!atlas || atlas->codes_bound)
+        return;
+    if (atlas->charmap.empty()) {
+        for (int i = 0; i < count && static_cast<std::size_t>(i) < atlas->glyphs.size(); ++i)
+            if (atlas->glyphs[i].original)
+                atlas->original_codes.insert(codes[i]);
+        atlas->codes_bound = true;
+        return;
+    }
+    std::unordered_map<std::uint32_t, int> by_code;
+    for (const auto &mapping : atlas->charmap)
+        by_code.emplace(mapping.codepoint, static_cast<int>(mapping.glyph));
+    std::vector<int> indices(static_cast<std::size_t>(count), -1);
+    for (int i = 0; i < count; ++i) {
+        const auto found = by_code.find(codes[i]);
+        if (found != by_code.end())
+            indices[i] = found->second;
+    }
+    atlas->original_glyphs = std::move(indices);
+    atlas->codes_bound = true;
+}
+
+extern "C" int khdays_hd_font_has(const char *resource)
+{
+    return resource && khdays::hd_fonts::load(resource) != nullptr;
+}
+
+extern "C" int khdays_hd_font_glyph_width(const char *resource, int index)
+{
+    if (!resource)
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (atlas)
+        index = atlas_index(*atlas, index);
+    if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return 0;
+    return khdays::hd_fonts::layout_units(*atlas, atlas->glyphs[index].width);
+}
+
+extern "C" int khdays_hd_font_glyph_available(const char *resource, int index)
+{
+    if (!resource || index < 0)
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (atlas)
+        index = atlas_index(*atlas, index);
+    return atlas && index >= 0 && static_cast<std::size_t>(index) < atlas->glyphs.size() ? 1 : 0;
+}
+
+extern "C" double khdays_hd_font_metric_f(const char *resource, int index, int field, double fallback)
+{
+    if (!resource)
+        return fallback;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (!atlas)
+        return fallback;
+    const bool global = index < 0;
+    index = atlas_index(*atlas, index);
+    if (!global && index < 0)
+        return fallback;
+    if (field == KHDF_SIZED)
+        return atlas->sized;
+    if ((field == KHDF_CELL_WIDTH || field == KHDF_CELL_HEIGHT) &&
+        (index < 0 || static_cast<std::size_t>(index) < atlas->glyphs.size()))
+        return atlas->sized ? exact_units(*atlas, field == KHDF_CELL_WIDTH ? atlas->cell_width : atlas->cell_height)
+                            : fallback;
+    if (field == KHDF_LINE_FEED)
+        return exact_units(*atlas, atlas->line_feed);
+    if (index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return fallback;
+    const auto &glyph = atlas->glyphs[index];
+    switch (field) {
+    case KHDF_LEFT: return exact_units(*atlas, glyph.left);
+    case KHDF_WIDTH: return exact_units(*atlas, glyph.width);
+    case KHDF_ADVANCE: return exact_units(*atlas, glyph.advance);
+    default: return fallback;
+    }
+}
+
+extern "C" int khdays_hd_font_metric(const char *resource, int index, int field, int fallback)
+{
+    return static_cast<int>(std::lround(khdays_hd_font_metric_f(resource, index, field, fallback)));
+}
+
+extern "C" double khdays_hd_font_kerning_f(const char *resource, unsigned int left, unsigned int right)
+{
+    if (!resource || !left || !right || left == '\n' || right == '\n')
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (!atlas)
+        return 0;
+    if (atlas->original_codes.count(left) || atlas->original_codes.count(right))
+        return 0;
+    const auto it = atlas->kerning.find((static_cast<std::uint64_t>(left) << 32) | right);
+    return it == atlas->kerning.end() ? 0 : exact_units(*atlas, it->second);
+}
+
+extern "C" int khdays_hd_font_kerning(const char *resource, unsigned int left, unsigned int right)
+{
+    return static_cast<int>(std::lround(khdays_hd_font_kerning_f(resource, left, right)));
+}
+
+extern "C" double khdays_hd_font_extent_f(const char *resource, int index, int left, int width, int advance)
+{
+    if (!resource || index < 0)
+        return advance;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (!atlas)
+        return advance;
+    index = atlas_index(*atlas, index);
+    if (index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return atlas->sized && width ? left + width : advance;
+    const auto &glyph = atlas->glyphs[index];
+    if (!atlas->sized)
+        return glyph.advance; // Compatibility mode keeps NFTR advance-based layout.
+    const double ratio = std::min(exact_units(*atlas, atlas->cell_width) / glyph.image_w,
+                                  exact_units(*atlas, atlas->cell_height) / glyph.image_h);
+    const double clip = std::min(exact_units(*atlas, glyph.width), glyph.image_w * ratio);
+    return clip ? exact_units(*atlas, glyph.left) + clip : exact_units(*atlas, glyph.advance);
+}
+
+extern "C" int khdays_hd_font_extent(const char *resource, int index, int left, int width, int advance)
+{
+    return static_cast<int>(std::lround(khdays_hd_font_extent_f(resource, index, left, width, advance)));
+}
+
+extern "C" double khdays_hd_font_baseline_f(const char *resource, int index, int days_baseline)
+{
+    if (!resource || index < 0)
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (atlas)
+        index = atlas_index(*atlas, index);
+    if (!atlas || !atlas->sized || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return 0;
+    return days_baseline - exact_units(*atlas, atlas->baseline) + atlas->baseline_offset;
+}
+
+extern "C" int khdays_hd_font_baseline(const char *resource, int index, int days_baseline)
+{
+    return static_cast<int>(std::lround(khdays_hd_font_baseline_f(resource, index, days_baseline)));
+}
+
+extern "C" int khdays_hd_font_geometry(const char *resource, int index, int days_w, int days_h, int days_ink_w,
+                                       int *geometry)
+{
+    if (!resource || !geometry || index < 0)
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (atlas)
+        index = atlas_index(*atlas, index);
+    if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return 0;
+    const auto g = khdays::hd_fonts::glyph_geometry(*atlas, index, days_w, days_h, days_ink_w);
+    geometry[0] = g.width;
+    geometry[1] = g.height;
+    geometry[2] = g.clip_width;
+    return 1;
+}
+
+extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, double x, double y, int logical_width,
+                                            int logical_height, std::uint32_t rgba_color, std::uint32_t *rgba,
+                                            int width, int height, int scale, int clip_l, int clip_t, int clip_r,
+                                            int clip_b)
+{
+    if (!resource || !rgba || width <= 0 || height <= 0 || scale <= 0)
+        return 0;
+    const auto atlas = khdays::hd_fonts::load(resource);
+    if (atlas)
+        index = atlas_index(*atlas, index);
+    if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return 0;
+    khdays::hd_fonts::GlyphPaint paint;
+    paint.glyph_index = index;
+    paint.x = x;
+    paint.y = y;
+    paint.logical_width = logical_width;
+    paint.logical_height = logical_height;
+    paint.clip_left = clip_l;
+    paint.clip_top = clip_t;
+    paint.clip_right = clip_r;
+    paint.clip_bottom = clip_b;
+    paint.red = rgba_color & 255u;
+    paint.green = (rgba_color >> 8) & 255u;
+    paint.blue = (rgba_color >> 16) & 255u;
+    paint.alpha = (rgba_color >> 24) & 255u;
+    return khdays::hd_fonts::draw_glyph(*atlas, paint, reinterpret_cast<std::uint8_t *>(rgba), width, height, width * 4,
+                                        scale)
+               ? 1
+               : 0;
+}
+
+extern "C" int khdays_hd_font_paint(const char *resource, int index, double x, double y, int logical_width,
+                                    int logical_height, std::uint32_t rgba_color, std::uint32_t *rgba, int width,
+                                    int height, int scale)
+{
+    return khdays_hd_font_paint_clipped(resource, index, x, y, logical_width, logical_height, rgba_color, rgba, width,
+                                        height, scale, -16384, -16384, 16384, 16384);
+}
