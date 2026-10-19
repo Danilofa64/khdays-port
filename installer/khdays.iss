@@ -13,6 +13,9 @@
 #endif
 
 #define AppName "KH 358/2 Days Port"
+; the Start menu shortcut's name: a "/" there makes a folder "KH 358" with "2 Days Port" in it, so a
+; fraction slash (U+2044), which looks the same
+#define ShortcutName "KH 358⁄2 Days Port"
 #define AppExe "khdays-native.exe"
 
 [Setup]
@@ -21,7 +24,7 @@ AppName={#AppName}
 AppVersion={#Version}
 AppVerName={#AppName} {#Version}
 DefaultDirName={commonpf}\Kingdom Hearts 3582 Days
-DefaultGroupName={#AppName}
+DefaultGroupName={#ShortcutName}
 DisableProgramGroupPage=yes
 ; in Program Files, so administrator once to install; the install folder is then made writable by
 ; the player (the [Run] icacls below) so the port keeps its saves and data beside itself.
@@ -67,8 +70,13 @@ Source: "{#Stage}\studio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdi
 Name: "studio"; Description: "{cm:StudioTask}"; Flags: unchecked
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"
+Name: "{autoprograms}\{#ShortcutName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"
 Name: "{autoprograms}\KH Studio"; Filename: "{app}\khdays-studio.exe"; WorkingDir: "{app}"; Tasks: studio
+
+[InstallDelete]
+; the shortcut earlier versions made, its name cut at the "/" into a folder of its own
+Type: files; Name: "{autoprograms}\KH 358\2 Days Port.lnk"
+Type: dirifempty; Name: "{autoprograms}\KH 358"
 
 [Run]
 ; make the install folder writable by the player (the SID is the Users group, name-independent),
