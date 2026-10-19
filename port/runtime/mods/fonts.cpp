@@ -301,7 +301,8 @@ std::string resource_path(std::string path)
     return path;
 }
 
-std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::filesystem::path &png_path)
+std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::filesystem::path &png_path,
+                                        bool secondary = false)
 {
     std::filesystem::path json_path = png_path;
     json_path.replace_extension(".json"); // foo.nftr.png -> foo.nftr.json
@@ -313,6 +314,13 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
         throw std::runtime_error("JSON is not an NFTR atlas");
     const auto &reference = field(doc, "atlas", Value::Object);
     auto output = std::make_shared<Atlas>();
+    output->native_metrics = secondary;
+    if (secondary && doc.object.find("metrics") != doc.object.end()) {
+        const auto &metrics = field(doc, "metrics", Value::String).str;
+        if (metrics != "original" && metrics != "custom")
+            throw std::runtime_error("secondary metrics must be \"original\" or \"custom\"");
+        output->native_metrics = metrics == "original";
+    }
     output->source = resource;
     output->png_path = png_path.string();
     output->reference_width = integer(reference, "width", 1, 16384);
@@ -347,9 +355,14 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
         seen[id] = true;
         Glyph &dst = output->glyphs[id];
         if (g.object.find("fallback") != g.object.end()) {
-            if (field(g, "fallback", Value::String).str != "original")
-                throw std::runtime_error("glyph fallback must be \"original\"");
-            dst.original = output->has_original = true;
+            const auto &fallback = field(g, "fallback", Value::String).str;
+            if (fallback == "original")
+                dst.original = output->has_original = true;
+            else if (fallback == "secondary" && !secondary)
+                dst.secondary = output->has_secondary = true;
+            else
+                throw std::runtime_error(secondary ? "secondary atlases cannot request another secondary fallback"
+                                                   : "glyph fallback must be \"original\" or \"secondary\"");
             continue;
         }
         dst.x = integer(g, "x", 0, output->reference_width);
@@ -390,6 +403,10 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
         }
     }
 
+    if (secondary && output->charmap.empty())
+        throw std::runtime_error("secondary atlas requires a charmap");
+    if (output->native_metrics)
+        output->sized = false;
     int iw = 0, ih = 0;
     const char *error = nullptr;
     std::unique_ptr<std::uint8_t, decltype(&khdays_png_free)> rgba(
@@ -516,32 +533,53 @@ std::shared_ptr<Atlas> routed_view(const std::shared_ptr<const Atlas> &base)
     view->glyphs = base->glyphs;
     view->charmap = base->charmap;
     view->has_original = base->has_original;
+    view->has_secondary = base->has_secondary;
+    view->native_metrics = base->native_metrics;
+    view->primary_missing = base->primary_missing;
+    view->secondary = base->secondary;
     view->kerning = base->kerning;
-    view->artwork = base;
+    view->artwork = base->artwork ? base->artwork : base;
     return view;
 }
 
-Entry load_uncached(const std::string &original)
+Entry load_pair(const std::string &original, bool secondary)
 {
     // Never let a mod-supplied path escape the fonts subtree.
     if (original.empty() || original.front() == '/' || original.find('\\') != std::string::npos ||
         original.find(':') != std::string::npos || original.find("..") != std::string::npos)
         return {};
-    const std::string relative = "fonts/" + original + ".png";
+    const std::string relative = "fonts/" + original + (secondary ? ".fallback.png" : ".png");
     if (relative.size() > 480)
         return {};
     char path[4096]{};
     if (!khdays_mods_find(relative.c_str(), path, sizeof(path)))
         return {};
     try {
-        auto font = read_atlas(original, std::filesystem::path(path));
+        auto font = read_atlas(original, std::filesystem::path(path), secondary);
         std::fprintf(stderr, "HD fonts: %s <- %s (%dx%d from %dx%d, %zu glyphs)\n", original.c_str(), path, font->width,
                      font->height, font->reference_width, font->reference_height, font->glyphs.size());
         return {std::move(font), true, false};
     } catch (const std::exception &e) {
-        std::fprintf(stderr, "HD fonts: rejected %s: %s (original font stays active)\n", path, e.what());
+        std::fprintf(stderr, "HD fonts: rejected %s: %s (continuing font fallback)\n", path, e.what());
         return {nullptr, true, true};
     }
+}
+
+Entry load_uncached(const std::string &original)
+{
+    Entry primary = load_pair(original, false);
+    const Entry secondary = load_pair(original, true);
+    if (!secondary.font)
+        return primary;
+    auto combined = routed_view(primary.font ? primary.font : secondary.font);
+    if (!primary.font) {
+        combined->primary_missing = true;
+        combined->glyphs.clear();
+        combined->charmap.clear();
+        combined->has_original = combined->has_secondary = false;
+    }
+    combined->secondary = secondary.font;
+    return {std::move(combined), true, false};
 }
 } // namespace
 
@@ -576,6 +614,7 @@ std::string select(const std::string &original_resource, const std::string &scop
     if (target.empty() || target == original)
         return {}; // Explicit identity mapping also cancels an inherited rule.
     const auto base = load(target);
+    const auto requested = base && !base->secondary ? load(original) : nullptr;
     std::lock_guard<std::mutex> lock(cache_mutex);
     const auto pair = std::make_pair(original, target);
     const auto found = routed.find(pair);
@@ -584,9 +623,12 @@ std::string select(const std::string &original_resource, const std::string &scop
     if (routed.size() >= 256)
         return {};
     std::string key;
-    if (base && !base->charmap.empty()) {
+    if (base && (!base->charmap.empty() || (base->primary_missing && base->secondary))) {
         key = "@font-route/" + std::to_string(routed.size());
-        cache.emplace(key, Entry{routed_view(base), true, false});
+        auto view = routed_view(base);
+        if (!view->secondary && requested)
+            view->secondary = requested->secondary;
+        cache.emplace(key, Entry{std::move(view), true, false});
         std::fprintf(stderr, "HD font mapping: %s [%s] -> %s\n", original.c_str(), scope.c_str(), target.c_str());
     } else {
         std::fprintf(stderr,

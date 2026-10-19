@@ -27,6 +27,10 @@ cl /nologo /EHsc /W4 /WX /std:c++17 %KHDAYS_TEST_FLAGS% /D_CRT_SECURE_NO_WARNING
 if errorlevel 1 exit /b %errorlevel%
 build\tests\font_paths_test.exe
 if errorlevel 1 exit /b %errorlevel%
+cl /nologo /EHsc /W4 /WX /std:c++17 %KHDAYS_TEST_FLAGS% /D_CRT_SECURE_NO_WARNINGS port\tests\font_secondary_test.cpp port\runtime\mods\font_raster.cpp /Fobuild\tests\ /Febuild\tests\font_secondary_test.exe /Fdbuild\tests\font_secondary_test.pdb
+if errorlevel 1 exit /b %errorlevel%
+build\tests\font_secondary_test.exe
+if errorlevel 1 exit /b %errorlevel%
 cl /nologo /EHsc /W4 /WX /std:c++17 %KHDAYS_TEST_FLAGS% port\tests\font_raster_test.cpp port\runtime\mods\font_raster.cpp /Fobuild\tests\ /Febuild\tests\font_raster_test.exe /Fdbuild\tests\font_raster_test.pdb
 if errorlevel 1 exit /b %errorlevel%
 build\tests\font_raster_test.exe

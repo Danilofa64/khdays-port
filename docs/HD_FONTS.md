@@ -175,9 +175,10 @@ The flagged entry's PNG rectangle and replacement metrics are ignored. The
 original NFTR supplies artwork, bearing, drawing width and advance, without the
 replacement scale or baseline adjustment. Replacement kerning pairs touching
 that character are disabled. Font-wide replacement line spacing still applies
-to the surrounding string. Existing entries without the flag behave as before;
-other fallback values are rejected. Keep the entry rather than deleting it or
-renumbering the array. Restart the game after editing cached font metadata.
+to the surrounding string. Existing entries without the flag behave as before.
+The additional `"secondary"` value is described below; other fallback values
+are rejected. Keep the entry rather than deleting it or renumbering the array.
+Restart the game after editing cached font metadata.
 
 This uses the same unavailable-glyph path as an absent replacement index. The
 original blit runs normally, and its native pixels are retained in the canvas's
@@ -185,6 +186,76 @@ graphics plane rather than captured as HD commands or removed by HD suppression.
 Regression coverage includes internal and consecutive fallback entries, mixed
 4bpp/8bpp canvases, equal-byte redraws, clears, native metrics, mixed-string
 measurement/right alignment, reordered maps and both legacy/scaled metadata.
+
+## Secondary glyph atlas
+
+Each selected font can optionally provide a second PNG/JSON pair:
+
+```text
+mods/<Mod>/fonts/text/font_eu_10.nftr.fallback.png
+mods/<Mod>/fonts/text/font_eu_10.nftr.fallback.json
+```
+
+Resolution follows **primary artwork, secondary artwork, original NFTR**.
+A primary glyph missing from the replacement map/array automatically tries the
+secondary. To reserve an internal primary slot without supplying artwork, use:
+
+```json
+{"index": 42, "fallback": "secondary"}
+```
+
+`"fallback": "original"` still forces true DS artwork and native metrics, skipping
+the secondary. Change that flag to `"secondary"` when an icon should use the new
+atlas. Never delete or renumber reserved primary entries. Transparent/blank
+primary artwork, spaces and zero-width glyphs remain intentional primary glyphs;
+alpha or width never determines whether to fall back.
+
+The secondary JSON uses the existing NFTR atlas schema. Its `source` remains
+`"text/font_eu_10.nftr"`, without the `.fallback` suffix. A nonempty `charmap`
+is required: entries match the original NFTR's codepoints, **not primary glyph
+indices**. The secondary can therefore contain only the needed icons/characters,
+with its own contiguous indices and arbitrary PNG rectangles. All the usual
+metadata fields are still required, including per-glyph metrics.
+
+By default (or with top-level `"metrics": "original"`), secondary artwork fits
+uniformly inside the original Days cell and retains that glyph's original
+bearing, width and advance. Secondary JSON metrics, scale and baseline offsets
+do not alter those native values. This is intended for button icons. The existing
+full-cell rendering behavior preserves PNG artwork even for originally blank
+glyphs. Original cell placement and the existing canvas clips still apply.
+
+For another typeface, opt into `"metrics": "custom"` in the secondary JSON.
+Its own glyph metrics, optional uniform `scale`, baseline and baseline offset
+then work exactly as for a primary replacement. Without `scale`, custom metrics
+use the existing Days-unit compatibility mode. The primary determines the
+surrounding string's line spacing; secondary-only packs use their own line
+spacing in custom mode and the Days line spacing in original-metrics mode.
+Kerning never crosses primary/secondary/DS boundaries; custom secondary pairs
+apply only between two secondary glyphs.
+
+A secondary-only pair is supported. A missing or rejected secondary pair leaves
+a valid primary working and missing glyphs on the existing DS path. A secondary
+entry may force `"original"`, but cannot request another secondary atlas: chains
+are bounded to two PNG atlases. Each PNG and its JSON must come from the same
+mod; primary and secondary pairs are independently found using normal mod
+priority. Scoped mappings prefer the target font's secondary pair. If the target
+has none, they use the originally requested font's secondary pair. For example,
+`font_eu_10` mapped to `font_eu_10all` can still use
+`font_eu_10.nftr.fallback.png`/`.json` when no `10all` fallback pair is supplied.
+The source-specific pair retains its own original `source` field, and is bound
+by codepoint to the requested NFTR. Target-specific fallback takes precedence
+when both pairs exist; they are not chained into a third PNG atlas. Final DS
+fallback always uses the originally requested NFTR. No mapping JSON changes are
+needed to enable a secondary pair.
+
+Both atlases load once per session; glyph resolution is precomputed when the
+original CMAP is bound. Painting uses the existing bounded raster cache,
+independent HD commands and incremental canvas/VRAM updates. There is no new
+rendering path, full-frame redraw or original-ink masking. Restart after edits.
+Synthetic tests in `port/tests/font_secondary_test.cpp` cover reordered maps,
+consecutive gaps, mixed artwork, original/custom metrics, scoped identities,
+secondary-only packs, transparent primaries, doubled PNG resolution, warm-cache
+reuse and invalid/missing pairs.
 
 Port-only transforms in `port/tools/font_layout.py` adapt `Text_DrawGlyph`,
 `Text_DrawLine`, `NNSi_G2dFontGetStringWidth`, `NNSi_G2dFontGetTextRect`,

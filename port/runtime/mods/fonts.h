@@ -13,6 +13,7 @@ namespace khdays::hd_fonts {
 
 struct Glyph {
     bool original = false;                // Explicit native artwork and metrics; the index remains reserved.
+    bool secondary = false;               // Skip primary artwork without shifting later glyphs.
     int x = 0, y = 0, w = 0, h = 0;       // reference-atlas pixels, NOT output size
     int left = 0, width = 0, advance = 0; // replacement logical (DS) metrics
     // Actual image-pixel rectangle, scaled from the reference atlas.
@@ -35,12 +36,16 @@ struct Atlas {
     std::vector<Glyph> glyphs;
     std::vector<Mapping> charmap;
     bool has_original = false;
+    bool has_secondary = false, native_metrics = false, primary_missing = false;
+    std::shared_ptr<const Atlas> secondary;
     mutable bool codes_bound = false;
     mutable std::unordered_set<std::uint32_t> original_codes; // No replacement kerning across native glyphs.
-    mutable std::vector<int> original_glyphs;       // Original NFTR index -> replacement index, -1 when absent.
-    std::unordered_map<std::uint64_t, int> kerning; // Unicode pair: left << 32 | right
-    std::vector<std::uint8_t> rgba;                 // actual_width * actual_height * 4
-    std::shared_ptr<const Atlas> artwork;           // Routed views share pixels but bind their own original CMAP.
+    mutable std::vector<int> original_glyphs;  // Original NFTR index -> replacement index, -1 when absent.
+    mutable std::vector<int> secondary_glyphs; // Original NFTR index -> secondary index, -1 when absent.
+    mutable std::unordered_set<std::uint32_t> secondary_codes; // Kerning stays within the resolved font.
+    std::unordered_map<std::uint64_t, int> kerning;            // Unicode pair: left << 32 | right
+    std::vector<std::uint8_t> rgba;                            // actual_width * actual_height * 4
+    std::shared_ptr<const Atlas> artwork; // Routed views share pixels but bind their own original CMAP.
     const std::vector<std::uint8_t> &pixels() const
     {
         return artwork ? artwork->pixels() : rgba;

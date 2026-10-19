@@ -28,51 +28,73 @@ double exact_units(const khdays::hd_fonts::Atlas &atlas, int value)
     return value * (atlas.sized ? atlas.scale : 1.0);
 }
 
-int atlas_index(const khdays::hd_fonts::Atlas &atlas, int original)
+int atlas_index(std::shared_ptr<const khdays::hd_fonts::Atlas> &atlas, int original)
 {
     if (original < 0)
         return original;
-    const int index = atlas.original_glyphs.empty() ? original
-                                                    : (static_cast<std::size_t>(original) < atlas.original_glyphs.size()
-                                                           ? atlas.original_glyphs[original]
-                                                           : -1);
-    return index >= 0 && static_cast<std::size_t>(index) < atlas.glyphs.size() && !atlas.glyphs[index].original ? index
-                                                                                                                : -1;
+    const int index =
+        atlas->original_glyphs.empty()
+            ? original
+            : (static_cast<std::size_t>(original) < atlas->original_glyphs.size() ? atlas->original_glyphs[original]
+                                                                                  : -1);
+    if (index >= 0 && static_cast<std::size_t>(index) < atlas->glyphs.size()) {
+        if (atlas->glyphs[index].original)
+            return -1;
+        if (!atlas->glyphs[index].secondary)
+            return index;
+    }
+    if (!atlas->secondary || static_cast<std::size_t>(original) >= atlas->secondary_glyphs.size())
+        return -1;
+    const int secondary = atlas->secondary_glyphs[original];
+    if (secondary < 0)
+        return -1;
+    atlas = atlas->secondary;
+    return secondary;
 }
 } // namespace
 
 extern "C" int khdays_hd_font_map_ready(const char *resource)
 {
-    const auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
-    return !atlas || (atlas->charmap.empty() && !atlas->has_original) || atlas->codes_bound;
+    auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
+    return !atlas || (atlas->charmap.empty() && !atlas->has_original && !atlas->has_secondary && !atlas->secondary) ||
+           atlas->codes_bound;
 }
 
 extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t *codes, int count)
 {
     if (!resource || !codes || count <= 0 || count > 16384)
         return;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (!atlas || atlas->codes_bound)
         return;
-    if (atlas->charmap.empty()) {
-        for (int i = 0; i < count && static_cast<std::size_t>(i) < atlas->glyphs.size(); ++i)
-            if (atlas->glyphs[i].original)
-                atlas->original_codes.insert(codes[i]);
-        atlas->codes_bound = true;
-        return;
-    }
-    std::unordered_map<std::uint32_t, int> by_code;
+    std::unordered_map<std::uint32_t, int> by_code, secondary_by_code;
     for (const auto &mapping : atlas->charmap)
         by_code.emplace(mapping.codepoint, static_cast<int>(mapping.glyph));
+    if (atlas->secondary)
+        for (const auto &mapping : atlas->secondary->charmap)
+            secondary_by_code.emplace(mapping.codepoint, static_cast<int>(mapping.glyph));
     std::vector<int> indices(static_cast<std::size_t>(count), -1);
+    std::vector<int> secondary_indices(atlas->secondary ? static_cast<std::size_t>(count) : 0, -1);
     for (int i = 0; i < count; ++i) {
         const auto found = by_code.find(codes[i]);
-        if (found != by_code.end())
+        if (atlas->charmap.empty())
+            indices[i] = static_cast<std::size_t>(i) < atlas->glyphs.size() ? i : -1;
+        else if (found != by_code.end())
             indices[i] = found->second;
-        if (indices[i] < 0 || atlas->glyphs[indices[i]].original)
+        const auto *glyph = indices[i] >= 0 ? &atlas->glyphs[indices[i]] : nullptr;
+        if (glyph && !glyph->original && !glyph->secondary)
+            continue;
+        const auto secondary = secondary_by_code.find(codes[i]);
+        if ((!glyph || !glyph->original) && secondary != secondary_by_code.end() &&
+            !atlas->secondary->glyphs[secondary->second].original) {
+            secondary_indices[i] = secondary->second;
+            atlas->secondary_codes.insert(codes[i]);
+        } else {
             atlas->original_codes.insert(codes[i]);
+        }
     }
     atlas->original_glyphs = std::move(indices);
+    atlas->secondary_glyphs = std::move(secondary_indices);
     atlas->codes_bound = true;
 }
 
@@ -85,21 +107,21 @@ extern "C" int khdays_hd_font_glyph_width(const char *resource, int index)
 {
     if (!resource)
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (atlas)
-        index = atlas_index(*atlas, index);
+        index = atlas_index(atlas, index);
     if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
         return 0;
-    return khdays::hd_fonts::layout_units(*atlas, atlas->glyphs[index].width);
+    return atlas->native_metrics ? 0 : khdays::hd_fonts::layout_units(*atlas, atlas->glyphs[index].width);
 }
 
 extern "C" int khdays_hd_font_glyph_available(const char *resource, int index)
 {
     if (!resource || index < 0)
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (atlas)
-        index = atlas_index(*atlas, index);
+        index = atlas_index(atlas, index);
     return atlas && index >= 0 && static_cast<std::size_t>(index) < atlas->glyphs.size() ? 1 : 0;
 }
 
@@ -107,13 +129,15 @@ extern "C" double khdays_hd_font_metric_f(const char *resource, int index, int f
 {
     if (!resource)
         return fallback;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (!atlas)
         return fallback;
     const bool global = index < 0;
-    index = atlas_index(*atlas, index);
+    index = atlas_index(atlas, index);
     if (!global && index < 0)
         return fallback;
+    if (atlas->native_metrics)
+        return field == KHDF_SIZED ? 0 : fallback;
     if (field == KHDF_SIZED)
         return atlas->sized;
     if ((field == KHDF_CELL_WIDTH || field == KHDF_CELL_HEIGHT) &&
@@ -142,10 +166,18 @@ extern "C" double khdays_hd_font_kerning_f(const char *resource, unsigned int le
 {
     if (!resource || !left || !right || left == '\n' || right == '\n')
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (!atlas)
         return 0;
     if (atlas->original_codes.count(left) || atlas->original_codes.count(right))
+        return 0;
+    const bool left_secondary = atlas->secondary_codes.count(left) != 0;
+    const bool right_secondary = atlas->secondary_codes.count(right) != 0;
+    if (left_secondary != right_secondary)
+        return 0;
+    if (left_secondary)
+        atlas = atlas->secondary;
+    if (atlas->native_metrics)
         return 0;
     const auto it = atlas->kerning.find((static_cast<std::uint64_t>(left) << 32) | right);
     return it == atlas->kerning.end() ? 0 : exact_units(*atlas, it->second);
@@ -160,12 +192,13 @@ extern "C" double khdays_hd_font_extent_f(const char *resource, int index, int l
 {
     if (!resource || index < 0)
         return advance;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (!atlas)
         return advance;
-    index = atlas_index(*atlas, index);
-    if (index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
-        return atlas->sized && width ? left + width : advance;
+    const bool sized = atlas->sized;
+    index = atlas_index(atlas, index);
+    if (index < 0 || atlas->native_metrics || static_cast<std::size_t>(index) >= atlas->glyphs.size())
+        return sized && width ? left + width : advance;
     const auto &glyph = atlas->glyphs[index];
     if (!atlas->sized)
         return glyph.advance; // Compatibility mode keeps NFTR advance-based layout.
@@ -184,9 +217,9 @@ extern "C" double khdays_hd_font_baseline_f(const char *resource, int index, int
 {
     if (!resource || index < 0)
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (atlas)
-        index = atlas_index(*atlas, index);
+        index = atlas_index(atlas, index);
     if (!atlas || !atlas->sized || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
         return 0;
     return days_baseline - exact_units(*atlas, atlas->baseline) + atlas->baseline_offset;
@@ -202,12 +235,13 @@ extern "C" int khdays_hd_font_geometry(const char *resource, int index, int days
 {
     if (!resource || !geometry || index < 0)
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (atlas)
-        index = atlas_index(*atlas, index);
+        index = atlas_index(atlas, index);
     if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
         return 0;
-    const auto g = khdays::hd_fonts::glyph_geometry(*atlas, index, days_w, days_h, days_ink_w);
+    const auto g = atlas->native_metrics ? khdays::hd_fonts::GlyphGeometry{days_w, days_h, days_w}
+                                         : khdays::hd_fonts::glyph_geometry(*atlas, index, days_w, days_h, days_ink_w);
     geometry[0] = g.width;
     geometry[1] = g.height;
     geometry[2] = g.clip_width;
@@ -221,9 +255,9 @@ extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, dou
 {
     if (!resource || !rgba || width <= 0 || height <= 0 || scale <= 0)
         return 0;
-    const auto atlas = khdays::hd_fonts::load(resource);
+    auto atlas = khdays::hd_fonts::load(resource);
     if (atlas)
-        index = atlas_index(*atlas, index);
+        index = atlas_index(atlas, index);
     if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
         return 0;
     khdays::hd_fonts::GlyphPaint paint;

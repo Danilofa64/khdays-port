@@ -192,7 +192,7 @@ int layout_units(const Atlas &atlas, int value)
 GlyphGeometry glyph_geometry(const Atlas &atlas, int index, int days_width, int days_height, int days_ink_width)
 {
     const auto &g = atlas.glyphs[index];
-    if (g.original)
+    if (g.original || g.secondary)
         return {0, 0, 0};
     const double ratio = std::min((atlas.sized ? atlas.cell_width * atlas.scale : days_width) / g.image_w,
                                   (atlas.sized ? atlas.cell_height * atlas.scale : days_height) / g.image_h);
@@ -211,7 +211,7 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
         atlas.pixels().size() != static_cast<std::size_t>(atlas.width) * atlas.height * 4)
         return false;
     const Glyph &g = atlas.glyphs[paint.glyph_index];
-    if (g.original)
+    if (g.original || g.secondary)
         return false;
     if (g.image_w <= 0 || g.image_h <= 0 || g.image_x < 0 || g.image_y < 0 ||
         g.image_x + g.image_w > atlas.width + 1e-6 || g.image_y + g.image_h > atlas.height + 1e-6)

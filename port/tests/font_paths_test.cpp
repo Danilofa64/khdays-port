@@ -204,8 +204,8 @@ int main()
     using namespace khdays::hd_fonts;
     auto a = load("/text/paths.nftr");
     bool ok = a && a == load("text/paths.nftr") && a == load("\\text\\paths.nftr") && probe("/text/paths.nftr") == 1 &&
-              lookups == 1 && a == load("/text/paths.NFTR") && a == load("text/paths.NfTr");
-    ok = ok && !load("/../escape.nftr") && !load("C:/escape.nftr") && lookups == 1;
+              lookups == 2 && a == load("/text/paths.NFTR") && a == load("text/paths.NfTr");
+    ok = ok && !load("/../escape.nftr") && !load("C:/escape.nftr") && lookups == 2;
     ok = ok && khdays_hd_font_metric("text/paths.nftr", 0, KHDF_LEFT, 8) == -130 &&
          khdays_hd_font_metric("text/paths.nftr", 0, KHDF_WIDTH, 8) == 512 &&
          khdays_hd_font_metric("text/paths.nftr", 0, KHDF_ADVANCE, 8) == 300 &&
