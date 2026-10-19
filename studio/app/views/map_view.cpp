@@ -133,7 +133,6 @@ struct Kh2Picker {
     }
 };
 Kh2Picker kh2;
-constexpr const char* kKh2Worlds[] = {"tt", "al", "bb", "eh", "he", "nm"};
 
 // The collision drawn and picked: the one made when the modder's is shown
 // (the game's when it is kept).
@@ -474,6 +473,27 @@ Footing footing(const std::array<float, 3>& q, std::array<float, 3>* to) {
     return Footing::none;
 }
 
+// Where vertex v is drawn when its joints are moved as `moved` says (palette entry: matrix); as it is
+// when none of its joints moves.
+std::array<float, 3> skinned(const std::map<std::uint32_t, Mat>& moved, const assets::NeutralVertex& v) {
+    std::array<float, 3> pos{0, 0, 0};
+    float total = 0.0f;
+    for (std::size_t k = 0; k < 4; ++k) {
+        const auto found = moved.find(v.joints[k]);
+        if (v.weights[k] <= 0.0f || found == moved.end())
+            continue;
+        const auto q = mat_point(found->second, v.position);
+        for (std::size_t c = 0; c < 3; ++c)
+            pos[c] += v.weights[k] * q[c];
+        total += v.weights[k];
+    }
+    if (total <= 0.0f)
+        return v.position;
+    for (auto& c : pos)
+        c /= total;
+    return pos;
+}
+
 void draw_room(App& app, ImVec2 size) {
     if (!m.preview)
         m.preview = std::make_unique<Preview>(app.device);
@@ -569,23 +589,8 @@ void draw_room(App& app, ImVec2 size) {
                 const auto offset = khdays::room::scroll_offset(mesh.scroll, frames, tw, th);
                 auto vertex = [&](const assets::NeutralVertex& v) {
                     PreviewVertex o;
-                    o.position = v.position;
+                    o.position = skinned(moved, v);
                     o.normal = v.normal;
-                    std::array<float, 3> pos{0, 0, 0};
-                    float total = 0.0f;
-                    for (std::size_t k = 0; k < 4; ++k) {
-                        const auto found = moved.find(v.joints[k]);
-                        if (v.weights[k] <= 0.0f || found == moved.end())
-                            continue;
-                        const auto q = mat_point(found->second, v.position);
-                        for (std::size_t c = 0; c < 3; ++c)
-                            pos[c] += v.weights[k] * q[c];
-                        total += v.weights[k];
-                    }
-                    if (total > 0.0f) {
-                        for (std::size_t c = 0; c < 3; ++c)
-                            o.position[c] = pos[c] / total;
-                    }
                     if (moving)
                         o.position = placed_point(m.rep.r.place, unplaced_point(m.rep.placed_with, o.position));
                     o.uv = {(v.texcoord[0] + offset[0]) / tw, (v.texcoord[1] + offset[1]) / th};
@@ -1185,6 +1190,20 @@ void line_up(App& app) {
     p.dirty = true;
 }
 
+// The KH2 map's own floors and walls as the room's collision model; false (the reason in the room's
+// error) when they cannot be made.
+bool load_kh2_collision(App& app, const std::string& map) {
+    Replacing& p = m.rep;
+    fs::path file;
+    std::string why;
+    if (make_kh2_collision(app.settings.root, map, &file, &why) && import_model(file, &p.raw_collision, &why)) {
+        p.collision_source = file;
+        return true;
+    }
+    p.error = why;
+    return false;
+}
+
 // The worker's results taken: its list of maps, or the model it made (offered as the room's model).
 void kh2_take(App& app, const Item& item) {
     bool listed = false, made = false;
@@ -1239,13 +1258,7 @@ void kh2_take(App& app, const Item& item) {
     }
     room_offer(app, item, model);
     if (m.rep.kh2_collision) {
-        // KH2's own floors and walls: the new map's
-        fs::path file;
-        std::string why;
-        if (make_kh2_collision(app.settings.root, map, &file, &why) && import_model(file, &m.rep.raw_collision, &why))
-            m.rep.collision_source = file;
-        else
-            m.rep.error = why;
+        load_kh2_collision(app, map);  // KH2's own floors and walls: the new map's
         m.rep.dirty = true;
     }
     app.tell(fmt(app.language, S::map_kh2_made,
@@ -1317,14 +1330,14 @@ void draw_kh2_picker(App& app) {
     }
     if (kh2.world < 0) {
         kh2.world = 0;
-        for (int w = 0; w < 6; ++w) {
+        for (int w = 0; w < kKh2WorldCount; ++w) {
             if (m.world.code == kKh2Worlds[w])
                 kh2.world = w;
         }
     }
     ImGui::BeginDisabled(kh2.busy);
     ImGui::SetNextItemWidth(6 * ImGui::GetFontSize());
-    if (ImGui::Combo(tr(lang, S::map_kh2_world), &kh2.world, kKh2Worlds, 6))
+    if (ImGui::Combo(tr(lang, S::map_kh2_world), &kh2.world, kKh2Worlds, kKh2WorldCount))
         kh2.maps.clear();
     ImGui::SameLine();
     if (ImGui::Button(tr(lang, S::map_kh2_list)))
@@ -1377,6 +1390,32 @@ void draw_kh2_picker(App& app) {
         ImGui::PopID();
     }
     ImGui::Unindent();
+}
+
+// The modder's room raised so that most of the room's markers stand on one of its floors, and the person
+// told how many do.
+void raise_to_room_markers(App& app) {
+    Replacing& p = m.rep;
+    if (p.dirty)
+        rebuild();
+    std::vector<std::array<float, 3>> feet;
+    for (const auto& mk : showing_built() ? markers(p.built) : m.markers) {
+        feet.push_back({static_cast<float>(mk.place[0]) * kFx, static_cast<float>(mk.place[1]) * kFx,
+                        static_cast<float>(mk.place[2]) * kFx});
+    }
+    std::size_t on = 0;
+    const float raise = raise_to_markers(p.surfaces, feet, &on);
+    char by[32];
+    std::snprintf(by, sizeof(by), "%+.2f", raise);
+    if (on > 0) {
+        p.r.place.move[1] += raise;
+        p.placed_text = fmt(app.language, S::map_raised, {by, std::to_string(on), std::to_string(feet.size())});
+        p.placed_ok = on * 2 >= feet.size();
+        p.dirty = true;
+    } else {
+        p.placed_text = tr(app.language, S::map_raised_none);
+        p.placed_ok = false;
+    }
 }
 
 void choose_room_export(App& app, const Item& item) {
@@ -1457,28 +1496,8 @@ void draw_replace(App& app, const Item& item) {
         line_up(app);
     // the height that puts most of the room's markers on one of its floors
     same_line_if_room(button_width(tr(lang, S::map_raise_to_markers)));
-    if (ImGui::Button(tr(lang, S::map_raise_to_markers)) && p.built_ok) {
-        if (p.dirty)
-            rebuild();
-        std::vector<std::array<float, 3>> feet;
-        for (const auto& mk : showing_built() ? markers(p.built) : m.markers) {
-            feet.push_back({static_cast<float>(mk.place[0]) * kFx, static_cast<float>(mk.place[1]) * kFx,
-                            static_cast<float>(mk.place[2]) * kFx});
-        }
-        std::size_t on = 0;
-        const float raise = raise_to_markers(p.surfaces, feet, &on);
-        char by[32];
-        std::snprintf(by, sizeof(by), "%+.2f", raise);
-        if (on > 0) {
-            p.r.place.move[1] += raise;
-            p.placed_text = fmt(lang, S::map_raised, {by, std::to_string(on), std::to_string(feet.size())});
-            p.placed_ok = on * 2 >= feet.size();
-            p.dirty = true;
-        } else {
-            p.placed_text = tr(lang, S::map_raised_none);
-            p.placed_ok = false;
-        }
-    }
+    if (ImGui::Button(tr(lang, S::map_raise_to_markers)) && p.built_ok)
+        raise_to_room_markers(app);
     bool changed = false;
     ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
     ImGui::DragFloat(tr(lang, S::map_scale), &p.r.place.scale, 0.01f, 0.001f, 1000.0f, "%.3f");
@@ -1536,17 +1555,8 @@ void draw_replace(App& app, const Item& item) {
             p.raw_collision = {};
             p.r.collision.clear();
         }
-        if (source == 3) {
-            fs::path file;
-            std::string why;
-            if (make_kh2_collision(app.settings.root, p.r.kh2, &file, &why) &&
-                import_model(file, &p.raw_collision, &why)) {
-                p.collision_source = file;
-            } else {
-                p.error = why;
-                p.kh2_collision = p.other_collision = false;
-            }
-        }
+        if (source == 3 && !load_kh2_collision(app, p.r.kh2))
+            p.kh2_collision = p.other_collision = false;
         p.dirty = true;
     }
 

@@ -327,6 +327,15 @@ int room_model(const fs::path& root, const std::vector<std::string>& args) {
     return 0;
 }
 
+// What a KH2 map made into a model holds, and what of it was left out.
+void print_kh2_made(const std::string& name, const Kh2Made& made) {
+    std::printf("%s: %zu triangles, %zu pictures, %zu pieces (%zu moving), %zu scrolling and %zu changing textures\n",
+                name.c_str(), made.triangles, made.pictures, made.pieces, made.animations, made.scrolling, made.framed);
+    for (const auto& line : made.report)
+        std::printf("note: %s\n", line.c_str());
+    std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
+}
+
 // --kh2-room <map> <out.gltf> [<folder>]: a KH2 map (tt02) of the player's collection made into a model
 // to replace a room with, its pictures beside it; the folder the collection's archives gave it to
 // (saves/collection/kh2 when not given).
@@ -338,12 +347,7 @@ int kh2_room(const fs::path& root, const std::vector<std::string>& args) {
         std::fprintf(stderr, "khdays-studio: %s\n", why.c_str());
         return 1;
     }
-    std::printf("%s: %zu triangles, %zu pictures, %zu pieces (%zu moving), %zu scrolling and %zu changing textures\n",
-                args[2].c_str(), made.triangles, made.pictures, made.pieces, made.animations, made.scrolling,
-                made.framed);
-    for (const auto& line : made.report)
-        std::printf("note: %s\n", line.c_str());
-    std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
+    print_kh2_made(args[2], made);
     return 0;
 }
 
@@ -356,9 +360,9 @@ int kh2_maps(const fs::path& root, const std::vector<std::string>& args) {
     const auto pairs = kh2_pairs({}, &notes);
     for (const auto& n : notes)
         std::fprintf(stderr, "khdays-studio: %s\n", n.c_str());
-    const std::vector<std::string> worlds = args.size() > 1
-                                                ? std::vector<std::string>{args[1]}
-                                                : std::vector<std::string>{"al", "bb", "eh", "he", "nm", "tt"};
+    const std::vector<std::string> worlds =
+        args.size() > 1 ? std::vector<std::string>{args[1]}
+                        : std::vector<std::string>(std::begin(kKh2Worlds), std::end(kKh2Worlds));
     int status = 0;
     for (const auto& world : worlds) {
         std::vector<std::string> maps;
@@ -405,6 +409,15 @@ int kh2_maps(const fs::path& root, const std::vector<std::string>& args) {
         }
     }
     return status;
+}
+
+// The game's own collision of the world's room `room`; false when it has none that can be read.
+bool room_collision_of(const World& w, int room, RoomCollision* out) {
+    if (room < 0 || static_cast<std::size_t>(room) >= w.rooms.size())
+        return false;
+    const auto member = static_cast<std::size_t>(w.rooms[static_cast<std::size_t>(room)].collision_member);
+    std::string unused;
+    return member < w.archive.entries.size() && parse_collision(w.archive.entries[member].data, out, &unused);
 }
 
 // The mod a room command works in, and the game files it reads; false (said) when either is missing.
@@ -461,11 +474,7 @@ int replace_room(const fs::path& root, const std::vector<std::string>& args) {
         const fs::path model = kh2_made_model(root, kh2);
         if (!take_out_kh2_map(settings, kh2, &why) || !make_kh2_room(kh2_folder(root), kh2, model, &made, &why))
             return print_outcome(false, {}, why);
-        std::printf("%s: %zu triangles, %zu pictures, %zu pieces (%zu moving)\n", kh2.c_str(), made.triangles,
-                    made.pictures, made.pieces, made.animations);
-        for (const auto& line : made.report)
-            std::printf("note: %s\n", line.c_str());
-        std::printf("made from the player's own copy: Square Enix's work, not to be shared\n");
+        print_kh2_made(kh2, made);
         given[4] = u8(model);
         // kh2-collision: the map's own floors and walls, placed like its model
         if (args.size() >= 6 && args[5] == "kh2-collision") {
@@ -490,14 +499,7 @@ int replace_room(const fs::path& root, const std::vector<std::string>& args) {
         khdays::assets::ImportedModel model;
         if (load_world(nitrofs, code, &w, &why) && import_model(path_u8(given[4]), &model, &why)) {
             RoomCollision collision;
-            std::string unused;
-            const bool has_collision =
-                room >= 0 && static_cast<std::size_t>(room) < w.rooms.size() &&
-                parse_collision(
-                    w.archive
-                        .entries[static_cast<std::size_t>(w.rooms[static_cast<std::size_t>(room)].collision_member)]
-                        .data,
-                    &collision, &unused);
+            const bool has_collision = room_collision_of(w, room, &collision);
             const RoomAlignment a = !kh2.empty() && has_collision
                                         ? kh2_alignment(room_points(nitrofs, dump, w, room), collision, model)
                                         : align_with_room(room_points(nitrofs, dump, w, room), model);

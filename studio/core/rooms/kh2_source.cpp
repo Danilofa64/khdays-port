@@ -77,13 +77,13 @@ std::vector<fs::path> recorded_collections(const fs::path& root) {
 int run_reader(const fs::path& root, const std::vector<std::string>& args, std::vector<std::string>* lines,
                std::string* why) {
     const fs::path own = root / "setup" / "python" / "python.exe";
+    const fs::path script = root / "installer" / "collection_archive.py";
     std::error_code ec;
-    std::vector<std::string> command{fs::is_regular_file(own, ec) ? u8(own) : std::string("python"), "-I",
-                                     u8(root / "installer" / "collection_archive.py")};
-    if (!fs::is_regular_file(root / "installer" / "collection_archive.py", ec)) {
+    if (!fs::is_regular_file(script, ec)) {
         *why = "the installer's reader of the collection is not in " + u8(root / "installer");
         return -1;
     }
+    std::vector<std::string> command{fs::is_regular_file(own, ec) ? u8(own) : std::string("python"), "-I", u8(script)};
     command.insert(command.end(), args.begin(), args.end());
     Job job(command, root);
     while (!job.done())
@@ -92,6 +92,34 @@ int run_reader(const fs::path& root, const std::vector<std::string>& args, std::
     if (job.exit_code() < 0)
         *why = "Python could not be started (" + job.error() + ")";
     return job.exit_code();
+}
+
+// A map taken out into `folder` (kh2_folder()): its data, and its remastered pictures' folder.
+fs::path original_map(const fs::path& folder, const std::string& map) {
+    return folder / "original" / "map" / path_u8(map + ".map");
+}
+fs::path remastered_map(const fs::path& folder, const std::string& map) {
+    return folder / "remastered" / "map" / path_u8(map + ".map");
+}
+
+// The map's own floors and walls written as `out`; false with the reason.
+bool write_collision(const std::vector<std::uint8_t>& data, const std::string& map, const fs::path& out,
+                     std::string* why) {
+    try {
+        const auto scene = khdays::assets::kh2::collision_scene(data.data(), data.size(), map);
+        std::error_code ec;
+        fs::create_directories(out.parent_path(), ec);
+        std::ofstream file(out, std::ios::binary);
+        file << khdays::assets::scene_to_gltf(scene);
+        if (!file) {
+            *why = "cannot write " + u8(out);
+            return false;
+        }
+    } catch (const std::exception& e) {
+        *why = map + ": " + e.what();
+        return false;
+    }
+    return true;
 }
 
 }  // namespace
@@ -117,6 +145,26 @@ fs::path kh2_collection(const Settings& settings) {
     return {};
 }
 
+namespace {
+
+// The player's collection and its KH2 archives; false with the reason when either is missing.
+bool collection_archives(const Settings& settings, fs::path* collection, std::vector<fs::path>* archives,
+                         std::string* why) {
+    *collection = kh2_collection(settings);
+    if (collection->empty()) {
+        *why = "no KINGDOM HEARTS HD 1.5+2.5 ReMIX folder: set it in the settings";
+        return false;
+    }
+    *archives = kh2_archives(*collection);
+    if (archives->empty()) {
+        *why = "no KH2 archive in " + u8(*collection / "Image");
+        return false;
+    }
+    return true;
+}
+
+}  // namespace
+
 std::vector<fs::path> kh2_archives(const fs::path& collection) {
     std::vector<fs::path> out;
     std::error_code ec;
@@ -134,16 +182,10 @@ std::vector<fs::path> kh2_archives(const fs::path& collection) {
 
 bool kh2_world_maps(const Settings& settings, const std::string& world, std::vector<std::string>* maps,
                     std::string* why) {
-    const fs::path collection = kh2_collection(settings);
-    if (collection.empty()) {
-        *why = "no KINGDOM HEARTS HD 1.5+2.5 ReMIX folder: set it in the settings";
+    fs::path collection;
+    std::vector<fs::path> archives;
+    if (!collection_archives(settings, &collection, &archives, why))
         return false;
-    }
-    const auto archives = kh2_archives(collection);
-    if (archives.empty()) {
-        *why = "no KH2 archive in " + u8(collection / "Image");
-        return false;
-    }
     maps->clear();
     for (const auto& archive : archives) {
         std::vector<std::string> args{"--has", u8(archive)};
@@ -170,26 +212,20 @@ bool kh2_world_maps(const Settings& settings, const std::string& world, std::vec
 
 bool kh2_map_taken_out(const fs::path& root, const std::string& map) {
     std::error_code ec;
-    return fs::is_regular_file(kh2_folder(root) / "original" / "map" / path_u8(map + ".map"), ec) &&
-           fs::is_directory(kh2_folder(root) / "remastered" / "map" / path_u8(map + ".map"), ec);
+    return fs::is_regular_file(original_map(kh2_folder(root), map), ec) &&
+           fs::is_directory(remastered_map(kh2_folder(root), map), ec);
 }
 
 bool take_out_kh2_map(const Settings& settings, const std::string& map, std::string* why) {
     if (kh2_map_taken_out(settings.root, map))
         return true;
-    const fs::path collection = kh2_collection(settings);
-    if (collection.empty()) {
-        *why = "no KINGDOM HEARTS HD 1.5+2.5 ReMIX folder: set it in the settings";
+    fs::path collection;
+    std::vector<fs::path> archives;
+    if (!collection_archives(settings, &collection, &archives, why))
         return false;
-    }
     std::error_code ec;
     if (!fs::is_regular_file(collection / kKh2Exe, ec)) {
         *why = std::string("no ") + kKh2Exe + " in " + u8(collection) + " (its archives are read with its table)";
-        return false;
-    }
-    const auto archives = kh2_archives(collection);
-    if (archives.empty()) {
-        *why = "no KH2 archive in " + u8(collection / "Image");
         return false;
     }
     for (const auto& archive : archives) {
@@ -210,27 +246,13 @@ bool take_out_kh2_map(const Settings& settings, const std::string& map, std::str
 }
 
 bool make_kh2_collision(const fs::path& root, const std::string& map, fs::path* out, std::string* why) {
-    const auto data = read_all(kh2_folder(root) / "original" / "map" / path_u8(map + ".map"));
+    const auto data = read_all(original_map(kh2_folder(root), map));
     if (data.empty()) {
         *why = "no " + map + " taken out of the collection";
         return false;
     }
     *out = kh2_made_model(root, map).parent_path() / path_u8(map + "_collision.gltf");
-    try {
-        const auto scene = khdays::assets::kh2::collision_scene(data.data(), data.size(), map);
-        std::error_code ec;
-        fs::create_directories(out->parent_path(), ec);
-        std::ofstream file(*out, std::ios::binary);
-        file << khdays::assets::scene_to_gltf(scene);
-        if (!file) {
-            *why = "cannot write " + u8(*out);
-            return false;
-        }
-    } catch (const std::exception& e) {
-        *why = map + ": " + e.what();
-        return false;
-    }
-    return true;
+    return write_collision(data, map, *out, why);
 }
 
 void read_kh2_pairs(const std::string& text, const std::string& source, std::vector<Kh2Pair>* pairs,
@@ -323,7 +345,7 @@ const Kh2Pair* kh2_pair_of(const std::vector<Kh2Pair>& pairs, const std::string&
 }
 
 bool kh2_radar(const fs::path& root, const std::string& map, khdays::assets::DecodedTexture* out) {
-    const auto data = read_all(kh2_folder(root) / "original" / "map" / path_u8(map + ".map"));
+    const auto data = read_all(original_map(kh2_folder(root), map));
     if (data.empty())
         return false;
     try {
@@ -342,8 +364,8 @@ bool kh2_radar(const fs::path& root, const std::string& map, khdays::assets::Dec
 
 bool make_kh2_room(const fs::path& folder, const std::string& map, const fs::path& out, Kh2Made* made,
                    std::string* why) {
-    const fs::path file = folder / "original" / "map" / path_u8(map + ".map");
-    const fs::path hd = folder / "remastered" / "map" / path_u8(map + ".map");
+    const fs::path file = original_map(folder, map);
+    const fs::path hd = remastered_map(folder, map);
     const std::vector<std::uint8_t> data = read_all(file);
     if (data.empty()) {
         *why = "no " + u8(file) + " (the map is taken out of the collection first)";
@@ -391,13 +413,9 @@ bool make_kh2_room(const fs::path& folder, const std::string& map, const fs::pat
     }
     made->report.insert(made->report.end(), room.report.begin(), room.report.end());
     // and the map's own floors and walls beside it (<map>_collision.gltf), for a room change to take
-    try {
-        const auto walls = khdays::assets::kh2::collision_scene(data.data(), data.size(), map);
-        std::ofstream collision(out.parent_path() / path_u8(map + "_collision.gltf"), std::ios::binary);
-        collision << khdays::assets::scene_to_gltf(walls);
-    } catch (const std::exception& e) {
-        made->report.push_back(std::string("no floors and walls of its own: ") + e.what());
-    }
+    std::string no_walls;
+    if (!write_collision(data, map, out.parent_path() / path_u8(map + "_collision.gltf"), &no_walls))
+        made->report.push_back("no floors and walls of its own: " + no_walls);
     return true;
 }
 

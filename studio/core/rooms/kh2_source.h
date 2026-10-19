@@ -18,6 +18,11 @@
 
 namespace studio {
 
+// KH2's worlds that Days has too: Twilight Town, Agrabah, Beast's Castle, The World That Never Was,
+// Olympus Coliseum, Halloween Town.
+inline constexpr const char* kKh2Worlds[] = {"tt", "al", "bb", "eh", "he", "nm"};
+inline constexpr int kKh2WorldCount = static_cast<int>(sizeof(kKh2Worlds) / sizeof(kKh2Worlds[0]));
+
 struct Kh2Made {
     std::size_t triangles = 0;
     std::size_t pictures = 0;

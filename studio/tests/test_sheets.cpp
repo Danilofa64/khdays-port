@@ -781,7 +781,8 @@ TEST(the_tile_grid_lies_over_the_export) {
     const std::uint32_t grey = 0xff808080u, red = 0xff0000ffu;
     const auto at = [](const Bytes& p, int w, int x, int y) {
         std::uint32_t v = 0;
-        std::memcpy(&v, &p[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4], 4);
+        std::memcpy(
+            &v, &p[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4], 4);
         return v;
     };
     // at 1x: one-pixel borders, the marked tile in its colour, the insides clear

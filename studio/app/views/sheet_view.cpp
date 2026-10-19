@@ -439,7 +439,8 @@ void sheet_grid_export_to(App& app, const fs::path& chosen) {
         marks.push_back({v.result.conflicts, kConflict});
     }
     const auto rgba = render_tile_grid(v.assembly, scale, kGrid, marks);
-    const char* e = khdays_png_write(u8(file).c_str(), rgba.data(), v.assembly.width * scale, v.assembly.height * scale);
+    const char* e =
+        khdays_png_write(u8(file).c_str(), rgba.data(), v.assembly.width * scale, v.assembly.height * scale);
     app.tell(e != nullptr ? fmt(app.language, S::save_failed, {e}) : fmt(app.language, S::sheet_exported, {u8(file)}),
              e == nullptr);
 }
@@ -667,7 +668,8 @@ void draw_sheet_assembled(App& app, const Item& item) {
     same_line_if_room(button_width(tr(app.language, S::sheet_export_grid)));
     if (ImGui::Button(tr(app.language, S::sheet_export_grid))) {
         std::string name = export_name(item);
-        name.insert(name.size() - 4, "_grid");  // before ".png"
+        const std::size_t dot = name.rfind('.');
+        name.insert(dot == std::string::npos ? name.size() : dot, "_grid");  // before its ".png"
         choose_save_file(app, name, "PNG", "png", app.dialog_grids);
     }
     if (ImGui::IsItemHovered())

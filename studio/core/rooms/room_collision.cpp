@@ -402,6 +402,29 @@ bool holds_point(const RoomFace& g, double x, double z) {
     return true;
 }
 
+// Whether point `p` is within 0.15 units of face f, over it.
+bool near_face(const RoomFace& f, const Vec3d& p) {
+    if (f.corners < 3)
+        return false;
+    const Vec3d n = face_normal(f);
+    const double len = length(n);
+    if (len <= 0)
+        return false;
+    const Vec3d d{p[0] - f.v[0][0], p[1] - f.v[0][1], p[2] - f.v[0][2]};
+    if (std::abs(dot(n, d)) / len > 614.0)
+        return false;
+    for (std::size_t i = 0; i < f.corners; ++i) {
+        const auto& a = f.v[i];
+        const auto& b = f.v[(i + 1) % f.corners];
+        const Vec3d edge{static_cast<double>(b[0]) - a[0], static_cast<double>(b[1]) - a[1],
+                         static_cast<double>(b[2]) - a[2]};
+        const Vec3d to{p[0] - a[0], p[1] - a[1], p[2] - a[2]};
+        if (dot(cross(edge, to), n) < 0)
+            return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 void compute_planes(int list, RoomFace* f) {
@@ -737,31 +760,11 @@ bool build_collision(const CollisionSource& source, const RoomCollision& origina
         }
         if (!under)
             r.warnings.push_back({RoomWarning::marker_floating, {m.name}});
-        // a wall through its body: a wall face within 0.15 units of the point half a unit above its feet,
-        // the point over the face
+        // a wall through its body, half a unit above its feet
         const Vec3d body{static_cast<double>(m.place[0]), m.place[1] + 2048.0, static_cast<double>(m.place[2])};
         bool in_wall = false;
-        for (const auto& w : c.faces[kWall]) {
-            if (in_wall || w.corners < 3)
-                continue;
-            const Vec3d n = face_normal(w);
-            const double len = length(n);
-            if (len <= 0)
-                continue;
-            const Vec3d d{body[0] - w.v[0][0], body[1] - w.v[0][1], body[2] - w.v[0][2]};
-            if (std::abs(dot(n, d)) / len > 614.0)
-                continue;
-            bool inside = true;
-            for (std::size_t i = 0; i < w.corners && inside; ++i) {
-                const auto& p = w.v[i];
-                const auto& q = w.v[(i + 1) % w.corners];
-                const Vec3d edge{static_cast<double>(q[0]) - p[0], static_cast<double>(q[1]) - p[1],
-                                 static_cast<double>(q[2]) - p[2]};
-                const Vec3d to{body[0] - p[0], body[1] - p[1], body[2] - p[2]};
-                inside = dot(cross(edge, to), n) >= 0;
-            }
-            in_wall = inside;
-        }
+        for (const auto& w : c.faces[kWall])
+            in_wall = in_wall || near_face(w, body);
         if (in_wall) {
             char at[3][32];
             for (int k = 0; k < 3; ++k)
