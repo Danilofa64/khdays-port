@@ -52,87 +52,99 @@ KD_FN uint kd_keep(uint c)
     return (c & KD_HD) != 0u ? c : (c & 0x7fffu);
 }
 
-/* Replaced tile `entry` (a KD_HD_BG or KD_HD_OBJ word) under the output pixel centred at (u, v), the
- * place inside the 8x8 tile in fractional DS pixels, the pixel `ru` x `rv` DS pixels across. For an
- * indexed sheet it returns KD_HD_INDEX | the game's palette index at the centre (0 when transparent).
- * Otherwise each texel under the pixel counts by how much of it the pixel covers, from the sheet's
- * smaller copy with one to two texels to the pixel (gpu_hd.c): a picture larger than shown is not read
- * one texel in many, nor its soft edges cut at half their alpha. It returns KD_HD | the colour, with
- * how much of what is under it shows in bits 24-30 (KD_SEE_THROUGH), or 0 where nothing of it is. */
+KD_FN float kd_minf(float a, float b)
+{
+    return a < b ? a : b;
+}
+KD_FN float kd_maxf(float a, float b)
+{
+    return a > b ? a : b;
+}
+
+/* A replaced tile in the game's palette: KD_HD_INDEX | the index at (u, v), or 0 where it is clear. */
+KD_FN uint kd_hd_index(uint id, uint tile, float u, float v)
+{
+    const uint info = KD_HD_INFO(id);
+    const uint scale = (info >> 8) & 0xffu, columns = info >> 16, side = 8u * scale;
+    uint x = (uint)(u * (float)scale), y = (uint)(v * (float)scale), texel;
+    x = (x < side ? x : side - 1u) + (tile % columns) * side;
+    y = (y < side ? y : side - 1u) + (tile / columns) * side;
+    if (x >= KD_HD_WIDTH(id) || y >= KD_HD_HEIGHT(id)) {
+        return 0u;
+    }
+    texel = KD_HD_TEXEL(KD_HD_FIRST(id) + y * KD_HD_WIDTH(id) + x);
+    return (texel & 0xffu) != 0u ? KD_HD_INDEX | (texel & 0xffu) : 0u;
+}
+
+/* A replaced tile in its own colours: the texels under an output pixel `ru` x `rv` DS pixels wide,
+ * centred at (u, v), averaged by how much of each it covers. A picture bigger than shown is read from
+ * a smaller copy (gpu_hd.c), so no line is skipped. KD_HD | the colour, with how much of what is
+ * under it shows in bits 24-30 (KD_SEE_THROUGH); 0 where it is clear. */
+KD_FN uint kd_hd_colour(uint id, uint tile, float u, float v, float ru, float rv)
+{
+    const uint info = KD_HD_INFO(id);
+    const uint scale = (info >> 8) & 0xffu, columns = info >> 16;
+    uint side = 8u * scale; /* a tile's texels across, in the copy read */
+    uint width = KD_HD_WIDTH(id), height = KD_HD_HEIGHT(id), first = KD_HD_FIRST(id);
+    float texels = kd_maxf(ru, rv) * (float)scale; /* texels under the pixel, across */
+    float k, x0, x1, y0, y1, r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f, area = 0.0f;
+    uint x, y, ox, oy, seen;
+    if ((info & 8u) != 0u) {
+        /* the next smaller copy while its texels still come from one tile each */
+        while (texels >= 2.0f && (side & 1u) == 0u) {
+            first += width * height;
+            width = width > 1u ? width >> 1 : 1u;
+            height = height > 1u ? height >> 1 : 1u;
+            side >>= 1;
+            texels *= 0.5f;
+        }
+    }
+    k = (float)side / 8.0f; /* texels in a DS pixel */
+    ox = (tile % columns) * side;
+    oy = (tile / columns) * side;
+    x0 = kd_maxf((u - 0.5f * ru) * k, 0.0f);
+    x1 = kd_minf((u + 0.5f * ru) * k, (float)side);
+    y0 = kd_maxf((v - 0.5f * rv) * k, 0.0f);
+    y1 = kd_minf((v + 0.5f * rv) * k, (float)side);
+    for (y = (uint)y0; (float)y < y1; ++y) {
+        const float wy = kd_minf((float)(y + 1u), y1) - kd_maxf((float)y, y0);
+        for (x = (uint)x0; (float)x < x1; ++x) {
+            const float w = wy * (kd_minf((float)(x + 1u), x1) - kd_maxf((float)x, x0));
+            uint texel;
+            float ta;
+            area += w;
+            if (ox + x >= width || oy + y >= height) {
+                continue; /* past the picture: clear */
+            }
+            texel = KD_HD_TEXEL(first + (oy + y) * width + ox + x);
+            ta = w * (float)(texel >> 24);
+            r += ta * (float)(texel & 255u);
+            g += ta * (float)((texel >> 8) & 255u);
+            b += ta * (float)((texel >> 16) & 255u);
+            a += ta;
+        }
+    }
+    if (a <= 0.0f || area <= 0.0f) {
+        return 0u;
+    }
+    seen = (uint)((1.0f - a / (area * 255.0f)) * 127.0f + 0.5f);
+    if (seen >= 127u) {
+        return 0u;
+    }
+    return KD_HD | (seen << 24) | (uint)(r / a + 0.5f) | ((uint)(g / a + 0.5f) << 8) | ((uint)(b / a + 0.5f) << 16);
+}
+
+/* Replaced tile `entry` (a KD_HD_BG or KD_HD_OBJ word) at (u, v) inside its 8x8 tile, in DS pixels,
+ * for an output pixel `ru` x `rv` DS pixels wide. Bitmaps are read by kd_hd_bitmap. */
 KD_FN uint kd_hd(uint entry, float u, float v, float ru, float rv)
 {
     const uint id = (entry >> 20) - 1u;
     const uint tile = entry & 0xfffffu;
     const uint info = KD_HD_INFO(id);
-    const uint scale = (info >> 8) & 0xffu, columns = info >> 16;
-    uint side = 8u * scale; /* a tile's texels across, in the copy read */
-    uint width = KD_HD_WIDTH(id), height = KD_HD_HEIGHT(id), first = KD_HD_FIRST(id);
-    uint x, y, texel;
-    if ((info & 4u) != 0u || columns == 0u || scale == 0u || u < 0.0f || v < 0.0f) {
-        return 0u; /* (a bitmap is read by kd_hd_bitmap) */
+    if ((info & 4u) != 0u || (info >> 16) == 0u || ((info >> 8) & 0xffu) == 0u || u < 0.0f || v < 0.0f) {
+        return 0u;
     }
-    if ((info & 1u) != 0u) {
-        x = (uint)(u * (float)scale);
-        y = (uint)(v * (float)scale);
-        x = (x < side ? x : side - 1u) + (tile % columns) * side;
-        y = (y < side ? y : side - 1u) + (tile / columns) * side;
-        if (x >= width || y >= height) {
-            return 0u;
-        }
-        texel = KD_HD_TEXEL(first + y * width + x);
-        return (texel & 0xffu) != 0u ? KD_HD_INDEX | (texel & 0xffu) : 0u;
-    }
-    {
-        float texels = (ru > rv ? ru : rv) * (float)scale; /* under the pixel, across */
-        float k, x0, x1, y0, y1, r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f, area = 0.0f;
-        uint ox, oy, seen;
-        if ((info & 8u) != 0u) {
-            /* halved while a texel of the copy still comes from its own tile alone */
-            while (texels >= 2.0f && (side & 1u) == 0u) {
-                first += width * height;
-                width = width > 1u ? width >> 1 : 1u;
-                height = height > 1u ? height >> 1 : 1u;
-                side >>= 1;
-                texels *= 0.5f;
-            }
-        }
-        k = (float)side / 8.0f; /* texels to a DS pixel */
-        ox = (tile % columns) * side;
-        oy = (tile / columns) * side;
-        x0 = (u - 0.5f * ru) * k;
-        x1 = (u + 0.5f * ru) * k;
-        y0 = (v - 0.5f * rv) * k;
-        y1 = (v + 0.5f * rv) * k;
-        x0 = x0 > 0.0f ? x0 : 0.0f;
-        y0 = y0 > 0.0f ? y0 : 0.0f;
-        x1 = x1 < (float)side ? x1 : (float)side;
-        y1 = y1 < (float)side ? y1 : (float)side;
-        for (y = (uint)y0; (float)y < y1; ++y) {
-            const float wy = ((float)(y + 1u) < y1 ? (float)(y + 1u) : y1) - ((float)y > y0 ? (float)y : y0);
-            for (x = (uint)x0; (float)x < x1; ++x) {
-                const float w = wy * (((float)(x + 1u) < x1 ? (float)(x + 1u) : x1) - ((float)x > x0 ? (float)x : x0));
-                float ta;
-                area += w;
-                if (ox + x >= width || oy + y >= height) {
-                    continue; /* past the picture: clear */
-                }
-                texel = KD_HD_TEXEL(first + (oy + y) * width + ox + x);
-                ta = w * (float)(texel >> 24);
-                r += ta * (float)(texel & 255u);
-                g += ta * (float)((texel >> 8) & 255u);
-                b += ta * (float)((texel >> 16) & 255u);
-                a += ta;
-            }
-        }
-        if (a <= 0.0f || area <= 0.0f) {
-            return 0u;
-        }
-        seen = (uint)((1.0f - a / (area * 255.0f)) * 127.0f + 0.5f);
-        if (seen >= 127u) {
-            return 0u;
-        }
-        return KD_HD | (seen << 24) | (uint)(r / a + 0.5f) | ((uint)(g / a + 0.5f) << 8) | ((uint)(b / a + 0.5f) << 16);
-    }
+    return (info & 1u) != 0u ? kd_hd_index(id, tile, u, v) : kd_hd_colour(id, tile, u, v, ru, rv);
 }
 
 /* The texel of a replaced bitmap (KHDAYS_REPLACEMENT_BITMAP: a movie's frame) for unit `entry`, at the
@@ -166,8 +178,7 @@ KD_FN float kd_affine_sub(int at, int along_x, int along_y)
     return f - (float)floor(f);
 }
 
-/* How far an output pixel reaches along one of an affine picture's axes, in its DS pixels: the
- * steps (8 fractional bits) a screen pixel takes along it, for the output pixel's size. */
+/* How many DS pixels an output pixel spans along an affine picture's axis (steps in 8 fractional bits). */
 KD_FN float kd_affine_reach(int along_x, int along_y)
 {
     return (float)((along_x < 0 ? -along_x : along_x) + (along_y < 0 ? -along_y : along_y)) / 256.0f * KD_PIXEL;
