@@ -65,6 +65,10 @@ Source: "{#Stage}\*"; DestDir: "{app}"; Excludes: "\studio"; Flags: ignoreversio
 ; the mod studio, beside the port so it shares the game's data, only if the player chose it
 Source: "{#Stage}\studio\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: studio
 
+[Dirs]
+; where the player's mods go, there from the start even with none
+Name: "{app}\mods"
+
 [Tasks]
 ; off by default: the installer asks whether to install the mod studio too
 Name: "studio"; Description: "{cm:StudioTask}"; Flags: unchecked
