@@ -165,7 +165,9 @@ Seen with `KHDAYS_TRACE_UPDATES`, which prints every change:
 Seen with `KHDAYS_TRACE_CONTROLS`, `KHDAYS_TRACE_PAD` and `KHDAYS_TRACE_INPUT`
 on 2026-09-30: a Mission Mode mission from the start of its field (the
 `play` regression walk's route), where Config option 0 (`0x37c4`) was 0 and
-option 6 (`0x37c6`) 1 (Mission Mode's own start sets 1: `Ov008_SetupWorkArea`),
+option 6 (`0x37c6`) 1 (the guest game's state, which `Ov000_HandleLoadConfirm`
+copies whole from `/ttl/ttl.p2`, holds 1; the port now starts every new game at 0,
+X with the D-pad, the guest's included: `port/tools/prepare.py`),
 and challenge 07's field from the player's day-357 Story Mode save, where
 both were 0. What only the decompilation's C says, not a trace, is marked
 *(C, not traced)*.

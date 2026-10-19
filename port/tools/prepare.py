@@ -1826,6 +1826,31 @@ FILE_HOOKS = {
     ],
 }
 
+# A new game's Config "Command list" (option 6): X with the D-pad, where the DS starts with X alone,
+# so the command menu on the D-pad (runtime/input/sequencers.c) moves up, left and right too (the
+# maintainer, 2026-10-19). Each overlay that makes a fresh game state sets it; a saved game keeps its own.
+for _rel in (
+    "src/overlays/scenes/ov000_title/Ov000_SetupWorkArea.c",
+    "src/overlays/scenes/ov008_camp_menu/Ov008_SetupWorkArea.c",
+    "src/overlays/scenes/ov009_camp_save/Ov009_SetupWorkArea.c",
+    "src/overlays/screens/ov025_camp_menu_2/Ov025_SetupWorkArea.c",
+):
+    FILE_HOOKS[_rel] = FILE_HOOKS.get(_rel, []) + [
+        (
+            "GameState_SetField(CONFIG_COMMAND_LIST, 1, 1);",
+            "GameState_SetField(CONFIG_COMMAND_LIST, 1, 0); /* the port's: X with the D-pad */",
+        )
+    ]
+# Mission Mode's guest game is a game state the ROM holds ready (ttl.p2), copied in whole: the same.
+_rel = "src/overlays/scenes/ov000_title/Ov000_HandleLoadConfirm.c"
+FILE_HOOKS[_rel] = FILE_HOOKS.get(_rel, []) + [
+    (
+        "GameState_SetFlag(0x200b);",
+        "GameState_SetFlag(0x200b);"
+        " GameState_SetField(0x37c6, 1, 0); /* the port's: the guest's Command list, X with the D-pad */",
+    )
+]
+
 
 # Calls whose native form the ROM shows but no mechanical rule gives (see
 # abi_repair.py for the rules): file -> [(text, replacement)], each read from
