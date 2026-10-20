@@ -597,7 +597,7 @@ static int host_thread(void *unused)
          * refresh rate whether or not the game sends frames (the game waits at
          * the movie's end). Here we watch for its end and pass on START, which
          * the waiting game thread cannot read. */
-        const int movie = khdays_movie_hd_showing();
+        const int movie = khdays_movie_hd_running();
         /* So is an animated backdrop (the title's, ui/composition.h): its pieces move while the
          * game's still menu sends no frames. */
         const int backdrop = khdays_present_backdrop_moving();

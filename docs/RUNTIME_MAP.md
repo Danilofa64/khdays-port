@@ -4558,6 +4558,18 @@ the story walk and `KHDAYS_TEST_DAY`).
   (`Ov023_FlushTextBox`, +0x588) unwinds the event and clears its target, which ends the course;
   Continue (`PauseMenu_GetMode` back to 0, the request clear) holds the game again and the video
   goes on. Seen on day 7's castle (hd002), both ways.
+- **No cut between the game and an HD scene.** Cut at once, the game's picture gave way to the video
+  mid-move and its sound stopped mid-note (the maintainer, 2026-10-21: Xion's third phase won, the
+  video of Roxas back in Twilight Town came in at once). The game's sound is made as its clock runs:
+  held, it makes none, so it cannot go down while held. The port lets the game go on for half a
+  second as its target is set, its picture under a black growing to full and its sound going down
+  with it (`khdays_movie_hd_game_level`, the sound thread setting the stream's gain), without the
+  player's buttons; then holds it and starts the video. The scene's first video comes up from black
+  and silence over its first half second, its last goes down to them over its last
+  (`khdays_hd_fades`: its pictures' level, its sound scaled sample by sample, from the file's time),
+  and once the scene ends the game comes up from black and silence over half a second. A Theater
+  chapter starts at once from its list; a movie's videos have no fades (the DS's movies begin and
+  end in black).
 - **The theater's music over its videos.** Most of the theater's videos carry the voices and effects
   alone (hd848, Xion's end: near silence up to 2.9 s between lines, the DS movie 848's sound the same
   to a tenth of a decibel); the theater plays music over them from each event file's

@@ -52,10 +52,11 @@ static struct {
     int count, capacity;
     Picture *spare; /* picture buffers kept to be used again */
     int spare_count, spare_capacity;
-    long decoded, taken; /* pictures decoded; the number of the last one taken (-1: none) */
-    double first_time;   /* the first picture's time */
-    double duration;     /* how long the file says it lasts (MF_PD_DURATION), or 0 when it does not say */
-    double from, end; /* the part played (khdays_hd_open_part): its start, its end (0 the file's) */
+    long decoded, taken;      /* pictures decoded; the number of the last one taken (-1: none) */
+    double first_time;        /* the first picture's time */
+    double duration;          /* how long the file says it lasts (MF_PD_DURATION), or 0 when it does not say */
+    double from, end;         /* the part played (khdays_hd_open_part): its start, its end (0 the file's) */
+    double fade_in, fade_out; /* its fades (khdays_hd_fades), in seconds; 0 none */
     /* the sound */
     IMFSourceReader *audio;
     SDL_AudioStream *sound;
@@ -74,6 +75,7 @@ static struct {
     long shown, late;
     double worst_offset;
 } hd = {.status = 2, .taken = -1};
+static double next_fade_in, next_fade_out; /* khdays_hd_fades: the next opening's */
 
 /* The performance counter now. */
 static LONGLONG counter(void)
@@ -81,6 +83,20 @@ static LONGLONG counter(void)
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
     return now.QuadPart;
+}
+
+/* How much of the video shows and sounds at `t` seconds of the file through its fades: 0 to 1. */
+static float fade_level(double t)
+{
+    const double end = hd.end > 0.0 ? hd.end : hd.duration;
+    double level = 1.0;
+    if (hd.fade_in > 0.0) {
+        level = SDL_min(level, (t - hd.from) / hd.fade_in);
+    }
+    if (hd.fade_out > 0.0 && end > 0.0) {
+        level = SDL_min(level, (end - t) / hd.fade_out);
+    }
+    return (float)SDL_clamp(level, 0.0, 1.0);
 }
 
 /* Keeps the reason it failed, with the system's error code. */
@@ -502,6 +518,16 @@ static void read_sound(void)
                     length = (DWORD)kept * (DWORD)frame_bytes;
                     hd.sound_eos = 1;
                 }
+                if (hd.fade_in > 0.0 || hd.fade_out > 0.0) {
+                    float *samples = (float *)data;
+                    const DWORD frames = length / (DWORD)frame_bytes;
+                    for (DWORD i = 0; i < frames; ++i) {
+                        const float level = fade_level(at + (double)i / hd.info.rate);
+                        for (int c = 0; c < hd.info.channels; ++c) {
+                            samples[i * (DWORD)hd.info.channels + (DWORD)c] *= level;
+                        }
+                    }
+                }
                 if (hd.put_frames == 0) {
                     hd.sound_start = at;
                 }
@@ -748,6 +774,9 @@ int khdays_hd_open_part(const char *path, double from, double until, KhdaysHdInf
     close_video(1);
     hd.from = from > 0.0 ? from : 0.0;
     hd.end = until > hd.from ? until : 0.0;
+    hd.fade_in = next_fade_in;
+    hd.fade_out = next_fade_out;
+    next_fade_in = next_fade_out = 0.0;
     QueryPerformanceFrequency(&hd.frequency);
     hd.url = full_path(path);
     if (hd.url == NULL) {
@@ -777,6 +806,12 @@ int khdays_hd_open_part(const char *path, double from, double until, KhdaysHdInf
     *info = hd.info;
     khdays_theater_music_open(path);
     return 1;
+}
+
+void khdays_hd_fades(double in, double out)
+{
+    next_fade_in = in > 0.0 ? in : 0.0;
+    next_fade_out = out > 0.0 ? out : 0.0;
 }
 
 void khdays_hd_start(void)
@@ -901,6 +936,7 @@ int khdays_hd_picture_begin(KhdaysHdPicture *picture)
     picture->chroma = hd.pictures[0].data + (size_t)hd.pictures[0].width * (size_t)hd.pictures[0].height;
     picture->time = hd.pictures[0].time;
     picture->fps = hd.info.fps;
+    picture->level = fade_level(hd.pictures[0].time);
     SetEvent(hd.wake); /* there is room ahead now: the thread decodes on */
     return 1;          /* the lock stays held until khdays_hd_picture_done */
 }

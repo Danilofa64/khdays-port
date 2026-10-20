@@ -42,8 +42,14 @@ void khdays_movie_hd_flags(unsigned flags);
  * until they are let go. A START pressed during a course asks for the skip. */
 uint16_t khdays_movie_hd_game_buttons(uint16_t buttons);
 
-/* Either thread: whether a course runs (the window shows the HD video). */
+/* Either thread: whether the window shows the HD video. */
 int khdays_movie_hd_showing(void);
+/* Either thread: whether a course runs: the HD video shown, or a scene's about to be (the game's
+ * picture and sound going down to black and silence first). */
+int khdays_movie_hd_running(void);
+/* Any thread: how much of the game's picture and sound comes through around a scene's videos, 1 all,
+ * 0 none: they go down over a moment before the videos, and come up again over one after them. */
+float khdays_movie_hd_game_level(void);
 /* Either thread: whether the game's own movie plays (a stream opened, its playback not stopped). */
 int khdays_movie_game_playing(void);
 
@@ -59,8 +65,10 @@ void khdays_movie_hd_host_buttons(uint16_t buttons);
  * stretch (`state` the event machine's, a reference): with Video `hd`, the videos `stems` in a row
  * (data/cutscenes/cinematics/<stem>.mp4, a mod's cutscenes/cinematics/ first) shown in its place, the
  * game held meanwhile, each the part of it between `from` and `until` seconds (NULL, or 0: its own
- * start or end). Returns 1 when the course starts, 0 when the scene plays as the game's (no Video
- * `hd`, a video missing or unplayable: said in the log once). */
+ * start or end). The game goes down to black and silence first, the videos come up from them and go
+ * down to them at their end, and the game comes up again after them. Returns 1 when the course
+ * starts, 0 when the scene plays as the game's (no Video `hd`, a video missing or unplayable: said in
+ * the log once). */
 int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, const double *from, const double *until,
                           int count);
 

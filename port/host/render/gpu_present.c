@@ -47,6 +47,7 @@ static SDL_Texture *hd;       /* this frame's, or NULL to show the 1x picture as
 static SDL_Texture *hd_movie; /* an HD video's picture, NV12 */
 static int hd_movie_w, hd_movie_h;
 static double hd_movie_time, hd_movie_fps; /* the picture's time and its file's rate, for its subtitles */
+static float hd_movie_level = 1.0f;        /* how much of it shows through its fades */
 static int hd_upper;                       /* engine A is the upper screen */
 static int hd_columns;                     /* its width in DS pixels (256 is the DS's) */
 static int columns;                        /* the picture's width now, in DS pixels (the logical presentation's) */
@@ -1179,6 +1180,23 @@ static void present_size(int w, int h)
     }
 }
 
+/* Black over the whole picture, `amount` of it (0 none, 1 all): a fade. */
+static void darken(float amount)
+{
+    SDL_BlendMode mode;
+    Uint8 r, g, b, a;
+    if (amount <= 0.0f) {
+        return;
+    }
+    SDL_GetRenderDrawBlendMode(renderer, &mode);
+    SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, (Uint8)(SDL_min(amount, 1.0f) * 255.0f + 0.5f));
+    SDL_RenderFillRect(renderer, NULL);
+    SDL_SetRenderDrawBlendMode(renderer, mode);
+    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+}
+
 /* An HD video in a movie's place: its newest picture due, over the whole window, letterboxed; the last
  * one stays while the game finishes its movie. */
 static void draw_hd_movie(void)
@@ -1215,6 +1233,7 @@ static void draw_hd_movie(void)
         }
         hd_movie_time = p.time;
         hd_movie_fps = p.fps;
+        hd_movie_level = p.level;
         khdays_hd_picture_done();
     }
     if (hd_movie != NULL) {
@@ -1223,6 +1242,7 @@ static void draw_hd_movie(void)
         if (khdays_subtitles_shown()) {
             khdays_movie_subtitles_draw(renderer, hd_movie_time, hd_movie_fps, hd_movie_w, hd_movie_h);
         }
+        darken(1.0f - hd_movie_level);
     }
 }
 
@@ -1327,6 +1347,8 @@ void khdays_present_draw(void)
                                  (float)H};
         SDL_RenderTexture(renderer, hd, NULL, &place);
     }
+    /* around a scene's videos the game goes down to black and comes up from it */
+    darken(1.0f - khdays_movie_hd_game_level());
 }
 
 SDL_Renderer *khdays_present_event(const SDL_Event *event, int *renewed)

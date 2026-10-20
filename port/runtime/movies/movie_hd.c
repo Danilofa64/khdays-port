@@ -22,10 +22,11 @@
 extern int GetLanguage(void);     /* the game's: gLangPath's language */
 int khdays_language_wanted(void); /* language.c */
 
-/* SCENE: a scene's videos play, the game held; SCENE_SKIP: they are over, the game let go to take its
- * own skip at its next step; SCENE_LANDING: the skip asked, until the scene's stretch ends;
- * SCENE_PAUSE: START paused the video and let the game go to open its own pause over it. */
-enum { IDLE, PLAYING, HELD, FINISHING, SKIPPING, SCENE, SCENE_SKIP, SCENE_LANDING, SCENE_PAUSE };
+/* SCENE_FADE: a scene's first video opened, the game going on while its picture and sound go down to
+ * black and silence; SCENE: a scene's videos play, the game held; SCENE_SKIP: they are over, the game
+ * let go to take its own skip at its next step; SCENE_LANDING: the skip asked, until the scene's
+ * stretch ends; SCENE_PAUSE: START paused the video and let the game go to open its own pause over it. */
+enum { IDLE, PLAYING, HELD, FINISHING, SKIPPING, SCENE_FADE, SCENE, SCENE_SKIP, SCENE_LANDING, SCENE_PAUSE };
 
 static SRWLOCK lock = SRWLOCK_INIT;
 static volatile LONG state = IDLE;    /* read without the lock to see whether a course runs */
@@ -437,14 +438,54 @@ uint16_t khdays_movie_hd_game_buttons(uint16_t buttons)
 
 int khdays_movie_hd_showing(void)
 {
+    const LONG now = state_now();
+    return now != IDLE && now != SCENE_FADE;
+}
+
+int khdays_movie_hd_running(void)
+{
     return state_now() != IDLE;
 }
 
 /* --- The theater's HD scenes, its chapters, the monologues' voice --------------------------------- */
 
 #define SCENE_SKIP_REQUEST 0x588u /* the event machine's skip request (Game_UnwindActionStack) */
+#define FADE_SECONDS 0.5          /* the game and a scene's videos go down and come up over this */
 
 void SoundMgr_StopAllSePlayers(void); /* the game's: what the event pause's Skip stops */
+
+/* When the game's picture began to go down before a scene's videos, and came back after them (0 not
+ * since the last course), on the performance counter. */
+static volatile double fade_began, back_began;
+
+static double seconds_now(void)
+{
+    LARGE_INTEGER now, frequency;
+    QueryPerformanceCounter(&now);
+    QueryPerformanceFrequency(&frequency);
+    return (double)now.QuadPart / (double)frequency.QuadPart;
+}
+
+float khdays_movie_hd_game_level(void)
+{
+    const LONG now = state_now();
+    double level = 1.0;
+    if (now == SCENE_FADE) {
+        level = 1.0 - (seconds_now() - fade_began) / FADE_SECONDS;
+    } else if (now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING) {
+        level = 0.0;
+    } else if (now == IDLE && back_began > 0.0) {
+        level = (seconds_now() - back_began) / FADE_SECONDS;
+    }
+    return (float)(level < 0.0 ? 0.0 : level > 1.0 ? 1.0 : level);
+}
+
+/* A scene's course ends: the game shown and heard again, coming up from black and silence. */
+static void scene_finish(const char *how)
+{
+    back_began = seconds_now(); /* before the state turns idle: no picture of the game at full light */
+    finish(how);
+}
 
 static char scene_key[48];
 static uint32_t scene_state; /* the event machine's state (a reference) */
@@ -476,6 +517,8 @@ static int scene_open(int index)
     KhdaysHdInfo info;
     const double from = scene_parts[2 * index], until = scene_parts[2 * index + 1];
     khdays_movie_hd_scene_file(scene_stems[index], file, sizeof(file));
+    /* the first comes up from black and silence, the last goes down to them */
+    khdays_hd_fades(index == 0 ? FADE_SECONDS : 0.0, index == scene_count - 1 ? FADE_SECONDS : 0.0);
     if (!khdays_hd_open_part(file, from, until, &info, why, sizeof(why))) {
         khdays_log("scene %s: %s cannot be played (%s)", scene_key, file, why);
         fprintf(stderr, "scenes: %s: %s cannot be played (%s)\n", scene_key, file, why);
@@ -507,7 +550,7 @@ static void scene_start_opened(void)
 static void scene_videos_over(const char *how)
 {
     if (scene_chapter) {
-        finish(how); /* a Theater chapter's: back to its list */
+        scene_finish(how); /* a Theater chapter's: back to its list */
         return;
     }
     khdays_hd_close();
@@ -575,6 +618,17 @@ uint32_t khdays_movie_hd_scene_state(void)
     return now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE ? scene_state : 0u;
 }
 
+/* Under the lock: the scene's first video starts, the game silent and held. */
+static void scene_begin(void)
+{
+    scene_start_opened();
+    khdays_sound_output_mute(1);
+    khdays_clock_hold(KHDAYS_HOLD_MOVIE, 1); /* the game stops at its next wait */
+    scene_began_at = GetTickCount64();
+    test_start_done = 0;
+    InterlockedExchange(&state, SCENE);
+}
+
 static int scene_course(const char *key, uint32_t event_state, char *const *stems, const double *from,
                         const double *until, int count, int chapter)
 {
@@ -628,12 +682,15 @@ static int scene_course(const char *key, uint32_t event_state, char *const *stem
         return 0;
     }
     AcquireSRWLockExclusive(&lock);
-    scene_start_opened();
-    khdays_sound_output_mute(1);
-    khdays_clock_hold(KHDAYS_HOLD_MOVIE, 1); /* the game stops at its next wait */
-    scene_began_at = GetTickCount64();
-    test_start_done = 0;
-    InterlockedExchange(&state, SCENE);
+    if (chapter) {
+        scene_begin(); /* from the Theater's list, at once */
+    } else {
+        /* the game goes on, going down to black and silence, and is held once there (poll): cut at
+         * once, a sound it was making was cut off and a moving picture gave way to the video */
+        fade_began = seconds_now();
+        InterlockedExchange(&state, SCENE_FADE);
+        khdays_log("scene %s: the game goes down to black first", key);
+    }
     ReleaseSRWLockExclusive(&lock);
     /* the held game sends no frames: without this the window may sleep on through the video, every
      * picture passed over (seen: 3.8 s of hd002's 4.1 s) */
@@ -714,14 +771,14 @@ int khdays_movie_hd_scene_ended(void)
 {
     LONG now = state_now();
     int port_skip = 0;
-    if (now != SCENE && now != SCENE_SKIP && now != SCENE_LANDING && now != SCENE_PAUSE) {
+    if (now != SCENE_FADE && now != SCENE && now != SCENE_SKIP && now != SCENE_LANDING && now != SCENE_PAUSE) {
         return 0;
     }
     AcquireSRWLockExclusive(&lock);
     now = state_now();
-    if (now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE) {
+    if (now == SCENE_FADE || now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE) {
         port_skip = (now == SCENE_SKIP || now == SCENE_LANDING) && !scene_player_skip;
-        finish(now == SCENE_LANDING ? "ended, the game's scene skipped to its end" : "ended with its scene");
+        scene_finish(now == SCENE_LANDING ? "ended, the game's scene skipped to its end" : "ended with its scene");
     }
     ReleaseSRWLockExclusive(&lock);
     return port_skip;
@@ -731,6 +788,15 @@ void khdays_movie_hd_poll(void)
 {
     char why[320];
     int status;
+    if (state_now() == SCENE_FADE) {
+        AcquireSRWLockExclusive(&lock);
+        if (state_now() == SCENE_FADE && seconds_now() - fade_began >= FADE_SECONDS) {
+            scene_begin(); /* the game is black and silent: its videos now */
+            khdays_log("scene %s: the game is down to black; its HD videos begin", scene_key);
+        }
+        ReleaseSRWLockExclusive(&lock);
+        return;
+    }
     if (state_now() == SCENE) {
         int open_next = 0;
         AcquireSRWLockExclusive(&lock);

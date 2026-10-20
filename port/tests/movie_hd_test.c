@@ -70,10 +70,20 @@ const KhdaysSceneMap *khdays_scenes_map(void)
     return &scene_map;
 }
 static double opened_from = -1.0, opened_until = -1.0; /* the part asked for by the last opening */
+static double next_in, next_out;                       /* the fades set for the next opening */
+static double opened_in = -1.0, opened_out = -1.0;     /* the last opening's */
 
+void khdays_hd_fades(double in, double out)
+{
+    next_in = in;
+    next_out = out;
+}
 int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
 {
     opened_from = opened_until = 0.0;
+    opened_in = next_in;
+    opened_out = next_out;
+    next_in = next_out = 0.0; /* each opening takes them once */
     snprintf(opened_path, sizeof(opened_path), "%s", path);
     if (!open_ok) {
         snprintf(why, size, "scripted failure");
@@ -172,6 +182,13 @@ static void touch(const char *path)
 static int held(void)
 {
     return khdays_clock_held(KHDAYS_HOLD_MOVIE);
+}
+
+/* A scene's course past the game's fade to black (half a second): its videos begin at the next poll. */
+static void past_the_fade(void)
+{
+    Sleep(600);
+    khdays_movie_hd_poll();
 }
 
 int main(void)
@@ -367,8 +384,9 @@ int main(void)
     CHECK(!khdays_movie_hd_showing() && !muted && !held());
     khdays_movie_hd_game_buttons(0);
 
-    /* an event scene of two videos: the game held while they play, then let go to take
-     * its own skip at its event's next step, shown until the scene ends */
+    /* an event scene of two videos: the game going down to black first, then held while they play (the
+     * first coming up from black, the last going down to it), then let go to take its own skip at its
+     * event's next step, shown until the scene ends, and coming up from black again */
     {
         static uint8_t event[0x600]; /* the event machine's state: its skip request at +0x588 */
         char *const stems[] = {"hd010", "hd011"};
@@ -377,14 +395,25 @@ int main(void)
         touch("data/cutscenes/cinematics/hd010.mp4");
         touch("data/cutscenes/cinematics/hd011.mp4");
         CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, from, until, 2) == 1);
-        CHECK(khdays_movie_hd_showing() && held() && muted && opens == opened_before + 1 && wakes == 1);
+        /* the game going down, the first video opened and waiting */
+        CHECK(!khdays_movie_hd_showing() && khdays_movie_hd_running() && !held() && !muted && !started &&
+              opens == opened_before + 1 && wakes == 1 && khdays_movie_hd_game_level() > 0.5f);
+        CHECK(khdays_movie_hd_game_buttons(A) == 0); /* the game's, but none of the player's buttons */
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(START); /* no pause before the videos */
+        khdays_movie_hd_poll();
+        CHECK(!khdays_movie_hd_showing() && !khdays_movie_hd_scene_paused());
+        Sleep(600);
+        CHECK(khdays_movie_hd_game_level() == 0.0f && !khdays_movie_hd_showing()); /* black, until the poll */
+        khdays_movie_hd_poll();
+        CHECK(khdays_movie_hd_showing() && held() && muted && started && khdays_movie_hd_game_level() == 0.0f);
         CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd010.mp4") == 0 && strcmp(subtitles_movie, "010") == 0 &&
-              opened_from == 129.4 && opened_until == 173.2);
+              opened_from == 129.4 && opened_until == 173.2 && opened_in == 0.5 && opened_out == 0.0);
         CHECK(khdays_movie_hd_game_buttons(A) == 0);
         status_now = 1;
         khdays_movie_hd_poll(); /* the first ended: the second */
         CHECK(opens == opened_before + 2 && strcmp(subtitles_movie, "011") == 0 && held() && opened_from == 0.0 &&
-              opened_until == 0.0);
+              opened_until == 0.0 && opened_in == 0.0 && opened_out == 0.5);
         status_now = 1;
         khdays_movie_hd_poll(); /* the last ended: let go */
         CHECK(khdays_movie_hd_showing() && !held() && muted);
@@ -394,7 +423,9 @@ int main(void)
         khdays_movie_hd_scene_step(0x1234u, event);
         CHECK(*(uint32_t *)(event + 0x588) == 1 && sound_effects_stopped == stopped_before + 1);
         CHECK(khdays_movie_hd_scene_ended() == 1); /* the port's skip: the videos were watched */
-        CHECK(!khdays_movie_hd_showing() && !muted && !held());
+        CHECK(!khdays_movie_hd_showing() && !muted && !held() && khdays_movie_hd_game_level() < 0.5f);
+        Sleep(600);
+        CHECK(khdays_movie_hd_game_level() == 1.0f); /* up again */
         khdays_movie_hd_game_buttons(0);
         khdays_movie_hd_game_buttons(0);
     }
@@ -418,7 +449,8 @@ int main(void)
         const int closed_before = closes;
         touch("data/cutscenes/cinematics/hd010.mp4");
         CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 1) == 1);
-        CHECK(khdays_movie_hd_scene_state() == 0x1234u);
+        past_the_fade();
+        CHECK(khdays_movie_hd_scene_state() == 0x1234u && opened_in == 0.5 && opened_out == 0.5); /* one: both */
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);
         CHECK(khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && hd_paused && !held() && muted);
@@ -452,6 +484,7 @@ int main(void)
         khdays_movie_hd_game_buttons(0);
         /* a pause the game does not open: the video goes on */
         CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 1) == 1);
+        past_the_fade();
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);
         for (int i = 0; i <= 90; ++i) {
@@ -497,6 +530,7 @@ int main(void)
         khdays_movie_hd_stream(1, "/mv/833.mods", 0);
         CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd833.mp4") == 0 && opened_from == 0.0 &&
               opened_until == 173.2 && strcmp(subtitles_movie, "833") == 0);
+        CHECK(opened_in == 0.0 && opened_out == 0.0); /* a movie's videos: no fades of their own */
         CHECK(khdays_movie_hd_showing() && khdays_movie_hd_last_shown("hd833") && !khdays_movie_hd_last_shown("hd830"));
         khdays_movie_hd_stopped();
         status_now = 1;

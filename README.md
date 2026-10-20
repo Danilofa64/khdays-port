@@ -646,7 +646,10 @@ pair checked side by side; `tools/hd/scene_report.py` says where each video
 of your collection plays). With the Movies setting on HD, when the game
 reaches a scene of the map its videos play over the whole window with their
 sound and subtitles while the game waits; then the game takes its own skip,
-so it goes on exactly as after the DS's Skip. A day's monologue keeps the
+so it goes on exactly as after the DS's Skip. Nothing is cut: the game's
+picture and sound go down to black and silence over half a second before the
+videos, the videos come up from them and go down to them at their end, and
+the game comes up again after them. A day's monologue keeps the
 game's page, and the theater's voice reads it. Without the video, or with
 Movies on PC or DS, the DS's scene plays. START pauses the video and opens
 the game's own pause over it, as on the DS: Continue goes on with the video,
