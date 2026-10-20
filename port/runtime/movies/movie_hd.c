@@ -141,6 +141,7 @@ void khdays_movie_hd_reset(void)
 
 static void scene_videos_over(const char *how);
 static int scene_chapter; /* the course is a Theater chapter's (no event: it ends with its videos) */
+static int scene_player_skip; /* the player took the game's pause's Skip (not the port, its videos over) */
 static void scene_pause_begin(void);
 
 static void begin_skip(void)
@@ -537,6 +538,7 @@ void khdays_movie_hd_scene_frame(int pause_open, int skip_requested)
             if (skip_requested) {
                 /* its Skip: the game unwinds to the scene's end, which ends the course */
                 khdays_hd_close();
+                scene_player_skip = 1;
                 InterlockedExchange(&state, SCENE_LANDING);
                 khdays_log("scene %s: the game's pause skipped the scene", scene_key);
                 fprintf(stderr, "scenes: %s: the game's pause skipped the scene\n", scene_key);
@@ -596,6 +598,7 @@ static int scene_course(const char *key, uint32_t event_state, char *const *stem
     }
     scene_count = count;
     scene_chapter = chapter;
+    scene_player_skip = 0;
     scene_next = 0;
     scene_state = event_state;
     snprintf(scene_key, sizeof(scene_key), "%s", key);
@@ -692,18 +695,21 @@ void khdays_movie_hd_voice_stop(void)
     khdays_hd_voice_stop();
 }
 
-void khdays_movie_hd_scene_ended(void)
+int khdays_movie_hd_scene_ended(void)
 {
     LONG now = state_now();
+    int port_skip = 0;
     if (now != SCENE && now != SCENE_SKIP && now != SCENE_LANDING && now != SCENE_PAUSE) {
-        return;
+        return 0;
     }
     AcquireSRWLockExclusive(&lock);
     now = state_now();
     if (now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE) {
+        port_skip = (now == SCENE_SKIP || now == SCENE_LANDING) && !scene_player_skip;
         finish(now == SCENE_LANDING ? "ended, the game's scene skipped to its end" : "ended with its scene");
     }
     ReleaseSRWLockExclusive(&lock);
+    return port_skip;
 }
 
 void khdays_movie_hd_poll(void)

@@ -2939,6 +2939,22 @@ second, without subtitles. Their first 0x100 bytes are XORed with a 16-byte
 pattern (the header's zeros show it); the rest is a plain MP4
 (`tools/hd/theater_movies.py` writes them as the port plays them).
 
+**The scenes' mark of a skip** (GameState field 0x2484, a bit). Every event scene starts with
+`00.05` (`CommitRecordCursor`): it tests an expression in its data, field 0x2484 = 1, and when it
+holds goes on into its skip path -- the skip target (+0x1c), a fade (`01.11`), `00.00`
+(`Game_ActionAssign`, mode 4: `GameState_SetField(0x2484, 1, 1)`) and a jump to its end -- else
+jumps over it to set its target (`00.0a`) and play. So a skip (the pause's Skip, or the port's own
+after an HD scene) sets the mark, and the scenes after it skip themselves until one clears it at
+its end (EV_S#196 does, `GameState_SetField(0x2484, 1, 0)`; EV_S#38 does not). A player's
+session (day 71, mission 0106, whose end section `99:_e` loads `4:38` and `4:39` and runs them):
+hd034 for EV_S#38 watched to its end, the port's skip asked at f14216, EV_S#39 (the ice cream)
+loaded at f14246 with its music, then the mission's review at f14253 without its stretch begun.
+The port now clears the mark when its own skip ends a scene (the HD videos watched, or a scene the
+scene map's `skip` leaves to the HD movie before it), and leaves it to the player's Skip. Seen
+(KHDAYS_TEST_SCENE=4:38 in the story walk, a mod's map giving EV_S#38 hd034 and EV_S#0 hd035): hd034
+to its end, the skip, then EV_S#0 began its stretch two frames later and hd035 played; before, with
+the game's skip asked in EV_S#177, EV_S#0 reached its end six frames later without beginning.
+
 **Movies the theater's videos outlast** (the DS's `mv/<id>.mods`, 14.985 pictures a second,
 against the theater's): 829, 831, 832, 834, 835 and 848 last as long within a second; 830 is 43.8
 s of hd830's 194.6, whose lines from 44 s are EV_S#168's (Riku and Mickey, `¡Riku!` to `Te lo

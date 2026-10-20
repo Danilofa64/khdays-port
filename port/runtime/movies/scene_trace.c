@@ -212,6 +212,15 @@ const char *khdays_scene_current(void)
     return current;
 }
 
+/* The scenes' mark of a skip (GameState field 0x2484, a bit): a scene's skip path sets it (EV_S#38's
+ * at +0x34), and every scene starts by testing it and skips itself while it is set, so skipping one
+ * scene of a chain skips the scenes after it (a mission's end: Axel back, then the ice cream) until a
+ * scene clears it (EV_S#196 does at its end). The port's own skip -- the HD videos watched, or a scene
+ * the HD movie before it showed -- clears it again, so the next scene plays. */
+#define SKIP_MARK 0x2484
+extern void GameState_SetField(int field, int bits, int value);
+static int map_skip; /* the scene running now was skipped as the scene map says (not by the player) */
+
 /* Game_ActionSetBranchTarget (prepare.py HOOKS): `state` the script machine's (a reference), the
  * operand the target's offset from the entry's script start, -1 clearing it. */
 void khdays_scene_target(unsigned int state, int operand)
@@ -219,8 +228,14 @@ void khdays_scene_target(unsigned int state, int operand)
     const uint32_t depth = u32_at(state + STATE_DEPTH);
     const uint32_t entry = state + STATE_ENTRIES + depth * ENTRY_SIZE;
     if (operand == -1) {
+        const int watched = khdays_movie_hd_scene_ended();
+        if (watched || map_skip) {
+            GameState_SetField(SKIP_MARK, 1, 0);
+            khdays_log("scene %s: the game's mark of a skipped scene cleared (%s), so the scene after it plays",
+                       current, watched ? "its HD videos were watched" : "the HD movie before it showed it");
+        }
+        map_skip = 0;
         current[0] = '\0';
-        khdays_movie_hd_scene_ended();
     } else if (!khdays_scenes_recognise(u32_at(entry + ENTRY_START), current, (int)sizeof(current))) {
         current[0] = '\0';
     } else if (getenv("KHDAYS_TEST_SKIP_AT") != NULL) {
@@ -233,6 +248,7 @@ void khdays_scene_target(unsigned int state, int operand)
         if (e != NULL && e->skip && khdays_movie_hd_last_shown(e->stems[0])) {
             skip_state = state; /* the HD movie before it showed it */
             skip_frame = khdays_events_vblank_count();
+            map_skip = 1;
             khdays_log("scene %s: skipped, as %s before it showed it", current, e->stems[0]);
         } else if (e != NULL && !e->off && !e->skip) {
             khdays_movie_hd_scene(current, state, e->stems, e->stem_count);

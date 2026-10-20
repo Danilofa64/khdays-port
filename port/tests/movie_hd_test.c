@@ -390,7 +390,7 @@ int main(void)
         CHECK(*(uint32_t *)(event + 0x588) == 0);
         khdays_movie_hd_scene_step(0x1234u, event);
         CHECK(*(uint32_t *)(event + 0x588) == 1 && sound_effects_stopped == stopped_before + 1);
-        khdays_movie_hd_scene_ended();
+        CHECK(khdays_movie_hd_scene_ended() == 1); /* the port's skip: the videos were watched */
         CHECK(!khdays_movie_hd_showing() && !muted && !held());
         khdays_movie_hd_game_buttons(0);
         khdays_movie_hd_game_buttons(0);
@@ -443,7 +443,7 @@ int main(void)
         CHECK(!khdays_movie_hd_scene_paused() && khdays_movie_hd_showing() && !held() && closes == closed_before + 1);
         khdays_movie_hd_scene_step(0x1234u, event); /* nothing more to ask: the game's own skip runs */
         CHECK(*(uint32_t *)(event + 0x588) == 0);
-        khdays_movie_hd_scene_ended();
+        CHECK(khdays_movie_hd_scene_ended() == 0); /* the player's Skip: the scenes after it skipped too */
         CHECK(!khdays_movie_hd_showing() && !muted && khdays_movie_hd_scene_state() == 0u);
         khdays_movie_hd_game_buttons(0);
         khdays_movie_hd_game_buttons(0);

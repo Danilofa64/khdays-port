@@ -68,8 +68,9 @@ int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, i
 void khdays_movie_hd_scene_step(uint32_t state, void *host_state);
 
 /* The game's thread: the scene's stretch has ended (its skip target cleared, or its event closed):
- * the course ends and the game is shown again. */
-void khdays_movie_hd_scene_ended(void);
+ * the course ends and the game is shown again. Returns 1 when the port's own skip ended it (its
+ * videos over), not the player's Skip in the game's pause. */
+int khdays_movie_hd_scene_ended(void);
 
 /* The game's thread, each frame: START during a scene's videos paused them and let the game open its
  * own pause (Continue, Skip); `pause_open` whether it is open (PauseMenu_GetMode), `skip_requested`
