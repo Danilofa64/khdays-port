@@ -3,6 +3,8 @@
 #include "../ui/text.c"
 
 static unsigned char ram[65536], vram[65536];
+static int palette_reads, palette_hashes;
+static uint32_t slot_tint[4];
 unsigned char *khdays_window = ram;
 int khdays_game_ram_ref(unsigned int reference)
 {
@@ -202,6 +204,7 @@ void khdays_ui_emit_following(int part, const KhdaysUiElement *e, const KhdaysUi
 }
 uint32_t khdays_ui_palette_hash(int engine)
 {
+    ++palette_hashes;
     (void)engine;
     return tint;
 }
@@ -215,9 +218,9 @@ void khdays_ui_left_out_cell(int part, int screen, int bg, int x, int y)
 }
 uint32_t khdays_ui_palette_colour(int engine, uint32_t slot, uint32_t indexed)
 {
+    ++palette_reads;
     (void)engine;
-    (void)slot;
-    return tint ^ ((indexed & 0xf0u) << 8);
+    return tint ^ ((indexed & 0xf0u) << 8) ^ slot_tint[slot];
 }
 const uint8_t *khdays_bg_memory(int engine, uint32_t at)
 {
@@ -318,6 +321,7 @@ static void setup(int bpp)
     memset(vram, 0, sizeof(vram));
     memset(map_cells, 0, sizeof(map_cells));
     memset(suppressed, 0, sizeof(suppressed));
+    memset(slot_tint, 0, sizeof(slot_tint));
     submission_count = 0;
     test_hofs = test_vofs = 0;
     test_map_bg = -1;
@@ -388,7 +392,7 @@ static void render(void)
 {
     observe_vram(c);
     make_image(c, &layer, 0, 0, 1);
-    build_hd(c, 1);
+    build_hd(c, 1, khdays_ui_palette_hash(c->engine));
     make_image(c, &layer, 0, 0, 1);
 }
 
@@ -1333,8 +1337,14 @@ int main(void)
     render();
     CHECK(primary_hd_pixel(7) == tint);
     int cached_paints = paint_calls;
+    const int cached_palette_reads = palette_reads;
     render();
     CHECK(paint_calls == cached_paints);
+    CHECK(palette_reads == cached_palette_reads);
+    slot_tint[1] = 0x1000u;
+    c->bg = 1; /* Same memory and map attributes, different BG palette slot. */
+    render();
+    CHECK(primary_hd_pixel(7) == (tint ^ slot_tint[1]));
     setup(4);
     /* First upload of a few bytes preserves the rest of the native tile. */
     memset(vram + 32, 0x22, 64);
@@ -1366,6 +1376,15 @@ int main(void)
         render();
         CHECK(image_ends == stable);
     }
+    setup(4);
+    draw(0);
+    const GlyphOp repeated = c->ops[0];
+    for (int i = 1; i < 8192; ++i)
+        CHECK(record(c, &repeated));
+    CHECK(c->op_count == 8192 && c->op_room == 8192);
+    CHECK(!record(c, &repeated) && c->ops_disabled && c->op_count == 0);
+    khdays_ui_text_clear(cc, 0);
+    CHECK(!c->ops_disabled && record(c, &repeated) && c->op_count == 1);
     command_menu_selections(1);
     command_menu_selections(2);
     /* Blank tile 0 repeated over a screen must not allocate one canvas per cell. */
@@ -1409,7 +1428,9 @@ int main(void)
     const int stable_requests = image_requests, stable_uploads = image_ends, stable_paints = paint_calls;
     for (int frame = 0; frame < 100; ++frame) {
         submission_count = 0;
+        const int previous_hashes = palette_hashes;
         emit();
+        CHECK(palette_hashes - previous_hashes <= 2);
     }
     CHECK(image_requests == stable_requests && image_ends == stable_uploads && paint_calls == stable_paints);
     map_cells[33] = 0x1400; /* supplementary copy: palette 1 and horizontal flip */
@@ -1474,6 +1495,11 @@ int main(void)
     emit();
     CHECK(submitted_hd_pixel(15, 11, tint));
     CHECK(c->extra && c->extra->hd_image >= 0);
+    slot_tint[2] = 0x1000u;
+    test_map_bg = 2;
+    submission_count = 0;
+    emit();
+    CHECK(c->bg == 2 && submitted_hd_pixel(15, 11, tint ^ slot_tint[2]));
     while (canvas_count)
         forget(&canvases[0]);
     free(canvases);

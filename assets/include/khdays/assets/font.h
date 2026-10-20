@@ -40,6 +40,7 @@ struct Font final {
 // Decode an NFTR font, transparently LZ-decompressing a ".z" blob. Throws
 // std::runtime_error on malformed data.
 Font decode_nftr(const std::filesystem::path& path);
+// Decode an already decompressed NFTR buffer.
 Font decode_nftr(const std::vector<std::uint8_t>& data);
 
 // Render a UTF-16 string to an RGBA image: white, anti-aliased glyphs on a

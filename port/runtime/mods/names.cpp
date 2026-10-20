@@ -523,9 +523,6 @@ int dump_sheets(const std::vector<u8> &d, const FileNames &names, const std::str
     return written;
 }
 
-// A PNG containing every decoded NFTR glyph, plus the original metrics and CMAP.
-// Keep every glyph by index (including unmapped ones); a character can map to
-// the same glyph as another character.
 std::string json_quote(const std::string &value)
 {
     std::string quoted = "\"";
@@ -543,6 +540,7 @@ std::string json_quote(const std::string &value)
     }
     return quoted + '"';
 }
+// Every NFTR glyph by index, with its metrics and CMAP in adjacent JSON.
 int dump_font(const std::string &label, const std::vector<u8> &data, const std::string &folder)
 {
     khdays::assets::Font font;
@@ -600,35 +598,29 @@ int dump_font(const std::string &label, const std::vector<u8> &data, const std::
         std::fprintf(stderr, "graphics dump: cannot write font metadata %s\n", json_path.string().c_str());
         return 0;
     }
-    json << "{\n  \"source\": " << json_quote(label)
-         << ",\n  \"format\": \"NFTR\""
-         << ",\n  \"cell_width\": " << font.cell_width
-         << ",\n  \"cell_height\": " << font.cell_height
-         << ",\n  \"baseline\": " << font.baseline
-         << ",\n  \"max_width\": " << font.max_width
-         << ",\n  \"line_feed\": " << font.line_feed
-         << ",\n  \"bpp\": " << font.bpp
-         << ",\n  \"atlas\": {\"width\": " << w << ", \"height\": " << h
-         << ", \"columns\": " << columns << ", \"padding\": " << padding << "}"
+    json << "{\n  \"source\": " << json_quote(label) << ",\n  \"format\": \"NFTR\""
+         << ",\n  \"cell_width\": " << font.cell_width << ",\n  \"cell_height\": " << font.cell_height
+         << ",\n  \"baseline\": " << font.baseline << ",\n  \"max_width\": " << font.max_width
+         << ",\n  \"line_feed\": " << font.line_feed << ",\n  \"bpp\": " << font.bpp
+         << ",\n  \"atlas\": {\"width\": " << w << ", \"height\": " << h << ", \"columns\": " << columns
+         << ", \"padding\": " << padding << "}"
          << ",\n  \"glyphs\": [\n";
     for (std::size_t i = 0; i < font.glyphs.size(); ++i) {
         const auto &glyph = font.glyphs[i];
         const int x = static_cast<int>(i % columns) * pitch_x + padding;
         const int y = static_cast<int>(i / columns) * pitch_y + padding;
-        json << "    {\"index\": " << i << ", \"x\": " << x << ", \"y\": " << y
-             << ", \"w\": " << font.cell_width << ", \"h\": " << font.cell_height
-             << ", \"left\": " << glyph.left << ", \"width\": " << glyph.width
-             << ", \"advance\": " << glyph.advance << "}"
-             << (i + 1 < font.glyphs.size() ? ",\n" : "\n");
+        json << "    {\"index\": " << i << ", \"x\": " << x << ", \"y\": " << y << ", \"w\": " << font.cell_width
+             << ", \"h\": " << font.cell_height << ", \"left\": " << glyph.left << ", \"width\": " << glyph.width
+             << ", \"advance\": " << glyph.advance << "}" << (i + 1 < font.glyphs.size() ? ",\n" : "\n");
     }
     json << "  ],\n  \"charmap\": [\n";
     std::size_t i = 0;
     for (const auto &[code, glyph] : font.char_to_glyph) {
-        json << "    {\"codepoint\": " << static_cast<unsigned>(code)
-             << ", \"glyph\": " << glyph << "}"
+        json << "    {\"codepoint\": " << static_cast<unsigned>(code) << ", \"glyph\": " << glyph << "}"
              << (++i < font.char_to_glyph.size() ? ",\n" : "\n");
     }
     json << "  ]\n}\n";
+    json.flush();
     if (!json.good()) {
         std::fprintf(stderr, "graphics dump: failed writing %s\n", json_path.string().c_str());
         return 0;
@@ -724,8 +716,8 @@ extern "C" int khdays_graphics_dump(const char *directory)
         }
     });
     std::printf("graphics dump: %d textures, %d models, %d tile sheets and %d fonts from %d files into %s "
-                 "(%d textures with no known palette, under their names alone)\n",
-                 written, models, sheets, fonts, files, full, unpaired);
+                "(%d textures with no known palette, under their names alone)\n",
+                written, models, sheets, fonts, files, full, unpaired);
     return 0;
 }
 

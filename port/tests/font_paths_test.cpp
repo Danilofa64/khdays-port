@@ -2,6 +2,7 @@
 // the same resource, while retaining subtree and metadata source validation.
 #include "../runtime/mods/fonts.cpp"
 #include "../runtime/mods/font_runtime.cpp"
+#include <clocale>
 #include <cstdlib>
 #include <cstring>
 
@@ -201,6 +202,35 @@ static bool mapping_rules_test(const char *json)
     return ok;
 }
 
+static bool json_reader_test()
+{
+    using namespace khdays::hd_fonts;
+    bool ok = Reader("0.35").read().real == 0.35 && Reader("-1024").read().number == -1024 &&
+              Reader(R"("\uD83D\uDE00")").read().str == "\xf0\x9f\x98\x80";
+    for (const char *bad : {R"("\uD800")", R"("\uDC00")", R"("\uD800\u0041")", "1e1000", "9223372036854775808", "0.35x",
+                            "01", "1e+", "[1,]"}) {
+        bool rejected = false;
+        try {
+            (void)Reader(bad).read();
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        ok = ok && rejected;
+    }
+    const std::string previous = std::setlocale(LC_NUMERIC, nullptr);
+    for (const char *locale : {"German_Germany.1252", "de_DE.UTF-8", "de_DE"}) {
+        if (std::setlocale(LC_NUMERIC, locale)) {
+            const bool numeric = Reader("0.35").read().real == 0.35 && Reader("3.5e-1").read().real == 0.35;
+            ok = numeric && ok;
+            std::printf("HD font JSON decimal-comma locale: %s\n", numeric ? "PASS" : "FAIL");
+            break;
+        }
+    }
+    std::setlocale(LC_NUMERIC, previous.c_str());
+    std::printf("HD font JSON reader: %s\n", ok ? "PASS" : "FAIL");
+    return ok;
+}
+
 int main()
 {
     const char *json = "build/tests/font-paths.nftr.json";
@@ -212,8 +242,9 @@ int main()
     std::ofstream(json) << metadata;
     using namespace khdays::hd_fonts;
     auto a = load("/text/paths.nftr");
-    bool ok = a && a == load("text/paths.nftr") && a == load("\\text\\paths.nftr") && probe("/text/paths.nftr") == 1 &&
-              lookups == 2 && a == load("/text/paths.NFTR") && a == load("text/paths.NfTr");
+    bool ok = json_reader_test();
+    ok = ok && a && a == load("text/paths.nftr") && a == load("\\text\\paths.nftr") && probe("/text/paths.nftr") == 1 &&
+         lookups == 2 && a == load("/text/paths.NFTR") && a == load("text/paths.NfTr");
     ok = ok && !load("/../escape.nftr") && !load("C:/escape.nftr") && lookups == 2;
     ok = ok && khdays_hd_font_metric("text/paths.nftr", 0, KHDF_LEFT, 8) == -130 &&
          khdays_hd_font_metric("text/paths.nftr", 0, KHDF_WIDTH, 8) == 512 &&

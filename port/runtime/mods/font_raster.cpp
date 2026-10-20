@@ -80,8 +80,7 @@ static Sample sample(const Atlas &atlas, const Glyph &g, const SampleBounds &bou
 {
     const auto [x_min, y_min, x_max, y_max] = bounds;
     if (native_pixels) {
-        // Exact texels for a native-resolution NFTR dump. Nearest-neighbor
-        // avoids the filtered look that the original Stage 3 rasterizer added.
+        // Native-resolution NFTR dumps retain exact texels with nearest-neighbor sampling.
         const int x = std::clamp(static_cast<int>(std::floor(g.image_x + u * g.image_w)), x_min, x_max);
         const int y = std::clamp(static_cast<int>(std::floor(g.image_y + v * g.image_h)), y_min, y_max);
         return at(atlas, x, y);

@@ -109,6 +109,7 @@ typedef struct Canvas {
     /* Source observations and text-free graphics; neither contains PNG coverage. */
     uint8_t *source, *base, *display_base, *dirty;
     uint32_t *tile_hash;
+    uint32_t hd_palette;
     uint64_t *owned; /* transferred pixels in each tile, independent of glyph alpha */
     GlyphOp *display_ops;
     int display_count, display_room;
@@ -675,16 +676,15 @@ static int record(Canvas *c, const GlyphOp *op)
 {
     if (c->ops_disabled)
         return 0;
-    if (c->op_count >= 8192) {
+    if ((unsigned)c->op_count >= 8192u) {
         if (tracing())
             say("HD fallback: canvas %08x hit 8192 active glyph fragments", c->cc);
         c->ops_disabled = 1;
         c->op_count = 0;
         return 0; /* keep original rendering on excessive event streams */
     }
-    if (c->op_count == c->op_room) {
-        const int grown_room = c->op_room ? c->op_room * 2 : 64;
-        const int room = grown_room < 8192 ? grown_room : 8192;
+    if (c->op_count >= c->op_room) {
+        const int room = c->op_count < 64 ? 64 : c->op_count < 4096 ? c->op_count * 2 : 8192;
         GlyphOp *grown = (GlyphOp *)realloc(c->ops, (size_t)room * sizeof(GlyphOp));
         if (!grown) {
             c->ops_disabled = 1;
@@ -1746,8 +1746,9 @@ static int primary_text_visible(const Canvas *c)
     return 0;
 }
 
-static void build_hd(Canvas *c, int scale)
+static void build_hd(Canvas *c, int scale, uint32_t palette)
 {
+    palette = (palette ^ (uint32_t)c->bg) * 16777619u;
     const int profile = profiling();
     const clock_t started = profile ? clock() : 0;
     int tiles = 0, paints = 0;
@@ -1779,6 +1780,8 @@ static void build_hd(Canvas *c, int scale)
     for (int row = 0; row < c->area_h; ++row) {
         for (int col = 0; col < c->area_w; ++col) {
             const int tile = row * c->area_w + col;
+            if (!(c->dirty[tile] & 1) && c->hd_palette == palette)
+                continue;
             const uint16_t cell = c->cells[tile];
             const int l = col * 8, t = row * 8, r = l + 8, b = t + 8;
             uint32_t hash = cell;
@@ -1842,6 +1845,7 @@ static void build_hd(Canvas *c, int scale)
     }
     if (out)
         khdays_ui_image_end(c->hd_image);
+    c->hd_palette = palette;
     if (profile && clock() - started >= CLOCKS_PER_SEC / 500)
         khdays_log("text raster timing: canvas %08x, %.1f ms, image %dx%d, %d dirty tiles, %d paints, %d glyphs", c->cc,
                    (clock() - started) * 1000.0 / CLOCKS_PER_SEC, width, height, tiles, paints, c->display_count);
@@ -1959,19 +1963,22 @@ static void mapped_tile(const Canvas *c, int k, uint16_t cell, int scale, int hd
 }
 
 /* Update only changed visible tiles. Repeated blank tiles cannot multiply images. */
-static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int scale)
+static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int scale, uint32_t palette)
 {
+    palette = (palette ^ (uint32_t)c->bg) * 16777619u;
     if (!hd_enabled() || !c->display_count) {
         release_extra(c);
         return;
     }
-    uint8_t text_tiles[16384] = {0}; /* canvas storage is limited to 512 KiB */
+    uint8_t text_tiles[16384 / 8] = {0}; /* One bit per possible canvas tile. */
     for (int i = 0; i < c->display_count; ++i) {
         const GlyphOp *op = &c->display_ops[i];
         for (int row = op->clip_t / 8; row <= (op->clip_b - 1) / 8; ++row)
             for (int col = op->clip_l / 8; col <= (op->clip_r - 1) / 8; ++col)
-                if (row >= 0 && row < c->area_h && col >= 0 && col < c->area_w)
-                    text_tiles[row * c->area_w + col] = 1;
+                if (row >= 0 && row < c->area_h && col >= 0 && col < c->area_w) {
+                    const int tile = row * c->area_w + col;
+                    text_tiles[tile / 8] |= (uint8_t)(1u << (tile & 7));
+                }
     }
     int sources[EXTRA_CELLS], count = 0;
     uint16_t cells[EXTRA_CELLS];
@@ -1987,7 +1994,10 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
                 continue;
             const uint32_t entry = khdays_bg_map_entry(c->engine, l, x0 + x, y0 + y);
             const int k = canvas_char(c, l, entry);
-            if (k < 0 || !text_tiles[(k / c->param) * c->area_w + k % c->param])
+            if (k < 0)
+                continue;
+            const int tile = (k / c->param) * c->area_w + k % c->param;
+            if (!(text_tiles[tile / 8] & (1u << (tile & 7))))
                 continue;
             const int vx = ((x0 + x - k % c->param) % l->wt + l->wt) % l->wt;
             const int vy = ((y0 + y - k / c->param) % l->ht + l->ht) % l->ht;
@@ -2027,9 +2037,9 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
     if (m->image < 0)
         return;
     const int hide_ds = hd_enabled() && (!c->display_count || m->hd_image >= 0);
-    const uint32_t palette = khdays_ui_palette_hash(c->engine);
     uint32_t *base = NULL, *hd = NULL;
-    uint32_t tile[64 * 64]; /* maximum internal scale is eight */
+    /* Submission is serial; share one scratch tile at the maximum UI scale. */
+    static uint32_t tile[64 * 64];
     int rendered[EXTRA_CELLS], rendered_count = 0;
     for (int i = 0; i < EXTRA_CELLS; ++i) {
         const int k = sources[i];
@@ -2083,7 +2093,7 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
         khdays_ui_image_end(m->image);
     if (hd)
         khdays_ui_image_end(m->hd_image);
-    if (base && count >= 64 && getenv("KHDAYS_PROFILE_TEXT"))
+    if (base && count >= 64 && profiling())
         khdays_log("text mapped update: canvas %08x, %d visible copies, %d distinct tile updates, scale %d", c->cc,
                    count, rendered_count, scale);
     m->hide_ds = hide_ds;
@@ -2200,6 +2210,8 @@ static void emit(void)
     clock_t elapsed[5] = {0};
     int profiled_glyphs = 0;
     const int scale = khdays_ui_scale();
+    uint32_t palettes[2] = {0};
+    unsigned palettes_valid = 0;
     for (int i = 0; i < canvas_count; ++i) {
         Canvas *c = &canvases[i];
         KhdaysUiElement e;
@@ -2254,7 +2266,11 @@ static void emit(void)
             snprintf(c->id, sizeof(c->id), "text.%c%d.%d.%d", c->engine ? 'b' : 'a', c->bg, ox, oy);
         if (profile)
             stamp = clock();
-        build_extra(c, &l, ox, oy, scale);
+        if (!(palettes_valid & (1u << c->engine))) {
+            palettes[c->engine] = khdays_ui_palette_hash(c->engine);
+            palettes_valid |= 1u << c->engine;
+        }
+        build_extra(c, &l, ox, oy, scale, palettes[c->engine]);
         if (profile)
             elapsed[2] += clock() - stamp;
         if (tracing() && c->said_shown != 1) {
@@ -2270,7 +2286,7 @@ static void emit(void)
             stamp = clock();
         }
         if (c->cells)
-            build_hd(c, scale);
+            build_hd(c, scale, palettes[c->engine]);
         if (profile) {
             elapsed[4] += clock() - stamp;
             stamp = clock();

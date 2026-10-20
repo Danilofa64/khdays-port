@@ -6,11 +6,11 @@ extern "C" {
 }
 extern "C" int khdays_mods_find(const char *relative, char *path, int size);
 
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
-#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -73,6 +73,24 @@ private:
         if (!take(ch))
             fail("unexpected JSON character");
     }
+    unsigned unicode()
+    {
+        if (pos_ + 4 > text_.size())
+            fail("short Unicode escape");
+        unsigned code = 0;
+        for (int i = 0; i < 4; ++i) {
+            const char h = text_[pos_++];
+            if (h >= '0' && h <= '9')
+                code = (code << 4) | static_cast<unsigned>(h - '0');
+            else if (h >= 'a' && h <= 'f')
+                code = (code << 4) | static_cast<unsigned>(h - 'a' + 10);
+            else if (h >= 'A' && h <= 'F')
+                code = (code << 4) | static_cast<unsigned>(h - 'A' + 10);
+            else
+                fail("invalid Unicode escape");
+        }
+        return code;
+    }
     std::string string()
     {
         expect('"');
@@ -100,27 +118,30 @@ private:
             case 'b': out.push_back('\b'); break;
             case 'f': out.push_back('\f'); break;
             case 'u': {
-                if (pos_ + 4 > text_.size())
-                    fail("short Unicode escape");
-                unsigned code = 0;
-                for (int i = 0; i < 4; ++i) {
-                    const char h = text_[pos_++];
-                    if (h >= '0' && h <= '9')
-                        code = (code << 4) | static_cast<unsigned>(h - '0');
-                    else if (h >= 'a' && h <= 'f')
-                        code = (code << 4) | static_cast<unsigned>(h - 'a' + 10);
-                    else if (h >= 'A' && h <= 'F')
-                        code = (code << 4) | static_cast<unsigned>(h - 'A' + 10);
-                    else
-                        fail("invalid Unicode escape");
+                unsigned code = unicode();
+                if (code >= 0xd800 && code <= 0xdbff) {
+                    if (text_.compare(pos_, 2, "\\u") != 0)
+                        fail("missing Unicode low surrogate");
+                    pos_ += 2;
+                    const unsigned low = unicode();
+                    if (low < 0xdc00 || low > 0xdfff)
+                        fail("invalid Unicode low surrogate");
+                    code = 0x10000 + ((code - 0xd800) << 10) + low - 0xdc00;
+                } else if (code >= 0xdc00 && code <= 0xdfff) {
+                    fail("unpaired Unicode low surrogate");
                 }
                 if (code < 0x80)
                     out.push_back(static_cast<char>(code));
                 else if (code < 0x800) {
                     out.push_back(static_cast<char>(0xC0 | (code >> 6)));
                     out.push_back(static_cast<char>(0x80 | (code & 63)));
-                } else {
+                } else if (code < 0x10000) {
                     out.push_back(static_cast<char>(0xE0 | (code >> 12)));
+                    out.push_back(static_cast<char>(0x80 | ((code >> 6) & 63)));
+                    out.push_back(static_cast<char>(0x80 | (code & 63)));
+                } else {
+                    out.push_back(static_cast<char>(0xF0 | (code >> 18)));
+                    out.push_back(static_cast<char>(0x80 | ((code >> 12) & 63)));
                     out.push_back(static_cast<char>(0x80 | ((code >> 6) & 63)));
                     out.push_back(static_cast<char>(0x80 | (code & 63)));
                 }
@@ -227,21 +248,17 @@ private:
                     fail("invalid JSON exponent");
             }
             if (fractional) {
-                try {
-                    value.real = std::stod(text_.substr(begin, pos_ - begin));
-                } catch (...) {
+                const auto result = std::from_chars(text_.data() + begin, text_.data() + pos_, value.real);
+                if (result.ec != std::errc{} || result.ptr != text_.data() + pos_)
                     fail("JSON number out of range");
-                }
                 if (!std::isfinite(value.real))
                     fail("nonfinite JSON number");
                 value.type = Value::Real;
                 return value;
             }
-            try {
-                value.number = std::stoll(text_.substr(begin, pos_ - begin));
-            } catch (...) {
+            const auto result = std::from_chars(text_.data() + begin, text_.data() + pos_, value.number);
+            if (result.ec != std::errc{} || result.ptr != text_.data() + pos_)
                 fail("JSON integer out of range");
-            }
             value.type = Value::Integer;
             return value;
         }
@@ -610,9 +627,14 @@ std::string select(const std::string &original_resource, const std::string &scop
         std::lock_guard<std::mutex> lock(cache_mutex);
         load_rules();
         target = target_for(original, scope);
+        if (target.empty() || target == original)
+            return {}; // Explicit identity mapping also cancels an inherited rule.
+        const auto found = routed.find(std::make_pair(original, target));
+        if (found != routed.end())
+            return found->second;
+        if (routed.size() >= 256)
+            return {};
     }
-    if (target.empty() || target == original)
-        return {}; // Explicit identity mapping also cancels an inherited rule.
     const auto base = load(target);
     const auto requested = base && !base->secondary ? load(original) : nullptr;
     std::lock_guard<std::mutex> lock(cache_mutex);

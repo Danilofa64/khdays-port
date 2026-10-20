@@ -334,7 +334,11 @@ uint32_t khdays_ui_palette_colour(int engine, uint32_t slot, uint32_t indexed)
 
 uint32_t khdays_ui_palette_hash(int engine)
 {
-    return palettes_of(engine);
+    /* Extended palette selectors can change colors without changing palette bytes. */
+    const uint32_t io = engine ? 0x1000u : 0u;
+    const uint32_t selectors =
+        ((IO32(io) >> 30) & 1u) | ((IO16(io + 0x08u) & 0x2000u) >> 12) | ((IO16(io + 0x0au) & 0x2000u) >> 11);
+    return (palettes_of(engine) ^ selectors) * 16777619u;
 }
 
 /* The image element `n` draws on the other screen: its own, in direct colour. */

@@ -94,6 +94,31 @@ int khdays_ui_layout_place(const char *id, int *screen, int upper, int margin, c
 }
 
 static int base_image, extra_image;
+
+static void palette_selection(void)
+{
+    khdays_window = (uint8_t *)calloc(0x05000800u, 1);
+    CHECK(khdays_window);
+    if (!khdays_window)
+        return;
+    for (int engine = 0; engine < 2; ++engine) {
+        const int io = engine ? 0x1000 : 0;
+        const uint32_t original = khdays_ui_palette_hash(engine);
+        test_io[io + 3] = 0x40; /* Extended palettes enabled, no palette bytes changed. */
+        const uint32_t extended = khdays_ui_palette_hash(engine);
+        CHECK(extended != original);
+        for (int bg = 0; bg < 2; ++bg) {
+            test_io[io + 9 + 2 * bg] = 0x20; /* Alternate extended palette slot. */
+            CHECK(khdays_ui_palette_hash(engine) != extended);
+            test_io[io + 9 + 2 * bg] = 0;
+        }
+        test_io[io + 3] = 0;
+        CHECK(khdays_ui_palette_hash(engine) == original);
+    }
+    free(khdays_window);
+    khdays_window = NULL;
+}
+
 static void emit_test(void)
 {
     KhdaysUiElement a = {"text.canvas", 0, 1, 8, -144, 64, 192, base_image};
@@ -110,6 +135,7 @@ static void emit_test(void)
 
 int main(void)
 {
+    palette_selection();
     base_image = khdays_ui_image_get(1, 1);
     extra_image = khdays_ui_image_get(1, 1);
     khdays_ui_register(KHDAYS_UI_TEXT, emit_test);

@@ -36,9 +36,10 @@ This routes **HD selection**, rather than modifying archive requests or globally
 rebinding NFTR resources. Original requested Days data remains authoritative for
 character identity and native fallback. Dialogue retains its usual font.
 The alternate's `charmap` is required: its array indices cannot safely be assumed
-to match another NFTR. Missing characters use original requested Days artwork and
-metrics. Invalid/missing targets retain the original binding, including its
-ordinary HD replacement if available, and log a diagnostic.
+to match another NFTR. Missing characters try the secondary PNG atlas described
+in [HD fonts](HD_FONTS.md#per-glyph-and-secondary-fallback), then the originally
+requested Days artwork and metrics. Invalid/missing targets retain the original
+binding, including its ordinary HD replacement if available, and log a diagnostic.
 
 ## Scopes
 

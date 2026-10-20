@@ -15,7 +15,7 @@ struct Glyph {
     bool original = false;                // Explicit native artwork and metrics; the index remains reserved.
     bool secondary = false;               // Skip primary artwork without shifting later glyphs.
     int x = 0, y = 0, w = 0, h = 0;       // reference-atlas pixels, NOT output size
-    int left = 0, width = 0, advance = 0; // replacement logical (DS) metrics
+    int left = 0, width = 0, advance = 0; // Days units, or source units with explicit scale
     // Actual image-pixel rectangle, scaled from the reference atlas.
     double image_x = 0, image_y = 0, image_w = 0, image_h = 0;
 };
