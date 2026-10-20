@@ -22,8 +22,9 @@ typedef struct KhdaysHdInfo {
  * showing its first picture, until khdays_hd_start. */
 int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size);
 
-/* Ends the video just opened at `seconds` of it, as if the file ended there (0: at its own end). */
-void khdays_hd_end_at(double seconds);
+/* The same for a part of the file: from `from` seconds of it (0 its start) to `until` (0 its end),
+ * as if the file began and ended there; its clock reads the file's own time. */
+int khdays_hd_open_part(const char *path, double from, double until, KhdaysHdInfo *info, char *why, size_t size);
 
 /* Starts the video: its sound starts, and its clock with it. */
 void khdays_hd_start(void);

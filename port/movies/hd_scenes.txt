@@ -10,9 +10,10 @@
 #   off       in place of the stems: the game's own scene (a mod may switch an entry off)
 #   skip <video stem>  the scene skipped with no video when the movie just before it was shown as
 #             that HD video, which shows the scene too (the game's own scene otherwise)
-# mv#<movie> <video stem> [until <seconds>] ; <evidence>
-#             a game's movie shown as that video (hd<movie> without an entry), ending at those
-#             seconds of it; or `off`, the game's own movie
+# mv#<movie> <video stem>[<from>:<until>] [...] ; <evidence>
+#             a game's movie shown as those videos in a row (hd<movie> alone without an entry),
+#             each the part of it between those seconds (either left out: its own start or end);
+#             or `off`, the game's own movie
 
 # Roxas's monologues (scene 10, before the calendar): the theater's clips are his voice over black,
 # so their sound alone is heard over the game's own page (his picture and the DS's text), the game
@@ -169,4 +170,5 @@ EV_S#174 hd136 ; lines: 72% of the theater's found in the scene's
 EV_S#177 skip hd836 ; lines: hd836 from 73 s says the scene's (¿Quién eres? ... ¡Cállate!), the game's movie 836 being 72.9 s of its 129.8 s; hd140, in no chapter of the theater, is that end again in Japanese without subtitles
 
 # The game's movies whose HD video goes on past them
-mv#833 hd833 until 128.4 ; the game's movie 833 is 128.1 s (1920 pictures at 14.985 a second) of hd833's 272.2 s; hd833's lines end by 125.1 s, it fades to black from 127.5 to 129.4 s, then shows Roxas and the whole fight against Xion the player fights next
+mv#833 hd833[:173.2] ; the game's movie 833 is 128.1 s (1920 pictures at 14.985 a second) of hd833's 272.2 s, whose lines end by 125.1 s; after its fade to black (127.5-129.4 s) it shows Roxas before the fight, drawing his Keyblade and leaping from the wall (to 173.2 s), then the fight against Xion the player fights next
+mv#848 hd833[173.2:] hd848 ; the fight's end first: hd833 from 173.2 s shows the fight against Xion to her last form breaking (black from 270.6 s), which the game goes on to with its movie 848 (the theater's chapter: hd833, hd848)

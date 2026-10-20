@@ -2950,10 +2950,16 @@ Xion (to her last form breaking, black from 270.6 s); 837 is 146.4 s of hd837's 
 line (`Lo he aceptado.`, 166 s) in no script of the game. The theater's chapters: day 354 hd129,
 hd130a, hd830 (nothing after it); day 357 hd833, hd848, then hd834; day 358 hd835, hd836, hd837,
 hd840. So the scene map skips EV_S#168 after hd830 and EV_S#177 after hd836 (`skip`, only when
-that video was the movie shown) and ends hd833 at 128.4 s (`mv#833 ... until`). Seen: the
-decoder ends hd833 there (its last picture 128.367 s); the story walk with EV_S#177 swapped in
-and its skip asked at once (`KHDAYS_TEST_SCENE=4:177`, `KHDAYS_TEST_SKIP_AT=0`) ended the
-stretch 6 frames later and went on.
+that video was the movie shown), and plays hd833 in two parts: to 173.2 s for 833 (Roxas
+before the fight, his Keyblade drawn, his leap from the wall: the maintainer's pick), and from
+173.2 s, the fight to Xion's last form breaking, before hd848 for 848 (`mv#833 hd833[:173.2]`,
+`mv#848 hd833[173.2:] hd848`; EV_S#176, the scene with no lines nearby, is Roxas with two
+Keyblades among Neoshadows in The World That Never Was, day 358, seen with
+`KHDAYS_TEST_SCENE=4:176`). Seen: the decoder plays hd833 from 173.200 s to 272.200 s (2971
+pictures in 99.03 s, the seek dropping the pictures and sound before the part) and hd808 from
+2.000 to 4.967 s; the story walk with EV_S#177 swapped in and its skip asked at once
+(`KHDAYS_TEST_SCENE=4:177`, `KHDAYS_TEST_SKIP_AT=0`) ended the stretch 6 frames later and went
+on.
 
 **The theater's subtitles.** It draws them over its videos from each video's
 event, `<lang folder>/event/<lang>/hd/hd<id>/hd<id>.exia2` (XML, `EXUSIA2_XML`;

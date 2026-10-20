@@ -1,6 +1,7 @@
 /* The scene map's text (scene_map.h): a line per scene,
  *   <script> <stem> [<stem> ...] ; <evidence>   <script> off ; <evidence>   <script> skip <stem> ; <evidence>
- * or per movie, mv#<movie> <stem> [until <seconds>] ; <evidence> (or off).
+ * or per movie, mv#<movie> <stem>[<from>:<until>] ... ; <evidence> (a part of a video in seconds,
+ * either left out; or off).
  * '#' comments, blank lines skipped. A script is EV_<world>#<index>, mi/<mission>/<script>:<section>
  * or mnl#<record> (a day's monologue, ui/mnl's record);
  * a stem is a video's file name without .mp4. */
@@ -26,6 +27,8 @@ static void entry_free(KhdaysSceneEntry *e)
         free(e->stems[i]);
     }
     free(e->stems);
+    free(e->from);
+    free(e->until);
     free(e->key);
     free(e->evidence);
     memset(e, 0, sizeof(*e));
@@ -73,6 +76,32 @@ static int key_valid(const char *k)
         return slash != NULL && slash > k + 3 && colon != NULL && colon > slash + 1 && colon[1] != '\0';
     }
     return 0;
+}
+
+/* A video's part, "[<from>:<until>]" in seconds of it (either left out: its own start or end), at
+ * `open`. Returns 0 when it is not one. */
+static int read_part(const char *open, double *from, double *until)
+{
+    const char *colon = strchr(open, ':');
+    const size_t n = strlen(open);
+    char *end;
+    if (colon == NULL || n < 3 || open[n - 1] != ']') {
+        return 0;
+    }
+    *from = *until = 0.0;
+    if (colon > open + 1) {
+        *from = strtod(open + 1, &end);
+        if (end != colon || !(*from >= 0.0)) {
+            return 0;
+        }
+    }
+    if (colon + 1 < open + n - 1) {
+        *until = strtod(colon + 1, &end);
+        if (end != open + n - 1 || !(*until > *from)) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 static int stem_valid(const char *s)
@@ -198,32 +227,45 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
         }
     } else {
         const int movie = strncmp(words[0], "mv#", 3) == 0;
-        const int until = movie && count == 4 && strcmp(words[2], "until") == 0;
-        char *end = NULL;
-        int i;
-        if (until) {
-            e.until = strtod(words[3], &end);
-            count = 2; /* the video alone left to check */
+        double *from = (double *)calloc((size_t)(count - 1), sizeof(double));
+        double *until = (double *)calloc((size_t)(count - 1), sizeof(double));
+        int parts = 0;
+        *why = NULL;
+        for (int i = 1; i < count && *why == NULL && from != NULL && until != NULL; ++i) {
+            char *open = strchr(words[i], '[');
+            if (open != NULL) {
+                if (!movie || !read_part(open, &from[i - 1], &until[i - 1])) {
+                    *why = "a part of a video, [<from>:<until>] in seconds, is a movie's (mv#)";
+                }
+                *open = '\0';
+                parts = 1;
+            }
+            if (*why == NULL &&
+                (!stem_valid(words[i]) || strcmp(words[i], "off") == 0 || strcmp(words[i], "skip") == 0)) {
+                *why = "a video's name is not a file's name (letters, digits, _ and -)";
+            }
         }
-        for (i = 1; i < count && stem_valid(words[i]) && strcmp(words[i], "off") != 0 && strcmp(words[i], "skip") != 0;
-             ++i) {
+        if (from == NULL || until == NULL) {
+            *why = "out of memory";
         }
-        if (until && (end == words[3] || *end != '\0' || !(e.until > 0.0))) {
-            *why = "`until` takes the seconds the video ends at";
-            result = -1;
-        } else if (movie && count != 2) {
-            *why = "a movie takes one video (and `until` with its seconds)";
-            result = -1;
-        } else if (i < count) {
-            *why = "a video's name is not a file's name (letters, digits, _ and -)";
+        if (*why != NULL) {
+            free(from);
+            free(until);
             result = -1;
         } else {
             e.key = copy_of(words[0], strlen(words[0]));
             e.stems = (char **)calloc((size_t)(count - 1), sizeof(char *));
             if (e.stems != NULL) {
-                for (i = 1; i < count; ++i) {
+                for (int i = 1; i < count; ++i) {
                     e.stems[e.stem_count++] = copy_of(words[i], strlen(words[i]));
                 }
+            }
+            if (parts) {
+                e.from = from;
+                e.until = until;
+            } else {
+                free(from);
+                free(until);
             }
             result = 1;
         }

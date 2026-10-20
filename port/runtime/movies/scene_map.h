@@ -10,10 +10,11 @@ typedef struct KhdaysSceneEntry {
     char *key;    /* EV_S#4, mi/0105/11:_e, mnl#1, or a movie's mv#833 */
     int off;      /* the game's own scene (or movie) */
     int skip;     /* the scene skipped at once when the HD movie last shown was stems[0], which shows it */
-    char **stems; /* the videos in order (data/cutscenes/cinematics/<stem>.mp4); a movie's one */
+    char **stems; /* the videos in order (data/cutscenes/cinematics/<stem>.mp4) */
     int stem_count;
-    double until;   /* a movie's video ends at these seconds; 0 at its own end */
-    char *evidence; /* the text after ';', "" when none */
+    double *from, *until; /* a movie's videos' parts, in seconds of each (0 its own start or end); NULL
+                             when all are whole */
+    char *evidence;       /* the text after ';', "" when none */
 } KhdaysSceneEntry;
 
 typedef struct KhdaysSceneMap {

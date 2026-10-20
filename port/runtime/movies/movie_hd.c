@@ -193,75 +193,143 @@ int khdays_movie_hd_last_shown(const char *stem)
     return shown[0] != '\0' && strcmp(shown, stem) == 0;
 }
 
+/* A movie's HD videos, played in a row in its place: a mod's hd<id> alone, or the player's own as the
+ * scene map's mv#<id> says (hd<id> whole without it), each a file, the id of its subtitles (the stem
+ * without its "hd", as the movies' are named) and the part of it played. */
+typedef struct MoviePart {
+    char file[1024], stem[64], subtitles[64];
+    double from, until;
+} MoviePart;
+static MoviePart *parts;
+static int part_count, part_next;
+
+/* The movie's parts (parts, part_count); 0 when it plays as the game's (the map's `off`). */
+static int movie_parts(const char *movie)
+{
+    char relative[64], key[80];
+    const KhdaysSceneEntry *e;
+    MoviePart *grown;
+    snprintf(key, sizeof(key), "mv#%s", movie);
+    e = khdays_scene_map_find(khdays_scenes_map(), key);
+    snprintf(relative, sizeof(relative), "movies/hd%s.mp4", movie);
+    grown = (MoviePart *)realloc(parts, (size_t)(e != NULL && e->stem_count > 1 ? e->stem_count : 1) * sizeof(MoviePart));
+    if (grown == NULL) {
+        return 0;
+    }
+    parts = grown;
+    memset(&parts[0], 0, sizeof(parts[0]));
+    part_count = 1;
+    snprintf(parts[0].subtitles, sizeof(parts[0].subtitles), "%s", movie);
+    if (khdays_mods_find(relative, parts[0].file, (int)sizeof(parts[0].file))) {
+        return 1; /* a mod's: whole, and no video of the player's shown */
+    }
+    if (e != NULL && e->off) {
+        return 0;
+    }
+    if (e == NULL || e->stem_count == 0) {
+        snprintf(parts[0].stem, sizeof(parts[0].stem), "hd%s", movie);
+        snprintf(parts[0].file, sizeof(parts[0].file), "data/cutscenes/cinematics/%s.mp4", parts[0].stem);
+        return 1;
+    }
+    part_count = e->stem_count;
+    for (int i = 0; i < part_count; ++i) {
+        MoviePart *p = &parts[i];
+        const char *stem = e->stems[i];
+        memset(p, 0, sizeof(*p));
+        snprintf(p->stem, sizeof(p->stem), "%s", stem);
+        snprintf(p->file, sizeof(p->file), "data/cutscenes/cinematics/%s.mp4", stem);
+        snprintf(p->subtitles, sizeof(p->subtitles), "%s", strncmp(stem, "hd", 2) == 0 ? stem + 2 : stem);
+        p->from = e->from != NULL ? e->from[i] : 0.0;
+        p->until = e->until != NULL ? e->until[i] : 0.0;
+    }
+    return 1;
+}
+
+/* Opens part `index` (Media Foundation takes its time: never under the lock). */
+static int movie_part_open(int index)
+{
+    const MoviePart *p = &parts[index];
+    KhdaysHdInfo info;
+    char why[320];
+    if (!khdays_hd_open_part(p->file, p->from, p->until, &info, why, sizeof(why))) {
+        if (tell_once(p->file)) {
+            khdays_log("movie %s: %s cannot be played (%s)", id, p->file, why);
+            fprintf(stderr, "movies: %s cannot be played (%s)\n", p->file, why);
+        }
+        return 0;
+    }
+    khdays_log("movie %s: the HD video %s plays (%dx%d, %.3f frames a second, %s)", id, p->file, info.width,
+               info.height, info.fps, info.channels > 0 ? "with its sound" : "no sound");
+    if (p->until > 0.0) {
+        khdays_log("movie %s: %s from %.2f s to %.2f s (the scene map's mv#%s)", id, p->stem, p->from, p->until, id);
+    } else if (p->from > 0.0) {
+        khdays_log("movie %s: %s from %.2f s to its end (the scene map's mv#%s)", id, p->stem, p->from, id);
+    }
+    fprintf(stderr, "movies: %s shown instead from %s (%dx%d, %s)\n", id, p->file, info.width, info.height,
+            info.channels > 0 ? "with its sound" : "no sound");
+    return 1;
+}
+
+/* Under the lock: the movie's last video has ended; the game goes on, or finishes its own movie first. */
+static void movie_videos_ended(const char *how)
+{
+    if (state_now() == HELD || course_credits) {
+        finish(how);
+    } else {
+        InterlockedExchange(&state, FINISHING);
+        khdays_log("movie %s: the HD video ended before the game's movie; its last picture stays", id);
+        fprintf(stderr, "movies: %s: the HD video ended before the game's movie\n", id);
+    }
+}
+
+/* Under the lock: the part just opened starts, with the theater's subtitles for it in the game's
+ * language (a language just chosen first). */
+static void movie_part_start(void)
+{
+    khdays_movie_subtitles_load(parts[part_next].subtitles,
+                                khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage());
+    khdays_hd_start();
+    snprintf(shown, sizeof(shown), "%s", parts[part_next].stem);
+    ++part_next;
+}
+
 void khdays_movie_hd_stream(int slot, const char *path, int replaced)
 {
-    char movie[64], file[1024], why[320], stem[64] = "";
-    KhdaysHdInfo info;
-    double until = 0.0;
+    char movie[64];
     (void)slot;
     InterlockedExchange(&game_movie, 1);
     shown[0] = '\0';
     if (path == NULL || replaced || state_now() != IDLE || !(khdays_host_graphics_flags() & KHDAYS_HOST_MOVIES_HD) ||
-        !movie_id(path, movie, sizeof(movie))) {
+        !movie_id(path, movie, sizeof(movie)) || !movie_parts(movie)) {
         return;
     }
-    /* a mod's video first (mods/<Mod>/movies/hd<id>.mp4, as khdays-studio
-     * saves one), then the player's own HD videos, as the scene map's mv#<id> says */
-    {
-        char relative[64], key[80];
-        const KhdaysSceneEntry *e;
-        snprintf(key, sizeof(key), "mv#%s", movie);
-        e = khdays_scene_map_find(khdays_scenes_map(), key);
-        snprintf(relative, sizeof(relative), "movies/hd%s.mp4", movie);
-        if (!khdays_mods_find(relative, file, (int)sizeof(file))) {
-            if (e != NULL && e->off) {
-                return; /* the game's own movie */
+    for (int i = 0; i < part_count; ++i) {
+        if (GetFileAttributesA(parts[i].file) == INVALID_FILE_ATTRIBUTES) {
+            if (tell_once(movie)) {
+                khdays_log("movie %s: no HD video (%s); the game's movie plays", movie, parts[i].file);
             }
-            if (e != NULL && e->stem_count > 0) {
-                snprintf(stem, sizeof(stem), "%s", e->stems[0]);
-                until = e->until;
-            } else {
-                snprintf(stem, sizeof(stem), "hd%s", movie);
-            }
-            snprintf(file, sizeof(file), "data/cutscenes/cinematics/%s.mp4", stem);
+            return;
         }
     }
-    if (GetFileAttributesA(file) == INVALID_FILE_ATTRIBUTES) {
-        if (tell_once(movie)) {
-            khdays_log("movie %s: no HD video (%s); the game's movie plays", movie, file);
-        }
-        return;
-    }
-    /* opened outside the lock: only this thread starts a course */
-    if (!khdays_hd_open(file, &info, why, sizeof(why))) {
-        if (tell_once(movie)) {
-            khdays_log("movie %s: %s cannot be played (%s); the game's movie plays", movie, file, why);
-            fprintf(stderr, "movies: %s cannot be played (%s); the game's movie plays\n", file, why);
-        }
-        return;
-    }
-    khdays_hd_end_at(until);
-    /* the theater's subtitles for it in the game's language (a language just chosen first) */
-    khdays_movie_subtitles_load(movie, khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage());
-    AcquireSRWLockExclusive(&lock);
     snprintf(id, sizeof(id), "%s", movie);
+    /* opened outside the lock: only this thread starts a course */
+    if (!movie_part_open(0)) {
+        if (tell_once(movie)) {
+            khdays_log("movie %s: the game's movie plays", movie);
+        }
+        return;
+    }
+    AcquireSRWLockExclusive(&lock);
     skippable = -1;
     skip_wanted = 0;
     skipped = 0;
     course_credits = credits_scene;
     game_last = host_last = 0xffff; /* what is held now is no press */
     khdays_sound_output_mute(1);
-    khdays_hd_start();
+    part_next = 0;
+    movie_part_start();
     InterlockedExchange(&state, PLAYING);
     ReleaseSRWLockExclusive(&lock);
-    snprintf(shown, sizeof(shown), "%s", stem);
-    khdays_log("movie %s: the HD video %s plays (%dx%d, %.3f frames a second, %s)", movie, file, info.width,
-               info.height, info.fps, info.channels > 0 ? "with its sound" : "no sound");
-    if (until > 0.0) {
-        khdays_log("movie %s: the HD video ends at %.2f s (the scene map's mv#%s)", movie, until, movie);
-    }
-    fprintf(stderr, "movies: %s shown instead from %s (%dx%d, %s)\n", movie, file, info.width, info.height,
-            info.channels > 0 ? "with its sound" : "no sound");
 }
 
 void khdays_movie_hd_stopped(void)
@@ -687,21 +755,37 @@ void khdays_movie_hd_poll(void)
         return;
     }
     AcquireSRWLockExclusive(&lock);
-    if (state_now() == PLAYING || state_now() == HELD) {
-        status = khdays_hd_status(why, sizeof(why));
-        if (status == -1) {
-            khdays_log("movie %s: the HD video stopped part-way (%s); the game's movie shows", id, why);
-            fprintf(stderr, "movies: %s: the HD video stopped part-way (%s)\n", id, why);
-            finish("stopped part-way");
-        } else if (status == 1 && (state_now() == HELD || course_credits)) {
-            finish("ended");
-        } else if (status == 1) {
-            InterlockedExchange(&state, FINISHING);
-            khdays_log("movie %s: the HD video ended before the game's movie; its last picture stays", id);
-            fprintf(stderr, "movies: %s: the HD video ended before the game's movie\n", id);
+    {
+        int open_next = 0;
+        if (state_now() == PLAYING || state_now() == HELD) {
+            status = khdays_hd_status(why, sizeof(why));
+            if (status == -1) {
+                khdays_log("movie %s: the HD video stopped part-way (%s); the game's movie shows", id, why);
+                fprintf(stderr, "movies: %s: the HD video stopped part-way (%s)\n", id, why);
+                finish("stopped part-way");
+            } else if (status == 1 && part_next < part_count) {
+                open_next = 1;
+            } else if (status == 1) {
+                movie_videos_ended("ended");
+            }
+        }
+        ReleaseSRWLockExclusive(&lock);
+        if (open_next) {
+            /* the movie's next video, opened here as a scene's are (outside the lock: it takes its time) */
+            const int opened = movie_part_open(part_next);
+            AcquireSRWLockExclusive(&lock);
+            if (state_now() != PLAYING && state_now() != HELD) {
+                if (opened) {
+                    khdays_hd_close(); /* START or a reset meanwhile */
+                }
+            } else if (opened) {
+                movie_part_start();
+            } else {
+                movie_videos_ended("ended (the next could not be played)");
+            }
+            ReleaseSRWLockExclusive(&lock);
         }
     }
-    ReleaseSRWLockExclusive(&lock);
 }
 
 void khdays_movie_hd_host_buttons(uint16_t buttons)
