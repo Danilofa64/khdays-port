@@ -263,17 +263,39 @@ int main(void)
     khdays_movie_hd_game_buttons(0);
     mod_has_843 = 0;
 
-    /* START where the DS lets skip: the video stops, START given until the game skips */
+    /* START where the DS lets skip: the video paused under the DS's scene pause, the game held; its
+     * Continue goes on; its Skip stops the video, START given until the game skips */
     khdays_movie_hd_stream(1, "/mv/802.mods", 0);
     khdays_movie_hd_game_buttons(0);
     khdays_movie_hd_flags(8);
     {
+        int selected = -1, lit = 0, language = 0;
         const int closed_before = closes;
-        CHECK(khdays_movie_hd_game_buttons(START) == START); /* pressed: the skip, START given */
-        CHECK(closes == closed_before + 1 && khdays_movie_hd_showing());
+        CHECK(khdays_movie_hd_game_buttons(START) == 0); /* pressed: the pause, nothing given */
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language) && selected == 0 && lit == 1 && language == 5);
+        CHECK(hd_paused && held() && khdays_movie_hd_showing() && khdays_movie_hd_course_paused() &&
+              closes == closed_before);
+        khdays_movie_hd_host_buttons(START); /* the START that opened it, still held: nothing */
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language));
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(START); /* START again: Continue */
+        CHECK(!khdays_movie_hd_movie_pause(&selected, &lit, &language) && !hd_paused && !held() &&
+              khdays_movie_hd_showing());
+        CHECK(khdays_movie_hd_game_buttons(START) == 0); /* the START that closed it opens nothing */
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language) == 0);
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(START); /* open again: down to Skip, its look blinking */
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(KHDAYS_KEY_DOWN);
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language) && selected == 1 && lit == 1);
+        Sleep(300); /* past 16 frames: the entry's other look */
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language) && lit == 2);
+        khdays_movie_hd_host_buttons(0);
+        khdays_movie_hd_host_buttons(A); /* Skip */
+        CHECK(closes == closed_before + 1 && khdays_movie_hd_showing() && !held() && !khdays_movie_hd_course_paused());
     }
-    CHECK(khdays_movie_hd_game_buttons(START) == START);
-    khdays_movie_hd_flags(8 | 4); /* the game took the skip */
+    CHECK(khdays_movie_hd_game_buttons(START) == START); /* START given until the game skips */
+    khdays_movie_hd_flags(8 | 4);                        /* the game took the skip */
     CHECK(khdays_movie_hd_game_buttons(START) == 0);
     khdays_movie_hd_stopped();
     CHECK(!khdays_movie_hd_showing() && !muted && !held());
@@ -282,15 +304,39 @@ int main(void)
     CHECK(khdays_movie_hd_game_buttons(START) == START); /* a new press is the game's */
     khdays_movie_hd_game_buttons(0);
 
-    /* START before the movie said: decided when it says */
+    /* START before the movie said: the pause too, its Skip decided when the movie says */
     khdays_movie_hd_stream(1, "/mv/802.mods", 0);
     khdays_movie_hd_game_buttons(0);
     khdays_movie_hd_game_buttons(START);
+    {
+        int selected, lit, language;
+        CHECK(khdays_movie_hd_movie_pause(&selected, &lit, &language));
+    }
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(KHDAYS_KEY_UP); /* up from Continue: round to Skip */
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(A);
+    CHECK(!hd_paused && !held() && khdays_movie_hd_showing() && !khdays_movie_hd_course_paused());
     khdays_movie_hd_flags(8);
     CHECK(khdays_movie_hd_game_buttons(START) == START);
     khdays_movie_hd_flags(8 | 4);
     khdays_movie_hd_stopped();
     CHECK(!khdays_movie_hd_showing());
+    khdays_movie_hd_game_buttons(0);
+
+    /* the game's movie ends as the pause opens: held from then on, as at its end */
+    khdays_movie_hd_stream(1, "/mv/802.mods", 0);
+    khdays_movie_hd_game_buttons(0);
+    khdays_movie_hd_flags(8);
+    khdays_movie_hd_game_buttons(START);
+    khdays_movie_hd_stopped();
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(START);
+    CHECK(!khdays_movie_hd_course_paused() && held() && khdays_movie_hd_showing());
+    status_now = 1;
+    khdays_movie_hd_poll();
+    CHECK(!khdays_movie_hd_showing() && !held());
+    khdays_movie_hd_game_buttons(0);
     khdays_movie_hd_game_buttons(0);
 
     /* where the DS does not let skip: START does nothing, playing or held */
@@ -307,7 +353,8 @@ int main(void)
     CHECK(!khdays_movie_hd_showing() && !held());
     khdays_movie_hd_game_buttons(0);
 
-    /* held, the player's START from the host: let go at once */
+    /* held, the player's START from the host: the pause, the game still held after its Continue; its
+     * Skip lets go at once */
     khdays_movie_hd_stream(1, "/mv/802.mods", 0);
     khdays_movie_hd_game_buttons(0);
     khdays_movie_hd_flags(8);
@@ -315,6 +362,16 @@ int main(void)
     CHECK(held());
     khdays_movie_hd_host_buttons(0);
     khdays_movie_hd_host_buttons(START);
+    CHECK(khdays_movie_hd_course_paused() && held() && hd_paused);
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(START);
+    CHECK(!khdays_movie_hd_course_paused() && held() && !hd_paused && khdays_movie_hd_showing());
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(START);
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(KHDAYS_KEY_DOWN);
+    khdays_movie_hd_host_buttons(0);
+    khdays_movie_hd_host_buttons(A);
     CHECK(!khdays_movie_hd_showing() && !held());
     khdays_movie_hd_game_buttons(0);
 

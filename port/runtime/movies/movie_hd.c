@@ -1,7 +1,8 @@
 /* How an HD movie runs (movie_hd.h), as states: Idle, Playing, Held (the game's movie ended first),
- * Finishing (the video ended first), Skipping (START where the DS allows it); the credits scene held at
- * its roll's end instead. The game's thread brings the movie's events, the window's the video's and
- * START; one lock keeps them in order (docs/PLATFORM.md, "HD movies"). */
+ * Finishing (the video ended first), Movie Pause (START where the DS allows a skip: the DS's scene
+ * pause over the video), Skipping (its Skip); the credits scene held at its roll's end instead. The
+ * game's thread brings the movie's events, the window's the video's and START; one lock keeps them in
+ * order (docs/PLATFORM.md, "HD movies"). */
 #include "movie_hd.h"
 #include "scenes.h"
 
@@ -25,8 +26,22 @@ int khdays_language_wanted(void); /* language.c */
 /* SCENE_FADE: a scene's first video opened, the game going on while its picture and sound go down to
  * black and silence; SCENE: a scene's videos play, the game held; SCENE_SKIP: they are over, the game
  * let go to take its own skip at its next step; SCENE_LANDING: the skip asked, until the scene's
- * stretch ends; SCENE_PAUSE: START paused the video and let the game go to open its own pause over it. */
-enum { IDLE, PLAYING, HELD, FINISHING, SKIPPING, SCENE_FADE, SCENE, SCENE_SKIP, SCENE_LANDING, SCENE_PAUSE };
+ * stretch ends; SCENE_PAUSE: START paused the video and let the game go to open its own pause over it.
+ * MOVIE_PAUSE: START paused a movie's video (Playing or Held) under the port's pause, the DS's scene
+ * pause (host/screens/movie_pause.h), the game held: the game has none over its movies. */
+enum {
+    IDLE,
+    PLAYING,
+    HELD,
+    FINISHING,
+    SKIPPING,
+    SCENE_FADE,
+    SCENE,
+    SCENE_SKIP,
+    SCENE_LANDING,
+    SCENE_PAUSE,
+    MOVIE_PAUSE
+};
 
 static SRWLOCK lock = SRWLOCK_INIT;
 static volatile LONG state = IDLE;    /* read without the lock to see whether a course runs */
@@ -153,7 +168,8 @@ static void begin_skip(void)
     khdays_log("movie %s: the HD video stopped by START; START given to the game for its movie", id);
 }
 
-static void request_skip(void)
+/* The movie skipped where the DS lets START skip it (its pause's Skip, or START itself). */
+static void movie_skip(void)
 {
     switch (state_now()) {
     case PLAYING:
@@ -174,6 +190,65 @@ static void request_skip(void)
             finish("skipped");
         }
         break;
+    default: break;
+    }
+}
+
+/* The port's pause over a movie's video (MOVIE_PAUSE): the state it came from, its entry lit (0
+ * Continue, 1 Skip) and since when (its blink), the game's language then; and the buttons held as it
+ * opened, none taken until all are let go (the START that opened it). */
+static LONG pause_from;
+static int pause_selected, pause_language, pause_fresh;
+static volatile double pause_lit_from;
+#define PAUSE_BLINK_SECONDS (16.0 / 60.0) /* Input_DebounceSlot: 16 frames each look */
+static double seconds_now(void);
+
+/* Under the lock: START over a movie's video (Playing or Held) pauses it under the port's pause. */
+static void movie_pause_begin(void)
+{
+    pause_from = state_now();
+    pause_selected = 0;
+    pause_fresh = 1;
+    pause_lit_from = seconds_now();
+    pause_language = khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage();
+    khdays_hd_pause(1);
+    khdays_clock_hold(KHDAYS_HOLD_MOVIE, 1); /* the game's movie waits with it (held already when Held) */
+    InterlockedExchange(&state, MOVIE_PAUSE);
+    khdays_log("movie %s: START: the HD video paused under the pause", id);
+}
+
+/* Under the lock: the pause closes: Continue, the video and the game going on as they were; or Skip. */
+static void movie_pause_end(int skip)
+{
+    if (pause_from == PLAYING) {
+        khdays_clock_hold(KHDAYS_HOLD_MOVIE, 0);
+    }
+    game_last = 0xffff; /* the button that closed it is no press of the game's (it would open it again) */
+    InterlockedExchange(&state, pause_from);
+    if (skip) {
+        khdays_log("movie %s: the pause's Skip", id);
+        movie_skip();
+    }
+    if (state_now() == PLAYING || state_now() == HELD) {
+        khdays_hd_pause(0);
+        if (!skip) {
+            khdays_log("movie %s: the pause's Continue; the HD video goes on", id);
+        }
+    }
+}
+
+static void request_skip(void)
+{
+    switch (state_now()) {
+    case PLAYING:
+    case HELD:
+        if (course_credits || skippable == 0) {
+            movie_skip(); /* the credits' roll as on the DS; none where the DS lets none */
+        } else {
+            movie_pause_begin();
+        }
+        break;
+    case FINISHING: movie_skip(); break; /* its video already over: no pause over it */
     case SCENE:
         if (scene_chapter) {
             scene_videos_over("stopped by START");
@@ -352,6 +427,9 @@ void khdays_movie_hd_stopped(void)
         finish("ended");
     } else if (state_now() == SKIPPING) {
         finish("skipped");
+    } else if (state_now() == MOVIE_PAUSE && pause_from == PLAYING && !course_credits) {
+        pause_from = HELD; /* it ended as the pause opened: held from now on, as at a movie's end */
+        khdays_log("movie %s: the game's movie ended under the pause; the game waits for the HD video", id);
     }
     ReleaseSRWLockExclusive(&lock);
 }
@@ -390,7 +468,7 @@ void khdays_movie_hd_flags(unsigned flags)
         }
         if (skip_wanted) {
             skip_wanted = 0;
-            request_skip();
+            movie_skip(); /* a skip already asked (the pause's): not the pause again */
         }
     }
     ReleaseSRWLockExclusive(&lock);
@@ -861,7 +939,16 @@ void khdays_movie_hd_poll(void)
             /* the movie's next video, opened here as a scene's are (outside the lock: it takes its time) */
             const int opened = movie_part_open(part_next);
             AcquireSRWLockExclusive(&lock);
-            if (state_now() != PLAYING && state_now() != HELD) {
+            if (state_now() == MOVIE_PAUSE) {
+                /* the pause opened meanwhile: the next video waits under it */
+                if (opened) {
+                    movie_part_start();
+                    khdays_hd_pause(1);
+                } else {
+                    movie_pause_end(0);
+                    movie_videos_ended("ended (the next could not be played)");
+                }
+            } else if (state_now() != PLAYING && state_now() != HELD) {
                 if (opened) {
                     khdays_hd_close(); /* START or a reset meanwhile */
                 }
@@ -881,7 +968,22 @@ void khdays_movie_hd_host_buttons(uint16_t buttons)
         return;
     }
     AcquireSRWLockExclusive(&lock);
-    if (state_now() != IDLE) {
+    if (state_now() == MOVIE_PAUSE) {
+        /* the pause's buttons, as PauseMenu_Frame takes them: up and down move between its two
+         * entries, A takes one, START (or B) goes on with the video */
+        const uint16_t pressed = (uint16_t)(buttons & ~host_last);
+        host_last = buttons;
+        if (pause_fresh) {
+            pause_fresh = buttons != 0;
+        } else if (pressed & (KHDAYS_KEY_UP | KHDAYS_KEY_DOWN)) {
+            pause_selected ^= 1;
+            pause_lit_from = seconds_now();
+        } else if (pressed & KHDAYS_KEY_A) {
+            movie_pause_end(pause_selected == 1);
+        } else if (pressed & (KHDAYS_KEY_START | KHDAYS_KEY_B)) {
+            movie_pause_end(0);
+        }
+    } else if (state_now() != IDLE) {
         const uint16_t pressed = (uint16_t)(buttons & ~host_last);
         host_last = buttons;
         if (pressed & KHDAYS_KEY_START) {
@@ -889,4 +991,21 @@ void khdays_movie_hd_host_buttons(uint16_t buttons)
         }
     }
     ReleaseSRWLockExclusive(&lock);
+}
+
+int khdays_movie_hd_movie_pause(int *selected, int *lit, int *language)
+{
+    if (state_now() != MOVIE_PAUSE) {
+        return 0;
+    }
+    *selected = pause_selected;
+    *lit = 1 + (int)((seconds_now() - pause_lit_from) / PAUSE_BLINK_SECONDS) % 2;
+    *language = pause_language;
+    return 1;
+}
+
+int khdays_movie_hd_course_paused(void)
+{
+    const LONG now = state_now();
+    return now == SCENE_PAUSE || now == MOVIE_PAUSE;
 }

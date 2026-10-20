@@ -61,6 +61,16 @@ void khdays_movie_hd_poll(void);
  * thread reads none). */
 void khdays_movie_hd_host_buttons(uint16_t buttons);
 
+/* START over a movie's HD video, where the DS lets START skip the movie, pauses it under the DS's scene
+ * pause (the game has none over its movies): Continue goes on, Skip skips as START did. Whether it is
+ * open, with its entry lit (0 Continue, 1 Skip), that entry's look in its blink (1 or 2) and the
+ * game's language (1 English to 5 Spanish), for the window to draw it (host/screens/movie_pause.h). */
+int khdays_movie_hd_movie_pause(int *selected, int *lit, int *language);
+
+/* Whether the course keeps its video paused (its own pause, or the game's over a scene): the settings
+ * menu closing leaves it so. */
+int khdays_movie_hd_course_paused(void);
+
 /* The theater's HD scenes. The game's thread, as an event's scene begins its skippable
  * stretch (`state` the event machine's, a reference): with Video `hd`, the videos `stems` in a row
  * (data/cutscenes/cinematics/<stem>.mp4, a mod's cutscenes/cinematics/ first) shown in its place, the

@@ -12,6 +12,7 @@
 #include "onescreen.h"
 #include "png_io.h"
 #include "../../ui/composition.h"
+#include "../screens/movie_pause.h"
 #include "../screens/ui_text.h"
 #include "../../runtime/core/clock.h"
 #include "../../runtime/core/events.h"
@@ -1246,6 +1247,26 @@ static void draw_hd_movie(void)
     }
 }
 
+/* The port's pause over a movie's paused video (runtime/movies/movie_hd.h): the video darkened as the DS
+ * darkens its screens under its pause (by 8 of 16), the DS's panel over it, the DS's screen 4:3 in the
+ * middle of the video. */
+static void draw_movie_pause(void)
+{
+    int selected, lit, language;
+    SDL_Texture *panel;
+    if (hd_movie == NULL || !khdays_movie_hd_movie_pause(&selected, &lit, &language)) {
+        return;
+    }
+    darken(0.5f);
+    panel = khdays_movie_pause_panel(renderer, language, selected, lit);
+    if (panel != NULL) {
+        const float h = (float)hd_movie_h, w = h * 4.0f / 3.0f;
+        const SDL_FRect at = {((float)hd_movie_w - w) / 2.0f, 0.0f, w, h};
+        SDL_SetTextureScaleMode(panel, video.smooth_scaling ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+        SDL_RenderTexture(renderer, panel, NULL, &at);
+    }
+}
+
 int khdays_present_one_picture(void)
 {
     return one_drawn && (one_kind == KHDAYS_SCREENS_UPPER || one_kind == KHDAYS_SCREENS_LOWER);
@@ -1279,6 +1300,7 @@ void khdays_present_draw(void)
     const int paused = khdays_movie_hd_scene_paused();
     if (khdays_movie_hd_showing() && !paused) {
         draw_hd_movie();
+        draw_movie_pause();
         return;
     }
     if (hd_movie != NULL && !paused) {

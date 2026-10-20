@@ -419,6 +419,7 @@ add_executable(khdays-native
     host/screens/room_screen.c             # the port's list of Mission Mode's rooms on the screen
     host/screens/select_screen.c           # Mission Mode's character select on one screen
     host/screens/camp_screen.c             # Mission Mode's camp menu on one screen
+    host/screens/movie_pause.cpp           # the DS's scene pause over an HD movie
     runtime/display/frame_package.c
     runtime/display/gfx_check.c
     runtime/core/origin.c

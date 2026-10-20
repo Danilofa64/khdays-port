@@ -18,6 +18,7 @@
 #include "../screens/room_screen.h"
 #include "../screens/select_screen.h"
 #include "../screens/camp_screen.h"
+#include "../screens/movie_pause.h"
 #include "../screens/save_screen.h"
 #include "sound_output.h"
 #include "updates.h"
@@ -471,7 +472,9 @@ static void close_settings(void)
     if (settings_stopped) {
         khdays_clock_hold(KHDAYS_HOLD_SETTINGS, 0);
         khdays_sound_output_pause(0);
-        khdays_hd_pause(0);
+        if (!khdays_movie_hd_course_paused()) {
+            khdays_hd_pause(0); /* not a video its course keeps paused (a pause over it) */
+        }
         khdays_hd_voice_pause(0);
         settings_stopped = 0;
     }
@@ -664,6 +667,7 @@ static int host_thread(void *unused)
             khdays_room_screen_renderer_gone();
             khdays_select_screen_renderer_gone();
             khdays_camp_screen_renderer_gone();
+            khdays_movie_pause_renderer_gone();
             khdays_present_close();
             SDL_DestroyWindow(window);
             SDL_Quit();
@@ -700,6 +704,7 @@ static int host_thread(void *unused)
             khdays_room_screen_renderer_gone();
             khdays_select_screen_renderer_gone();
             khdays_camp_screen_renderer_gone();
+            khdays_movie_pause_renderer_gone();
             renderer = khdays_present_event(&event, &renewed);
             khdays_settings_set_graphics_card(khdays_present_gpu());
             tell_game();

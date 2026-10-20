@@ -4570,6 +4570,25 @@ the story walk and `KHDAYS_TEST_DAY`).
   and once the scene ends the game comes up from black and silence over half a second. A Theater
   chapter starts at once from its list; a movie's videos have no fades (the DS's movies begin and
   end in black).
+- **The pause over a movie.** The DS has none: START skips a movie where its player allows it
+  (`Ov024_MobiClip_UpdatePlayback`'s flag bit 3), and the game's pause belongs to the event scenes
+  (`PauseMenu_PollInput`, `gPauseAllowed`). A player asked for one over the HD movies, as over the HD
+  scenes; the maintainer chose the DS's own look (2026-10-21), so the port draws the scene pause from
+  the game's pieces (`host/screens/movie_pause.cpp`). `Pause_LoadResources` loads
+  `pause/pausebg_<lang>.pbg` (a D2KP pack: its screen, 256 4-bit tiles, the palette) and the screens
+  `pauseicon.NSCR`, `pausemsg.NSCR` and `etcicon.NSCR` (33 x 12 cells, kept in 32 x 32 blocks as
+  `func_020130b0` reads them); `SubObject_SetupDrawsForMode`, for a scene (no mission, field 0x2483
+  clear), copies into the pack's screen the title (`pauseicon` 12 x 2 to cells 10, 8), Continue
+  (`etcicon` 11 x 2 from 0, 0 to 10, 11) and Skip (from 11, 0 to 10, 13) -- `SubObject_SetDrawParams`
+  (srcX, srcY, dstX, dstY, w, h, srcY doubled); an entry lit takes the cells 2 rows down and its blink
+  the cells 4 rows down (`SubObject_NudgeAndRedraw`), flipped every 16 frames (`Input_DebounceSlot`);
+  up and down wrap (`TabPanel_HandleUpDown`); `PauseMenu_Open` puts the screen on BG3 and darkens the
+  rest by 8. The tiles hold PAUSE, Continue, Skip, Give Up, Yes, No and Are you sure? in each
+  language. The port pauses the video and holds the game (its movie waits with it), darkens the
+  video by half and draws the panel as the DS's screen would show it, 4:3 in the middle; A takes the
+  entry lit, START (or B) continues; Skip does what START did. Seen over hd802 (the opening) in a
+  window: PAUSA, Continuar lit with the glove, Omitir. Silent, as the scenes' pause is under their
+  video (the game's sound muted).
 - **The theater's music over its videos.** Most of the theater's videos carry the voices and effects
   alone (hd848, Xion's end: near silence up to 2.9 s between lines, the DS movie 848's sound the same
   to a tenth of a decibel); the theater plays music over them from each event file's

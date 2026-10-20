@@ -632,7 +632,10 @@ them from your copy with `tools/hd/theater_movies.py --videos` (see
 nothing of them is in this repository, and `data/` is never committed. With the Movies setting on HD, a movie that has one shows it over
 the whole window with its own sound, in both screen layouts; the game plays
 its own movie behind it, unseen, and waits at its end until the video ends.
-START stops the video where the DS lets you skip the movie. Windows decodes
+Where the DS lets you skip the movie, START pauses the video under the
+DS's own scene pause (PAUSE, Continue, Skip), drawn from the game's pieces:
+the game has no pause over its movies, but the HD scenes have the game's, so
+the movies have the same. Windows decodes
 the videos (Media Foundation); a file it cannot play, or a movie without an
 HD video, plays the game's movie, and the log says why. A mod's movie for the
 same movie comes first. The theater's subtitles show over them (see
