@@ -1,7 +1,7 @@
 /* The scene map's text (scene_map.h): a line per scene,
  *   <script> <stem> [<stem> ...] ; <evidence>   <script> off ; <evidence>   <script> skip <stem> ; <evidence>
- * or per movie, mv#<movie> <stem>[<from>:<until>] ... ; <evidence> (a part of a video in seconds,
- * either left out; or off).
+ * or per movie, mv#<movie> <stem> ... ; <evidence> (or off). A scene's or a movie's stem may be a part
+ * of the video, <stem>[<from>:<until>] in seconds, either left out.
  * '#' comments, blank lines skipped. A script is EV_<world>#<index>, mi/<mission>/<script>:<section>
  * or mnl#<record> (a day's monologue, ui/mnl's record);
  * a stem is a video's file name without .mp4. */
@@ -226,7 +226,7 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
             result = 1;
         }
     } else {
-        const int movie = strncmp(words[0], "mv#", 3) == 0;
+        const int monologue = strncmp(words[0], "mnl#", 4) == 0;
         double *from = (double *)calloc((size_t)(count - 1), sizeof(double));
         double *until = (double *)calloc((size_t)(count - 1), sizeof(double));
         int parts = 0;
@@ -234,8 +234,9 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
         for (int i = 1; i < count && *why == NULL && from != NULL && until != NULL; ++i) {
             char *open = strchr(words[i], '[');
             if (open != NULL) {
-                if (!movie || !read_part(open, &from[i - 1], &until[i - 1])) {
-                    *why = "a part of a video, [<from>:<until>] in seconds, is a movie's (mv#)";
+                if (monologue || !read_part(open, &from[i - 1], &until[i - 1])) {
+                    *why = "a part of a video is [<from>:<until>] in seconds, a scene's or a movie's (not a "
+                           "monologue's)";
                 }
                 *open = '\0';
                 parts = 1;

@@ -654,14 +654,17 @@ Skip ends the scene (on two screens the pause shows over the game's screens).
 Three of the theater's movies go on past the DS's: hd830 and hd836 also hold
 the event scene that follows them (Riku and Mickey; Riku and Roxas before
 their fight), so after them that scene is skipped (`skip`), and hd833 also
-shows the fight against Xion the player fights next, so it stops as Roxas
-leaps into the fight and the rest of it, the fight to its end, plays once the
-player has won, before hd848 (`mv#833 hd833[:173.2]`, `mv#848 hd833[173.2:]
-hd848`).
+shows the fight against Xion the player fights next, so it is split along the
+fight: it stops as the screen fades to black, the game's own scenes take
+Roxas through Wonderland, Neverland and Agrabah, the scene that brings him
+back to Twilight Town shows its next part (Roxas drawing his Keyblade and
+leaping into the fight), and the rest of it, the fight to its end, plays once
+the player has won, before hd848 (`mv#833 hd833[:128.4]`, `EV_S#182
+hd833[129.4:173.2]`, `EV_S#183 hd833[173.2:]`).
 A mod's `cutscenes/scenes.txt` adds or replaces entries (`<script> <videos>
 ; <evidence>`, `off` for the DS's scene, `skip <video>` for a scene that
-video shows; `mv#<movie> <video>[<from>:<until>] ...`, or `off`, for a movie:
-its videos in a row, each a part of it in seconds), and its
+video shows; `mv#<movie> <videos>`, or `off`, for a movie; a video may be a
+part of it, `<video>[<from>:<until>]` in seconds), and its
 `cutscenes/cinematics/<video>.mp4` comes before your own.
 
 Most of the theater's videos, scenes and movies alike, hold the voices and

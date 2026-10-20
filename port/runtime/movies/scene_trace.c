@@ -251,7 +251,7 @@ void khdays_scene_target(unsigned int state, int operand)
             map_skip = 1;
             khdays_log("scene %s: skipped, as %s before it showed it", current, e->stems[0]);
         } else if (e != NULL && !e->off && !e->skip) {
-            khdays_movie_hd_scene(current, state, e->stems, e->stem_count);
+            khdays_movie_hd_scene(current, state, e->stems, e->from, e->until, e->stem_count);
         }
     }
     if (tracing_scenes()) {

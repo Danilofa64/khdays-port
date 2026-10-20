@@ -58,9 +58,11 @@ void khdays_movie_hd_host_buttons(uint16_t buttons);
 /* The theater's HD scenes. The game's thread, as an event's scene begins its skippable
  * stretch (`state` the event machine's, a reference): with Video `hd`, the videos `stems` in a row
  * (data/cutscenes/cinematics/<stem>.mp4, a mod's cutscenes/cinematics/ first) shown in its place, the
- * game held meanwhile. Returns 1 when the course starts, 0 when the scene plays as the game's (no
- * Video `hd`, a video missing or unplayable: said in the log once). */
-int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, int count);
+ * game held meanwhile, each the part of it between `from` and `until` seconds (NULL, or 0: its own
+ * start or end). Returns 1 when the course starts, 0 when the scene plays as the game's (no Video
+ * `hd`, a video missing or unplayable: said in the log once). */
+int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, const double *from, const double *until,
+                          int count);
 
 /* The game's thread, at each step of a script machine (`state` its reference): once the scene's videos
  * have ended, the game's own skip is asked there (the sound effects stopped, the skip request set),

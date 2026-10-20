@@ -10,10 +10,11 @@
 #   off       in place of the stems: the game's own scene (a mod may switch an entry off)
 #   skip <video stem>  the scene skipped with no video when the movie just before it was shown as
 #             that HD video, which shows the scene too (the game's own scene otherwise)
-# mv#<movie> <video stem>[<from>:<until>] [...] ; <evidence>
-#             a game's movie shown as those videos in a row (hd<movie> alone without an entry),
-#             each the part of it between those seconds (either left out: its own start or end);
+# mv#<movie> <video stem> [...] ; <evidence>
+#             a game's movie shown as those videos in a row (hd<movie> alone without an entry);
 #             or `off`, the game's own movie
+# A scene's or a movie's video stem may be a part of it, <video stem>[<from>:<until>]: the video
+# between those seconds (either left out: its own start or end).
 
 # Roxas's monologues (scene 10, before the calendar): the theater's clips are his voice over black,
 # so their sound alone is heard over the game's own page (his picture and the DS's text), the game
@@ -166,9 +167,14 @@ EV_S#188 hd132a ; lines (by meaning, 3 of 3): he tried, he must find out about h
 # Day 356
 EV_S#171 hd133b ; lines: 45% of the theater's found in the scene's
 EV_S#174 hd136 ; lines: 72% of the theater's found in the scene's
+# Day 357, Xion's fight (mission 0114's script 99:_e): the game's movie 833, its own scenes EV_S#179-181
+# through Wonderland, Neverland and Agrabah to the fight's first three parts, EV_S#182 back in Twilight
+# Town before the last (area 41), EV_S#183 after it, then the game's movie 848. hd833 goes on past the
+# game's movie 833 (mv#833 below): its rest is shown in those two scenes, which have no lines.
+EV_S#182 hd833[129.4:173.2] ; pictures: hd833 after its fade to black (127.5-129.4 s) shows Roxas in the dark, then on Twilight Town's wall at sunset, drawing his Keyblade (168.2 s) and leaping to the fight (173.2 s); the scene brings the fight from Agrabah (wd_al) back to Twilight Town (wd_tt) and loads Roxas's Keyblade for its last part
+EV_S#183 hd833[173.2:] ; pictures: hd833 from 173.2 s shows the fight against Xion to her last form breaking (black from 270.6 s); the scene follows the fight's last part, before the game's movie 848 (the theater's chapter: hd833, hd848)
 # Day 358
 EV_S#177 skip hd836 ; lines: hd836 from 73 s says the scene's (¿Quién eres? ... ¡Cállate!), the game's movie 836 being 72.9 s of its 129.8 s; hd140, in no chapter of the theater, is that end again in Japanese without subtitles
 
 # The game's movies whose HD video goes on past them
-mv#833 hd833[:173.2] ; the game's movie 833 is 128.1 s (1920 pictures at 14.985 a second) of hd833's 272.2 s, whose lines end by 125.1 s; after its fade to black (127.5-129.4 s) it shows Roxas before the fight, drawing his Keyblade and leaping from the wall (to 173.2 s), then the fight against Xion the player fights next
-mv#848 hd833[173.2:] hd848 ; the fight's end first: hd833 from 173.2 s shows the fight against Xion to her last form breaking (black from 270.6 s), which the game goes on to with its movie 848 (the theater's chapter: hd833, hd848)
+mv#833 hd833[:128.4] ; the game's movie 833 is 128.1 s (1920 pictures at 14.985 a second) of hd833's 272.2 s, whose lines end by 125.1 s and pictures by its fade to black (127.5 s); the rest is EV_S#182's and EV_S#183's (day 357)

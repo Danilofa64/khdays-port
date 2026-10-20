@@ -55,8 +55,9 @@ RATE = 30
 
 def scene_stems() -> list[str]:
     """The theater's scene videos the port plays in place of the game's own event scenes: the stems
-    its scene map names (port/movies/hd_scenes.txt), in the map's order. A scene skipped (`skip`)
-    names a movie's video, and a movie's entry (mv#) its own: the movies are all made anyway."""
+    its scene map names (port/movies/hd_scenes.txt), in the map's order, a part of one ([from:until])
+    by its whole video. A scene skipped (`skip`) names a movie's video, and a movie's entry (mv#) its
+    own: the movies are all made anyway."""
     if not SCENE_MAP.is_file():
         return []
     out = []
@@ -64,7 +65,9 @@ def scene_stems() -> list[str]:
         line = re.sub(r"(^|\s)#.*$", "", raw).partition(";")[0]
         words = line.split()
         if len(words) >= 2 and words[1] not in ("off", "skip") and not words[0].startswith("mv#"):
-            out += [w for w in words[1:] if w not in out]
+            for stem in (w.partition("[")[0] for w in words[1:]):
+                if stem not in out:
+                    out.append(stem)
     return out
 
 

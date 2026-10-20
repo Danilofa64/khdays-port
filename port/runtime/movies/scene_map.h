@@ -12,8 +12,8 @@ typedef struct KhdaysSceneEntry {
     int skip;     /* the scene skipped at once when the HD movie last shown was stems[0], which shows it */
     char **stems; /* the videos in order (data/cutscenes/cinematics/<stem>.mp4) */
     int stem_count;
-    double *from, *until; /* a movie's videos' parts, in seconds of each (0 its own start or end); NULL
-                             when all are whole */
+    double *from, *until; /* the videos' parts, in seconds of each (0 its own start or end); NULL when
+                             all are whole */
     char *evidence;       /* the text after ';', "" when none */
 } KhdaysSceneEntry;
 

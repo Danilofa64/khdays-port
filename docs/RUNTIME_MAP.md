@@ -2966,16 +2966,24 @@ Xion (to her last form breaking, black from 270.6 s); 837 is 146.4 s of hd837's 
 line (`Lo he aceptado.`, 166 s) in no script of the game. The theater's chapters: day 354 hd129,
 hd130a, hd830 (nothing after it); day 357 hd833, hd848, then hd834; day 358 hd835, hd836, hd837,
 hd840. So the scene map skips EV_S#168 after hd830 and EV_S#177 after hd836 (`skip`, only when
-that video was the movie shown), and plays hd833 in two parts: to 173.2 s for 833 (Roxas
-before the fight, his Keyblade drawn, his leap from the wall: the maintainer's pick), and from
-173.2 s, the fight to Xion's last form breaking, before hd848 for 848 (`mv#833 hd833[:173.2]`,
-`mv#848 hd833[173.2:] hd848`; EV_S#176, the scene with no lines nearby, is Roxas with two
+that video was the movie shown), and plays hd833 in three parts along the fight (the
+maintainer's pick): to 128.4 s for 833, its fade to black; from 129.4 to 173.2 s for EV_S#182
+(Roxas in the dark, then on Twilight Town's wall, his Keyblade drawn, his leap); from 173.2 s,
+the fight to Xion's last form breaking, for EV_S#183 (`mv#833 hd833[:128.4]`, `EV_S#182
+hd833[129.4:173.2]`, `EV_S#183 hd833[173.2:]`). Mission 0114 (day 357) runs the fight so: its
+script 99:_e plays EV_S#179 (wd_tt and wd_aw loaded) before area 11, EV_S#180 (wd_aw to wd_nm)
+before 21, EV_S#181 (wd_nm to wd_al) before 31, EV_S#182 (wd_al to wd_tt, Roxas's Keyblade and
+`mi/mo/xo.p2` loaded) before 41, the fight's last part, then once it is won EV_S#183 and area 97,
+whose script 97:_m holds the subtitles of the movies 833 and 848; EV_S#179-183 have no lines and
+each sets a skip target (the census's). EV_S#176, the scene with no lines nearby, is Roxas with two
 Keyblades among Neoshadows in The World That Never Was, day 358, seen with
-`KHDAYS_TEST_SCENE=4:176`). Seen: the decoder plays hd833 from 173.200 s to 272.200 s (2971
-pictures in 99.03 s, the seek dropping the pictures and sound before the part) and hd808 from
-2.000 to 4.967 s; the story walk with EV_S#177 swapped in and its skip asked at once
-(`KHDAYS_TEST_SCENE=4:177`, `KHDAYS_TEST_SKIP_AT=0`) ended the stretch 6 frames later and went
-on.
+`KHDAYS_TEST_SCENE=4:176`. Seen: the decoder plays hd833 to 128.367 s (3851 pictures in
+128.41 s), from 129.400 to 173.200 s (1315 pictures in 43.84 s) and from 173.200 s to 272.200 s
+(2971 pictures in 99.03 s, the seek dropping the pictures and sound before the part), and hd808
+from 2.000 to 4.967 s; EV_S#182 swapped into day 7 (`KHDAYS_TEST_SCENE=4:182`) is recognised and
+given hd833 (headless, the DS's scene plays: Video `hd` is the window's); the story walk with
+EV_S#177 swapped in and its skip asked at once (`KHDAYS_TEST_SCENE=4:177`, `KHDAYS_TEST_SKIP_AT=0`)
+ended the stretch 6 frames later and went on.
 
 **The theater's subtitles.** It draws them over its videos from each video's
 event, `<lang folder>/event/<lang>/hd/hd<id>/hd<id>.exia2` (XML, `EXUSIA2_XML`;

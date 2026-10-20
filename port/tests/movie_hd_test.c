@@ -372,16 +372,19 @@ int main(void)
     {
         static uint8_t event[0x600]; /* the event machine's state: its skip request at +0x588 */
         char *const stems[] = {"hd010", "hd011"};
+        const double from[] = {129.4, 0.0}, until[] = {173.2, 0.0}; /* a part of the first, the second whole */
         const int opened_before = opens, stopped_before = sound_effects_stopped;
         touch("data/cutscenes/cinematics/hd010.mp4");
         touch("data/cutscenes/cinematics/hd011.mp4");
-        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 2) == 1);
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, from, until, 2) == 1);
         CHECK(khdays_movie_hd_showing() && held() && muted && opens == opened_before + 1 && wakes == 1);
-        CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd010.mp4") == 0 && strcmp(subtitles_movie, "010") == 0);
+        CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd010.mp4") == 0 && strcmp(subtitles_movie, "010") == 0 &&
+              opened_from == 129.4 && opened_until == 173.2);
         CHECK(khdays_movie_hd_game_buttons(A) == 0);
         status_now = 1;
         khdays_movie_hd_poll(); /* the first ended: the second */
-        CHECK(opens == opened_before + 2 && strcmp(subtitles_movie, "011") == 0 && held());
+        CHECK(opens == opened_before + 2 && strcmp(subtitles_movie, "011") == 0 && held() && opened_from == 0.0 &&
+              opened_until == 0.0);
         status_now = 1;
         khdays_movie_hd_poll(); /* the last ended: let go */
         CHECK(khdays_movie_hd_showing() && !held() && muted);
@@ -400,10 +403,10 @@ int main(void)
     {
         char *const stems[] = {"hd010", "hd999"};
         const int opened_before = opens;
-        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 2) == 0);
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 2) == 0);
         CHECK(!khdays_movie_hd_showing() && !held() && !muted && opens == opened_before);
         graphics_flags = 0; /* movies = pc or ds: none of the scenes */
-        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 0 && !khdays_movie_hd_showing());
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 1) == 0 && !khdays_movie_hd_showing());
         graphics_flags = KHDAYS_HOST_MOVIES_HD;
     }
 
@@ -414,7 +417,7 @@ int main(void)
         char *const stems[] = {"hd010"};
         const int closed_before = closes;
         touch("data/cutscenes/cinematics/hd010.mp4");
-        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 1);
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 1) == 1);
         CHECK(khdays_movie_hd_scene_state() == 0x1234u);
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);
@@ -448,7 +451,7 @@ int main(void)
         khdays_movie_hd_game_buttons(0);
         khdays_movie_hd_game_buttons(0);
         /* a pause the game does not open: the video goes on */
-        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, 1) == 1);
+        CHECK(khdays_movie_hd_scene("EV_S#12", 0x1234u, stems, NULL, NULL, 1) == 1);
         khdays_movie_hd_host_buttons(0);
         khdays_movie_hd_host_buttons(START);
         for (int i = 0; i <= 90; ++i) {

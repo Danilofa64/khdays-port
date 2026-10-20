@@ -449,6 +449,7 @@ void SoundMgr_StopAllSePlayers(void); /* the game's: what the event pause's Skip
 static char scene_key[48];
 static uint32_t scene_state; /* the event machine's state (a reference) */
 static char (*scene_stems)[64];
+static double *scene_parts; /* each video's part: from, until (seconds of it; 0 its own start or end) */
 static int scene_count, scene_next;
 
 /* KHDAYS_TEST_SCENE_START=<ms>: START pressed that long into each scene's course (the scripted
@@ -473,14 +474,20 @@ static int scene_open(int index)
 {
     char file[1024], why[320];
     KhdaysHdInfo info;
+    const double from = scene_parts[2 * index], until = scene_parts[2 * index + 1];
     khdays_movie_hd_scene_file(scene_stems[index], file, sizeof(file));
-    if (!khdays_hd_open(file, &info, why, sizeof(why))) {
+    if (!khdays_hd_open_part(file, from, until, &info, why, sizeof(why))) {
         khdays_log("scene %s: %s cannot be played (%s)", scene_key, file, why);
         fprintf(stderr, "scenes: %s: %s cannot be played (%s)\n", scene_key, file, why);
         return 0;
     }
     khdays_log("scene %s: the HD video %s plays (%dx%d, %s)", scene_key, file, info.width, info.height,
                info.channels > 0 ? "with its sound" : "no sound");
+    if (until > 0.0) {
+        khdays_log("scene %s: %s from %.2f s to %.2f s", scene_key, scene_stems[index], from, until);
+    } else if (from > 0.0) {
+        khdays_log("scene %s: %s from %.2f s to its end", scene_key, scene_stems[index], from);
+    }
     fprintf(stderr, "scenes: %s: %s shown instead (%dx%d)\n", scene_key, file, info.width, info.height);
     return 1;
 }
@@ -568,7 +575,8 @@ uint32_t khdays_movie_hd_scene_state(void)
     return now == SCENE || now == SCENE_SKIP || now == SCENE_LANDING || now == SCENE_PAUSE ? scene_state : 0u;
 }
 
-static int scene_course(const char *key, uint32_t event_state, char *const *stems, int count, int chapter)
+static int scene_course(const char *key, uint32_t event_state, char *const *stems, const double *from,
+                        const double *until, int count, int chapter)
 {
     char file[1024];
     if (count <= 0 || state_now() != IDLE || !(khdays_host_graphics_flags() & KHDAYS_HOST_MOVIES_HD)) {
@@ -587,14 +595,20 @@ static int scene_course(const char *key, uint32_t event_state, char *const *stem
     AcquireSRWLockExclusive(&lock);
     {
         char (*grown)[64] = realloc(scene_stems, (size_t)count * sizeof(*scene_stems));
-        if (grown == NULL) {
+        double *spans = grown != NULL ? (double *)realloc(scene_parts, (size_t)count * 2 * sizeof(double)) : NULL;
+        if (grown != NULL) {
+            scene_stems = grown;
+        }
+        if (spans == NULL) {
             ReleaseSRWLockExclusive(&lock);
             return 0;
         }
-        scene_stems = grown;
+        scene_parts = spans;
     }
     for (int i = 0; i < count; ++i) {
         snprintf(scene_stems[i], sizeof(scene_stems[i]), "%s", stems[i]);
+        scene_parts[2 * i] = from != NULL ? from[i] : 0.0;
+        scene_parts[2 * i + 1] = until != NULL ? until[i] : 0.0;
     }
     scene_count = count;
     scene_chapter = chapter;
@@ -627,14 +641,15 @@ static int scene_course(const char *key, uint32_t event_state, char *const *stem
     return 1;
 }
 
-int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *stems, int count)
+int khdays_movie_hd_scene(const char *key, uint32_t event_state, char *const *stems, const double *from,
+                          const double *until, int count)
 {
-    return scene_course(key, event_state, stems, count, 0);
+    return scene_course(key, event_state, stems, from, until, count, 0);
 }
 
 int khdays_movie_hd_chapter(const char *key, char *const *stems, int count)
 {
-    return scene_course(key, 0u, stems, count, 1);
+    return scene_course(key, 0u, stems, NULL, NULL, count, 1);
 }
 
 void khdays_movie_hd_scene_step(uint32_t event_state, void *host_state)
