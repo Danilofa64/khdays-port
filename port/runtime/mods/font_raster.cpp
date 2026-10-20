@@ -28,9 +28,11 @@ struct Key {
     const Atlas *atlas;
     int glyph, w, h;
     bool native;
+    double draw_w = 0, draw_h = 0, phase_x = 0, phase_y = 0;
     bool operator==(const Key &other) const noexcept
     {
-        return atlas == other.atlas && glyph == other.glyph && w == other.w && h == other.h && native == other.native;
+        return atlas == other.atlas && glyph == other.glyph && w == other.w && h == other.h && native == other.native &&
+               draw_w == other.draw_w && draw_h == other.draw_h && phase_x == other.phase_x && phase_y == other.phase_y;
     }
 };
 struct KeyHash {
@@ -41,6 +43,8 @@ struct KeyHash {
                                       static_cast<std::uint32_t>(k.h), static_cast<std::uint32_t>(k.native)}) {
             h ^= static_cast<std::size_t>(v) + 0x9e3779b9u + (h << 6) + (h >> 2);
         }
+        for (const double v : {k.draw_w, k.draw_h, k.phase_x, k.phase_y})
+            h ^= std::hash<double>{}(v) + 0x9e3779b9u + (h << 6) + (h >> 2);
         return h;
     }
 };
@@ -143,21 +147,19 @@ static std::shared_ptr<const Cached::Tile> render_tile(const Atlas &atlas, const
     return tile;
 }
 
-static std::shared_ptr<const Cached::Tile> glyph_tile(const Atlas &atlas, int index, int width, int height,
-                                                      int logical_w, int logical_h)
+static std::shared_ptr<const Cached::Tile> cached_tile(const Key &key)
 {
-    const Glyph &g = atlas.glyphs[index];
-    const bool native = g.image_w <= logical_w + 1e-8 && g.image_h <= logical_h + 1e-8;
-    const Key key{atlas.artwork ? atlas.artwork.get() : &atlas, index, width, height, native};
-    {
-        std::lock_guard<std::mutex> guard(cache_mutex);
-        auto it = cache_index.find(key);
-        if (it != cache_index.end()) {
-            cache_order.splice(cache_order.begin(), cache_order, it->second);
-            return it->second->tile;
-        }
+    std::lock_guard<std::mutex> guard(cache_mutex);
+    auto it = cache_index.find(key);
+    if (it != cache_index.end()) {
+        cache_order.splice(cache_order.begin(), cache_order, it->second);
+        return it->second->tile;
     }
-    auto tile = render_tile(atlas, g, width, height, native);
+    return {};
+}
+
+static std::shared_ptr<const Cached::Tile> keep_tile(const Key &key, std::shared_ptr<const Cached::Tile> tile)
+{
     const std::size_t size = tile->pixels.size();
     if (size > CACHE_LIMIT)
         return tile;
@@ -174,6 +176,69 @@ static std::shared_ptr<const Cached::Tile> glyph_tile(const Atlas &atlas, int in
     cache_index.emplace(key, cache_order.begin());
     cached_bytes += size;
     return tile;
+}
+
+static std::shared_ptr<const Cached::Tile> glyph_tile(const Atlas &atlas, int index, int width, int height,
+                                                      int logical_w, int logical_h)
+{
+    const Glyph &g = atlas.glyphs[index];
+    const bool native = g.image_w <= logical_w + 1e-8 && g.image_h <= logical_h + 1e-8;
+    const Key key{atlas.artwork ? atlas.artwork.get() : &atlas, index, width, height, native};
+    if (auto tile = cached_tile(key))
+        return tile;
+    return keep_tile(key, render_tile(atlas, g, width, height, native));
+}
+
+// Exact fractional phases share the same bounded LRU as normalized artwork.
+// Paint position, clipping and tint do not change the cached samples.
+static std::shared_ptr<const Cached::Tile> phased_tile(const Key &key, const Cached::Tile &source)
+{
+    if (static_cast<std::size_t>(key.w) * key.h * 4 > CACHE_LIMIT)
+        return {};
+    if (auto tile = cached_tile(key))
+        return tile;
+    auto tile = std::make_shared<Cached::Tile>();
+    tile->pixels.resize(static_cast<std::size_t>(key.w) * key.h * 4);
+    tile->left = tile->top = 0;
+    tile->right = key.w;
+    tile->bottom = key.h;
+    tile->grayscale = source.grayscale;
+    tile->white_mask = source.white_mask;
+    const int width = key.w - 1, height = key.h - 1;
+    const auto *source_pixels = source.pixels.data();
+    auto *pixels = tile->pixels.data();
+    const std::uint8_t transparent[4] = {};
+    auto texel = [&](int tx, int ty) {
+        return tx < 0 || ty < 0 || tx >= width || ty >= height
+                   ? transparent
+                   : source_pixels + (static_cast<std::size_t>(ty) * width + tx) * 4;
+    };
+    for (int py = 0; py < key.h; ++py) {
+        const double sy = (py + .5 - key.phase_y) * height / key.draw_h;
+        const double at_y = sy - .5;
+        const int ty = static_cast<int>(std::floor(at_y));
+        const double fy = at_y - ty;
+        for (int px = 0; px < key.w; ++px) {
+            const double sx = (px + .5 - key.phase_x) * width / key.draw_w - .5;
+            const int tx = static_cast<int>(std::floor(sx));
+            const double fx = sx - tx;
+            const auto *a0 = texel(tx, ty), *a1 = texel(tx + 1, ty);
+            const auto *b0 = texel(tx, ty + 1), *b1 = texel(tx + 1, ty + 1);
+            auto interpolate = [&](int channel) {
+                const double a = a0[channel] * (1 - fx) + a1[channel] * fx;
+                const double b = b0[channel] * (1 - fx) + b1[channel] * fx;
+                const double value = a * (1 - fy) + b * fy;
+                const int whole = static_cast<int>(value);
+                return static_cast<std::uint8_t>(whole + (value >= whole + .5));
+            };
+            auto *p = pixels + (static_cast<std::size_t>(py) * key.w + px) * 4;
+            p[3] = interpolate(3);
+            p[0] = source.white_mask ? p[3] : interpolate(0);
+            p[1] = source.grayscale ? p[0] : interpolate(1);
+            p[2] = source.grayscale ? p[0] : interpolate(2);
+        }
+    }
+    return keep_tile(key, tile);
 }
 
 static int div255(int value)
@@ -250,6 +315,21 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
     if (tile->left >= tile->right || tile->top >= tile->bottom)
         return true;
     const bool aligned = x == std::floor(x) && y == std::floor(y) && w == tile_w && h == tile_h;
+    const int origin_x = static_cast<int>(std::floor(x)), origin_y = static_cast<int>(std::floor(y));
+    const Key phase_key{atlas.artwork ? atlas.artwork.get() : &atlas,
+                        paint.glyph_index,
+                        tile_w + 1,
+                        tile_h + 1,
+                        g.image_w <= paint.logical_width + 1e-8 && g.image_h <= paint.logical_height + 1e-8,
+                        w,
+                        h,
+                        x - origin_x,
+                        y - origin_y};
+    const auto phased = aligned ? std::shared_ptr<const Cached::Tile>{} : phased_tile(phase_key, *tile);
+    const bool sampled = aligned || phased;
+    const auto *samples = phased ? phased->pixels.data() : tile->pixels.data();
+    const int sample_width = phased ? tile_w + 1 : tile_w;
+    const bool white_mask = tile->white_mask, grayscale = tile->grayscale;
     const int spread = aligned ? 0 : 1; // Bilinear neighbors can extend cached alpha by one texel.
     x0 = std::max(x0, static_cast<int>(std::floor(x + (tile->left - spread) * w / tile_w)));
     y0 = std::max(y0, static_cast<int>(std::floor(y + (tile->top - spread) * h / tile_h)));
@@ -262,17 +342,16 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
         return tile->pixels.data() + (static_cast<std::size_t>(ty) * tile_w + tx) * 4;
     };
     const int tint_r = paint.red, tint_g = paint.green, tint_b = paint.blue, tint_a = paint.alpha;
-    const bool white = tile->white_mask && tint_r == 255 && tint_g == 255 && tint_b == 255;
+    const bool white = white_mask && tint_r == 255 && tint_g == 255 && tint_b == 255;
     for (int py = y0; py < y1; ++py) {
         const double sy = (py + .5 - y) * tile_h / h - .5;
         const int ty = static_cast<int>(std::floor(sy));
         const double fy = sy - ty;
         for (int px = x0; px < x1; ++px) {
             int s[4];
-            if (aligned) {
+            if (sampled) {
                 const auto *source =
-                    tile->pixels.data() +
-                    (static_cast<std::size_t>(py - static_cast<int>(y)) * tile_w + px - static_cast<int>(x)) * 4;
+                    samples + (static_cast<std::size_t>(py - origin_y) * sample_width + px - origin_x) * 4;
                 for (int channel = 0; channel < 4; ++channel)
                     s[channel] = source[channel];
             } else {
@@ -290,9 +369,9 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
                     return whole + (value >= whole + .5);
                 };
                 s[3] = interpolate(3);
-                s[0] = tile->white_mask ? s[3] : interpolate(0);
-                s[1] = tile->grayscale ? s[0] : interpolate(1);
-                s[2] = tile->grayscale ? s[0] : interpolate(2);
+                s[0] = white_mask ? s[3] : interpolate(0);
+                s[1] = grayscale ? s[0] : interpolate(1);
+                s[2] = grayscale ? s[0] : interpolate(2);
             }
             const int sa = div255(s[3] * tint_a);
             if (sa == 0)
@@ -314,14 +393,23 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
             const int oa = sa + div255(da * (255 - sa));
             if (oa == 0)
                 continue;
+            if (tint_r == 0 && tint_g == 0 && tint_b == 0 && (da == 0 || (p[0] == 0 && p[1] == 0 && p[2] == 0))) {
+                p[0] = p[1] = p[2] = 0;
+                p[3] = static_cast<std::uint8_t>(oa);
+                continue;
+            }
             const int src[3] = {s[0], s[1], s[2]};
             const int tint[3] = {tint_r, tint_g, tint_b};
-            for (int c = 0; c < 3; ++c) {
+            const bool gray =
+                grayscale && tint_r == tint_g && tint_g == tint_b && (da == 0 || (p[0] == p[1] && p[1] == p[2]));
+            for (int c = 0; c < (gray ? 1 : 3); ++c) {
                 // Source is premultiplied; destination is straight-alpha.
                 const int sp = (src[c] * tint[c] * tint_a + 32512) / 65025;
                 const int dp = (p[c] * da * (255 - sa) + 32512) / 65025;
                 p[c] = static_cast<std::uint8_t>(std::min(255, (sp + dp) * 255 / oa));
             }
+            if (gray)
+                p[1] = p[2] = p[0];
             p[3] = static_cast<std::uint8_t>(oa);
         }
     }

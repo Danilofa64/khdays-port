@@ -3,6 +3,17 @@
 #include "../ui/text.c"
 
 static unsigned char ram[65536], vram[65536];
+static uint32_t graphics_map[2][sizeof(vram) / 32];
+static uint32_t graphics_pixels[32 * 16];
+static KhdaysTextureReplacement graphics_replacement;
+uint32_t khdays_tiles2d_bg_tile(int engine, uint32_t address)
+{
+    return address < sizeof(vram) ? graphics_map[engine][address / 32] : 0;
+}
+const KhdaysTextureReplacement *khdays_textures_replacement(int id)
+{
+    return id == 0 ? &graphics_replacement : NULL;
+}
 static int palette_reads, palette_hashes;
 static uint32_t slot_tint[4];
 unsigned char *khdays_window = ram;
@@ -146,7 +157,7 @@ int khdays_origin_of_ram(uint32_t at, const char **name, uint32_t *offset, uint3
 }
 static uint32_t *test_images[32];
 static int image_ends, paint_calls, failures;
-static int image_requests, test_scale = 1;
+static int image_requests, test_scale = 1, fail_direct_images;
 static int test_hofs, test_vofs, test_colors256;
 static int test_map_bg = -1, test_bg_colors256[4] = {-1, -1, -1, -1};
 static size_t image_bytes[32], live_bytes, peak_bytes;
@@ -256,6 +267,8 @@ uint32_t khdays_bg_map_entry(int engine, const KhdaysBgLayer *l, int x, int y)
 int khdays_ui_image_get(int w, int h)
 {
     ++image_requests;
+    if (fail_direct_images && (canvas_count && canvases[0].image >= 0))
+        return -1;
     const size_t bytes = (size_t)w * h * sizeof(uint32_t);
     if (bytes + live_bytes > 96u * 1024u * 1024u)
         return -1;
@@ -321,6 +334,9 @@ static void setup(int bpp)
     memset(vram, 0, sizeof(vram));
     memset(map_cells, 0, sizeof(map_cells));
     memset(suppressed, 0, sizeof(suppressed));
+    memset(graphics_map, 0, sizeof(graphics_map));
+    memset(&graphics_replacement, 0, sizeof(graphics_replacement));
+    fail_direct_images = 0;
     memset(slot_tint, 0, sizeof(slot_tint));
     submission_count = 0;
     test_hofs = test_vofs = 0;
@@ -391,9 +407,9 @@ static void upload(uint32_t at, uint32_t size)
 static void render(void)
 {
     observe_vram(c);
-    make_image(c, &layer, 0, 0, 1);
+    make_image(c, &layer, 0, 0);
     build_hd(c, 1, khdays_ui_palette_hash(c->engine));
-    make_image(c, &layer, 0, 0, 1);
+    make_image(c, &layer, 0, 0);
 }
 
 static void scroll_text(int amount)
@@ -429,6 +445,219 @@ static int submitted_hd_pixel(int x, int y, uint32_t colour)
             return 1;
     }
     return 0;
+}
+
+static void png_sheet(int indexed)
+{
+    graphics_replacement.width = 32;
+    graphics_replacement.height = 16;
+    graphics_replacement.rgba = graphics_pixels;
+    graphics_replacement.info =
+        KHDAYS_REPLACEMENT_TILES | (2u << 8) | (2u << 16) | (indexed ? KHDAYS_REPLACEMENT_INDEXED : 0);
+    for (int y = 0; y < 16; ++y)
+        for (int x = 0; x < 32; ++x)
+            graphics_pixels[y * 32 + x] = indexed            ? (uint32_t)((x + y) % 3)
+                                          : (x + y) % 3 == 0 ? 0
+                                          : (x + y) % 3 == 1 ? 0x80402010u
+                                                             : 0xff806040u;
+}
+
+static void native_planes(void)
+{
+    for (int bpp = 4; bpp <= 8; bpp += 4) {
+        setup(bpp);
+        for (int y = 0; y < 8; ++y)
+            for (int x = 0; x < 16; ++x)
+                put_pixel(c, ram + 1024, x, y, (unsigned)(x + y * 3) & (bpp == 4 ? 15u : 255u));
+        upload(0, c->bytes);
+        map_cells[0] |= 0x1400u;
+        emit();
+        uint32_t expected[16 * 8];
+        memcpy(expected, test_images[c->image], sizeof(expected));
+        const int image = c->image, uploads = image_ends;
+        for (int scale = 2; scale <= 8; ++scale) {
+            test_scale = scale;
+            emit();
+            CHECK(c->image == image && image_bytes[image] == sizeof(expected));
+            CHECK(memcmp(test_images[image], expected, sizeof(expected)) == 0);
+            CHECK(image_ends == uploads);
+        }
+    }
+}
+
+static void graphics_replacements(void)
+{
+    /* Initial baked graphics need their PNG even without captured text. */
+    for (int bpp = 4; bpp <= 8; bpp += 4) {
+        for (int indexed = 0; indexed <= 1; ++indexed) {
+            setup(bpp);
+            png_sheet(indexed);
+            memset(ram + 1024, 0x11, c->bytes);
+            upload(0, c->bytes);
+            graphics_map[0][c->vram / 32] = (1u << 20) | 1u;
+            for (int scale = 1; scale <= 8; scale *= 2) {
+                test_scale = scale;
+                for (uint16_t flip = 0; flip <= 0xc00u; flip += 0x400u) {
+                    map_cells[0] = 1u | flip | 0x3000u;
+                    emit();
+                    CHECK(c->display_count == 0 && c->hd_image >= 0);
+                    CHECK(c->graphics_count == 1 && suppressed[0]);
+                    for (int y = 0; y < 8 * scale; ++y) {
+                        for (int x = 0; x < 8 * scale; ++x) {
+                            const int sx = (2 * x + 1) / scale, sy = (2 * y + 1) / scale;
+                            const int ux = 16 + (flip & 0x400u ? 15 - sx : sx);
+                            const int uy = flip & 0x800u ? 15 - sy : sy;
+                            uint32_t colour = graphics_pixels[uy * 32 + ux];
+                            if (indexed && colour)
+                                colour = tint ^ (bpp == 4 ? 0x3000u : 0);
+                            CHECK(test_images[c->image][(y / scale) * 16 + x / scale] == 0);
+                            CHECK(primary_hd_pixel((size_t)y * 16 * scale + x) == colour);
+                        }
+                    }
+                    const int uploads = image_ends, paints = paint_calls;
+                    emit();
+                    CHECK(image_ends == uploads && paint_calls == paints);
+                }
+            }
+            /* Palette-only changes refresh indexed artwork, not its geometry. */
+            const uint32_t saved = tint;
+            const int palette_uploads = image_ends;
+            tint ^= 0x00100000u;
+            emit();
+            if (indexed)
+                CHECK(submitted_hd_pixel(0, 0, tint ^ (bpp == 4 ? 0x3000u : 0)));
+            else
+                CHECK(image_ends == palette_uploads);
+            tint = saved;
+            /* Switching HD graphics off restores native data without stale PNGs. */
+            graphics_map[0][c->vram / 32] = 0;
+            emit();
+            CHECK(c->graphics_count == 0 && c->hd_image < 0);
+            CHECK(test_images[c->image][0] ==
+                  (bpp == 4 ? KET_OPAQUE | 0x31u : KET_OPAQUE | KET_EXTENDED | (3u << KET_EXT_PAL_SHIFT) | 0x11u));
+        }
+    }
+    /* Four-bit BGs select the low nibble of an indexed replacement's sample. */
+    setup(4);
+    png_sheet(1);
+    graphics_pixels[32 + 17] = 0x71u;
+    upload(0, c->bytes);
+    graphics_map[0][1] = (1u << 20) | 1u;
+    map_cells[0] |= 0x2000u;
+    emit();
+    CHECK(primary_hd_pixel(0) == (tint ^ 0x2000u));
+    /* Results use engine B; mappings must follow the engine and actual BG slot. */
+    setup(4);
+    png_sheet(0);
+    memcpy(vram + 32, ram + 1024, c->bytes);
+    khdays_ui_text_chars_b2(ram + 1024, 32, c->bytes);
+    graphics_map[0][1] = 1u << 20;
+    graphics_map[1][1] = (1u << 20) | 1u;
+    emit();
+    CHECK(c->engine == 1 && c->bg == 2);
+    CHECK(c->hd_image >= 0 && primary_hd_pixel(1) == graphics_pixels[32 + 19]);
+    /* An unavailable RGBA image must leave the ordinary renderer in charge. */
+    setup(4);
+    png_sheet(0);
+    upload(0, c->bytes);
+    graphics_map[0][c->vram / 32] = 1u << 20;
+    fail_direct_images = 1;
+    emit();
+    CHECK(c->hd_image < 0 && !suppressed[0]);
+    CHECK(test_images[c->image][0] == 0);
+    fail_direct_images = 0;
+    emit();
+    CHECK(c->hd_image >= 0 && suppressed[0]);
+    if (!hd_enabled())
+        return;
+
+    /* Reproduce a partial ordinary upload beside a retained HD glyph. */
+    setup(4);
+    png_sheet(0);
+    test_scale = 2;
+    draw(0);
+    upload(0, c->bytes);
+    emit();
+    memset(ram + 2048, 0x22, 32);
+    memcpy(vram + 64, ram + 2048, 32);
+    khdays_ui_text_chars_a0(ram + 2048, 64, 32);
+    graphics_map[0][2] = (1u << 20) | 1u;
+    emit();
+    CHECK(c->display_count == 1 && submitted_hd_pixel(7, 0, tint));
+    CHECK(test_images[c->image][8] == 0);
+    CHECK(primary_hd_pixel(16) == graphics_pixels[16]);
+    CHECK(primary_hd_pixel(17) == graphics_pixels[17]);
+    CHECK(primary_hd_pixel(18) == 0); /* PNG transparency never exposes native ink. */
+    const int uploads = image_ends, paints = paint_calls;
+    emit();
+    CHECK(image_ends == uploads && paint_calls == paints);
+    graphics_map[0][2] = 1u << 20; /* New mapping, unchanged native bytes. */
+    emit();
+    CHECK(primary_hd_pixel(17) == graphics_pixels[1]);
+    CHECK(submitted_hd_pixel(7, 0, tint));
+    khdays_ui_text_freed(NULL, ram + 1024);
+    CHECK(c->detached);
+    emit();
+    CHECK(primary_hd_pixel(17) == graphics_pixels[1] && submitted_hd_pixel(7, 0, tint));
+    /* A full overwrite ends retention and returns all graphics to native submission. */
+    memset(ram + 2048, 0x22, c->bytes);
+    memcpy(vram + 32, ram + 2048, c->bytes);
+    khdays_ui_text_chars_a0(ram + 2048, 32, c->bytes);
+    submission_count = 0;
+    memset(suppressed, 0, sizeof(suppressed));
+    emit();
+    CHECK(canvas_count == 0 && submission_count == 0 && !suppressed[0] && !suppressed[1]);
+
+    /* Text may overlay graphics; supplementary placements keep both PNGs. */
+    setup(4);
+    png_sheet(0);
+    test_scale = 2;
+    draw(0);
+    draw(8);
+    upload(0, c->bytes);
+    graphics_map[0][2] = (1u << 20) | 1u;
+    map_width = 5;
+    map_height = 4;
+    memset(map_cells, 0, sizeof(map_cells));
+    map_cells[0] = 1;
+    map_cells[1] = 2;
+    map_cells[2 * 5 + 3] = 2 | 0xc00;
+    emit();
+    CHECK(c->extra && c->extra->source[2 * EXTRA_COLS + 3] == 1);
+    CHECK(primary_hd_pixel(16) == graphics_pixels[16]);
+    CHECK(submitted_hd_pixel(15, 0, tint));
+    CHECK(submitted_hd_pixel(24, 16, tint)); /* Flipped glyph on the left. */
+    CHECK(submitted_hd_pixel(31, 16, graphics_pixels[15 * 32 + 17]));
+    test_hofs = 3;
+    test_vofs = 5;
+    submission_count = 0;
+    emit();
+    CHECK(submitted_hd_pixel(21, 11, tint));
+    CHECK(submitted_hd_pixel(28, 11, graphics_pixels[15 * 32 + 17]));
+    khdays_ui_image_put(c->extra->hd_image);
+    c->extra->hd_image = -1;
+    fail_direct_images = 1;
+    memset(suppressed, 0, sizeof(suppressed));
+    emit();
+    CHECK(c->extra->hd_image < 0 && !suppressed[2 * 32 + 3]);
+    CHECK(test_images[c->extra->image][16 * EXTRA_COLS * 8 + 24] == 0);
+    fail_direct_images = 0;
+    emit();
+    CHECK(c->extra->hd_image >= 0 && suppressed[2 * 32 + 3]);
+
+    /* Adjacent canvas owners must not paint each other's translucent pixels. */
+    uint32_t left[16 * 16] = {0}, right[16 * 16] = {0};
+    c->owned[1] = UINT64_C(0x0f0f0f0f0f0f0f0f);
+    underlay_graphics(c, 1, 0, 2, left, 16);
+    c->owned[1] = ~c->owned[1];
+    underlay_graphics(c, 1, 0, 2, right, 16);
+    for (int y = 0; y < 16; ++y)
+        for (int x = 0; x < 16; ++x) {
+            CHECK(!(left[y * 16 + x] && right[y * 16 + x]));
+            CHECK((left[y * 16 + x] | right[y * 16 + x]) == graphics_pixels[y * 32 + 16 + x]);
+        }
+    CHECK(over_graphics(0x800000ffu, 0x80ff0000u) == 0xc05500aau);
+    printf("Ordinary PNG graphics in font canvases: %s\n", failures ? "FAIL" : "PASS");
 }
 
 /* The game's header layout: one 8x24 canvas, three 8x2 strips, selected
@@ -539,8 +768,16 @@ static void command_menu_selections(int primary_row)
         CHECK(!(submissions[i].slot & KES_DIRECT));
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+    graphics_replacements();
+    native_planes();
+    if (argc > 1 && strcmp(argv[1], "--graphics-only") == 0) {
+        while (canvas_count)
+            forget(&canvases[0]);
+        free(canvases);
+        return failures ? 1 : 0;
+    }
     /* Native-resolution supplementary DS planes equal the prior expanded planes. */
     for (int bpp = 4; bpp <= 8; bpp += 4) {
         setup(bpp);
@@ -1449,7 +1686,7 @@ int main(void)
     const int scale_paints = paint_calls;
     emit();
     CHECK(paint_calls - scale_paints <= 2);
-    CHECK(image_requests == 4);
+    CHECK(image_requests == 3);
     CHECK(c->extra && image_bytes[c->extra->image] == EXTRA_CELLS * 64 * sizeof(uint32_t));
     CHECK(peak_bytes <= 64u * 1024u * 1024u);
     for (int frame = 0; frame < 32; ++frame) {
@@ -1459,7 +1696,7 @@ int main(void)
         const int scroll_paints = paint_calls;
         emit();
         CHECK(paint_calls - scroll_paints <= 2);
-        CHECK(image_requests == 4);
+        CHECK(image_requests == 3);
         CHECK(submission_count <= 10);
         for (int row = 1; row < 23; ++row)
             for (int col = 1; col < 31; ++col)

@@ -19,6 +19,11 @@ cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% /D_CRT_SECURE_NO_WARNINGS port\t
 if errorlevel 1 exit /b %errorlevel%
 build\tests\hd_text_test.exe
 if errorlevel 1 exit /b %errorlevel%
+setlocal
+set "KHDAYS_HD_FONT_DISABLE=1"
+build\tests\hd_text_test.exe --graphics-only
+if errorlevel 1 exit /b %errorlevel%
+endlocal
 cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% /D_CRT_SECURE_NO_WARNINGS port\tests\ui_follow_test.c /Fobuild\tests\ui_follow_test.obj /Febuild\tests\ui_follow_test.exe /Fdbuild\tests\ui_follow_test.pdb
 if errorlevel 1 exit /b %errorlevel%
 build\tests\ui_follow_test.exe
@@ -34,6 +39,10 @@ if errorlevel 1 exit /b %errorlevel%
 cl /nologo /EHsc /W4 /WX /std:c++17 %KHDAYS_TEST_FLAGS% port\tests\font_raster_test.cpp port\runtime\mods\font_raster.cpp /Fobuild\tests\ /Febuild\tests\font_raster_test.exe /Fdbuild\tests\font_raster_test.pdb
 if errorlevel 1 exit /b %errorlevel%
 build\tests\font_raster_test.exe
+if errorlevel 1 exit /b %errorlevel%
+cl /nologo /EHsc /W4 /WX /std:c++17 %KHDAYS_TEST_FLAGS% port\tests\font_raster_cache_test.cpp /Fobuild\tests\font_raster_cache_test.obj /Febuild\tests\font_raster_cache_test.exe /Fdbuild\tests\font_raster_cache_test.pdb
+if errorlevel 1 exit /b %errorlevel%
+build\tests\font_raster_cache_test.exe
 if errorlevel 1 exit /b %errorlevel%
 set "KHDAYS_LAYOUT_GEN=build\port\gen-x64\rewritten\libs\nns\g2d\calls"
 cl /nologo /W1 /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 /c "%KHDAYS_LAYOUT_GEN%\Text_DrawGlyph.c" "%KHDAYS_LAYOUT_GEN%\Text_DrawLine.c" "%KHDAYS_LAYOUT_GEN%\Text_DrawAlignedLines.c" "%KHDAYS_LAYOUT_GEN%\Text_AlignAnchor.c" "%KHDAYS_LAYOUT_GEN%\NNSi_G2dFontGetStringWidth.c" "%KHDAYS_LAYOUT_GEN%\NNSi_G2dFontGetTextRect.c" /Fobuild\tests\ /Fdbuild\tests\font_layout_gen.pdb

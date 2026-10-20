@@ -7,6 +7,8 @@
 #include "parts.h"
 #include "../gpu/gpu2d.h"
 #include "../runtime/mods/font_runtime.h"
+#include "../runtime/mods/tiles2d.h"
+#include "../runtime/mods/textures.h"
 #include "../runtime/menus/camp.h"
 #include "../runtime/core/io.h"
 #include "../runtime/core/origin.h"
@@ -96,7 +98,7 @@ typedef struct Canvas {
     uint8_t *seen;        /* what VRAM held of it at the VBlank after its last transfer */
     uint32_t version;     /* counts the changes of `seen` */
     uint16_t *cells;      /* for each of the image's cells, the map entry over it (0xffff: not the canvas's) */
-    int image, image_scale;
+    int image;
     uint32_t image_version;
     int said_shown; /* the trace: 1 reported where it is shown, 2 reported that it is not */
     int said_obj;   /* the trace: reported that it was loaded into the sprites' characters */
@@ -109,6 +111,8 @@ typedef struct Canvas {
     /* Source observations and text-free graphics; neither contains PNG coverage. */
     uint8_t *source, *base, *display_base, *dirty;
     uint32_t *tile_hash;
+    uint32_t *graphics; /* Ordinary PNG tile mappings, independent of font coverage. */
+    int graphics_count;
     uint32_t hd_palette;
     uint64_t *owned; /* transferred pixels in each tile, independent of glyph alpha */
     GlyphOp *display_ops;
@@ -263,6 +267,7 @@ static void forget(Canvas *c)
     free(c->display_base);
     free(c->dirty);
     free(c->tile_hash);
+    free(c->graphics);
     free(c->owned);
     khdays_ui_image_put(c->hd_image);
     khdays_ui_image_put(c->image);
@@ -320,10 +325,12 @@ static Canvas *new_canvas(KhdaysRef ref, KhdaysRef buffer, int width, int height
     c->seen = (uint8_t *)calloc(c->bytes, 1);
     c->dirty = (uint8_t *)malloc((size_t)c->area_w * c->area_h);
     c->tile_hash = (uint32_t *)calloc((size_t)c->area_w * c->area_h, sizeof(uint32_t));
+    c->graphics = (uint32_t *)calloc((size_t)c->area_w * c->area_h, sizeof(uint32_t));
     c->owned = (uint64_t *)calloc((size_t)c->area_w * c->area_h, sizeof(uint64_t));
     c->image = -1;
     c->hd_image = -1;
-    if (!c->source || !c->base || !c->display_base || !c->seen || !c->dirty || !c->tile_hash || !c->owned) {
+    if (!c->source || !c->base || !c->display_base || !c->seen || !c->dirty || !c->tile_hash || !c->graphics ||
+        !c->owned) {
         forget(c);
         return NULL;
     }
@@ -1722,6 +1729,112 @@ static void mask_tile(uint32_t *out, int stride, int scale, uint16_t cell, uint6
     }
 }
 
+/* Only mappings accepted by the ordinary replacement system can supply artwork. */
+static const KhdaysTextureReplacement *graphics_sheet(uint32_t word)
+{
+    const KhdaysTextureReplacement *r = word ? khdays_textures_replacement((int)(word >> 20) - 1) : NULL;
+    return r && r->rgba && (r->info & KHDAYS_REPLACEMENT_TILES) && ((r->info >> 8) & 255u) && (r->info >> 16) ? r
+                                                                                                              : NULL;
+}
+
+static void observe_graphics(Canvas *c)
+{
+    c->graphics_count = 0;
+    for (int row = 0; row < c->area_h; ++row) {
+        for (int col = 0; col < c->area_w; ++col) {
+            const int tile = row * c->area_w + col;
+            const uint32_t at = c->vram + (uint32_t)(row * c->param + col) * 8u * c->bpp;
+            uint32_t word = khdays_tiles2d_bg_tile(c->engine, at);
+            if (word != c->graphics[tile] && !graphics_sheet(word))
+                word = 0;
+            if (word != c->graphics[tile]) {
+                c->graphics[tile] = word;
+                c->dirty[tile] |= 3;
+                ++c->version;
+            }
+            c->graphics_count += word != 0;
+        }
+    }
+}
+
+/* Straight-alpha foreground over background, preserving both PNGs' alpha. */
+static uint32_t over_graphics(uint32_t foreground, uint32_t background)
+{
+    const uint32_t a = foreground >> 24, b = background >> 24;
+    if (a == 255 || !b)
+        return foreground;
+    if (!a)
+        return background;
+    const uint32_t alpha = a * 255 + b * (255 - a);
+    uint32_t result = ((alpha + 127) / 255) << 24;
+    for (int shift = 0; shift < 24; shift += 8) {
+        const uint32_t colour =
+            ((foreground >> shift) & 255u) * a * 255 + ((background >> shift) & 255u) * b * (255 - a);
+        result |= ((colour + alpha / 2) / alpha) << shift;
+    }
+    return result;
+}
+
+/* Graphics share canvas ownership, so overlapping canvases cannot double-blend a PNG. */
+static void underlay_graphics(const Canvas *c, int tile, uint16_t cell, int scale, uint32_t *out, int stride)
+{
+    const uint32_t word = c->graphics[tile];
+    const KhdaysTextureReplacement *r = graphics_sheet(word);
+    if (!r)
+        return;
+    const int rs = (int)((r->info >> 8) & 255u), columns = (int)(r->info >> 16), n = 8 * scale;
+    const uint32_t index = word & 0xfffffu;
+    const int x0 = (int)(index % columns) * 8 * rs, y0 = (int)(index / columns) * 8 * rs;
+    if (!(r->info & KHDAYS_REPLACEMENT_INDEXED) && !(cell & 0xc00u) && rs == scale && c->owned[tile] == UINT64_MAX &&
+        x0 + n <= r->width && y0 + n <= r->height) {
+        for (int y = 0; y < n; ++y) {
+            const uint32_t *source = r->rgba + (size_t)(y0 + y) * r->width + x0;
+            uint32_t *dest = out + (size_t)y * stride;
+            if (!c->display_count) {
+                for (int x = 0; x < n; ++x)
+                    dest[x] = (source[x] >> 24) ? source[x] : 0;
+            } else {
+                for (int x = 0; x < n; ++x)
+                    dest[x] = over_graphics(dest[x], source[x]);
+            }
+        }
+        return;
+    }
+    uint32_t colours[256] = {0};
+    for (int y = 0; y < n; ++y) {
+        for (int x = 0; x < n; ++x) {
+            const int ox = cell & 0x400u ? 7 - x / scale : x / scale;
+            const int oy = cell & 0x800u ? 7 - y / scale : y / scale;
+            if (!(c->owned[tile] & (UINT64_C(1) << (oy * 8 + ox))))
+                continue;
+            const int sx = (2 * x + 1) * rs / (2 * scale), sy = (2 * y + 1) * rs / (2 * scale);
+            const int ux = x0 + (cell & 0x400u ? 8 * rs - 1 - sx : sx);
+            const int uy = y0 + (cell & 0x800u ? 8 * rs - 1 - sy : sy);
+            uint32_t colour = ux < r->width && uy < r->height ? r->rgba[(size_t)uy * r->width + ux] : 0;
+            if (r->info & KHDAYS_REPLACEMENT_INDEXED) {
+                const uint32_t v = colour & 255u, pal = (uint32_t)cell >> 12;
+                if (v && !colours[v])
+                    colours[v] = khdays_ui_palette_colour(c->engine, (uint32_t)c->bg,
+                                                          c->bpp == 4 ? KET_OPAQUE | pal * 16u | (v & 15u)
+                                                                      : KET_OPAQUE | KET_EXTENDED |
+                                                                            pal << KET_EXT_PAL_SHIFT | v);
+                colour = colours[v];
+            }
+            uint32_t *pixel = out + (size_t)y * stride + x;
+            *pixel = over_graphics(*pixel, colour);
+        }
+    }
+}
+
+static int primary_graphics_visible(const Canvas *c)
+{
+    if (c->graphics_count)
+        for (int tile = 0; tile < c->area_w * c->area_h; ++tile)
+            if (c->graphics[tile] && c->cells[tile] != 0xffffu)
+                return 1;
+    return 0;
+}
+
 /* Rasterize dirty tiles only, with the map's palette, visibility and flips.
    The immutable glyph cache remains independent of canvas and font backend. */
 static int primary_text_visible(const Canvas *c)
@@ -1752,13 +1865,15 @@ static void build_hd(Canvas *c, int scale, uint32_t palette)
     const int profile = profiling();
     const clock_t started = profile ? clock() : 0;
     int tiles = 0, paints = 0;
-    if (!hd_enabled() || !c->display_count) {
+    const int text = hd_enabled() && c->display_count;
+    const int graphics = primary_graphics_visible(c);
+    if (!text && !graphics) {
         khdays_ui_image_put(c->hd_image);
         c->hd_image = -1;
         c->hd_ready = 0;
         return;
     }
-    if (!primary_text_visible(c)) {
+    if (!graphics && !primary_text_visible(c)) {
         khdays_ui_image_put(c->hd_image);
         c->hd_image = -1;
         c->hd_ready = 1;
@@ -1784,9 +1899,12 @@ static void build_hd(Canvas *c, int scale, uint32_t palette)
                 continue;
             const uint16_t cell = c->cells[tile];
             const int l = col * 8, t = row * 8, r = l + 8, b = t + 8;
-            uint32_t hash = cell;
+            uint32_t hash = (cell ^ c->graphics[tile]) * 16777619u;
+            const KhdaysTextureReplacement *sheet = graphics_sheet(c->graphics[tile]);
+            if (sheet && (sheet->info & KHDAYS_REPLACEMENT_INDEXED))
+                hash = (hash ^ palette) * 16777619u;
             if (cell != 0xffffu) {
-                for (int i = 0; i < c->display_count; ++i) {
+                for (int i = 0; text && i < c->display_count; ++i) {
                     const GlyphOp *op = &c->display_ops[i];
                     if (op->clip_l < r && op->clip_r > l && op->clip_t < b && op->clip_b > t)
                         hash = (hash ^ glyph_colour(c, op, cell)) * 16777619u;
@@ -1807,7 +1925,7 @@ static void build_hd(Canvas *c, int scale, uint32_t palette)
                 continue;
             }
             if (cell != 0xffffu) {
-                for (int i = 0; i < c->display_count; ++i) {
+                for (int i = 0; text && i < c->display_count; ++i) {
                     const GlyphOp *op = &c->display_ops[i];
                     const int cl = op->clip_l > l ? op->clip_l : l;
                     const int ct = op->clip_t > t ? op->clip_t : t;
@@ -1839,6 +1957,7 @@ static void build_hd(Canvas *c, int scale, uint32_t palette)
                     }
             }
             mask_tile(out + (size_t)t * scale * width + l * scale, width, scale, cell, c->owned[tile]);
+            underlay_graphics(c, tile, cell, scale, out + (size_t)t * scale * width + l * scale, width);
             c->dirty[tile] &= 0xfeu;
             c->tile_hash[tile] = hash;
         }
@@ -1919,7 +2038,7 @@ static void mapped_tile(const Canvas *c, int k, uint16_t cell, int scale, int hd
     const int tile = row * c->area_w + col;
     memset(out, 0, (size_t)n * n * sizeof(uint32_t));
     if (hd) {
-        for (int i = 0; i < c->display_count; ++i) {
+        for (int i = 0; hd_enabled() && i < c->display_count; ++i) {
             const GlyphOp *op = &c->display_ops[i];
             const int cl = op->clip_l > l ? op->clip_l - l : 0;
             const int ct = op->clip_t > t ? op->clip_t - t : 0;
@@ -1931,7 +2050,7 @@ static void mapped_tile(const Canvas *c, int k, uint16_t cell, int scale, int hd
                 khdays_hd_font_paint_clipped(op->resource, op->glyph, op->x - l, op->y - t, op->w, op->h,
                                              glyph_colour(c, op, cell), out, n, n, scale, cl, ct, cr, cb);
         }
-    } else {
+    } else if (!c->graphics[tile]) {
         const uint8_t *ch = (hide_ds ? c->display_base : c->seen) + (size_t)k * 8 * c->bpp;
         for (int py = 0; py < 8; ++py) {
             for (int px = 0; px < 8; ++px) {
@@ -1960,6 +2079,8 @@ static void mapped_tile(const Canvas *c, int k, uint16_t cell, int scale, int hd
             }
         }
     mask_tile(out, n, scale, cell, c->owned[tile]);
+    if (hd)
+        underlay_graphics(c, tile, cell, scale, out, n);
 }
 
 /* Update only changed visible tiles. Repeated blank tiles cannot multiply images. */
@@ -2110,11 +2231,9 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
     }
 }
 
-/* The canvas's image at the scale: each cell where the map shows one of its
- * characters (at its row and column from the origin) gets what VRAM holds of
- * it, with that cell's palette and flips; every other cell is transparent.
- * It is made again when VRAM, the cells or the scale changed. */
-static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int scale)
+/* Indexed DS graphics stay at native resolution, with each visible cell's palette
+ * and flips. The compositor scales them; PNG graphics and text use the RGBA plane. */
+static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy)
 {
     const int w = c->area_w * 8, h = c->area_h * 8;
     const uint32_t char_size = (uint32_t)(8 * c->bpp);
@@ -2133,10 +2252,9 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int sc
         memset(c->cells, 0xff, ncells * sizeof(uint16_t));
         changed = 1;
     }
-    if (c->image < 0 || c->image_scale != scale) {
+    if (c->image < 0) {
         khdays_ui_image_put(c->image);
-        c->image = khdays_ui_image_get(w * scale, h * scale);
-        c->image_scale = scale;
+        c->image = khdays_ui_image_get(w, h);
         memset(c->dirty, 3, ncells);
         changed = 1;
     }
@@ -2172,7 +2290,7 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int sc
             for (int py = row * 8; py < row * 8 + 8; ++py) {
                 for (int px = col * 8; px < col * 8 + 8; ++px) {
                     uint32_t t = 0;
-                    if (cell != 0xffffu) {
+                    if (cell != 0xffffu && !c->graphics[tile]) {
                         const int fx = cell & 0x400u ? 7 - (px & 7) : px & 7;
                         const int fy = cell & 0x800u ? 7 - (py & 7) : py & 7;
                         const uint32_t pal = (uint32_t)cell >> 12;
@@ -2188,11 +2306,7 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int sc
                     const int owned_y = cell & 0x800u ? 7 - (py & 7) : py & 7;
                     if (!(c->owned[tile] & (UINT64_C(1) << (owned_y * 8 + owned_x))))
                         t = 0;
-                    for (int sy = 0; sy < scale; ++sy) {
-                        uint32_t *out = texels + (size_t)(py * scale + sy) * (w * scale) + px * scale;
-                        for (int sx = 0; sx < scale; ++sx)
-                            out[sx] = t;
-                    }
+                    texels[(size_t)py * w + px] = t;
                 }
             }
             c->dirty[tile] &= 0xfdu;
@@ -2262,6 +2376,7 @@ static void emit(void)
             }
             continue;
         }
+        observe_graphics(c);
         if (strcmp(c->id, "text.canvas") == 0)
             snprintf(c->id, sizeof(c->id), "text.%c%d.%d.%d", c->engine ? 'b' : 'a', c->bg, ox, oy);
         if (profile)
@@ -2280,7 +2395,7 @@ static void emit(void)
         }
         if (profile)
             stamp = clock();
-        make_image(c, &l, ox, oy, scale);
+        make_image(c, &l, ox, oy);
         if (profile) {
             elapsed[3] += clock() - stamp;
             stamp = clock();
@@ -2291,7 +2406,7 @@ static void emit(void)
             elapsed[4] += clock() - stamp;
             stamp = clock();
         }
-        make_image(c, &l, ox, oy, scale);
+        make_image(c, &l, ox, oy);
         if (profile)
             elapsed[3] += clock() - stamp;
         if (tracing() && c->hd_image >= 0 && !c->hd_reported) {
@@ -2359,7 +2474,8 @@ static void emit(void)
         /* leave out the game's drawing of it: the cells its characters are shown in */
         for (int row = 0; row < c->area_h; ++row) {
             for (int col = 0; col < c->area_w; ++col) {
-                if (c->cells[row * c->area_w + col] != 0xffffu) {
+                const int tile = row * c->area_w + col;
+                if (c->cells[tile] != 0xffffu && (!c->graphics[tile] || c->hd_image >= 0)) {
                     khdays_ui_left_out_cell(KHDAYS_UI_TEXT, c->engine, c->bg, (ox + col) % l.wt, (oy + row) % l.ht);
                 }
             }
@@ -2378,11 +2494,14 @@ static void emit(void)
                 e.slot |= KES_DIRECT;
                 khdays_ui_emit_following(KHDAYS_UI_TEXT, &e, &anchor);
             }
-            for (int my = 0; my < EXTRA_ROWS; ++my)
-                for (int mx = 0; mx < EXTRA_COLS; ++mx)
-                    if (m->source[my * EXTRA_COLS + mx] >= 0)
+            for (int my = 0; my < EXTRA_ROWS; ++my) {
+                for (int mx = 0; mx < EXTRA_COLS; ++mx) {
+                    const int k = m->source[my * EXTRA_COLS + mx];
+                    if (k >= 0 && (!c->graphics[(k / c->param) * c->area_w + k % c->param] || m->hd_image >= 0))
                         khdays_ui_left_out_cell(KHDAYS_UI_TEXT, c->engine, c->bg, ((l.hofs >> 3) + mx) % l.wt,
                                                 ((l.vofs >> 3) + my) % l.ht);
+                }
+            }
         }
         if (!c->display_count)
             for (int k = 0; k < c->area_w * c->area_h; ++k)

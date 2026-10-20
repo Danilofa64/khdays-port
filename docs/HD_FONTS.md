@@ -237,16 +237,30 @@ footprint was not overwritten. Both cases are covered without forced redraws.
 
 ## Caching, bounds and diagnostics
 
+Canvas graphics honor the ordinary PNG tile mappings, including canvases with
+no captured glyphs and tiles overwritten by partial resource uploads. PNG artwork
+uses the existing RGBA plane beneath text, preserving indexed palettes, alpha,
+flips and supplementary placements. Its native DS samples stay transparent;
+if the RGBA image cannot be allocated, those cells remain with the ordinary
+renderer. Original-sheet matching and file provenance requirements are unchanged.
+
 Unchanged frames reuse images without painting or uploading. Primary tiles skip
 glyph-color scans when neither their dirty bit nor palette changes. Palette
 hashes are shared per engine during submission. Supplementary updates render
 each distinct source tile/palette/flip once, then copy repeated placements.
 Palette keys include extended-palette selectors and the displayed BG slot.
 Serial submission reuses a fixed scratch tile; canvas membership uses a bitset.
+Primary and supplementary DS graphics planes stay at native resolution; the
+compositor scales their indexed pixels. Only PNG artwork uses output-resolution
+RGBA images. Matching-size, unflipped RGBA tile copies avoid resampling.
+PNG mapping changes dirty only their affected tiles. The mapping cache takes
+four bytes per canvas tile (at most 64 KiB) and introduces no additional image
+planes. Indexed PNG conversion caches palette colors within each updated tile.
 
 The untinted premultiplied glyph cache is bounded to 32 MiB and 8,192 entries.
-Keys exclude fractional translation, so subpixel positions do not multiply cache
-entries. PNG alpha bounds and grayscale/white-mask fast paths reduce sampling
+Normalized artwork and exact fractional-phase samples share this LRU; integer
+translation, clipping and tint reuse samples. No pen positions are rounded for
+cache keys. PNG alpha bounds and grayscale/white-mask fast paths reduce sampling
 and blending. Each individual raster is also limited to 32 MiB.
 
 Each canvas accepts at most 8,192 source or displayed command fragments and
@@ -272,9 +286,17 @@ mod files or these diagnostics. Regenerate only when generation hooks change.
 ## Verification and remaining limits
 
 Run `port\tests\run_hd_fonts.cmd`, or append `asan` for AddressSanitizer.
-It discovers VS2022 x64 and runs seven synthetic suites: camp scope selection,
+It discovers VS2022 x64 and runs eight synthetic suites: camp scope selection,
 canvas/VRAM behavior, layout following, metadata/routing, secondary fallback,
-rasterization and generated SDK layout. The layout suite uses the existing
+rasterization, raster-cache bounds and generated SDK layout.
+
+Canvas tests also check ordinary PNGs with HD fonts disabled, partial uploads
+beside retained text, transparent and indexed art, flips, scrolling and image
+allocation failure.
+Raster checks compare exact output checksums and exercise cache eviction,
+fractional phases, tinted grayscale text and the shared memory/entry limits.
+
+The layout suite uses the existing
 `build/port/gen-x64` generated sources; prepare them once for the current hooks.
 Run `python port/tests/font_scope_hooks_test.py` for the generator-hook checks.
 The assets test target `khdays-font-test` covers NFTR decoding and malformed input.
