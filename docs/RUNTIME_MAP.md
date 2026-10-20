@@ -2939,6 +2939,22 @@ second, without subtitles. Their first 0x100 bytes are XORed with a 16-byte
 pattern (the header's zeros show it); the rest is a plain MP4
 (`tools/hd/theater_movies.py` writes them as the port plays them).
 
+**Movies the theater's videos outlast** (the DS's `mv/<id>.mods`, 14.985 pictures a second,
+against the theater's): 829, 831, 832, 834, 835 and 848 last as long within a second; 830 is 43.8
+s of hd830's 194.6, whose lines from 44 s are EV_S#168's (Riku and Mickey, `¡Riku!` to `Te lo
+prometo, Riku.`); 836 is 72.9 s of hd836's 129.8, whose lines from 73 s are EV_S#177's (Riku and
+the hooded Roxas, `¿Quién eres?` to `¡Cállate!`), and hd140, in none of the theater's chapters,
+is that end again in Japanese without subtitles; 833 is 128.1 s of hd833's 272.2, whose lines end
+by 125.1 s and which fades to black from 127.5 to 129.4 s, then shows Roxas and the fight against
+Xion (to her last form breaking, black from 270.6 s); 837 is 146.4 s of hd837's 169.1, its last
+line (`Lo he aceptado.`, 166 s) in no script of the game. The theater's chapters: day 354 hd129,
+hd130a, hd830 (nothing after it); day 357 hd833, hd848, then hd834; day 358 hd835, hd836, hd837,
+hd840. So the scene map skips EV_S#168 after hd830 and EV_S#177 after hd836 (`skip`, only when
+that video was the movie shown) and ends hd833 at 128.4 s (`mv#833 ... until`). Seen: the
+decoder ends hd833 there (its last picture 128.367 s); the story walk with EV_S#177 swapped in
+and its skip asked at once (`KHDAYS_TEST_SCENE=4:177`, `KHDAYS_TEST_SKIP_AT=0`) ended the
+stretch 6 frames later and went on.
+
 **The theater's subtitles.** It draws them over its videos from each video's
 event, `<lang folder>/event/<lang>/hd/hd<id>/hd<id>.exia2` (XML, `EXUSIA2_XML`;
 the same file in every folder, its header naming the language it was written

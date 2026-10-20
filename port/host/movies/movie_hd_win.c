@@ -55,6 +55,7 @@ static struct {
     long decoded, taken; /* pictures decoded; the number of the last one taken (-1: none) */
     double first_time;   /* the first picture's time */
     double duration;     /* how long the file says it lasts (MF_PD_DURATION), or 0 when it does not say */
+    volatile double end; /* where it is to end (khdays_hd_end_at), 0 at its own end */
     /* the sound */
     IMFSourceReader *audio;
     SDL_AudioStream *sound;
@@ -416,6 +417,12 @@ static int read_picture(void)
     if (flags & MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) {
         ok = read_video_type();
     }
+    if (sample != NULL && hd.end > 0.0 && (double)time / 1e7 >= hd.end) {
+        /* the end asked for: neither this picture nor those after it are shown */
+        IMFSample_Release(sample);
+        hd.video_eos = 1;
+        return ok;
+    }
     if (ok && sample != NULL) {
         ok = keep_picture(sample, (double)time / 1e7);
     }
@@ -425,7 +432,7 @@ static int read_picture(void)
     if (flags & MF_SOURCE_READERF_ENDOFSTREAM) {
         const double last = newest_time();
         hd.video_eos = 1;
-        if (ok && hd.duration > 0.0 && last + 0.5 < hd.duration) {
+        if (ok && hd.end == 0.0 && hd.duration > 0.0 && last + 0.5 < hd.duration) {
             /* its pictures end well before its length: a file cut short. It
              * fails as a broken file does (and the game's movie is shown) */
             snprintf(hd.why, sizeof(hd.why), "its pictures end at %.2f s of its %.2f s (the file cut short?)", last,
@@ -458,8 +465,15 @@ static void read_sound(void)
         if (SUCCEEDED(IMFSample_ConvertToContiguousBuffer(sample, &buffer))) {
             if (SUCCEEDED(IMFMediaBuffer_Lock(buffer, &data, NULL, &length))) {
                 const int frame_bytes = hd.info.channels * (int)sizeof(float);
+                const double at = (double)time / 1e7;
+                if (hd.end > 0.0 && at + (double)(length / (DWORD)frame_bytes) / hd.info.rate > hd.end) {
+                    /* the end asked for: the sound up to it */
+                    const double kept = hd.end > at ? (hd.end - at) * hd.info.rate : 0.0;
+                    length = (DWORD)kept * (DWORD)frame_bytes;
+                    hd.sound_eos = 1;
+                }
                 if (hd.put_frames == 0) {
-                    hd.sound_start = (double)time / 1e7;
+                    hd.sound_start = at;
                 }
                 SDL_PutAudioStreamData(hd.sound, data, (int)length);
                 InterlockedExchangeAdd64(&hd.put_frames, (LONGLONG)(length / (DWORD)frame_bytes));
@@ -726,6 +740,13 @@ int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
     *info = hd.info;
     khdays_theater_music_open(path);
     return 1;
+}
+
+void khdays_hd_end_at(double seconds)
+{
+    if (hd.open_ok) {
+        hd.end = seconds > 0.0 ? seconds : 0.0;
+    }
 }
 
 void khdays_hd_start(void)

@@ -639,7 +639,7 @@ same movie comes first. The theater's subtitles show over them (see
 **HD scenes.** The theater also holds the game's event scenes the DS draws in
 real time, made again in HD, and Roxas's monologues as a voice. The same tool
 makes the ones the port plays: the scene map, `port/movies/hd_scenes.txt`
-(86 scenes and 7 monologues, each paired by its lines or its pictures, every
+(95 scenes and 7 monologues, each paired by its lines or its pictures, every
 pair checked side by side; `tools/hd/scene_report.py` says where each video
 of your collection plays). With the Movies setting on HD, when the game
 reaches a scene of the map its videos play over the whole window with their
@@ -649,9 +649,15 @@ game's page, and the theater's voice reads it. Without the video, or with
 Movies on PC or DS, the DS's scene plays. START pauses the video and opens
 the game's own pause over it, as on the DS: Continue goes on with the video,
 Skip ends the scene (on two screens the pause shows over the game's screens).
+Three of the theater's movies go on past the DS's: hd830 and hd836 also hold
+the event scene that follows them (Riku and Mickey; Riku and Roxas before
+their fight), so after them that scene is skipped (`skip`), and hd833 also
+shows the fight against Xion the player fights next, so it ends where the
+DS's movie does (`mv#833 hd833 until 128.4`).
 A mod's `cutscenes/scenes.txt` adds or replaces entries (`<script> <videos>
-; <evidence>`, or `off` for the DS's scene), and its
-`cutscenes/cinematics/<video>.mp4` comes before your own.
+; <evidence>`, `off` for the DS's scene, `skip <video>` for a scene that
+video shows; `mv#<movie> <video> [until <seconds>]`, or `off`, for a movie),
+and its `cutscenes/cinematics/<video>.mp4` comes before your own.
 
 Most of the theater's videos, scenes and movies alike, hold the voices and
 effects alone: the theater plays its music over them, each video with its own

@@ -29,13 +29,14 @@ CAPTION = 28
 
 
 def map_entries(path: Path) -> list[tuple[str, list[str], str]]:
-    """(key, stems, evidence) of the map's entries that play videos."""
+    """(key, stems, evidence) of the map's entries that play videos in place of a scene (not those
+    skipped, nor the movies' mv# ones)."""
     out = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = re.sub(r"(^|\s)#.*$", "", raw)
         line, _, evidence = line.partition(";")
         words = line.split()
-        if len(words) >= 2 and words[1] != "off":
+        if len(words) >= 2 and words[1] not in ("off", "skip") and not words[0].startswith("mv#"):
             out.append((words[0], words[1:], evidence.strip()))
     return out
 

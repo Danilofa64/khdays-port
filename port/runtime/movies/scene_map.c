@@ -1,5 +1,6 @@
 /* The scene map's text (scene_map.h): a line per scene,
- *   <script> <stem> [<stem> ...] ; <evidence>      or      <script> off ; <evidence>
+ *   <script> <stem> [<stem> ...] ; <evidence>   <script> off ; <evidence>   <script> skip <stem> ; <evidence>
+ * or per movie, mv#<movie> <stem> [until <seconds>] ; <evidence> (or off).
  * '#' comments, blank lines skipped. A script is EV_<world>#<index>, mi/<mission>/<script>:<section>
  * or mnl#<record> (a day's monologue, ui/mnl's record);
  * a stem is a video's file name without .mp4. */
@@ -44,10 +45,13 @@ static int digits(const char *p)
     return 1;
 }
 
-/* EV_<world>#<index>, mi/<mission>/<script>:<section> (letters, digits and _ in the names) or
- * mnl#<record> */
+/* EV_<world>#<index>, mi/<mission>/<script>:<section> (letters, digits and _ in the names),
+ * mnl#<record> or mv#<movie> */
 static int key_valid(const char *k)
 {
+    if (strncmp(k, "mv#", 3) == 0) {
+        return digits(k + 3);
+    }
     if (strncmp(k, "EV_", 3) == 0) {
         const char *hash = strchr(k, '#');
         if (hash == NULL || hash == k + 3) {
@@ -169,7 +173,8 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
     if (count == 0) {
         result = 0;
     } else if (!key_valid(words[0])) {
-        *why = "not a scene's script (EV_<world>#<index>, mi/<mission>/<script>:<section> or mnl#<record>)";
+        *why = "not a scene's script (EV_<world>#<index>, mi/<mission>/<script>:<section> or mnl#<record>) "
+               "nor a movie (mv#<movie>)";
         result = -1;
     } else if (count == 1) {
         *why = "no video and no `off`";
@@ -178,11 +183,38 @@ static int read_line(KhdaysSceneMap *map, const char *start, size_t length, cons
         e.key = copy_of(words[0], strlen(words[0]));
         e.off = 1;
         result = 1;
-    } else {
-        int i;
-        for (i = 1; i < count && stem_valid(words[i]) && strcmp(words[i], "off") != 0; ++i) {
+    } else if (strcmp(words[1], "skip") == 0) {
+        if (count != 3 || strncmp(words[0], "mv#", 3) == 0 || !stem_valid(words[2])) {
+            *why = "`skip` takes the HD movie's video that shows the scene (a scene's, not a movie's)";
+            result = -1;
+        } else {
+            e.key = copy_of(words[0], strlen(words[0]));
+            e.skip = 1;
+            e.stems = (char **)calloc(1, sizeof(char *));
+            if (e.stems != NULL) {
+                e.stems[e.stem_count++] = copy_of(words[2], strlen(words[2]));
+            }
+            result = 1;
         }
-        if (i < count) {
+    } else {
+        const int movie = strncmp(words[0], "mv#", 3) == 0;
+        const int until = movie && count == 4 && strcmp(words[2], "until") == 0;
+        char *end = NULL;
+        int i;
+        if (until) {
+            e.until = strtod(words[3], &end);
+            count = 2; /* the video alone left to check */
+        }
+        for (i = 1; i < count && stem_valid(words[i]) && strcmp(words[i], "off") != 0 && strcmp(words[i], "skip") != 0;
+             ++i) {
+        }
+        if (until && (end == words[3] || *end != '\0' || !(e.until > 0.0))) {
+            *why = "`until` takes the seconds the video ends at";
+            result = -1;
+        } else if (movie && count != 2) {
+            *why = "a movie takes one video (and `until` with its seconds)";
+            result = -1;
+        } else if (i < count) {
             *why = "a video's name is not a file's name (letters, digits, _ and -)";
             result = -1;
         } else {

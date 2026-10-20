@@ -8,6 +8,7 @@
 #include "../runtime/core/clock.h"
 #include "../runtime/input/input.h"
 #include "../runtime/movies/movie_hd.h"
+#include "../runtime/movies/scenes.h"
 
 #include <direct.h>
 #include <stdarg.h>
@@ -60,6 +61,18 @@ static int sound_effects_stopped;
 void SoundMgr_StopAllSePlayers(void)
 {
     ++sound_effects_stopped;
+}
+
+/* the scene map (its movies' entries, read by the real scene_map.c) and the end asked of a video */
+static KhdaysSceneMap scene_map;
+const KhdaysSceneMap *khdays_scenes_map(void)
+{
+    return &scene_map;
+}
+static double ended_at = -1.0;
+void khdays_hd_end_at(double seconds)
+{
+    ended_at = seconds;
 }
 
 int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
@@ -463,6 +476,42 @@ int main(void)
     DeleteFileA("data/cutscenes/cinematics/hd000.mp4");
     DeleteFileA("data/cutscenes/cinematics/hd010.mp4");
     DeleteFileA("data/cutscenes/cinematics/hd011.mp4");
+
+    /* the scene map's movies: hd833 ended part-way, the game's own 834, and the video shown last (a
+     * scene it shows too is skipped after it) */
+    {
+        static const char text[] = "mv#833 hd833 until 128.4\nmv#834 off\n";
+        int opens_before;
+        CHECK(khdays_scene_map_read(&scene_map, text, sizeof(text) - 1, "test", NULL) == 2);
+        touch("data/cutscenes/cinematics/hd833.mp4");
+        touch("data/cutscenes/cinematics/hd834.mp4");
+        khdays_movie_hd_stream(1, "/mv/833.mods", 0);
+        CHECK(strcmp(opened_path, "data/cutscenes/cinematics/hd833.mp4") == 0 && ended_at == 128.4);
+        CHECK(khdays_movie_hd_showing() && khdays_movie_hd_last_shown("hd833") && !khdays_movie_hd_last_shown("hd830"));
+        khdays_movie_hd_stopped();
+        status_now = 1;
+        khdays_movie_hd_poll();
+        CHECK(!khdays_movie_hd_showing() && khdays_movie_hd_last_shown("hd833"));
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(0);
+        opens_before = opens;
+        khdays_movie_hd_stream(1, "/mv/834.mods", 0); /* off: the game's own movie */
+        CHECK(!khdays_movie_hd_showing() && opens == opens_before && !khdays_movie_hd_last_shown("hd833"));
+        khdays_movie_hd_stopped();
+        khdays_movie_hd_stream(1, "/mv/802.mods", 0); /* no entry: hd802, to its own end */
+        CHECK(khdays_movie_hd_showing() && ended_at == 0.0 && khdays_movie_hd_last_shown("hd802"));
+        khdays_movie_hd_stopped();
+        status_now = 1;
+        khdays_movie_hd_poll();
+        khdays_movie_hd_game_buttons(0);
+        khdays_movie_hd_game_buttons(0);
+        CHECK(!khdays_movie_hd_showing());
+        khdays_movie_hd_reset();
+        CHECK(!khdays_movie_hd_last_shown("hd802")); /* the game's reset forgets it */
+        khdays_scene_map_free(&scene_map);
+        DeleteFileA("data/cutscenes/cinematics/hd833.mp4");
+        DeleteFileA("data/cutscenes/cinematics/hd834.mp4");
+    }
 
     /* failing to open: the game's movie, said once */
     open_ok = 0;

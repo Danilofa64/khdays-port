@@ -18,6 +18,10 @@ void khdays_movie_hd_stream(int slot, const char *path, int replaced);
 /* The game's movie stops (Ov024_MobiClip_StopPlayback). */
 void khdays_movie_hd_stopped(void);
 
+/* The game's thread: whether the last of the game's movies was shown as the player's own HD video
+ * `stem` (data/cutscenes/cinematics/<stem>.mp4), for a scene that video shows too. */
+int khdays_movie_hd_last_shown(const char *stem);
+
 /* The game's reset (start.c): an HD video showing is closed, the game shown
  * and heard again, its clock let go. */
 void khdays_movie_hd_reset(void);

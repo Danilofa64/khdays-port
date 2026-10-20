@@ -3,6 +3,7 @@
  * its roll's end instead. The game's thread brings the movie's events, the window's the video's and
  * START; one lock keeps them in order (docs/PLATFORM.md, "HD movies"). */
 #include "movie_hd.h"
+#include "scenes.h"
 
 #include "../core/clock.h"
 #include "../input/input.h"
@@ -54,6 +55,9 @@ static uint16_t pause_stuck;
 #define PAUSE_WAIT_FRAMES 90 /* a pause the game does not open within this: the video goes on */
 static int credits_scene;  /* the credits scene runs (khdays_movie_hd_credits) */
 static int course_credits; /* the course is its movie's */
+/* The player's own HD video (its stem) shown for the last of the game's movies; "" when that movie
+ * was the game's, or a mod's video. */
+static char shown[64];
 
 /* The ids already told about (no video, or one that cannot be played): once each. */
 static char (*told)[64];
@@ -124,6 +128,7 @@ static volatile LONG game_movie;
 void khdays_movie_hd_reset(void)
 {
     InterlockedExchange(&game_movie, 0);
+    shown[0] = '\0';
     if (state_now() == IDLE) {
         return;
     }
@@ -183,23 +188,42 @@ int khdays_movie_game_playing(void)
     return InterlockedCompareExchange(&game_movie, 0, 0) != 0;
 }
 
+int khdays_movie_hd_last_shown(const char *stem)
+{
+    return shown[0] != '\0' && strcmp(shown, stem) == 0;
+}
+
 void khdays_movie_hd_stream(int slot, const char *path, int replaced)
 {
-    char movie[64], file[1024], why[320];
+    char movie[64], file[1024], why[320], stem[64] = "";
     KhdaysHdInfo info;
+    double until = 0.0;
     (void)slot;
     InterlockedExchange(&game_movie, 1);
+    shown[0] = '\0';
     if (path == NULL || replaced || state_now() != IDLE || !(khdays_host_graphics_flags() & KHDAYS_HOST_MOVIES_HD) ||
         !movie_id(path, movie, sizeof(movie))) {
         return;
     }
     /* a mod's video first (mods/<Mod>/movies/hd<id>.mp4, as khdays-studio
-     * saves one), then the player's own HD videos */
+     * saves one), then the player's own HD videos, as the scene map's mv#<id> says */
     {
-        char relative[64];
+        char relative[64], key[80];
+        const KhdaysSceneEntry *e;
+        snprintf(key, sizeof(key), "mv#%s", movie);
+        e = khdays_scene_map_find(khdays_scenes_map(), key);
         snprintf(relative, sizeof(relative), "movies/hd%s.mp4", movie);
         if (!khdays_mods_find(relative, file, (int)sizeof(file))) {
-            snprintf(file, sizeof(file), "data/cutscenes/cinematics/hd%s.mp4", movie);
+            if (e != NULL && e->off) {
+                return; /* the game's own movie */
+            }
+            if (e != NULL && e->stem_count > 0) {
+                snprintf(stem, sizeof(stem), "%s", e->stems[0]);
+                until = e->until;
+            } else {
+                snprintf(stem, sizeof(stem), "hd%s", movie);
+            }
+            snprintf(file, sizeof(file), "data/cutscenes/cinematics/%s.mp4", stem);
         }
     }
     if (GetFileAttributesA(file) == INVALID_FILE_ATTRIBUTES) {
@@ -216,6 +240,7 @@ void khdays_movie_hd_stream(int slot, const char *path, int replaced)
         }
         return;
     }
+    khdays_hd_end_at(until);
     /* the theater's subtitles for it in the game's language (a language just chosen first) */
     khdays_movie_subtitles_load(movie, khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage());
     AcquireSRWLockExclusive(&lock);
@@ -229,8 +254,12 @@ void khdays_movie_hd_stream(int slot, const char *path, int replaced)
     khdays_hd_start();
     InterlockedExchange(&state, PLAYING);
     ReleaseSRWLockExclusive(&lock);
+    snprintf(shown, sizeof(shown), "%s", stem);
     khdays_log("movie %s: the HD video %s plays (%dx%d, %.3f frames a second, %s)", movie, file, info.width,
                info.height, info.fps, info.channels > 0 ? "with its sound" : "no sound");
+    if (until > 0.0) {
+        khdays_log("movie %s: the HD video ends at %.2f s (the scene map's mv#%s)", movie, until, movie);
+    }
     fprintf(stderr, "movies: %s shown instead from %s (%dx%d, %s)\n", movie, file, info.width, info.height,
             info.channels > 0 ? "with its sound" : "no sound");
 }

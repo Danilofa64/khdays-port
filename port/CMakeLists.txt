@@ -530,7 +530,8 @@ target_compile_options(khdays-input-test PRIVATE
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
 add_test(NAME khdays-input COMMAND khdays-input-test)
 # The course of an HD movie (specs/013) against a scripted game and video.
-add_executable(khdays-movie-hd-test tests/movie_hd_test.c runtime/movies/movie_hd.c runtime/core/clock.c)
+add_executable(khdays-movie-hd-test tests/movie_hd_test.c runtime/movies/movie_hd.c runtime/movies/scene_map.c
+               runtime/core/clock.c)
 target_link_libraries(khdays-movie-hd-test PRIVATE winmm)
 target_compile_options(khdays-movie-hd-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-movie-hd COMMAND khdays-movie-hd-test)
@@ -554,6 +555,9 @@ target_link_libraries(khdays-movie-hd-decode-test PRIVATE khdays-sound SDL3::SDL
 target_compile_options(khdays-movie-hd-decode-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-movie-hd-decode
          COMMAND khdays-movie-hd-decode-test "${CMAKE_CURRENT_SOURCE_DIR}/../data/cutscenes/cinematics/hd808.mp4" 7.19)
+# ... ended part-way, as the scene map's `until` ends a movie's video
+add_test(NAME khdays-movie-hd-end
+         COMMAND khdays-movie-hd-decode-test "${CMAKE_CURRENT_SOURCE_DIR}/../data/cutscenes/cinematics/hd808.mp4" 7.19 3.0)
 # The port's elements in the composition (specs/011): fixed screens composed on the CPU.
 # The multiplayer session's delivery (specs/015): two processes on this
 # machine, a room found and joined, records through 30% loss.

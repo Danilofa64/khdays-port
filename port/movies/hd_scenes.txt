@@ -8,6 +8,11 @@
 #             mission's script section, mi/<mission>/<script>:<section>, or a day's monologue,
 #             mnl#<record> (ui/mnl's text record, picked by the story's day)
 #   off       in place of the stems: the game's own scene (a mod may switch an entry off)
+#   skip <video stem>  the scene skipped with no video when the movie just before it was shown as
+#             that HD video, which shows the scene too (the game's own scene otherwise)
+# mv#<movie> <video stem> [until <seconds>] ; <evidence>
+#             a game's movie shown as that video (hd<movie> without an entry), ending at those
+#             seconds of it; or `off`, the game's own movie
 
 # Roxas's monologues (scene 10, before the calendar): the theater's clips are his voice over black,
 # so their sound alone is heard over the game's own page (his picture and the DS's text), the game
@@ -152,6 +157,7 @@ EV_S#164 hd128 ; lines: 58% of the theater's found in the scene's
 # Day 354
 EV_S#165 hd129 ; lines: 36% of the theater's found in the scene's
 EV_S#166 hd130a ; lines: 54% of the theater's found in the scene's
+EV_S#168 skip hd830 ; lines: hd830 from 44 s says the scene's (¡Riku! ... Te lo prometo, Riku.), the game's movie 830 being 43.8 s of its 194.6 s; the theater has no video after it on day 354
 # Day 355
 EV_S#169 hd132 ; lines: 55% of the theater's found in the scene's
 EV_S#187 hd131a ; lines (by meaning): Xion a replica, both special Nobodies, Axel hiding things; pictures: Roxas on his bed
@@ -160,4 +166,7 @@ EV_S#188 hd132a ; lines (by meaning, 3 of 3): he tried, he must find out about h
 EV_S#171 hd133b ; lines: 45% of the theater's found in the scene's
 EV_S#174 hd136 ; lines: 72% of the theater's found in the scene's
 # Day 358
-EV_S#177 hd140 ; pictures: Riku and the hooded Roxas at the Memory's Skyscraper (the theater lists it in no chapter and has no subtitles for it)
+EV_S#177 skip hd836 ; lines: hd836 from 73 s says the scene's (¿Quién eres? ... ¡Cállate!), the game's movie 836 being 72.9 s of its 129.8 s; hd140, in no chapter of the theater, is that end again in Japanese without subtitles
+
+# The game's movies whose HD video goes on past them
+mv#833 hd833 until 128.4 ; the game's movie 833 is 128.1 s (1920 pictures at 14.985 a second) of hd833's 272.2 s; hd833's lines end by 125.1 s, it fades to black from 127.5 to 129.4 s, then shows Roxas and the whole fight against Xion the player fights next
