@@ -181,6 +181,13 @@ both were 0. What only the decompilation's C says, not a trace, is marked
   its buttons at +0x18 (pressed) and +0x1a (held), filled from the control
   packet: what `Pad_Sample` read in game frame N is there in frame N+1 (Up
   read in frame 2329 was +0x1a = 0x40 in 2330; B read in 2577, in 2578).
+- **How soon the field answers.** On the `play` walk's route (`KHDAYS_TRACE_PLAYER=1`,
+  `KHDAYS_TRACE_PAD`, `KHDAYS_TRACE_SOUND`): Right read in game frame 2513 had Roxas moved
+  by the VBlank after it, reaching full speed about 8 game frames later (a quarter of a
+  second); A read in game frame 2615 started the first sounds 2 game frames later and
+  `se_rox_weap_bg_hit` 7 frames later. The game itself answers within a game frame or two;
+  the rest is its own pace (30 game frames a second, the walk's ramp, the attack's
+  animation). Headless, so the picture's way to the screen is not in these numbers.
 - **Heading.** `Ov022_HeadingFromHeldDpad` turned the held D-pad into Up 0, Left
   0x3fff, Down 0x8000, Right 0xbfff, Up+Left 0x2000 (seen; its C gives
   Up+Right 0xe000, Down+Left 0x6000, Down+Right 0xa000). Left and Right are
@@ -372,7 +379,7 @@ The native build prints these to stderr when the variable is set:
   taken again (section 7, "The screen blends at the port's resolution").
 - `KHDAYS_TRACE_INPUT` -- each step of a `KHDAYS_INPUT` script, with the
   VBlank, the game's frame count and the pad reads so far.
-- `KHDAYS_TRACE_PLAYER` -- the field players' positions every 30 frames.
+- `KHDAYS_TRACE_PLAYER[=N]` -- the field players' positions every N frames (30 if no number is given).
 - `KHDAYS_TRACE_SCRIPT` -- each step of the action-script interpreter.
 - `KHDAYS_TRACE_SCENES` -- the field's event scenes (section 21): the field's record and script,
   the scene controller's pending scene, the event's status, each skip target set and cleared, the
