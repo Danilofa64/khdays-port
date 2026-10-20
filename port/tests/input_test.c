@@ -1783,6 +1783,20 @@ static void test_analog(void)
     CHECK(khdays_analog_heading(-16384, 28378) == 0x1555);
     /* 30 degrees right of up. */
     CHECK(khdays_analog_heading(16384, 28378) == 0x10000 - 0x1555);
+    /* Flip Foot: the game swapped the held Up/Down and Left/Right, so the stick turns around too;
+     * the D-pad's own eighth of the stick's angle leaves it as it is */
+    for (size_t i = 0; i < sizeof(directions) / sizeof(directions[0]); ++i) {
+        const unsigned d = directions[i].dpad;
+        const unsigned swapped = (d & UP ? DOWN : 0) | (d & DOWN ? UP : 0) | (d & LEFT ? RIGHT : 0) |
+                                 (d & RIGHT ? LEFT : 0);
+        const int stick = khdays_analog_heading(directions[i].x, directions[i].y);
+        CHECK(khdays_analog_heading_turned(stick, game_heading(d)) == stick);
+        CHECK(khdays_analog_heading_turned(stick, game_heading(swapped)) == game_heading(swapped));
+    }
+    CHECK(khdays_analog_heading_turned(0x1555, game_heading(UP | LEFT)) == 0x1555);
+    CHECK(khdays_analog_heading_turned(0x1555, game_heading(UP)) == 0x1555);
+    CHECK(khdays_analog_heading_turned(0x1555, game_heading(DOWN | RIGHT)) == 0x9555);
+    CHECK(khdays_analog_heading_turned(0x1555, game_heading(DOWN)) == 0x9555);
 
     CHECK(khdays_analog_tilt(0, 0) == 0);
     CHECK(khdays_analog_tilt(FULL, 0) == 100);

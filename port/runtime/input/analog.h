@@ -9,6 +9,11 @@
  * direction; -1 at rest. */
 int khdays_analog_heading(int x, int y);
 
+/* The stick's heading `stick` as the game turned the D-pad's (`dpad`, the heading it made from the
+ * held bits): Flip Foot swaps the held Up/Down and Left/Right (Ov022_SwapPairedStateFlags), so a
+ * D-pad heading pointing away from the stick turns the stick's around too. */
+int khdays_analog_heading_turned(int stick, int dpad);
+
 /* How far the stick is pushed, in percent of its travel (0..100). */
 int khdays_analog_tilt(int x, int y);
 

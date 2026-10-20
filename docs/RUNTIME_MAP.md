@@ -181,6 +181,11 @@ both were 0. What only the decompilation's C says, not a trace, is marked
   its buttons at +0x18 (pressed) and +0x1a (held), filled from the control
   packet: what `Pad_Sample` read in game frame N is there in frame N+1 (Up
   read in frame 2329 was +0x1a = 0x40 in 2330; B read in 2577, in 2578).
+- **Flip Foot** (the Tricky Monkey's status, `+0x2770` = 5): `Ov022_StepChargeSequence` swaps the
+  held Up/Down and Left/Right at `+0x1a` (`Ov022_SwapPairedStateFlags`), `Ov022_TranslateCommandToAction`
+  makes the heading from them and swaps them back. Analog movement's stick heading turns around when
+  the game's points away from it (`khdays_analog_heading_turned`); with the status forced, Right on
+  the stick moved Roxas as Right on the D-pad did (`KHDAYS_TRACE_PLAYER`), the other way from without it.
 - **How soon the field answers.** On the `play` walk's route (`KHDAYS_TRACE_PLAYER=1`,
   `KHDAYS_TRACE_PAD`, `KHDAYS_TRACE_SOUND`): Right read in game frame 2513 had Roxas moved
   by the VBlank after it, reaching full speed about 8 game frames later (a quarter of a
