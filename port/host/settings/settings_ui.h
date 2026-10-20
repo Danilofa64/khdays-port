@@ -16,11 +16,24 @@ extern "C" {
 /* Opens the menu on a working copy of `current`. */
 void khdays_settings_open(const KhdaysProfile *current);
 
+/* What Download does in the notice of a newer release when this copy may update itself
+ * (host/app/updates.h's functions of the same names). */
+typedef struct KhdaysUpdateHooks {
+    int (*can_install)(void);
+    void (*download)(void);
+    int (*state)(long long *done, long long *total, char *why, size_t size);
+    void (*cancel)(void);
+    int (*install)(char *why, size_t size);
+} KhdaysUpdateHooks;
+
 /* Opens the menu for the notice of a newer release alone: this build's version (`have`) and the new
- * release's tag (`latest`), and its three answers. The answer closes the menu (khdays_settings_handle
- * returns 1); khdays_settings_take_update_answer then gives it (KHDAYS_UPDATE_*, host/app/updates.h),
- * once; -1 when there is none. */
-void khdays_settings_offer_update(const KhdaysProfile *current, const char *have, const char *latest);
+ * release's tag (`latest`), and its three answers. With `hooks` (NULL: none) and an installer to run,
+ * Download fetches it with its progress shown (Cancel), then runs it, or says why it could not (its
+ * page then offered). The answer closes the menu (khdays_settings_handle returns 1, or
+ * khdays_settings_tick closes it once the installer runs); khdays_settings_take_update_answer then
+ * gives it (KHDAYS_UPDATE_*, host/app/updates.h), once; -1 when there is none. */
+void khdays_settings_offer_update(const KhdaysProfile *current, const char *have, const char *latest,
+                                  const KhdaysUpdateHooks *hooks);
 int khdays_settings_take_update_answer(void);
 
 int khdays_settings_is_open(void);

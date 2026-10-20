@@ -620,6 +620,19 @@ begin
   Result := DataOk;
 end;
 
+{ Run by the game itself to update this copy (host/app/update_install_win.c: /SILENT /AUTOUPDATE
+  /DIR=...): Steam's entry is left as it is (changing it would close Steam, which may be running the
+  game's shortcut), and the game is opened again at the end. }
+function AutoUpdate: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/AUTOUPDATE') = 0 then
+      Result := True;
+end;
+
 { Program Files (an administrator install) needs the folder made writable for the player; a
   per-user install (/PRIVILEGESREQUIRED=lowest) is already writable, so the grant is skipped. }
 function NeedsWriteGrant: Boolean;
@@ -658,7 +671,10 @@ begin
     { the starting settings, when the install has none yet (a player's own are kept on an update);
       if it does not run, the port writes its own defaults on first start, so no error is shown }
     RunHelperIn(ExpandConstant('{app}'), 'seed-settings "' + ExpandConstant('{app}') + '"', Json);
-    { the port as a non-Steam game: added when chosen, taken out when a re-run turns it off }
+    { the port as a non-Steam game: added when chosen, taken out when a re-run turns it off (an
+      update the game runs leaves it as it is) }
+    if AutoUpdate then
+      Exit;
     if SteamFound and SteamAdd.Checked and not UnderWine then begin
       WizardForm.StatusLabel.Caption := CustomMessage('SteamAdding');
       WizardForm.Refresh;
@@ -671,6 +687,10 @@ begin
     end else if SteamFound and SteamPresent and not SteamAdd.Checked and not UnderWine then
       DoSteam('remove-from-steam', ExpandConstant('{app}'), not WizardSilent);
   end;
+  { an update the game ran: the game again, as the player (not the administrator that installed it) }
+  if (CurStep = ssDone) and AutoUpdate and DataOk then
+    ExecAsOriginalUser(ExpandConstant('{app}\{#AppExe}'), '', ExpandConstant('{app}'), SW_SHOWNORMAL, ewNoWait,
+      Code);
 end;
 
 { ---- Uninstalling: the player's saves and settings kept unless they ask ---- }

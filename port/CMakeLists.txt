@@ -400,8 +400,9 @@ add_executable(khdays-native
     runtime/core/start.c
     runtime/core/vram.c
     host/app/window.c
-    host/app/updates.c                 # a newer release, told of on the title
+    host/app/updates.c                 # a newer release, told of on the title,
     host/app/release_version.c
+    host/app/update_install_win.c      # its installer run to update this copy
     host/net/https_win.c               # ... asked of GitHub through WinHTTP
     host/app/context_win.c
     host/app/context_x64.asm             # the contexts' switch (host/app/context.h)

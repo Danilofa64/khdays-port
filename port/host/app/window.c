@@ -400,12 +400,34 @@ static void stop_game_for_menu(void)
     }
 }
 
-/* Opens the menu for the notice of a newer release alone (host/app/updates.h). */
+/* Opens the menu for the notice of a newer release alone (host/app/updates.h), its Download able to
+ * fetch the installer and run it. */
 static void open_update_notice(const char *tag)
 {
+    static const KhdaysUpdateHooks hooks = {khdays_updates_can_install, khdays_updates_download,
+                                            khdays_updates_download_state, khdays_updates_download_cancel,
+                                            khdays_updates_install};
     khdays_log("updates: telling the player of %s", tag);
     stop_game_for_menu();
-    khdays_settings_offer_update(khdays_devices_profile(), khdays_updates_version(), tag);
+    khdays_settings_offer_update(khdays_devices_profile(), khdays_updates_version(), tag, &hooks);
+}
+
+static void close_settings(void);
+
+/* The menu has closed (an answer, or by itself): the notice of a newer release's answer acted on,
+ * and the game closed once the update's installer runs (it replaces the game's files). */
+static void settings_closed(SDL_Window *window, SDL_Renderer *renderer)
+{
+    const int update = khdays_settings_take_update_answer();
+    close_settings();
+    if (update >= 0) {
+        khdays_updates_answer(update); /* the notice's: the page opened, or not told again */
+    }
+    if (update == KHDAYS_UPDATE_INSTALL) {
+        khdays_log("updates: the game closes for its installer");
+        _Exit(0);
+    }
+    redraw(window, renderer);
 }
 
 /* Opens the settings menu (the game pauses, stop_game_for_menu). */
@@ -608,6 +630,9 @@ static int host_thread(void *unused)
                 khdays_settings_tick();
                 if (khdays_settings_is_open()) {
                     apply_changes(); /* a held direction keeps repeating its change */
+                } else {
+                    settings_closed(window, renderer); /* by itself: the update's installer runs */
+                    continue;
                 }
             }
             if ((smooth && khdays_present_refresh()) || (backdrop && khdays_present_refresh_backdrop()) ||
@@ -703,12 +728,12 @@ static int host_thread(void *unused)
             static Uint64 drawn_at;
             khdays_devices_handle(&event, renderer);
             if (khdays_settings_handle(&event, window)) {
-                const int update = khdays_settings_take_update_answer();
-                close_settings();
-                if (update >= 0) {
-                    khdays_updates_answer(update); /* the notice's: the page opened, or not told again */
-                }
-                redraw(window, renderer);
+                settings_closed(window, renderer);
+                continue;
+            }
+            khdays_settings_tick(); /* also while events keep coming (a gamepad's stream of them) */
+            if (!khdays_settings_is_open()) {
+                settings_closed(window, renderer);
                 continue;
             }
             apply_changes();

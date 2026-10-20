@@ -75,8 +75,10 @@ HEARTS 358/2 Days; it finds it by itself where KH Melon Mix keeps one in your
 KINGDOM HEARTS HD 1.5+2.5 ReMIX folder), prepares the game's data from it, and
 can also make the HD pack from your HD collections, add the port to Steam (PC
 and Steam Deck), and install the mod studio. Nothing of the game comes with
-it. The port tells you when a newer release is out. More:
-[`installer/README.md`](installer/README.md).
+it. The port tells you when a newer release is out, and its Download updates
+your copy by itself: it fetches the new installer, checks it, closes the game,
+updates it with your choices (Windows asks for the administrator's permission)
+and opens it again. More: [`installer/README.md`](installer/README.md).
 
 ## Getting started
 
