@@ -92,9 +92,10 @@ typedef struct Clip {
     int32_t x, y, z, w;
     int r, g, b;  /* 6 bits */
     int32_t s, t; /* 12.4 */
+    int32_t unused; /* a mod's vertex has its alpha here; the game's polygon has one */
 } Clip;
-_Static_assert(sizeof(Clip) == sizeof(KhdaysG3dPreVertex), "a vertex before clipping is nine words");
-_Static_assert(sizeof(KhdaysG3dClipVertex) == sizeof(KhdaysG3dPreVertex), "a mod's vertex is nine words");
+_Static_assert(sizeof(Clip) == sizeof(KhdaysG3dPreVertex), "a vertex before clipping is ten words");
+_Static_assert(sizeof(KhdaysG3dClipVertex) == sizeof(KhdaysG3dPreVertex), "a mod's vertex is ten words");
 
 static struct {
     int mode;
@@ -530,6 +531,7 @@ static int clip_plane(const Clip *in, int n, Clip *out, int axis, int sign, int3
             c.b = a->b + (int)lround((b->b - a->b) * f);
             c.s = a->s + (int32_t)llround((b->s - (double)a->s) * f);
             c.t = a->t + (int32_t)llround((b->t - (double)a->t) * f);
+            c.unused = 0;
             out[m++] = c;
         }
     }
@@ -721,6 +723,7 @@ static void finish_polygon(List *out, int32_t ds[2], const Clip *v, int n, const
             o->b = (float)a[i].b;
             o->s = (float)a[i].s;
             o->t = (float)a[i].t;
+            o->a = 1.0f;
             if (o->y < p->ymin)
                 p->ymin = o->y;
             if (o->y > p->ymax)
@@ -779,6 +782,7 @@ static void vertex(int32_t x, int32_t y, int32_t z)
     c.b = expand5(g.color[2]);
     c.s = (int16_t)g.s;
     c.t = (int16_t)g.t;
+    c.unused = 0;
 
     g.strip[g.strip_count++] = c;
     switch (g.prim) {
@@ -921,6 +925,7 @@ static int clip_plane_f(const KhdaysG3dClipVertex *in, int n, KhdaysG3dClipVerte
             c.b = a->b + (b->b - a->b) * f;
             c.s = a->s + (b->s - a->s) * f;
             c.t = a->t + (b->t - a->t) * f;
+            c.a = a->a + (b->a - a->a) * f;
             out[m++] = c;
         }
     }
@@ -1014,6 +1019,7 @@ static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, c
             o->b = a[i].b;
             o->s = a[i].s;
             o->t = a[i].t;
+            o->a = a[i].a;
             if (o->y < p->ymin)
                 p->ymin = o->y;
             if (o->y > p->ymax)

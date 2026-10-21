@@ -654,13 +654,9 @@ bool triangle_attr(const Mesh &mesh, std::size_t t, uint32_t attr, uint32_t &out
                         (3.0F * 255.0F);
     if (mesh.vertex_alpha == VertexAlpha::cut)
         return alpha >= mesh.cutoff;
-    if (alpha < 1.0F) {
-        const auto a = static_cast<uint32_t>(std::lround(static_cast<float>((attr >> 16) & 31u) * alpha));
-        if (a == 0u)
-            return false; // the DS draws a polygon of alpha 0 as its outline: nothing of it here
-        out = (attr & ~(31u << 16)) | (a << 16);
-    }
-    return true;
+    // blended: each vertex's alpha goes across the polygon (KhdaysG3dClipVertex `a`); one clear at every
+    // corner is not drawn
+    return alpha > 0.0F;
 }
 
 void draw(Model &m)
@@ -865,6 +861,7 @@ void draw(Model &m)
             o.b = rgb[2] * static_cast<float>(v.color[2]) / 255.0F;
             o.s = (v.texcoord[0] + offset[0]) / tex_w * 1024.0F * 16.0F;
             o.t = (v.texcoord[1] + offset[1]) / tex_h * 1024.0F * 16.0F;
+            o.a = mesh.vertex_alpha == VertexAlpha::blended ? static_cast<float>(v.color[3]) / 255.0F : 1.0F;
         }
         // the session log's diagnosis: where the mesh falls on the screen (x/w and y/w: -1..1
         // the view), and how near (w)
@@ -901,7 +898,8 @@ void draw(Model &m)
                                                 clip[mesh.indices[t + 2]]};
             uint32_t tri_attr;
             if (triangle_attr(mesh, t, attr, tri_attr))
-                khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, picture.replacement, picture.translucent, mesh.sky);
+                khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, picture.replacement,
+                                       picture.translucent || mesh.vertex_alpha == VertexAlpha::blended, mesh.sky);
         }
     }
 }

@@ -306,7 +306,11 @@ game turns G; its head is where its parent's K puts it, so the mod keeps its
 own proportions. A joint at G's place with no correction is drawn with D_G
 itself; one that follows no node moves with its parent. A mesh is drawn both
 sides or front only as its file says (glTF `doubleSided`; FBX both), unless
-`<model>.bones.txt` says `cull back` or `cull none`. Its polygons are cut by
+`<model>.bones.txt` says `cull back` or `cull none`. A blended mesh's vertex
+alpha goes across each polygon, pixel by pixel, times the polygon's (the list's
+vertices carry it: `KhdaysG3dVertex` `a`, 1 for the game's, whose polygons have
+one alpha as the DS's): taken whole per triangle, KH2's sun glow came out a disk
+with a hard edge and its cloud layers in patches. Its polygons are cut by
 the clip volume but for the game's far plane, which neither cuts nor hides them
 (the DS's far-plane rule hid a polygon reaching past it whole: a KH2 room's
 floor, a few large triangles, went at once); what lies past it is drawn at its

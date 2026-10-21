@@ -22,6 +22,7 @@ typedef struct KhdaysG3dVertex {
     float w;       /* clip w, 12 fractional bits as a float */
     float r, g, b; /* 6 bits each */
     float s, t;    /* texels, 4 fractional bits as a float */
+    float a;       /* a mod's vertex alpha, 0..1, times the polygon's (the game's: 1) */
 } KhdaysG3dVertex;
 
 typedef struct KhdaysG3dPolygon {
@@ -34,10 +35,10 @@ typedef struct KhdaysG3dPolygon {
 } KhdaysG3dPolygon;
 
 /* A polygon as the game sent it, before clipping, in a list's `pre` arrays: its vertices in clip space
- * (the game's in fixed point, a mod's in floats, nine words each), what it was drawn with, and the key
+ * (the game's in fixed point, a mod's in floats, ten words each), what it was drawn with, and the key
  * that finds the same polygon in the next list (its model draw and its place in it). */
 typedef struct KhdaysG3dPreVertex {
-    int32_t word[9];
+    int32_t word[10];
 } KhdaysG3dPreVertex;
 
 typedef struct KhdaysG3dPreInfo {
@@ -213,6 +214,7 @@ typedef struct KhdaysG3dClipVertex {
     float x, y, z, w;
     float r, g, b; /* 6 bits */
     float s, t;    /* texels, 4 fractional bits */
+    float a;       /* alpha, 0..1: across the polygon, times its own (KH2's skies and glows fade so) */
 } KhdaysG3dClipVertex;
 
 /* A polygon of a mod's model into the list being built: culled by `attr`'s

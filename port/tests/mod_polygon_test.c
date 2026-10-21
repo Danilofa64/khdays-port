@@ -19,7 +19,7 @@ static int failures;
 /* A point of the field's clip space: x and y, and its distance w. */
 static KhdaysG3dClipVertex at(float x, float y, float w)
 {
-    const KhdaysG3dClipVertex v = {x, y, w - 0.2f, w, 31, 31, 31, 0, 0};
+    const KhdaysG3dClipVertex v = {x, y, w - 0.2f, w, 31, 31, 31, 0, 0, 1};
     return v;
 }
 
@@ -59,13 +59,18 @@ int main(void)
     /* 4: a room's floor reaching past a nearer far plane (z > w at one corner): kept, that corner at the
      * far plane's depth -- the DS's rule had hidden it whole */
     const KhdaysG3dClipVertex floor_[3] = {
-        {-5, -5, 3, 5, 31, 31, 31, 0, 0}, {5, -5, 3, 5, 31, 31, 31, 0, 0}, {0, -5, 40, 30, 31, 31, 31, 0, 0}};
+        {-5, -5, 3, 5, 31, 31, 31, 0, 0, 1}, {5, -5, 3, 5, 31, 31, 31, 0, 0, 1}, {0, -5, 40, 30, 31, 31, 31, 0, 0, 1}};
     khdays_g3d_mod_polygon(floor_, 3, BOTH_SIDES, 0, -1, 0, 0);
+    /* 5: a glow fading to its edge (KH2's sun): each vertex's alpha kept, and a corner cut by the left of
+     * the view takes the alpha between its two (1 to 0, cut at four tenths: 0.6) */
+    KhdaysG3dClipVertex glow[3] = {at(-20, 0, 10), at(5, 0, 10), at(5, 5, 10)};
+    glow[1].a = glow[2].a = 0;
+    khdays_g3d_mod_polygon(glow, 3, BOTH_SIDES, 0, -1, 1, 0);
     const uint32_t swap = 0;
     khdays_g3d_command(0x50, &swap);
     khdays_g3d_vblank();
     const KhdaysG3dList *l = khdays_g3d_shown();
-    CHECK(l != NULL && l->npolys == 5);
+    CHECK(l != NULL && l->npolys == 6);
     if (l == NULL) {
         return 1;
     }
@@ -75,6 +80,17 @@ int main(void)
     CHECK(near1 >= 0.99989f && far1 <= 0.99996f && near2 >= 0.99989f);
     CHECK(depths(l, 3, &near3, &far3) && far3 < 0.9999f && far3 < near2);
     CHECK(depths(l, 4, &near4, &far4) && far4 <= 0.99991f && near4 < 0.7f);
+    if (l->npolys == 6) {
+        const KhdaysG3dPolygon *p = &l->polys[5]; /* translucent: drawn last */
+        int cut = 0, clear = 0, whole = 0;
+        for (int i = 0; i < p->count; ++i) {
+            const float a = l->verts[p->first + i].a;
+            cut += a > 0.59f && a < 0.61f;
+            clear += a == 0.0f;
+            whole += a == 1.0f;
+        }
+        CHECK(cut == 2 && clear == 2 && whole == 0);
+    }
     if (failures != 0) {
         fprintf(stderr, "%d checks failed\n", failures);
         return 1;

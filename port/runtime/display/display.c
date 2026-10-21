@@ -931,9 +931,10 @@ static void record_package(const KhdaysFramePackage *p)
 {
     char path[MAX_PATH];
     FILE *f;
-    /* version 13: the left-out parts; 12: the elements and their images after the 3D list; 11: the 3D
-     * list's pointers in 8 bytes, the same layout whatever the process's pointer size */
-    const u32 header[4] = {0x474b5046u /* "FPKG" */, 13, (u32)KHDAYS_FRAME_RECORDED, p->frame};
+    /* version 14: a vertex's alpha (ten words); 13: the left-out parts; 12: the elements and their images
+     * after the 3D list; 11: the 3D list's pointers in 8 bytes, the same layout whatever the process's
+     * pointer size */
+    const u32 header[4] = {0x474b5046u /* "FPKG" */, 14, (u32)KHDAYS_FRAME_RECORDED, p->frame};
     snprintf(path, sizeof(path), "%s/frame_%05u.pkg", record_dir, p->frame);
     if (fopen_s(&f, path, "wb") != 0) {
         fprintf(stderr, "display: cannot write %s\n", path);
