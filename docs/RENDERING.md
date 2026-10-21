@@ -278,7 +278,15 @@ much of it the pixel covers (its colour weighted by its alpha), read from the
 smaller copy with one to two texels to the pixel while a copy's texel still
 comes from one tile: a sheet larger than shown keeps its lines, and its soft
 edges show what is under them by their alpha (`KD_SEE_THROUGH`), the pixel
-composed with the tile and without it, as the elements are. The map of replaced tiles
+composed with the tile and without it, as the elements are. A sheet smaller than
+shown (an output pixel inside one texel: a 6x sheet at a 4K window's 12x) is read
+through Catmull-Rom over the 4 x 4 texels round the pixel, those past the tile's
+edge taken at its edge (the tile beside it in the sheet is not the one beside it
+on the screen), so its edges stay smooth instead of showing the texels' steps. A
+frame whose 2D memory holds a replaced tile is composed at the internal resolution
+even without 3D (`has_hd_tiles`, gpu_present.c): at the DS's own size, which a
+frame of 2D alone keeps otherwise, the sheet was averaged down to the DS's pixels
+and stretched (the Journal's pages, seen blurred at 4K). The map of replaced tiles
 holds, where a replaced sheet's tile starts, the replacement's id + 1 in bits
 20-31 and the tile's number in bits 0-19; a page is mapped again when its
 memory, its bank or its bytes' origin changed.

@@ -948,6 +948,18 @@ int khdays_present_refresh(void)
     return 1;
 }
 
+/* Whether the frame's 2D memory holds tiles a mod draws instead (its map, zeros while HD graphics
+ * are off: runtime/mods/tiles2d.h). */
+static int has_hd_tiles(const KhdaysFramePackage *p)
+{
+    for (size_t i = 0; i < SDL_arraysize(p->hd2d); ++i) {
+        if (p->hd2d[i] != 0u) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /* Draws package `p`. `first` is set the first time (so its shots and profile
  * are counted only once). */
 static void present(const KhdaysFramePackage *p, int first)
@@ -1032,6 +1044,9 @@ static void present(const KhdaysFramePackage *p, int first)
                 return;
             }
         }
+        /* a mod's tiles in the 2D: drawn at this resolution even without 3D (at the DS's own size its
+         * sheet would be averaged down to the DS's pixels, then stretched) */
+        const int hd_tiles = has_hd_tiles(p);
         khdays_raster3d_set_one_screen(picture);
         khdays_raster3d_set_hud_shapes(picture ? composition.shapes3d : NULL, picture ? composition.shape3d_count : 0);
         /* a screen blend's frame: engine A shows a VRAM bank, drawn from its 3D at this resolution too */
@@ -1052,12 +1067,12 @@ static void present(const KhdaysFramePackage *p, int first)
                 under_paused_video(&one);
             }
             /* at the DS's own size without 3D, but for a picture with a backdrop of its own (the
-             * camp's Preferences page: an HD picture, no model) */
-            drawn = khdays_gfx_render_draw_one(p, raster || one.backdrop != NULL ? n : 1, raster, &one);
+             * camp's Preferences page: an HD picture, no model) or a mod's tiles */
+            drawn = khdays_gfx_render_draw_one(p, raster || one.backdrop != NULL || hd_tiles ? n : 1, raster, &one);
             one_drawn = drawn;
             one_made = one_made || drawn;
         } else {
-            drawn = khdays_gfx_render_draw(p, raster ? n : 1, raster);
+            drawn = khdays_gfx_render_draw(p, raster || hd_tiles ? n : 1, raster);
         }
         if (drawn) {
             port2d_drawn = 1;
