@@ -564,8 +564,6 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
                 ]
                 if (tool, template) in HD_MENU_TOOLS:
                     command_line += ["--mod", "trace"]
-                if tool in DATA_TOOLS:
-                    command_line += ["--data", str(args.data.resolve())]
                 subprocess.run(command_line, cwd=root, check=True, env={**os.environ, "KHDAYS_TRACE_LOG": str(log)})
             for line in log.read_text(encoding="utf-8").splitlines():
                 kind, _, raw = line.partition("\t")
