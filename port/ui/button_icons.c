@@ -256,12 +256,13 @@ const uint8_t *khdays_button_icon(int button, int field, int *width, int *height
         [KHDAYS_BUTTON_DPAD_VERTICAL] = "vertical",
     };
     static const int actions[KHDAYS_BUTTON_COUNT] = {
-        [KHDAYS_BUTTON_A] = KHDAYS_ACT_A,         [KHDAYS_BUTTON_B] = KHDAYS_ACT_B,
-        [KHDAYS_BUTTON_X] = KHDAYS_ACT_X,         [KHDAYS_BUTTON_Y] = KHDAYS_ACT_Y,
-        [KHDAYS_BUTTON_L] = KHDAYS_ACT_L,         [KHDAYS_BUTTON_R] = KHDAYS_ACT_R,
-        [KHDAYS_BUTTON_START] = KHDAYS_ACT_START, [KHDAYS_BUTTON_SELECT] = KHDAYS_ACT_SELECT,
-        [KHDAYS_BUTTON_UP] = KHDAYS_ACT_UP,       [KHDAYS_BUTTON_DOWN] = KHDAYS_ACT_DOWN,
-        [KHDAYS_BUTTON_LEFT] = KHDAYS_ACT_LEFT,   [KHDAYS_BUTTON_RIGHT] = KHDAYS_ACT_RIGHT,
+        [KHDAYS_BUTTON_A] = KHDAYS_ACT_A,           [KHDAYS_BUTTON_B] = KHDAYS_ACT_B,
+        [KHDAYS_BUTTON_X] = KHDAYS_ACT_X,           [KHDAYS_BUTTON_Y] = KHDAYS_ACT_Y,
+        [KHDAYS_BUTTON_L] = KHDAYS_ACT_L,           [KHDAYS_BUTTON_R] = KHDAYS_ACT_R,
+        [KHDAYS_BUTTON_START] = KHDAYS_ACT_START,   [KHDAYS_BUTTON_SELECT] = KHDAYS_ACT_SELECT,
+        [KHDAYS_BUTTON_TARGET_NEXT] = KHDAYS_ACT_R, /* the DS's way */
+        [KHDAYS_BUTTON_UP] = KHDAYS_ACT_UP,         [KHDAYS_BUTTON_DOWN] = KHDAYS_ACT_DOWN,
+        [KHDAYS_BUTTON_LEFT] = KHDAYS_ACT_LEFT,     [KHDAYS_BUTTON_RIGHT] = KHDAYS_ACT_RIGHT,
     };
     const KhdaysProfile *profile = khdays_devices_profile();
     SDL_Gamepad *pad = khdays_devices_pad_in_use() ? khdays_devices_gamepad() : NULL;
@@ -273,12 +274,16 @@ const uint8_t *khdays_button_icon(int button, int field, int *width, int *height
         read_layouts();
     }
     /* in the field with the D-pad command menu on: the commands cycle by that menu's input, and
-       the DS's D-pad (moving, the free camera) is the stick */
+       the DS's D-pad (moving, the free camera) is the stick; with the separate lock-on, R is its */
     const int menu = field && profile->enh.dpad_command_menu;
     if (menu && button == KHDAYS_BUTTON_X) {
         icon = action_icon(profile, pad, KHDAYS_LAYER_FIELD, KHDAYS_ACT_MENU_DOWN);
     } else if (menu && pad != NULL && button >= KHDAYS_BUTTON_UP) {
         icon = stick_icon(profile, pad, ways[button]);
+    } else if (field && profile->enh.separate_lock_on &&
+               (button == KHDAYS_BUTTON_R || button == KHDAYS_BUTTON_TARGET_NEXT)) {
+        icon = action_icon(profile, pad, KHDAYS_LAYER_BASE,
+                           button == KHDAYS_BUTTON_R ? KHDAYS_ACT_LOCK_ON : KHDAYS_ACT_TARGET_NEXT);
     }
     if (icon == NULL) {
         icon = button < KHDAYS_BUTTON_DPAD ? action_icon(profile, pad, KHDAYS_LAYER_BASE, actions[button])
@@ -310,7 +315,7 @@ uint32_t khdays_button_icons_signature(void)
             }
         }
         h = (h ^ (uint32_t)profile->stick[0].role << 4 ^ (uint32_t)profile->stick[1].role) * 16777619u;
-        h = (h ^ (uint32_t)profile->enh.dpad_command_menu) * 16777619u;
+        h = (h ^ (uint32_t)profile->enh.dpad_command_menu << 1 ^ (uint32_t)profile->enh.separate_lock_on) * 16777619u;
     }
     return h;
 }

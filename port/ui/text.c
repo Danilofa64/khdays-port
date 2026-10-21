@@ -714,6 +714,17 @@ typedef struct ButtonFont {
 static ButtonFont *button_fonts;
 static int button_font_count, button_font_room;
 
+/* The tiles `op` covers are drawn again. */
+static void dirty_op(Canvas *c, const GlyphOp *op)
+{
+    if (op->clip_l >= op->clip_r || op->clip_t >= op->clip_b)
+        return;
+    const int col0 = op->clip_l < 0 ? 0 : op->clip_l / 8, row0 = op->clip_t < 0 ? 0 : op->clip_t / 8;
+    for (int row = row0; row <= (op->clip_b - 1) / 8 && row < c->area_h; ++row)
+        for (int col = col0; col <= (op->clip_r - 1) / 8 && col < c->area_w; ++col)
+            c->dirty[row * c->area_w + col] |= 3;
+}
+
 /* Whether the text drawn now tells the field's controls: a field tutorial's page, or the camp's
    Tutorials (screen 6, docs/FONT_MAPPING.md). */
 static int field_controls_text(void)
@@ -1167,6 +1178,11 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
                  o->source_y == op.source_y && o->source_x < op.source_x && op.source_x - o->source_x <= 64;
     }
     op.field = button && !listed && field_controls_text();
+    /* an R just above this one becomes the next target's (paint_button) */
+    for (int i = 0; button == KHDAYS_BUTTON_R && op.field && i < c->op_count; ++i)
+        if (c->ops[i].button == KHDAYS_BUTTON_R && op.source_y - c->ops[i].source_y >= 8 &&
+            op.source_y - c->ops[i].source_y <= 40)
+            dirty_op(c, &c->ops[i]);
     /* START and SELECT are three glyphs: the first one's icon covers the others' */
     for (int i = op.piece > 0 ? c->op_count - 1 : -1; i >= 0; --i) {
         GlyphOp *first = &c->ops[i];
@@ -2189,8 +2205,16 @@ static double painted_width(const GlyphOp *op)
 static int paint_button(const Canvas *c, const GlyphOp *op, uint16_t cell, double x, double y, uint32_t *out, int width,
                         int height, int scale, int l, int t, int r, int b)
 {
-    int iw = 0, ih = 0;
-    const uint8_t *icon = khdays_button_icon(op->button, op->field, &iw, &ih);
+    int iw = 0, ih = 0, button = op->button;
+    /* the lock-on tutorial's R with another just below it (in every language, before "press it
+       twice to leave") is the one that cycles the targets; the shadow pass's a pixel below is not */
+    for (int i = 0; button == KHDAYS_BUTTON_R && op->field && i < c->display_count; ++i) {
+        const GlyphOp *o = &c->display_ops[i];
+        if (o->button == KHDAYS_BUTTON_R && o->field && o->source_y - op->source_y >= 8 &&
+            o->source_y - op->source_y <= 40)
+            button = KHDAYS_BUTTON_TARGET_NEXT;
+    }
+    const uint8_t *icon = khdays_button_icon(button, op->field, &iw, &ih);
     if (!icon || iw <= 0 || ih <= 0)
         return 0;
     if (op->piece > 0)
@@ -2324,15 +2348,9 @@ static void refresh_buttons(Canvas *c)
     if (signature == c->button_signature)
         return;
     c->button_signature = signature;
-    for (int i = 0; i < c->display_count; ++i) {
-        const GlyphOp *op = &c->display_ops[i];
-        if (op->button == KHDAYS_BUTTON_NONE || op->clip_l >= op->clip_r || op->clip_t >= op->clip_b)
-            continue;
-        const int col0 = op->clip_l < 0 ? 0 : op->clip_l / 8, row0 = op->clip_t < 0 ? 0 : op->clip_t / 8;
-        for (int row = row0; row <= (op->clip_b - 1) / 8 && row < c->area_h; ++row)
-            for (int col = col0; col <= (op->clip_r - 1) / 8 && col < c->area_w; ++col)
-                c->dirty[row * c->area_w + col] |= 3;
-    }
+    for (int i = 0; i < c->display_count; ++i)
+        if (c->display_ops[i].button != KHDAYS_BUTTON_NONE)
+            dirty_op(c, &c->display_ops[i]);
 }
 
 static void build_hd(Canvas *c, int scale, uint32_t palette)

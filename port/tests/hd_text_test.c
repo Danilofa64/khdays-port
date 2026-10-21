@@ -263,13 +263,14 @@ int khdays_hd_font_glyph_available(const char *path, int index)
     (void)path;
     return index >= 0 && index < 32 && (available_glyphs & (1u << index)) != 0;
 }
-/* the player's A as a 2x2 red icon while button_icon_on */
+/* the player's A as a 2x2 red icon while button_icon_on; the buttons asked for, a bit each */
 static int button_icon_on;
-static uint32_t button_signature;
+static uint32_t button_signature, buttons_asked;
 static const uint8_t button_icon_red[2 * 2 * 4] = {255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255};
 const uint8_t *khdays_button_icon(int button, int field, int *width, int *height)
 {
     (void)field;
+    buttons_asked |= 1u << button;
     if (!button_icon_on || button != KHDAYS_BUTTON_A)
         return NULL;
     *width = *height = 2;
@@ -1056,6 +1057,31 @@ static void button_icon_tests(void)
     CHECK(c->op_count == 2 && c->ops[0].button == KHDAYS_BUTTON_A && c->ops[0].field);
     CHECK(c->ops[1].button == KHDAYS_BUTTON_X && !c->ops[1].field);
     glyph[1] = 264;
+    /* the lock-on tutorial: an R with another a line below it is the next target's, the other the
+       lock-on's (U+3327, R, glyph 0) */
+    setup(4);
+    cc->area_height = 3;
+    c = canvas_of(cc, "lock-on test");
+    map_height = 3;
+    for (int i = 0; i < 6; ++i)
+        map_cells[i] = (uint16_t)(i + 1);
+    *(uint32_t *)(ram + 128 + 16) = 700;
+    *(uint32_t *)(ram + 252) = 16 + 2 * 8;
+    map = (uint16_t *)(ram + 700);
+    map[0] = map[1] = 0x3327;
+    map[2] = 0;
+    *(uint32_t *)(map + 4) = 0;
+    map[6] = 0;
+    available_glyphs = 0;
+    button_icon_on = 1;
+    buttons_asked = 0;
+    draw_xy(0, 0);
+    draw_xy(0, 16);
+    upload(0, c->bytes);
+    render();
+    CHECK(c->display_count == 2 && c->display_ops[0].field && c->display_ops[1].field);
+    CHECK((buttons_asked & (1u << KHDAYS_BUTTON_TARGET_NEXT)) && (buttons_asked & (1u << KHDAYS_BUTTON_R)));
+    button_icon_on = 0;
     test_camp_screen = KHDAYS_CAMP_NONE;
     available_glyphs = 1u;
 }
