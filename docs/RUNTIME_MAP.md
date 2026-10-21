@@ -46,6 +46,10 @@ decided before the scene) and the port's HD screens (the title, the save lists, 
 to the DS's until the field's ov002 started over it (the testers: "when you finish the game, the
 HUD returns to its original state"). Traced: on a new game every overlay ends as its scene is
 left (ov000 at f1732, ov012 and ov024 at f2154, ov004 at f2372; ov028 starts and ends at once).
+An unloaded overlay is no longer *running* (`khdays_overlay_loaded`), but its functions stay its
+own until another overlay starts over its range: the game calls into code it has just unloaded.
+At mission 61's end (seen, 2026-10-21) ov106 ended and `Ov022_UpdateSubsystems` then called
+`0x020b8194` in it; the first version, which also let go of its functions, stopped the game there.
 
 **Resets.** `OS_ResetSystem` (0x02003948) restarts the console, and
 `Boot_InitScene` picks the first scene from the word it left at
