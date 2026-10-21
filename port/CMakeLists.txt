@@ -593,7 +593,8 @@ target_compile_options(khdays-elements-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-elements COMMAND khdays-elements-test)
 # The one-screen picture: the compositions' places and the port's own file, the pass's steps and the 2D
 # apart from the 3D, on the CPU.
-add_executable(khdays-onescreen-test tests/onescreen_test.c ui/composition.c ui/situation.c host/render/png_io.c)
+add_executable(khdays-onescreen-test tests/onescreen_test.c ui/composition.c ui/situation.c ui/situation_decide.c
+                                     host/render/png_io.c)
 target_include_directories(khdays-onescreen-test PRIVATE "${stb_SOURCE_DIR}")
 target_link_libraries(khdays-onescreen-test PRIVATE khdays-gfx SDL3::SDL3)
 target_compile_definitions(khdays-onescreen-test PRIVATE "KHDAYS_PORT_COMPOSITIONS_FILE=\"${KHDAYS_PORT_COMPOSITIONS}\""

@@ -242,7 +242,8 @@ static u32 *shots;
 static int shot_count;
 static const char *shot_dir;
 static int engine_upper; /* engine A on the upper screen at the VBlank before */
-static u32 engine_swaps; /* the VBlanks in a row engine A changed screens (the situation's input) */
+static u32 swap_history; /* bit n: engine A changed screens n VBlanks ago */
+static u32 engine_swaps; /* of the last 8 VBlanks, those engine A changed screens in (the situation's input) */
 
 /* KHDAYS_HEADLESS: only the frames a shot saves are drawn, with the two before them (they settle the
  * windows' vertical latch). The game reads nothing from the drawing, so it runs the same. */
@@ -1468,9 +1469,11 @@ void khdays_display_vblank(u32 frame)
     }
     {
         /* engine A's screen against the VBlank before: with the 3D on both screens the game swaps it
-         * every VBlank (POWCNT1 bit 15), showing the 3D it captured on the other */
+         * every VBlank (POWCNT1 bit 15), showing the 3D it captured on the other, and skips one where
+         * its frame ran late (a dialog opening): the last 8 VBlanks count, or the one-screen layout
+         * changes for the two after it */
         const int a_upper = (IO16(0x304) & 0x8000) != 0;
-        engine_swaps = a_upper != engine_upper ? engine_swaps + 1u : 0u;
+        engine_swaps = khdays_situation_swaps(&swap_history, a_upper != engine_upper);
         engine_upper = a_upper;
     }
     if (InterlockedExchange(&mark_requests, 0) != 0 && mark_frame == ~0u) {
