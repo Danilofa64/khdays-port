@@ -243,7 +243,7 @@ static int shot_count;
 static const char *shot_dir;
 static int engine_upper; /* engine A on the upper screen at the VBlank before */
 static u32 swap_history; /* bit n: engine A changed screens n VBlanks ago */
-static u32 engine_swaps; /* of the last 8 VBlanks, those engine A changed screens in (the situation's input) */
+static u32 engine_swaps; /* how many of the last 8 VBlanks engine A changed screens in */
 
 /* KHDAYS_HEADLESS: only the frames a shot saves are drawn, with the two before them (they settle the
  * windows' vertical latch). The game reads nothing from the drawing, so it runs the same. */
@@ -931,9 +931,7 @@ static void record_package(const KhdaysFramePackage *p)
 {
     char path[MAX_PATH];
     FILE *f;
-    /* version 14: a vertex's alpha (ten words); 13: the left-out parts; 12: the elements and their images
-     * after the 3D list; 11: the 3D list's pointers in 8 bytes, the same layout whatever the process's
-     * pointer size */
+    /* version 14: a vertex has an alpha (ten words) */
     const u32 header[4] = {0x474b5046u /* "FPKG" */, 14, (u32)KHDAYS_FRAME_RECORDED, p->frame};
     snprintf(path, sizeof(path), "%s/frame_%05u.pkg", record_dir, p->frame);
     if (fopen_s(&f, path, "wb") != 0) {
@@ -1469,10 +1467,8 @@ void khdays_display_vblank(u32 frame)
         capture_used = 1;
     }
     {
-        /* engine A's screen against the VBlank before: with the 3D on both screens the game swaps it
-         * every VBlank (POWCNT1 bit 15), showing the 3D it captured on the other, and skips one where
-         * its frame ran late (a dialog opening): the last 8 VBlanks count, or the one-screen layout
-         * changes for the two after it */
+        /* the 3D on both screens: the game swaps engine A's screen (POWCNT1 bit 15) every VBlank,
+         * skipping one now and then when its frame runs late */
         const int a_upper = (IO16(0x304) & 0x8000) != 0;
         engine_swaps = khdays_situation_swaps(&swap_history, a_upper != engine_upper);
         engine_upper = a_upper;

@@ -401,8 +401,7 @@ static void stop_game_for_menu(void)
     }
 }
 
-/* Opens the menu for the notice of a newer release alone (host/app/updates.h), its Download able to
- * fetch the installer and run it. */
+/* Opens the menu with only the notice of a newer release (host/app/updates.h). */
 static void open_update_notice(const char *tag)
 {
     static const KhdaysUpdateHooks hooks = {khdays_updates_can_install, khdays_updates_download,
@@ -415,8 +414,8 @@ static void open_update_notice(const char *tag)
 
 static void close_settings(void);
 
-/* The menu has closed (an answer, or by itself): the notice of a newer release's answer acted on,
- * and the game closed once the update's installer runs (it replaces the game's files). */
+/* The menu has closed: acts on the update notice's answer, and closes the game once the update's
+ * installer runs (it replaces the game's files). */
 static void settings_closed(SDL_Window *window, SDL_Renderer *renderer)
 {
     const int update = khdays_settings_take_update_answer();

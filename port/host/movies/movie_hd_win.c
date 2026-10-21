@@ -456,7 +456,8 @@ static int read_picture(void)
         hd.video_eos = 1;
         return ok;
     }
-    if (sample != NULL && hd.from > 0.0 && (double)time / 1e7 + (hd.info.fps > 0.0 ? 0.5 / hd.info.fps : 0.008) < hd.from) {
+    if (sample != NULL && hd.from > 0.0 &&
+        (double)time / 1e7 + (hd.info.fps > 0.0 ? 0.5 / hd.info.fps : 0.008) < hd.from) {
         /* before the part's start (the seek goes to the key picture before it) */
         IMFSample_Release(sample);
         sample = NULL;

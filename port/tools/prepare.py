@@ -572,9 +572,8 @@ HOOKS = {
             "FSOverlayInitFunc *p = (khdays_data_init((int)p_ovi->header.id), p_ovi->header.sinit_init);",
         )
     ],
-    # An overlay unloaded (FS_UnloadOverlay, its info's first word its id): no longer loaded for the
-    # port either, or one the game left alone in memory (the credits' ov011) was still taken as running
-    # (runtime/core/overlays.c).
+    # An overlay the game unloads is unloaded for the port too (runtime/core/overlays.c); the info's
+    # first word is its id.
     "main@0200b69c": [
         (  # FS_UnloadOverlayImage
             "    FS_EndOverlay(p);\n",

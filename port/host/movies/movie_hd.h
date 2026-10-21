@@ -26,9 +26,8 @@ int khdays_hd_open(const char *path, KhdaysHdInfo *info, char *why, size_t size)
  * as if the file began and ended there; its clock reads the file's own time. */
 int khdays_hd_open_part(const char *path, double from, double until, KhdaysHdInfo *info, char *why, size_t size);
 
-/* The fades of the next video opened: its picture and sound come up from black and silence over `in`
- * seconds from its start, and go down to them over `out` seconds before its end (a part's own); 0
- * none. The next opening takes them, and the one after has none unless they are set again. */
+/* Fades for the next video opened only: in from black and silence over `in` seconds, out over the
+ * last `out` seconds (of its part); 0 for none. */
 void khdays_hd_fades(double in, double out);
 
 /* Starts the video: its sound starts, and its clock with it. */

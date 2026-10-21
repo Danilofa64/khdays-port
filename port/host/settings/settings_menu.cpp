@@ -95,9 +95,8 @@ struct Menu {
     SDL_Renderer *bound = nullptr; // the renderer the backend draws with
     float styled_size = 0;
     Uint64 last_draw = 0;
-    // A newer release told of (khdays_settings_offer_update): this build's version, the new one,
-    // and the player's answer (KHDAYS_UPDATE_*), -1 until given; with the hooks, Download fetches
-    // its installer (the notice's stage UPDATE_GETTING) and runs it, or says why not (UPDATE_FAILED).
+    // The update notice (khdays_settings_offer_update): both versions and the player's answer
+    // (KHDAYS_UPDATE_*, -1 until given).
     char update_have[64] = {}, update_new[64] = {};
     int update_answer = -1;
     int update_stage = 0;
@@ -906,8 +905,8 @@ bool mouse_click(float x, float y)
 
 // ---- A newer release (the menu opened for its notice alone) -----------------
 
-// The notice's stages: the offer (Download, Later, Don't remind me of this version: KHDAYS_UPDATE_*,
-// in that order), the installer downloading (Cancel), its failure (Open its page, Later).
+// The notice's stages: the offer (Download, Later, Don't remind me), downloading (Cancel), failed
+// (Open its page, Later).
 enum { UPDATE_OFFER, UPDATE_GETTING, UPDATE_FAILED };
 
 int update_answers()
@@ -941,9 +940,7 @@ bool update_choose(int index)
             return false;
         }
         return answer_update(index);
-    case UPDATE_GETTING:
-        m.update_hooks.cancel();
-        return answer_update(KHDAYS_UPDATE_LATER);
+    case UPDATE_GETTING: m.update_hooks.cancel(); return answer_update(KHDAYS_UPDATE_LATER);
     default: return answer_update(index == 0 ? KHDAYS_UPDATE_DOWNLOAD : KHDAYS_UPDATE_LATER);
     }
 }
@@ -957,8 +954,7 @@ bool update_back()
     return answer_update(KHDAYS_UPDATE_LATER);
 }
 
-// While the installer downloads: once it is in and checked, it runs (the notice closes with Install,
-// the game then to close), or the notice says why it could not.
+// While the installer downloads: once checked it runs and the notice closes, or it says why not.
 void update_tick()
 {
     char why[256] = "";
@@ -1867,8 +1863,8 @@ void draw_prompt(float w, float h, float row_h, float pad)
         m.update_hooks.state(&done, &total, nullptr, 0);
         SDL_snprintf(line, sizeof(line), khdays_text(TXT_UPDATE_GETTING), m.update_new);
         question = line;
-        SDL_snprintf(line, sizeof(line), khdays_text(TXT_UPDATE_PROGRESS),
-                     total > 0 ? (int)(done * 100 / total) : 0, (double)done / 1048576.0, (double)total / 1048576.0);
+        SDL_snprintf(line, sizeof(line), khdays_text(TXT_UPDATE_PROGRESS), total > 0 ? (int)(done * 100 / total) : 0,
+                     (double)done / 1048576.0, (double)total / 1048576.0);
         details.push_back(line);
         yes = khdays_text(TXT_CANCEL);
     } else if (m.mode == MODE_UPDATE && m.update_stage == UPDATE_FAILED) {
@@ -1879,10 +1875,10 @@ void draw_prompt(float w, float h, float row_h, float pad)
         no = khdays_text(TXT_UPDATE_LATER);
     } else if (m.mode == MODE_UPDATE) {
         question = khdays_text(TXT_UPDATE_TITLE);
-        SDL_snprintf(line, sizeof(line),
-                     khdays_text(m.update_hooked && m.update_hooks.can_install() ? TXT_UPDATE_DETAIL_AUTO
-                                                                                 : TXT_UPDATE_DETAIL),
-                     m.update_have, m.update_new);
+        SDL_snprintf(
+            line, sizeof(line),
+            khdays_text(m.update_hooked && m.update_hooks.can_install() ? TXT_UPDATE_DETAIL_AUTO : TXT_UPDATE_DETAIL),
+            m.update_have, m.update_new);
         details.push_back(line);
         yes = khdays_text(TXT_UPDATE_DOWNLOAD);
         no = khdays_text(TXT_UPDATE_LATER);

@@ -37,8 +37,7 @@ static int frame_bytes(void)
     return input.format == SDL_AUDIO_F32 ? 8 : 4;
 }
 
-/* The stream's gain: none while muted, else the game's level around a scene's videos (they go down and
- * come up over a moment: khdays_movie_hd_game_level). */
+/* The stream's gain: 0 while muted, else the game's fade level around a scene's videos. */
 static void apply_gain(SDL_AudioStream *stream)
 {
     level_set = khdays_movie_hd_game_level();

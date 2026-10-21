@@ -214,18 +214,13 @@ typedef struct KhdaysG3dClipVertex {
     float x, y, z, w;
     float r, g, b; /* 6 bits */
     float s, t;    /* texels, 4 fractional bits */
-    float a;       /* alpha, 0..1: across the polygon, times its own (KH2's skies and glows fade so) */
+    float a;       /* alpha, 0..1, blended across the polygon */
 } KhdaysG3dClipVertex;
 
-/* A polygon of a mod's model into the list being built: culled by `attr`'s
- * faces and cut by the clip volume as the DS's are, but for the far plane: a
- * mod's room can reach further than the game's, and what lies past it is drawn
- * at its depth. Marked KHDAYS_G3D_MOD (and the HUD's while they are). A sky's
- * polygon (`sky` its layer, 1 the first painted; 0 none) is put behind
- * everything else once cut, each layer in front of the ones before it: KH2
- * paints its skies in turn as a background. Drawn with texture `replacement`
- * (runtime/mods/textures.h) over `tex`'s size and repeats, or untextured when
- * `replacement` is -1. Not counted against the DS's RAM. */
+/* A polygon of a mod's model into the list being built, culled and clipped as the DS's are except at
+ * the far plane: what lies past it is drawn at its depth. `sky` > 0 makes it a sky layer, behind
+ * everything and in front of the layers before it. `replacement` is its texture
+ * (runtime/mods/textures.h), -1 for none. */
 void khdays_g3d_mod_polygon(const KhdaysG3dClipVertex *v, int n, uint32_t attr, uint32_t tex, int32_t replacement,
                             int translucent, int sky);
 

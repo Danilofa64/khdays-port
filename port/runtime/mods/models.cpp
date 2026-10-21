@@ -215,7 +215,7 @@ struct Mesh {
     std::vector<Picture> frame_pictures;
     bool frames_loop = true;
     std::size_t frames_loop_from = 0;
-    // a sky's: 0 none, else its layer, painted in turn behind everything (1 first) around the camera
+    // 0, or the sky layer it is (1 is painted first), drawn around the camera behind everything
     int sky = 0;
 };
 
@@ -529,8 +529,7 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
         triangles += out.indices.size() / 3;
         model->meshes.push_back(std::move(out));
     }
-    // the sky's layers, in the order KH2 paints them with no depth among them: the opaque and cut-out ones
-    // as the file has them, then the blended ones
+    // the sky layers in KH2's painting order: opaque and cut-out meshes first, then blended ones
     int sky_layer = 0;
     for (const bool blended : {false, true})
         for (Mesh &mesh : model->meshes)
@@ -654,8 +653,7 @@ bool triangle_attr(const Mesh &mesh, std::size_t t, uint32_t attr, uint32_t &out
                         (3.0F * 255.0F);
     if (mesh.vertex_alpha == VertexAlpha::cut)
         return alpha >= mesh.cutoff;
-    // blended: each vertex's alpha goes across the polygon (KhdaysG3dClipVertex `a`); one clear at every
-    // corner is not drawn
+    // blended: the vertex alphas are blended across the polygon; a fully clear one is skipped
     return alpha > 0.0F;
 }
 
@@ -825,8 +823,7 @@ void draw(Model &m)
                     continue;
                 const std::uint32_t jt = v.joints[static_cast<std::size_t>(w)];
                 const Mat &s = jt < skin.size() ? skin[jt] : unskinned;
-                // a sky around the camera: turned and scaled with the room but not moved (the view's
-                // space has the camera at its origin)
+                // a sky stays around the camera: turned with the room, not moved
                 const auto q = mesh.sky != 0 ? vec(s, v.position) : point(s, v.position);
                 const auto n = vec(s, v.normal);
                 for (int c = 0; c < 3; ++c) {

@@ -1,9 +1,7 @@
-// The pause over an HD movie (movie_pause.h): the DS's scene pause from the game's pieces. PauseMenu_Open
-// shows pausebg_<lang>.pbg's screen (BG3, text, 256 x 256) once SubObject_SetupDrawsForMode has copied
-// into it, for a scene (no mission, field 0x2483 clear): from pauseicon its title (12 x 2 cells to
-// 10, 8), from etcicon Continue (11 x 2 from 0, 0 to 10, 11) and Skip (from 11, 0 to 10, 13). An entry
-// lit is the same cells 2 rows down, and 4 rows down the blink's other look (SubObject_NudgeAndRedraw;
-// Input_DebounceSlot flips them every 16 frames).
+// The pause over an HD movie (movie_pause.h), built from the game's own pieces as PauseMenu_Open lays
+// out a scene's pause: pausebg_<lang>.pbg's screen, the title from pauseicon (12 x 2 cells at 10, 8),
+// Continue and Skip from etcicon (11 x 2 cells from 0, 0 and 11, 0, at 10, 11 and 10, 13). A lit
+// entry is the same cells 2 rows down, its blink 4 rows down (switched every 16 frames).
 #include "movie_pause.h"
 
 #include "khdays/assets/graphics2d.h"

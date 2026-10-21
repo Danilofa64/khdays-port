@@ -94,12 +94,9 @@ KD_FN float kd_cubic(float d)
     return x < 1.0f ? (1.5f * x - 2.5f) * x * x + 1.0f : x < 2.0f ? ((-0.5f * x + 2.5f) * x - 4.0f) * x + 2.0f : 0.0f;
 }
 
-/* A replaced tile in its own colours: the texels under an output pixel `ru` x `rv` DS pixels wide,
- * centred at (u, v), averaged by how much of each it covers. A picture bigger than shown is read from
- * a smaller copy (gpu_hd.c), so no line is skipped; one smaller than shown (an output pixel inside a
- * texel) is drawn larger through Catmull-Rom over the 4 x 4 texels round it, so its edges stay smooth
- * instead of showing the texels' steps. KD_HD | the colour, with how much of what is under it shows in
- * bits 24-30 (KD_SEE_THROUGH); 0 where it is clear. */
+/* A replaced tile's colour under an output pixel `ru` x `rv` DS pixels wide at (u, v): the texels it
+ * covers averaged, or, when it is smaller than a texel, a smooth Catmull-Rom blend of the 4 x 4 around.
+ * KD_HD | the colour, how much shows through in bits 24-30 (KD_SEE_THROUGH); 0 where clear. */
 KD_FN uint kd_hd_colour(uint id, uint tile, float u, float v, float ru, float rv)
 {
     const uint info = KD_HD_INFO(id);

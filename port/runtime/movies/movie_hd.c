@@ -1,7 +1,5 @@
-/* How an HD movie runs (movie_hd.h), as states: Idle, Playing, Held (the game's movie ended first),
- * Finishing (the video ended first), Movie Pause (START where the DS allows a skip: the DS's scene
- * pause over the video), Skipping (its Skip); the credits scene held at its roll's end instead. The
- * game's thread brings the movie's events, the window's the video's and START; one lock keeps them in
+/* An HD movie or scene played in place of the game's (movie_hd.h), as the states below. The game's
+ * thread brings the movie's events, the window's thread the video's and START; one lock keeps them in
  * order (docs/PLATFORM.md, "HD movies"). */
 #include "movie_hd.h"
 #include "scenes.h"
@@ -23,24 +21,18 @@
 extern int GetLanguage(void);     /* the game's: gLangPath's language */
 int khdays_language_wanted(void); /* language.c */
 
-/* SCENE_FADE: a scene's first video opened, the game going on while its picture and sound go down to
- * black and silence; SCENE: a scene's videos play, the game held; SCENE_SKIP: they are over, the game
- * let go to take its own skip at its next step; SCENE_LANDING: the skip asked, until the scene's
- * stretch ends; SCENE_PAUSE: START paused the video and let the game go to open its own pause over it.
- * MOVIE_PAUSE: START paused a movie's video (Playing or Held) under the port's pause, the DS's scene
- * pause (host/screens/movie_pause.h), the game held: the game has none over its movies. */
 enum {
     IDLE,
-    PLAYING,
-    HELD,
-    FINISHING,
-    SKIPPING,
-    SCENE_FADE,
-    SCENE,
-    SCENE_SKIP,
-    SCENE_LANDING,
-    SCENE_PAUSE,
-    MOVIE_PAUSE
+    PLAYING,       /* a movie's video plays */
+    HELD,          /* the game's movie ended first: held until the video ends */
+    FINISHING,     /* the video ended first */
+    SKIPPING,      /* skipped */
+    SCENE_FADE,    /* a scene's video is open; the game fades to black and silence first */
+    SCENE,         /* a scene's videos play, the game held */
+    SCENE_SKIP,    /* the videos are over: the game takes its own skip */
+    SCENE_LANDING, /* that skip asked, until the scene's stretch ends */
+    SCENE_PAUSE,   /* START over a scene: the game opens its own pause over the video */
+    MOVIE_PAUSE    /* START over a movie: the port's copy of the DS's scene pause, the game held */
 };
 
 static SRWLOCK lock = SRWLOCK_INIT;
@@ -194,12 +186,12 @@ static void movie_skip(void)
     }
 }
 
-/* The port's pause over a movie's video (MOVIE_PAUSE): the state it came from, its entry lit (0
- * Continue, 1 Skip) and since when (its blink), the game's language then; and the buttons held as it
- * opened, none taken until all are let go (the START that opened it). */
-static LONG pause_from;
-static int pause_selected, pause_language, pause_fresh;
-static volatile double pause_lit_from;
+/* The pause over a movie's video (MOVIE_PAUSE) */
+static LONG pause_from;                   /* the state it paused */
+static int pause_selected;                /* 0 Continue, 1 Skip */
+static int pause_language;                /* the game's, as it opened */
+static int pause_fresh;                   /* the START that opened it is still held */
+static volatile double pause_lit_from;    /* when the entry began to blink */
 #define PAUSE_BLINK_SECONDS (16.0 / 60.0) /* Input_DebounceSlot: 16 frames each look */
 static double seconds_now(void);
 
@@ -270,9 +262,8 @@ int khdays_movie_hd_last_shown(const char *stem)
     return shown[0] != '\0' && strcmp(shown, stem) == 0;
 }
 
-/* A movie's HD videos, played in a row in its place: a mod's hd<id> alone, or the player's own as the
- * scene map's mv#<id> says (hd<id> whole without it), each a file, the id of its subtitles (the stem
- * without its "hd", as the movies' are named) and the part of it played. */
+/* The HD videos played in a row in place of a movie: a mod's hd<id>, or the player's as the scene
+ * map's mv#<id> says (hd<id> whole without an entry), each with its subtitles' id and its part. */
 typedef struct MoviePart {
     char file[1024], stem[64], subtitles[64];
     double from, until;
@@ -289,7 +280,8 @@ static int movie_parts(const char *movie)
     snprintf(key, sizeof(key), "mv#%s", movie);
     e = khdays_scene_map_find(khdays_scenes_map(), key);
     snprintf(relative, sizeof(relative), "movies/hd%s.mp4", movie);
-    grown = (MoviePart *)realloc(parts, (size_t)(e != NULL && e->stem_count > 1 ? e->stem_count : 1) * sizeof(MoviePart));
+    grown =
+        (MoviePart *)realloc(parts, (size_t)(e != NULL && e->stem_count > 1 ? e->stem_count : 1) * sizeof(MoviePart));
     if (grown == NULL) {
         return 0;
     }
@@ -532,8 +524,7 @@ int khdays_movie_hd_running(void)
 
 void SoundMgr_StopAllSePlayers(void); /* the game's: what the event pause's Skip stops */
 
-/* When the game's picture began to go down before a scene's videos, and came back after them (0 not
- * since the last course), on the performance counter. */
+/* When the game began to fade out before a scene's videos and back in after them (0: not yet) */
 static volatile double fade_began, back_began;
 
 static double seconds_now(void)
@@ -763,8 +754,7 @@ static int scene_course(const char *key, uint32_t event_state, char *const *stem
     if (chapter) {
         scene_begin(); /* from the Theater's list, at once */
     } else {
-        /* the game goes on, going down to black and silence, and is held once there (poll): cut at
-         * once, a sound it was making was cut off and a moving picture gave way to the video */
+        /* the game fades out first and is held once black (poll), so no sound or picture is cut off */
         fade_began = seconds_now();
         InterlockedExchange(&state, SCENE_FADE);
         khdays_log("scene %s: the game goes down to black first", key);
@@ -969,8 +959,7 @@ void khdays_movie_hd_host_buttons(uint16_t buttons)
     }
     AcquireSRWLockExclusive(&lock);
     if (state_now() == MOVIE_PAUSE) {
-        /* the pause's buttons, as PauseMenu_Frame takes them: up and down move between its two
-         * entries, A takes one, START (or B) goes on with the video */
+        /* the pause's buttons as PauseMenu_Frame takes them: up/down choose, A takes, START or B goes on */
         const uint16_t pressed = (uint16_t)(buttons & ~host_last);
         host_last = buttons;
         if (pause_fresh) {

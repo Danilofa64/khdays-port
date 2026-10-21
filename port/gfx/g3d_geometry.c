@@ -932,9 +932,8 @@ static int clip_plane_f(const KhdaysG3dClipVertex *in, int n, KhdaysG3dClipVerte
     return m;
 }
 
-/* A mod's depths (z / w): the farthest of a room's, then a sky's band, short of 1 (the farthest
- * CLEAR_DEPTH clears to). A sky's layers take its steps from the far end, each nearer than the ones
- * painted before it: KH2 paints its skies in turn with no depth among them. */
+/* A mod's depths (z / w): a room's farthest, then the sky's band behind it, short of 1. Each sky
+ * layer is a step nearer than the one before, as KH2 paints its skies in turn. */
 #define MOD_FAR 0.9999f
 #define MOD_SKY_END 0.99995f
 #define MOD_SKY_LAYERS 32
@@ -957,8 +956,7 @@ static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, c
     if (det != 0 && ((front && !(attr & 0x80)) || (!front && !(attr & 0x40)))) {
         return;
     }
-    /* cut by the volume but its far plane (the DS's far-plane rule neither: a KH2 room's floor, a few
-     * large triangles, went whole where one reached past it) */
+    /* clipped on every side but the far one: a big floor triangle reaching past it must not vanish */
     memcpy(a, v, sizeof(*v) * n);
     for (int axis = 0; axis < 3 && count > 0; ++axis) {
         if (axis == 2) {
@@ -971,12 +969,10 @@ static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, c
     if (count < 3) {
         return;
     }
-    /* the depth, once cut by its true one: past the far plane at it, and a sky's layer behind all of that.
-     * Set before the cut, a sky triangle reaching behind the camera was cut at depths it did not have and
-     * hid the room. */
+    /* the depth, only after clipping with the true one: past the far plane, at it; a sky, its layer */
     {
-        const int layer = KHDAYS_G3D_SKY_LAYER(in->flags) < MOD_SKY_LAYERS ? KHDAYS_G3D_SKY_LAYER(in->flags)
-                                                                         : MOD_SKY_LAYERS;
+        const int layer =
+            KHDAYS_G3D_SKY_LAYER(in->flags) < MOD_SKY_LAYERS ? KHDAYS_G3D_SKY_LAYER(in->flags) : MOD_SKY_LAYERS;
         const float sky = MOD_SKY_END - (float)(layer - 1) * ((MOD_SKY_END - MOD_FAR) / (float)MOD_SKY_LAYERS);
         for (int i = 0; i < count; ++i) {
             if (layer > 0) {

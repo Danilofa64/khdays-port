@@ -142,10 +142,9 @@ void khdays_scene_field_record(void *record, int from_argument)
     }
 }
 
-/* The game's own skip asked for a stretch, as the event pause's Skip does (PauseMenu_Frame: the sound
- * effects stopped, the skip request at the state's +0x588 set), at the machine's first step from
- * `skip_frame`: for a scene the map skips (a movie's HD video before it showed it), and with
- * KHDAYS_TEST_SKIP_AT=<frames> that many frames after any stretch begins. */
+/* Asks the game's own skip, as the pause's Skip does (sound effects stopped, the request at +0x588
+ * set), from frame `skip_frame` on: for a scene the map skips, or KHDAYS_TEST_SKIP_AT frames into any
+ * stretch. */
 static uint32_t skip_state, skip_frame;
 
 /* KHDAYS_TEST_SCENE=<slot>:<entry> (4:6 for EV_S#6): the first scene path the event's script holds
@@ -212,11 +211,9 @@ const char *khdays_scene_current(void)
     return current;
 }
 
-/* The scenes' mark of a skip (GameState field 0x2484, a bit): a scene's skip path sets it (EV_S#38's
- * at +0x34), and every scene starts by testing it and skips itself while it is set, so skipping one
- * scene of a chain skips the scenes after it (a mission's end: Axel back, then the ice cream) until a
- * scene clears it (EV_S#196 does at its end). The port's own skip -- the HD videos watched, or a scene
- * the HD movie before it showed -- clears it again, so the next scene plays. */
+/* The scenes' skip mark (GameState field 0x2484): a skipped scene sets it and the scenes after it skip
+ * themselves while it is set. The port clears it after its own skip (HD videos watched), so the next
+ * scene of a chain still plays. */
 #define SKIP_MARK 0x2484
 extern void GameState_SetField(int field, int bits, int value);
 static int map_skip; /* the scene running now was skipped as the scene map says (not by the player) */
@@ -266,8 +263,9 @@ void khdays_scene_target(unsigned int state, int operand)
             } else if (e->off) {
                 fprintf(stderr, "ds (off)\n");
             } else if (e->skip) {
-                fprintf(stderr, "%s\n", khdays_movie_hd_last_shown(e->stems[0]) ? "skipped (the HD movie showed it)"
-                                                                                : "ds (its HD movie not shown)");
+                fprintf(stderr, "%s\n",
+                        khdays_movie_hd_last_shown(e->stems[0]) ? "skipped (the HD movie showed it)"
+                                                                : "ds (its HD movie not shown)");
             } else {
                 fprintf(stderr, "hd");
                 for (int i = 0; i < e->stem_count; ++i) {

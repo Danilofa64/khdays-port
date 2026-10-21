@@ -99,8 +99,7 @@ static uint16_t le16(const uint8_t *p)
     return (uint16_t)(p[0] | p[1] << 8);
 }
 
-/* A file by its UTF-8 path. Windows's fopen reads a path in the system's code page, so one with letters
- * outside it (a folder of José's, of Días) is opened there through its wide form. */
+/* Opens a file by its UTF-8 path; on Windows through the wide path, so names like "Días" work. */
 static FILE *open_utf8(const char *path, const char *mode)
 {
 #ifdef _WIN32

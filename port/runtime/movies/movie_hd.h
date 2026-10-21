@@ -1,6 +1,6 @@
-/* The course of an HD movie: with an HD video (data/cutscenes/cinematics/hd<id>.mp4) and Video `hd`,
- * the window shows it with its sound while the game plays its own movie unseen and silent, then holds
- * the game until the video ends; START stops it where the DS lets the movie be skipped. */
+/* HD movies and scenes: with Video `hd` and the video there (data/cutscenes/cinematics/hd<id>.mp4),
+ * the window shows it with its sound while the game plays its own movie unseen and silent, and holds
+ * the game until it ends. START pauses it where the DS lets the movie be skipped. */
 #ifndef KHDAYS_MOVIE_HD_H
 #define KHDAYS_MOVIE_HD_H
 
@@ -44,11 +44,10 @@ uint16_t khdays_movie_hd_game_buttons(uint16_t buttons);
 
 /* Either thread: whether the window shows the HD video. */
 int khdays_movie_hd_showing(void);
-/* Either thread: whether a course runs: the HD video shown, or a scene's about to be (the game's
- * picture and sound going down to black and silence first). */
+/* Either thread: whether an HD video shows or a scene's is about to (the game fading out first). */
 int khdays_movie_hd_running(void);
-/* Any thread: how much of the game's picture and sound comes through around a scene's videos, 1 all,
- * 0 none: they go down over a moment before the videos, and come up again over one after them. */
+/* Any thread: how much of the game's picture and sound shows, 1 to 0, as it fades around a scene's
+ * videos. */
 float khdays_movie_hd_game_level(void);
 /* Either thread: whether the game's own movie plays (a stream opened, its playback not stopped). */
 int khdays_movie_game_playing(void);
@@ -61,24 +60,19 @@ void khdays_movie_hd_poll(void);
  * thread reads none). */
 void khdays_movie_hd_host_buttons(uint16_t buttons);
 
-/* START over a movie's HD video, where the DS lets START skip the movie, pauses it under the DS's scene
- * pause (the game has none over its movies): Continue goes on, Skip skips as START did. Whether it is
- * open, with its entry lit (0 Continue, 1 Skip), that entry's look in its blink (1 or 2) and the
- * game's language (1 English to 5 Spanish), for the window to draw it (host/screens/movie_pause.h). */
+/* The pause START opens over a movie's HD video (a copy of the DS's scene pause: Continue, Skip).
+ * Whether it is open, the entry chosen (0 Continue, 1 Skip), its blink (1 or 2) and the game's
+ * language (1 English to 5 Spanish), for the window to draw it (host/screens/movie_pause.h). */
 int khdays_movie_hd_movie_pause(int *selected, int *lit, int *language);
 
-/* Whether the course keeps its video paused (its own pause, or the game's over a scene): the settings
- * menu closing leaves it so. */
+/* Whether a pause holds the video (so closing the settings menu does not resume it). */
 int khdays_movie_hd_course_paused(void);
 
-/* The theater's HD scenes. The game's thread, as an event's scene begins its skippable
- * stretch (`state` the event machine's, a reference): with Video `hd`, the videos `stems` in a row
- * (data/cutscenes/cinematics/<stem>.mp4, a mod's cutscenes/cinematics/ first) shown in its place, the
- * game held meanwhile, each the part of it between `from` and `until` seconds (NULL, or 0: its own
- * start or end). The game goes down to black and silence first, the videos come up from them and go
- * down to them at their end, and the game comes up again after them. Returns 1 when the course
- * starts, 0 when the scene plays as the game's (no Video `hd`, a video missing or unplayable: said in
- * the log once). */
+/* The theater's HD scenes. The game's thread, as an event's scene begins its skippable stretch
+ * (`state` the event machine's reference): with Video `hd`, the videos `stems` play in a row in its
+ * place (a mod's cutscenes/cinematics/<stem>.mp4 first), each from `from` to `until` seconds (NULL or
+ * 0: the whole video), the game held and faded out around them. Returns 0 when the scene plays as the
+ * game's (no Video `hd`, or a video missing: logged once). */
 int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, const double *from, const double *until,
                           int count);
 
@@ -87,15 +81,13 @@ int khdays_movie_hd_scene(const char *key, uint32_t state, char *const *stems, c
  * as the event pause's Skip does. */
 void khdays_movie_hd_scene_step(uint32_t state, void *host_state);
 
-/* The game's thread: the scene's stretch has ended (its skip target cleared, or its event closed):
- * the course ends and the game is shown again. Returns 1 when the port's own skip ended it (its
- * videos over), not the player's Skip in the game's pause. */
+/* The game's thread: the scene's stretch has ended and the game shows again. Returns 1 when the
+ * port's own skip ended it (its videos over), 0 for the player's Skip. */
 int khdays_movie_hd_scene_ended(void);
 
-/* The game's thread, each frame: START during a scene's videos paused them and let the game open its
- * own pause (Continue, Skip); `pause_open` whether it is open (PauseMenu_GetMode), `skip_requested`
- * whether the event's skip request is set. Once it closes, Skip leaves the game to unwind to the
- * scene's end; Continue (or a pause that never opened) holds the game again and the video goes on. */
+/* The game's thread, each frame, after START paused a scene's videos and let the game open its pause:
+ * `pause_open` (PauseMenu_GetMode) and `skip_requested` (the event's skip). Skip lets the game run to
+ * the scene's end; Continue holds the game again and the video goes on. */
 void khdays_movie_hd_scene_frame(int pause_open, int skip_requested);
 
 /* Whether the game's pause is over a scene's paused video (the window draws the pause over it). */

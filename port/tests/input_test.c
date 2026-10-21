@@ -1791,8 +1791,8 @@ static void test_analog(void)
      * the D-pad's own eighth of the stick's angle leaves it as it is */
     for (size_t i = 0; i < sizeof(directions) / sizeof(directions[0]); ++i) {
         const unsigned d = directions[i].dpad;
-        const unsigned swapped = (d & UP ? DOWN : 0) | (d & DOWN ? UP : 0) | (d & LEFT ? RIGHT : 0) |
-                                 (d & RIGHT ? LEFT : 0);
+        const unsigned swapped =
+            (d & UP ? DOWN : 0) | (d & DOWN ? UP : 0) | (d & LEFT ? RIGHT : 0) | (d & RIGHT ? LEFT : 0);
         const int stick = khdays_analog_heading(directions[i].x, directions[i].y);
         CHECK(khdays_analog_heading_turned(stick, game_heading(d)) == stick);
         CHECK(khdays_analog_heading_turned(stick, game_heading(swapped)) == game_heading(swapped));

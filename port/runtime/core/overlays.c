@@ -74,8 +74,8 @@ void khdays_overlay_started(int id)
     }
 }
 
-/* FS_UnloadOverlayImage ran for overlay `id`: no longer loaded, though its bytes stay until another
- * overlay starts over them. */
+/* The game unloaded overlay `id` (FS_UnloadOverlayImage); its bytes stay until another overlay
+ * overwrites them. */
 void khdays_overlay_ended(int id)
 {
     if (count < 0) {

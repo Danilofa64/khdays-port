@@ -530,7 +530,7 @@ void plot(Polygon p, inout Pixel px, Attrs at, uint edge, uint wbuffer)
         if (edge == 0u) return;
         alpha = 31;
     } else if (((uint)p.flags & G3D_MOD) != 0u) {
-        // a mod's vertex alpha across the polygon (the DS has one a polygon): KH2's skies and glows fade so
+        // a mod's vertex alpha, blended across the polygon
         alpha = (int)((float)alpha * saturate(at.a * w) + 0.5f);
         if (alpha == 0) return;
     }

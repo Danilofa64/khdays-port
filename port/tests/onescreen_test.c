@@ -1041,11 +1041,9 @@ static void test_split_under_3d(void)
     }
 }
 
-/* The 3D on both screens as a player's log showed it in an event: engine A changing screens at every
- * VBlank but one now and then (the game's frame late as a dialog opens), once twice 3 VBlanks apart.
- * The layout stays the 3D on both screens (it had been the upper screen's 3D, then the lower's, for
- * the two VBlanks after each skip: the cutscene flickered); then 8 VBlanks with engine A below and
- * no change give the lower screen's 3D alone. */
+/* The 3D on both screens with a swap skipped now and then (the game's frame late as a dialog opens):
+ * the layout must stay (it used to flicker for two VBlanks after each skip). Then 8 VBlanks with no
+ * swap and engine A below give the lower screen's 3D alone. */
 static void test_swap_skips(void)
 {
     static const char screens[] = "101010010100100101010"; /* engine A: 1 the upper screen, 0 the lower */

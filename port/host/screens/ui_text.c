@@ -716,8 +716,8 @@ static const char *const texts[TXT_COUNT][5] = {
                                 "Tienes la %s; ha salido la %s. Descargar la instala: el juego se cierra, el "
                                 "instalador actualiza esta copia conservando tus partidas, ajustes y mods, y vuelve a "
                                 "abrir el juego."},
-    [TXT_UPDATE_GETTING] = {"Downloading %s", "Téléchargement de la %s", "%s wird heruntergeladen",
-                            "Download della %s", "Descargando la %s"},
+    [TXT_UPDATE_GETTING] = {"Downloading %s", "Téléchargement de la %s", "%s wird heruntergeladen", "Download della %s",
+                            "Descargando la %s"},
     [TXT_UPDATE_PROGRESS] = {"%d%% (%.1f of %.1f MB)", "%d %% (%.1f sur %.1f Mo)", "%d %% (%.1f von %.1f MB)",
                              "%d%% (%.1f di %.1f MB)", "%d %% (%.1f de %.1f MB)"},
     [TXT_UPDATE_FAILED] = {"The update could not be installed", "La mise à jour n'a pas pu être installée",

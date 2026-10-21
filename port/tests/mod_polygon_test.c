@@ -1,6 +1,6 @@
-/* A mod's polygons into a list (gfx/g3d.h khdays_g3d_mod_polygon): cut by the near plane with their true
- * depth, a sky's then put behind everything else, each layer in front of the ones painted before it, and
- * nothing hidden or cut at the game's far plane. The clip space is Days's field's: z = w - 0.2 (its near plane at w 0.1, no far one).
+/* A mod's polygons into a list (khdays_g3d_mod_polygon): clipped at the near plane with their true
+ * depth, sky layers behind everything in painting order, nothing lost at the far plane, vertex alpha
+ * kept. The clip space is Days's field's: z = w - 0.2 (near plane at w 0.1, no far plane).
  *   ctest --test-dir build/port/obj-x64 -R khdays-mod-polygon --output-on-failure */
 #include "../gfx/g3d.h"
 
@@ -48,7 +48,7 @@ int main(void)
      * behind before the cut, its cut corner came out at the near plane and hid the room */
     const KhdaysG3dClipVertex around[3] = {at(-30, -10, 50), at(30, -10, 50), at(0, -10, -60)};
     khdays_g3d_mod_polygon(around, 3, BOTH_SIDES, 0, -1, 0, 1);
-    /* 1 and 2: the sky's dome, then its clouds painted over it though farther: the clouds stay in front */
+    /* 1 and 2: the dome, then the clouds painted after it though farther: the clouds stay in front */
     const KhdaysG3dClipVertex dome[3] = {at(-100, 50, 300), at(100, 50, 300), at(0, 150, 300)};
     const KhdaysG3dClipVertex clouds[3] = {at(-200, 100, 600), at(200, 100, 600), at(0, 300, 600)};
     khdays_g3d_mod_polygon(dome, 3, BOTH_SIDES, 0, -1, 0, 1);

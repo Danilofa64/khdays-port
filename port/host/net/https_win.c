@@ -90,8 +90,7 @@ static int request_open(Request *r, const char *url, const char *agent, int time
     if (r->connection == NULL) {
         goto done;
     }
-    r->request = WinHttpOpenRequest(r->connection, L"GET", path, NULL, WINHTTP_NO_REFERER,
-                                    WINHTTP_DEFAULT_ACCEPT_TYPES,
+    r->request = WinHttpOpenRequest(r->connection, L"GET", path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
                                     parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0);
     if (r->request == NULL) {
         goto done;

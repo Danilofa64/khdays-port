@@ -1,12 +1,8 @@
-/* Whether a newer release of the port is out, and its installer run to update this copy. At every
- * start a thread asks GitHub for the latest release (KHDAYS_UPDATE_SOURCE, an address, asks there
- * instead: for a test, which may then give its installer from any address); what it found is kept
- * in saves/updates.txt, and the window tells the player on the title screen (the settings menu's
- * question). Download then fetches the release's installer, checks it against the SHA-256 GitHub
- * gives for it and runs it, the game closing; where this copy cannot update itself (not an
- * installed copy, or under Proton or Wine: update_install.h) Download opens the release's page. A
- * headless run (KHDAYS_HEADLESS) never asks, nor does a scripted one (KHDAYS_INPUT: the walks, the
- * tests) without a test's source, nor KHDAYS_UPDATES=off. */
+/* Updates. At start a thread asks GitHub for the latest release (KHDAYS_UPDATE_SOURCE asks another
+ * address, for tests) and keeps the answer in saves/updates.txt; the title screen offers a newer one.
+ * Download fetches its installer, checks its SHA-256 against GitHub's and runs it, closing the game;
+ * a copy that cannot update itself (not installed, or under Proton/Wine) opens the release's page
+ * instead. Headless and scripted runs never ask, nor KHDAYS_UPDATES=off. */
 #ifndef KHDAYS_HOST_UPDATES_H
 #define KHDAYS_HOST_UPDATES_H
 
@@ -16,8 +12,7 @@
 extern "C" {
 #endif
 
-/* The player's answers to the offer: the release's page, later, not this release again, and the
- * downloaded installer run (the game then closes). */
+/* The player's answers: the release's page, later, skip this release, run the downloaded installer. */
 enum { KHDAYS_UPDATE_DOWNLOAD, KHDAYS_UPDATE_LATER, KHDAYS_UPDATE_SKIP, KHDAYS_UPDATE_INSTALL };
 
 /* The installer's download. */

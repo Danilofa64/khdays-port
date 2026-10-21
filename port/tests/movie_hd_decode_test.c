@@ -62,8 +62,8 @@ int main(int argc, char **argv)
     }
     {
         const double took = (double)(SDL_GetTicks() - start) / 1000.0;
-        printf("movie_hd_decode_test: status %d after %.2f s, %ld pictures taken, from %.3f s to %.3f s%s%s\n",
-               status, took, pictures, first, latest, status == -1 ? ": " : "", status == -1 ? why : "");
+        printf("movie_hd_decode_test: status %d after %.2f s, %ld pictures taken, from %.3f s to %.3f s%s%s\n", status,
+               took, pictures, first, latest, status == -1 ? ": " : "", status == -1 ? why : "");
         printf("movie_hd_decode_test: the fades: the first picture at %.2f, the last at %.2f, the most %.2f\n",
                first_level, last_level, most);
         khdays_hd_close();

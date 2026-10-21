@@ -948,8 +948,7 @@ int khdays_present_refresh(void)
     return 1;
 }
 
-/* Whether the frame's 2D memory holds tiles a mod draws instead (its map, zeros while HD graphics
- * are off: runtime/mods/tiles2d.h). */
+/* Whether the frame's 2D has tiles a mod draws instead (runtime/mods/tiles2d.h). */
 static int has_hd_tiles(const KhdaysFramePackage *p)
 {
     for (size_t i = 0; i < SDL_arraysize(p->hd2d); ++i) {
@@ -1044,8 +1043,7 @@ static void present(const KhdaysFramePackage *p, int first)
                 return;
             }
         }
-        /* a mod's tiles in the 2D: drawn at this resolution even without 3D (at the DS's own size its
-         * sheet would be averaged down to the DS's pixels, then stretched) */
+        /* a mod's tiles are drawn at full resolution even without 3D, or they would come out blurred */
         const int hd_tiles = has_hd_tiles(p);
         khdays_raster3d_set_one_screen(picture);
         khdays_raster3d_set_hud_shapes(picture ? composition.shapes3d : NULL, picture ? composition.shape3d_count : 0);
@@ -1262,9 +1260,8 @@ static void draw_hd_movie(void)
     }
 }
 
-/* The port's pause over a movie's paused video (runtime/movies/movie_hd.h): the video darkened as the DS
- * darkens its screens under its pause (by 8 of 16), the DS's panel over it, the DS's screen 4:3 in the
- * middle of the video. */
+/* The pause over a paused HD movie (runtime/movies/movie_hd.h): the video darkened as the DS darkens
+ * under its pause, the panel centred over it at 4:3. */
 static void draw_movie_pause(void)
 {
     int selected, lit, language;
