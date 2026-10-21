@@ -64,7 +64,11 @@ is chosen). It changes at once and is kept in the settings.
    - a **3D texture**: any PNG (JPEG, TGA and BMP are converted); one that is
      not the same whole multiple of the original on both sides is drawn
      stretched by the port, and the tool says so. "For every palette of this
-     texture" saves the form the port uses whatever the palette.
+     texture" saves the form the port uses whatever the palette. To paint one
+     in HD, "Export this texture..." writes it at 1 to 8 times its size (each
+     pixel repeated: the model's UVs stay as they are), and "Export every 3D
+     texture..." writes all of them at that size into a folder you choose, as
+     `<texture>.png` where a mod's replacement of each goes under `graphics/`.
    - a **2D tile sheet**: a PNG of the sheet's size times a whole number (1 to
      255), as the port requires; indexed, it is drawn with the game's palettes,
      otherwise with its own colours. (Editing it as a picture: see 6.)
@@ -380,6 +384,13 @@ starts with are marked.
 
 writes every 2D sheet into `<folder>` as `<sheet>.png`, coloured as the window
 first shows it (with `mod:`, the sheet as that mod has it and its rows).
+
+```powershell
+.\build\studio\release\khdays-studio.exe --export-textures <folder> [scale:<n>]
+```
+
+writes every 3D texture the graphics dump has into `<folder>` as `<texture>.png`,
+`n` (1 to 8) times its size with each pixel repeated.
 
 ```powershell
 .\build\studio\release\khdays-studio.exe --check-sheets

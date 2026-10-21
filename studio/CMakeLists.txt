@@ -142,6 +142,7 @@ add_library(khdays-studio-core STATIC
     core/missions/mission_edit.cpp
     core/missions/enemy_names.cpp
     core/texts/texts.cpp
+    core/models/texture_export.cpp
     core/models/model_export.cpp
     core/models/model_files.cpp
     core/mods/mods.cpp
