@@ -2689,7 +2689,7 @@ static void emit_obtained(void)
                 khdays_ui_emit(KHDAYS_UI_TEXT, &e);
                 if (c->hd_image >= 0) {
                     e.image = c->hd_image;
-                    e.slot |= KES_DIRECT;
+                    e.slot |= KES_DIRECT | KES_FINE;
                     khdays_ui_emit(KHDAYS_UI_TEXT, &e);
                 }
             }
@@ -2845,7 +2845,7 @@ static void emit(void)
                     khdays_ui_emit(KHDAYS_UI_TEXT, &e);
                     if (c->hd_image >= 0) {
                         e.image = c->hd_image;
-                        e.slot = (uint32_t)c->bg | KES_DIRECT;
+                        e.slot = (uint32_t)c->bg | KES_DIRECT | KES_FINE;
                         khdays_ui_emit(KHDAYS_UI_TEXT, &e);
                         e.image = c->image;
                         e.slot = (uint32_t)c->bg;
@@ -2873,7 +2873,7 @@ static void emit(void)
             khdays_ui_emit_following(KHDAYS_UI_TEXT, &e, &anchor);
             if (m->hd_image >= 0) {
                 e.image = m->hd_image;
-                e.slot |= KES_DIRECT;
+                e.slot |= KES_DIRECT | KES_FINE;
                 khdays_ui_emit_following(KHDAYS_UI_TEXT, &e, &anchor);
             }
             for (int my = 0; my < EXTRA_ROWS; ++my) {
