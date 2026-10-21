@@ -4,6 +4,84 @@ PNG fonts replace NFTR artwork through the existing mod loader. Menu-specific
 font choices are documented in [Scoped HD font mappings](FONT_MAPPING.md).
 No new third-party dependency is required.
 
+## Generating KH2 fonts
+
+The installer's HD menus step runs `tools/hd/kh2_fonts.py` and puts five generated
+PNG/JSON pairs in `mods/HD PACK/fonts/text/`. The installer ships the generator,
+not font images, original NFTRs, advance tables, or reference JSONs. It extracts
+these entries from the player's own 1.5+2.5 `kh2_first` archive:
+
+- `msg/us/fontinfo.bar`: BAR v1 directory, type-2 entries `sys` and `evt`, one
+  unsigned byte per native advance. In the inspected file these are at 0x50
+  (280 bytes) and 0x170 (336 bytes); the reader follows the directory instead
+  of requiring those offsets.
+- `msg/us/fontimage.bar`: remastered `US_fontimage_bar0.png` (SYS) and
+  `US_fontimage_bar1.png` (EVT). Other sheets are not used.
+
+Manual generation from an extraction, using the tool's existing repository or
+installed layout:
+
+```powershell
+python tools/hd/kh2_fonts.py C:/extracted/kh2_first.hed_out --data data/extracted/<hash> --mod "HD PACK"
+```
+
+The Days input is the player's extracted `nitrofs/text/*.nftr`, not a prebuilt
+JSON. The reader handles FINF pointers, CGLP cell counts including trailing
+alignment bytes, and chained direct/table/scan CMAPs. The five European Days
+fonts inspected declare UTF-16 encoding (FINF encoding byte 1). The tool refuses
+other encodings rather than interpreting their codes as Unicode.
+
+| Days resource | KH2 font | Reference cell | Scale | Baseline offset |
+| --- | --- | --- | --- | --- |
+| `font_eu_08.nftr`, `font_eu_08s.nftr` | SYS | 18×24 | 0.5 | 2 |
+| `font_eu_10.nftr`, `font_eu_10s.nftr` | EVT | 24×32 | 0.35 | 0 |
+| `font_eu_10all.nftr` | SYS | 18×24 | 0.41 | 0 |
+
+SYS uses 28 columns, 280 slots and a 512×256 reference image. EVT uses 21 columns,
+336 slots and a 512×512 reference image; its row stride and cell height are both
+32, not 38. Atlas coordinates follow slot order. The collection's sheets are
+twice those reference dimensions. The tool preserves their resolution and
+requires a uniform integer resolution multiplier. Resolution never changes
+metrics or scale. Bearings are zero, logical drawing width is the full cell,
+baseline and default line feed are the native cell height. All real glyph
+advances are copied exactly from BAR bytes, without prescaling or rounding.
+The runtime applies the one uniform scale during fractional layout.
+
+Space is a KH2 message command, not an ordinary fontinfo character. For
+compatibility with the tested font mod, space, nonbreaking space and ideographic
+space use an explicitly transparent last slot with native advances 6 (SYS) and
+8 (EVT). These are chosen layout defaults, not measurements recovered from BAR.
+No pair kerning is invented: fontinfo's type-2 tables contain advances only.
+
+The international character encoding and intentional aliases were independently
+expressed from the user's KH2/Days reference tables. No OpenKH implementation or
+reference JSON is distributed. First occurrences of duplicate punctuation win;
+fullwidth ASCII aliases use the corresponding normal glyph. Unicode Roman
+numerals I–XII use individual atlas pictures, preserving ordinary Latin I/V/X.
+The XIII picture has no single corresponding Unicode numeral and is not
+substituted for a Latin sequence. Control codes, unused slots, Japanese extension
+tables and unsupported characters are not assigned fabricated mappings.
+
+Output glyph arrays retain every native KH2 slot. The charmap includes only
+supported codepoints present in each original Days NFTR. Missing characters use
+the existing secondary PNG / original NFTR fallback chain with no index shifts.
+The generator also writes the approved scoped defaults to
+`mods/HD PACK/fonts/mappings.json`: camp, field tutorials, bottom-screen HUD,
+mission results, shops and pickup names use SYS through `font_eu_10all`;
+diary/profiles and mission summary/objectives/rewards bodies keep EVT through
+`font_eu_10`. Command overrides are left unset. These are routing configuration,
+not extracted font data. Other mods are not changed. An installer update detects
+the tool change and rebuilds HD PACK once.
+
+Validation: `python tools/hd/tests/kh2_fonts_test.py` uses synthetic BAR/NFTR/PNG
+files, including relocated tables, all three CMAP methods, compressed NFTRs,
+invalid inputs, aliases, consecutive unsupported characters, space policy,
+conversion alpha, repeatable output and 1×/2×/4× image resolutions.
+Local development additionally compared all 616 native advances and every
+supported mapping against the supplied reference using the player's files.
+For in-game verification enable HD PACK, disable any higher-priority font mod,
+and check dialogue, menus, shadows, button fallback and localized punctuation.
+
 ## Files and glyph identity
 
 Keep the original resource path under the mod's `fonts/` directory:

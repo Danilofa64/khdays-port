@@ -418,7 +418,7 @@ def to_recycle_bin(path: Path) -> None:
 # The tools that make the maintainer's mods/HD PACK (the HD menus and HUD, both collections) and the
 # theater's videos (1.5+2.5), each with its arguments: {mare}, {settings} the 1.5+2.5 theater's and
 # settings menu's files (their original/ folder), {ddd} 2.8's kh3d_first (its original/ and
-# remastered/), {hand} KH2's title sheet (kh2_first, remastered), {movies} the theater's videos.
+# remastered/), {kh2} KH2's kh2_first extraction, {hand} its title sheet, {movies} the theater's videos.
 HD_MENU_TOOLS = [
     ("theater_title.py", ["{mare}"]),
     ("theater_settings.py", ["{settings}"]),
@@ -427,6 +427,7 @@ HD_MENU_TOOLS = [
     ("theater_cine.py", ["{mare}"]),
     ("save_screen.py", ["{ddd}", "{mare}"]),
     ("ddd_camp.py", ["{ddd}", "{mare}", "{settings}"]),
+    ("kh2_fonts.py", ["{kh2}"]),
 ]
 HD_VIDEO_TOOLS = [
     ("theater_movies.py", ["{mare}", "--movies", "{movies}", "--videos", "--subtitles", "--music"]),
@@ -517,7 +518,14 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
 
     repository = HERE.parent
     hand = args.kh2 / "remastered" / HAND / HAND_ASSET
-    places = {"mare": args.mare, "settings": args.settings, "ddd": args.ddd, "hand": hand, "movies": args.movies}
+    places = {
+        "mare": args.mare,
+        "settings": args.settings,
+        "ddd": args.ddd,
+        "kh2": args.kh2,
+        "hand": hand,
+        "movies": args.movies,
+    }
     # the archives the sources are extractions of, and how a file there names its entry
     sources = [
         ("Mare", args.mare, "original"),
@@ -556,6 +564,8 @@ def trace_inputs(args: argparse.Namespace) -> dict[str, Any]:
                 ]
                 if (tool, template) in HD_MENU_TOOLS:
                     command_line += ["--mod", "trace"]
+                if tool in DATA_TOOLS:
+                    command_line += ["--data", str(args.data.resolve())]
                 subprocess.run(command_line, cwd=root, check=True, env={**os.environ, "KHDAYS_TRACE_LOG": str(log)})
             for line in log.read_text(encoding="utf-8").splitlines():
                 kind, _, raw = line.partition("\t")
@@ -630,7 +640,7 @@ def movies_folder(folder: Path) -> Path:
     return folder / MOVIES
 
 
-DATA_TOOLS = {"theater_mission.py", "theater_cine.py", "save_screen.py", "ddd_camp.py"}  # take --data
+DATA_TOOLS = {"theater_mission.py", "theater_cine.py", "save_screen.py", "ddd_camp.py", "kh2_fonts.py"}  # take --data
 
 MESSAGES.update(
     {
@@ -843,6 +853,7 @@ def build_hd(args: argparse.Namespace) -> dict[str, Any]:
             "mare": src / "Mare.hed_out" / "original",
             "settings": src / "SettingMenu.hed_out" / "original",
             "ddd": src / "kh3d_first.hed_out",
+            "kh2": src / "kh2_first.hed_out",
             "hand": src / "kh2_first.hed_out" / "remastered" / HAND / HAND_ASSET,
         }
         # the collections' files the tools read, made from their archives
