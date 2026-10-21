@@ -176,6 +176,7 @@ set(KHDAYS_PAD_ICONS
     "Xbox Series:xbox_rt" "Xbox Series:xbox_stick_l" "Xbox Series:xbox_stick_r" "Xbox Series:xbox_stick_l_press"
     "Xbox Series:xbox_stick_r_press" "Xbox Series:xbox_dpad_none" "Xbox Series:xbox_dpad_up"
     "Xbox Series:xbox_dpad_down" "Xbox Series:xbox_dpad_left" "Xbox Series:xbox_dpad_right"
+    "Xbox Series:xbox_dpad_horizontal" "Xbox Series:xbox_dpad_vertical"
     "Xbox Series:xbox_button_view" "Xbox Series:xbox_button_menu" "Xbox Series:xbox_guide"
     "Xbox Series:xbox_button_share"
     "PlayStation Series:playstation_button_color_cross" "PlayStation Series:playstation_button_color_circle"
@@ -186,7 +187,8 @@ set(KHDAYS_PAD_ICONS
     "PlayStation Series:playstation_button_l3" "PlayStation Series:playstation_button_r3"
     "PlayStation Series:playstation_dpad_none" "PlayStation Series:playstation_dpad_up"
     "PlayStation Series:playstation_dpad_down" "PlayStation Series:playstation_dpad_left"
-    "PlayStation Series:playstation_dpad_right" "PlayStation Series:playstation5_button_options"
+    "PlayStation Series:playstation_dpad_right" "PlayStation Series:playstation_dpad_horizontal"
+    "PlayStation Series:playstation_dpad_vertical" "PlayStation Series:playstation5_button_options"
     "PlayStation Series:playstation5_button_create" "PlayStation Series:playstation5_button_mute"
     "PlayStation Series:playstation5_touchpad" "PlayStation Series:playstation4_button_options"
     "PlayStation Series:playstation4_button_share" "PlayStation Series:playstation4_touchpad"
@@ -196,7 +198,8 @@ set(KHDAYS_PAD_ICONS
     "Nintendo Switch:switch_button_zl" "Nintendo Switch:switch_button_zr" "Nintendo Switch:switch_stick_l"
     "Nintendo Switch:switch_stick_r" "Nintendo Switch:switch_stick_l_press" "Nintendo Switch:switch_stick_r_press"
     "Nintendo Switch:switch_dpad_none" "Nintendo Switch:switch_dpad_up" "Nintendo Switch:switch_dpad_down"
-    "Nintendo Switch:switch_dpad_left" "Nintendo Switch:switch_dpad_right" "Nintendo Switch:switch_button_plus"
+    "Nintendo Switch:switch_dpad_left" "Nintendo Switch:switch_dpad_right" "Nintendo Switch:switch_dpad_horizontal"
+    "Nintendo Switch:switch_dpad_vertical" "Nintendo Switch:switch_button_plus"
     "Nintendo Switch:switch_button_minus" "Nintendo Switch:switch_button_home"
     "Xbox Series:controller_xboxseries" "PlayStation Series:controller_playstation5"
     "PlayStation Series:controller_playstation4" "PlayStation Series:controller_playstation3"
@@ -462,6 +465,7 @@ add_executable(khdays-native
     ui/player_names.cpp            # the players' names in multiplayer
     ui/pause.cpp                   # the pause's Retry line in Mission Mode
     ui/text.c
+    ui/button_icons.c              # the player's buttons drawn in the HD fonts' text
     ui/situation.c                 # the one-screen picture (specs/012)
     ui/situation_take.c
     ui/situation_decide.c          # what the game shows, from what it runs

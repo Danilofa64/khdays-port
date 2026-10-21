@@ -3,6 +3,7 @@
  * Original glyph samples never determine replacement coverage. See docs/HD_FONTS.md. */
 #include "text.h"
 #include "bg.h"
+#include "button_icons.h"
 #include "elements.h"
 #include "parts.h"
 #include "../gpu/gpu2d.h"
@@ -55,6 +56,7 @@ typedef struct GlyphOp {
     int paint_w;      /* Edited logical width clips artwork; ownership keeps the full cell. */
     double x_scale;   /* Zero retains the original geometry; fitting is an explicit run operation. */
     int native_glyph; /* resource stores a 16x16, 4-bpp snapshot from the original glyph blitter. */
+    int button, piece; /* the DS button the glyph draws (KHDAYS_BUTTON_*: its icon instead), which of its glyphs */
     /* The replacement artwork stays at x/y, but only this surviving rectangle
        is visible after partial clears. Coordinates are in DS pixels. */
     int clip_l, clip_t, clip_r, clip_b;
@@ -125,6 +127,7 @@ typedef struct Canvas {
     int command_cache;   /* Names cached by Ov002_DrawPanelRowText. */
     int editing_display; /* temporary command-list views can dirty published images */
     MappedImage *extra;
+    uint32_t button_signature; /* khdays_button_icons_signature its button icons were drawn with */
 } Canvas;
 
 static struct {
@@ -626,28 +629,27 @@ static void unbind_font(KhdaysRef font)
         }
 }
 
-/* FINF/CMAP index identity is independent of the replacement atlas order. */
-static void bind_charmap(const char *path, const void *font)
+/* Each glyph's character by the font's CMAP blocks (UINT32_MAX: none), `*count` glyphs (free it);
+   NULL when its tables cannot be read. */
+static uint32_t *font_codes(const void *font, uint32_t *count_out)
 {
-    if (khdays_hd_font_map_ready(path))
-        return;
     const uint32_t info = *(const uint32_t *)font;
     if (!info)
-        return;
+        return NULL;
     const uint32_t *finf = (const uint32_t *)KHDAYS_W(info);
     if (finf[2] < 8 || !finf[4])
-        return;
+        return NULL;
     const uint8_t *cell = (const uint8_t *)KHDAYS_W(finf[2]);
     const uint32_t stride = cell[2] | (uint32_t)cell[3] << 8;
     const uint32_t bytes = *(const uint32_t *)(cell - 4);
     if (!stride || bytes < 16 || (bytes - 16) / stride > 16384)
-        return;
+        return NULL;
     const uint32_t count = (bytes - 16) / stride;
     if (!count)
-        return;
+        return NULL;
     uint32_t *codes = (uint32_t *)malloc((size_t)count * sizeof(uint32_t));
     if (!codes)
-        return;
+        return NULL;
     for (uint32_t i = 0; i < count; ++i)
         codes[i] = UINT32_MAX;
     uint32_t map = finf[4];
@@ -680,9 +682,73 @@ static void bind_charmap(const char *path, const void *font)
         }
         map = next;
     }
-    if (valid && !map)
+    if (!valid || map) {
+        free(codes);
+        return NULL;
+    }
+    *count_out = count;
+    return codes;
+}
+
+/* FINF/CMAP index identity is independent of the replacement atlas order. */
+static void bind_charmap(const char *path, const void *font)
+{
+    if (khdays_hd_font_map_ready(path))
+        return;
+    uint32_t count = 0;
+    uint32_t *codes = font_codes(font, &count);
+    if (codes)
         khdays_hd_font_bind_charmap(path, codes, (int)count);
     free(codes);
+}
+
+/* The DS buttons the game's fonts' glyphs draw (button_icons.h), by font: for each glyph its button
+   and piece (button | piece << 5), 0 for the others; `buttons` NULL when its tables were unreadable. */
+typedef struct ButtonFont {
+    uint32_t info, glyphs, map, count;
+    uint8_t *buttons;
+} ButtonFont;
+static ButtonFont *button_fonts;
+static int button_font_count, button_font_room;
+
+static int glyph_button(const void *font, int glyph, int *piece)
+{
+    const uint32_t info = *(const uint32_t *)font;
+    *piece = 0;
+    if (!info)
+        return KHDAYS_BUTTON_NONE;
+    const uint32_t *finf = (const uint32_t *)KHDAYS_W(info);
+    ButtonFont *f = NULL;
+    for (int i = 0; i < button_font_count && !f; ++i)
+        if (button_fonts[i].info == info && button_fonts[i].glyphs == finf[2] && button_fonts[i].map == finf[4])
+            f = &button_fonts[i];
+    if (!f) {
+        if (button_font_count == button_font_room) {
+            const int room = button_font_room ? button_font_room * 2 : 8;
+            ButtonFont *grown = (ButtonFont *)realloc(button_fonts, (size_t)room * sizeof(*grown));
+            if (!grown)
+                return KHDAYS_BUTTON_NONE;
+            button_fonts = grown;
+            button_font_room = room;
+        }
+        f = &button_fonts[button_font_count++];
+        memset(f, 0, sizeof(*f));
+        f->info = info;
+        f->glyphs = finf[2];
+        f->map = finf[4];
+        uint32_t *codes = font_codes(font, &f->count);
+        if (codes && (f->buttons = (uint8_t *)calloc(f->count, 1)) != NULL)
+            for (uint32_t g = 0; g < f->count; ++g) {
+                int p = 0;
+                const int b = codes[g] != UINT32_MAX ? khdays_button_glyph(codes[g], &p) : KHDAYS_BUTTON_NONE;
+                f->buttons[g] = (uint8_t)(b | p << 5);
+            }
+        free(codes);
+    }
+    if (!f->buttons || glyph < 0 || (uint32_t)glyph >= f->count)
+        return KHDAYS_BUTTON_NONE;
+    *piece = f->buttons[glyph] >> 5;
+    return f->buttons[glyph] & 31;
 }
 
 static const char *bind_font_file(const void *font, const char *name, KhdaysRef file)
@@ -889,6 +955,7 @@ static int record(Canvas *c, const GlyphOp *op)
 }
 
 static void clear_hd_rect(Canvas *c, int x, int y, int w, int h);
+static double painted_width(const GlyphOp *op);
 static void observe_source(Canvas *c);
 static unsigned pixel(const Canvas *c, const uint8_t *data, int x, int y);
 static void put_pixel(const Canvas *c, uint8_t *data, int x, int y, unsigned value);
@@ -965,9 +1032,15 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
         return;
     }
     const uint8_t *widths = (const uint8_t *)KHDAYS_W(g[0]);
-    const int native = !khdays_hd_font_glyph_available(path, (int)((g[1] - start) / stride));
+    const int index = (int)((g[1] - start) / stride);
+    const int native = !khdays_hd_font_glyph_available(path, index);
     const int fitted = fit_run.font == KHDAYS_REF(font) && fit_run.factor > 0 && fit_run.factor < 1;
-    if (native && (!fitted || c->bpp != 4 || table[0] > 16 || table[1] > 16 || widths[1] > 16)) {
+    const int small = c->bpp == 4 && table[0] <= 16 && table[1] <= 16 && widths[1] <= 16;
+    /* a DS button's glyph is kept as an operation (a snapshot of it when the font has no artwork for
+       it): the player's input is drawn in its place, the glyph itself when there is no icon */
+    int piece = 0;
+    const int button = !native || small ? glyph_button(font, index, &piece) : KHDAYS_BUTTON_NONE;
+    if (native && !button && (!fitted || !small)) {
         fallback_glyph(c, font, glyph, x, y);
         return;
     }
@@ -976,7 +1049,9 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
         return;
     }
     GlyphOp op = {0};
-    op.glyph = (int)((g[1] - start) / stride);
+    op.glyph = index;
+    op.button = button;
+    op.piece = piece;
     op.x = x;
     if (positioned_font == KHDAYS_REF(font))
         op.x = positioned_x;
@@ -1060,6 +1135,19 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
             --c->op_count;
         } else
             ++i;
+    }
+    /* START and SELECT are three glyphs: the first one's icon covers the others' */
+    for (int i = op.piece > 0 ? c->op_count - 1 : -1; i >= 0; --i) {
+        GlyphOp *first = &c->ops[i];
+        if (first->button == op.button && first->piece == 0 && first->source_y == op.source_y &&
+            first->source_x < op.source_x && op.source_x - first->source_x <= 48) {
+            const double right = op.x + painted_width(&op);
+            if (right > first->x + painted_width(first))
+                first->paint_w = (int)ceil((right - first->x) / (first->x_scale > 0 ? first->x_scale : 1));
+            if (first->clip_r < (int)ceil(right))
+                first->clip_r = (int)ceil(right) < c->area_w * 8 ? (int)ceil(right) : c->area_w * 8;
+            break;
+        }
     }
     if (record(c, &op)) {
         /* Observe the game's output, but leave the graphics plane untouched.
@@ -2063,9 +2151,72 @@ static double painted_width(const GlyphOp *op)
     return op->paint_w * (op->x_scale > 0 ? op->x_scale : 1);
 }
 
+/* The icon of the player's input for the DS button `op` draws (its first glyph: over all of
+   START's), as large as the glyph's cell allows, centred, within DS pixels [l, r) x [t, b). Drawn a
+   pixel down and right of the same button (the game's shadow pass), its shape in the shadow's
+   colour. 0 when there is no icon: the glyph itself is drawn. */
+static int paint_button(const Canvas *c, const GlyphOp *op, uint16_t cell, double x, double y, uint32_t *out, int width,
+                        int height, int scale, int l, int t, int r, int b)
+{
+    int iw = 0, ih = 0;
+    const uint8_t *icon = khdays_button_icon(op->button, &iw, &ih);
+    if (!icon || iw <= 0 || ih <= 0)
+        return 0;
+    if (op->piece > 0)
+        return 1; /* the first glyph's icon covers it */
+    int shadow = 0;
+    for (int i = 0; i < c->display_count && !shadow; ++i) {
+        const GlyphOp *o = &c->display_ops[i];
+        shadow = o->button == op->button && o->piece == 0 && o->source_x == op->source_x - 1 &&
+                 o->source_y == op->source_y - 1;
+    }
+    const uint32_t ink = shadow ? glyph_colour(c, op, cell) : 0;
+    double fx, fy, texel;
+    khdays_button_fit(painted_width(op), op->h, iw, ih, &fx, &fy, &texel);
+    const double ox = x + fx, oy = y + fy;
+    /* a few samples a pixel where the icon is shrunk, so its edges stay smooth */
+    const int n = texel * scale < 1 ? (int)ceil(1 / (texel * scale)) < 4 ? (int)ceil(1 / (texel * scale)) : 4 : 1;
+    for (int py = t * scale; py < b * scale && py < height; ++py) {
+        for (int px = l * scale; px < r * scale && px < width; ++px) {
+            double sum[4] = {0, 0, 0, 0}; /* premultiplied red, green, blue, and alpha */
+            for (int s = 0; s < n * n; ++s) {
+                const double u = ((px + (s % n + .5) / n) / scale - ox) / texel - .5;
+                const double v = ((py + (s / n + .5) / n) / scale - oy) / texel - .5;
+                const int u0 = (int)floor(u), v0 = (int)floor(v);
+                for (int k = 0; k < 4; ++k) {
+                    const int iu = u0 + (k & 1), iv = v0 + (k >> 1);
+                    const double w = (k & 1 ? u - u0 : 1 - (u - u0)) * (k >> 1 ? v - v0 : 1 - (v - v0));
+                    if (iu < 0 || iv < 0 || iu >= iw || iv >= ih || w <= 0)
+                        continue;
+                    const uint8_t *p = icon + ((size_t)iv * iw + iu) * 4;
+                    const double a = p[3] * w;
+                    sum[0] += p[0] * a;
+                    sum[1] += p[1] * a;
+                    sum[2] += p[2] * a;
+                    sum[3] += a;
+                }
+            }
+            const double alpha = sum[3] / (n * n);
+            if (alpha < .5)
+                continue;
+            uint32_t colour;
+            if (shadow)
+                colour = (ink & 0xffffffu) | (uint32_t)(alpha * (ink >> 24) / 255 + .5) << 24;
+            else
+                colour = (uint32_t)(sum[0] / sum[3] + .5) | (uint32_t)(sum[1] / sum[3] + .5) << 8 |
+                         (uint32_t)(sum[2] / sum[3] + .5) << 16 | (uint32_t)(alpha + .5) << 24;
+            uint32_t *pixel = out + (size_t)py * width + px;
+            *pixel = over_graphics(colour, *pixel);
+        }
+    }
+    return 1;
+}
+
 static void paint_op(const Canvas *c, const GlyphOp *op, uint16_t cell, double x, double y, uint32_t *out, int width,
                      int height, int scale, int l, int t, int r, int b)
 {
+    if (op->button && paint_button(c, op, cell, x, y, out, width, height, scale, l, t, r, b))
+        return;
     const double factor = op->x_scale > 0 ? op->x_scale : 1;
     if (!op->native_glyph) {
         if (factor == 1)
@@ -2131,8 +2282,31 @@ static int primary_text_visible(const Canvas *c)
     return 0;
 }
 
+/* When what the button icons show changes (the device played, the bindings), the tiles of the
+   buttons' glyphs are drawn again. */
+static void refresh_buttons(Canvas *c)
+{
+    int any = 0;
+    for (int i = 0; i < c->display_count && !any; ++i)
+        any = c->display_ops[i].button != KHDAYS_BUTTON_NONE;
+    const uint32_t signature = any ? khdays_button_icons_signature() : c->button_signature;
+    if (signature == c->button_signature)
+        return;
+    c->button_signature = signature;
+    for (int i = 0; i < c->display_count; ++i) {
+        const GlyphOp *op = &c->display_ops[i];
+        if (op->button == KHDAYS_BUTTON_NONE || op->clip_l >= op->clip_r || op->clip_t >= op->clip_b)
+            continue;
+        const int col0 = op->clip_l < 0 ? 0 : op->clip_l / 8, row0 = op->clip_t < 0 ? 0 : op->clip_t / 8;
+        for (int row = row0; row <= (op->clip_b - 1) / 8 && row < c->area_h; ++row)
+            for (int col = col0; col <= (op->clip_r - 1) / 8 && col < c->area_w; ++col)
+                c->dirty[row * c->area_w + col] |= 3;
+    }
+}
+
 static void build_hd(Canvas *c, int scale, uint32_t palette)
 {
+    refresh_buttons(c);
     palette = (palette ^ (uint32_t)c->bg) * 16777619u;
     const int profile = profiling();
     const clock_t started = profile ? clock() : 0;

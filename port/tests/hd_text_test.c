@@ -236,7 +236,8 @@ static uint32_t tint = 0xff123456u;
 
 KhdaysRef khdays_reference(const void *p)
 {
-    if (fit_run.font && ((uintptr_t)p < (uintptr_t)ram || (uintptr_t)p >= (uintptr_t)ram + ram_bytes)) {
+    /* the snapshots' canvas and pixels on the stack (fitted glyphs, buttons' glyphs) */
+    if ((uintptr_t)p < (uintptr_t)ram || (uintptr_t)p >= (uintptr_t)ram + ram_bytes) {
         const int slot = native_hostref_count++ % 2;
         native_hostrefs[slot] = p;
         return 0xfffffff0u + (unsigned)slot;
@@ -261,6 +262,21 @@ int khdays_hd_font_glyph_available(const char *path, int index)
 {
     (void)path;
     return index >= 0 && index < 32 && (available_glyphs & (1u << index)) != 0;
+}
+/* the player's A as a 2x2 red icon while button_icon_on */
+static int button_icon_on;
+static uint32_t button_signature;
+static const uint8_t button_icon_red[2 * 2 * 4] = {255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255};
+const uint8_t *khdays_button_icon(int button, int *width, int *height)
+{
+    if (!button_icon_on || button != KHDAYS_BUTTON_A)
+        return NULL;
+    *width = *height = 2;
+    return button_icon_red;
+}
+uint32_t khdays_button_icons_signature(void)
+{
+    return button_signature;
 }
 int khdays_ui_scale(void)
 {
@@ -986,6 +1002,37 @@ static void obtained_popup(void)
     free(large_ram);
 }
 
+/* A DS button's glyph (the font's U+3349, A) is drawn as the player's input's icon, fitted to its
+   cell; with no icon, as itself. */
+static void button_icon_tests(void)
+{
+    setup(4);
+    /* the synthetic font's CMAP: U+3349 is glyph 0; its glyph table holds two */
+    *(uint32_t *)(ram + 128 + 16) = 700;
+    *(uint32_t *)(ram + 252) = 16 + 2 * 8;
+    uint16_t *map = (uint16_t *)(ram + 700);
+    map[0] = map[1] = 0x3349;
+    map[2] = 0; /* direct: table[0] + code - first */
+    *(uint32_t *)(map + 4) = 0;
+    map[6] = 0;
+    available_glyphs = 0; /* no artwork for it: a snapshot is kept */
+    button_icon_on = 1;
+    button_signature = 1;
+    draw(0);
+    upload(0, c->bytes);
+    render();
+    CHECK(c->display_count == 1 && c->display_ops[0].button == KHDAYS_BUTTON_A);
+    /* the glyph's cell is 4 x 8: the icon 4 x 4, its texels 2 x 2, from y 2 */
+    CHECK(c->hd_image >= 0 && primary_hd_pixel(3 * 16 + 1) == 0xff0000ffu);
+    CHECK(primary_hd_pixel(0 * 16 + 1) == 0); /* above it: neither icon nor glyph */
+    /* no icon now (another device): the glyph itself again */
+    button_icon_on = 0;
+    button_signature = 2;
+    render();
+    CHECK(primary_hd_pixel(0 * 16 + 1) == tint && primary_hd_pixel(3 * 16 + 1) == tint);
+    available_glyphs = 1u;
+}
+
 static void fitted_capture_tests(void)
 {
     setup(4);
@@ -1109,6 +1156,7 @@ int main(int argc, char **argv)
         return failures ? 1 : 0;
     }
     obtained_popup();
+    button_icon_tests();
     fitted_capture_tests();
     fitted_duplicate_tail_tests();
     setup(4);
