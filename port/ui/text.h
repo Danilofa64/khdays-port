@@ -57,5 +57,7 @@ void khdays_ui_text_field_tutorial_before(int step, int arg);
 void khdays_ui_text_field_tutorial(int step, int arg);
 void khdays_ui_text_scope_push(const char *scope);
 void khdays_ui_text_scope_pop(void);
+int khdays_ui_text_obtained_wants(unsigned int slot, int obtained);
+void khdays_ui_text_obtained_capture(const void *surface);
 
 #endif

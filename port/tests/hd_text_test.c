@@ -2,7 +2,9 @@
  * to exercise canvas lifetime and transfers with a small fake DS memory. */
 #include "../ui/text.c"
 
-static unsigned char ram[65536], vram[65536];
+static unsigned char small_ram[65536], vram[65536];
+static unsigned char *ram = small_ram;
+static size_t ram_bytes = sizeof(small_ram);
 static uint32_t graphics_map[2][sizeof(vram) / 32];
 static uint32_t graphics_pixels[32 * 16];
 static KhdaysTextureReplacement graphics_replacement;
@@ -16,10 +18,10 @@ const KhdaysTextureReplacement *khdays_textures_replacement(int id)
 }
 static int palette_reads, palette_hashes;
 static uint32_t slot_tint[4];
-unsigned char *khdays_window = ram;
+unsigned char *khdays_window = small_ram;
 int khdays_game_ram_ref(unsigned int reference)
 {
-    return reference > 0 && reference < sizeof(ram);
+    return reference > 0 && reference < ram_bytes;
 }
 static const char *font_origin;
 static uint32_t font_origin_info, font_origin_offset;
@@ -27,6 +29,7 @@ static int font_probes;
 static const char *test_scope = "";
 static int test_camp_screen = KHDAYS_CAMP_NONE, test_camp_story = 1;
 static char selected_scope[80];
+static int command_route, popup_route = 1;
 int khdays_camp_screen(int *story)
 {
     *story = test_camp_story;
@@ -45,6 +48,11 @@ int khdays_hd_font_select(const char *resource, const char *scope, char *selecte
 {
     (void)resource;
     snprintf(selected_scope, sizeof(selected_scope), "%s", scope);
+    if ((strcmp(scope, "field.command") == 0 && command_route) ||
+        (strcmp(scope, "field.obtained") == 0 && popup_route) || strcmp(scope, "shop") == 0) {
+        snprintf(selected, (size_t)size, "@font-route/%s", scope);
+        return 1;
+    }
     if (strstr(scope, ".mission_select.summary") || strstr(scope, ".mission_select.objectives") ||
         strstr(scope, ".mission_select.rewards")) {
         snprintf(selected, (size_t)size, "@font-route/mission-body");
@@ -328,9 +336,11 @@ static uint32_t primary_hd_pixel(size_t offset)
 
 static void setup(int bpp)
 {
+    khdays_window = ram;
+    obtained_reset();
     while (canvas_count)
         forget(&canvases[0]);
-    memset(ram, 0, sizeof(ram));
+    memset(ram, 0, ram_bytes);
     memset(vram, 0, sizeof(vram));
     memset(map_cells, 0, sizeof(map_cells));
     memset(suppressed, 0, sizeof(suppressed));
@@ -391,7 +401,7 @@ static void draw_xy(int x, int y)
     khdays_ui_text_glyph_before(cc, font, x, y, 1, glyph);
     for (int py = y; py < y + 8; ++py)
         for (int px = x; px < x + 4; ++px)
-            put_pixel(c, ram + 1024, px, py, 1);
+            put_pixel(c, KHDAYS_W(cc->char_base), px, py, 1);
     khdays_ui_text_glyph(cc, font, x, y, 1, glyph);
 }
 static void draw(int x)
@@ -768,6 +778,121 @@ static void command_menu_selections(int primary_row)
         CHECK(!(submissions[i].slot & KES_DIRECT));
 }
 
+static void obtained_popup(void)
+{
+    ram_bytes = 0x02400000u;
+    ram = (unsigned char *)calloc(1, ram_bytes);
+    CHECK(ram != NULL);
+    if (!ram)
+        exit(1);
+    setup(4);
+    *(uint32_t *)KHDAYS_W(0x0207f620u) = 0x02100000u;
+    *(uint16_t *)KHDAYS_W(0x021004aeu) = 24;
+    *(uint16_t *)KHDAYS_W(0x021004b8u) = 123;
+    cc->area_width = cc->param = 8;
+    cc->area_height = 2;
+    c = canvas_of(cc, "command item cache");
+    command_route = 1;
+    khdays_ui_text_scope_push("field.command");
+    draw(0);
+    khdays_ui_text_scope_pop();
+    CHECK(c->command_cache && strcmp(c->ops[0].resource, "@font-route/field.command") == 0);
+    const uint32_t address = 0x250u * 32;
+    memcpy(vram + address, ram + 1024, c->bytes);
+    chars_loaded(0, 1, ram + 1024, address, c->bytes);
+    CHECK(khdays_ui_text_obtained_wants(0, 1));
+    cc = (DsCanvas *)(ram + 8200);
+    *cc = *(const DsCanvas *)(ram + 16);
+    cc->char_base = 9000;
+    c = canvas_of(cc, "private pickup");
+    khdays_ui_text_scope_push("field.obtained");
+    draw(16); /* The pickup's different advance/bearing puts its artwork elsewhere. */
+    glyph[1] += 8;
+    draw(32); /* A missing PNG glyph retains the real native write in this private layout. */
+    glyph[1] -= 8;
+    khdays_ui_text_scope_pop();
+    uint32_t *surface = (uint32_t *)(ram + 8000);
+    surface[6] = 8192;
+    const int count = canvas_count;
+    khdays_ui_text_obtained_capture(surface);
+    CHECK(canvas_count == count - 1 && obtained.canvas.display_count == 1);
+    CHECK(strcmp(obtained.canvas.display_ops[0].resource, "@font-route/field.obtained") == 0);
+    khdays_ui_text_freed(NULL, ram + 9000);
+    cc = (DsCanvas *)(ram + 16);
+    c = find(KHDAYS_REF(cc));
+    CHECK(c && strcmp(c->display_ops[0].resource, "@font-route/field.command") == 0);
+    map_width = map_height = 32;
+    test_map_bg = 1;
+    for (int row = 0; row < 2; ++row)
+        for (int col = 0; col < 8; ++col) {
+            map_cells[row * 32 + col + 12] = (uint16_t)(0x250 + row * 8 + col);
+            map_cells[(row + 8) * 32 + col + 1] = (uint16_t)(0x250 + row * 8 + col);
+        }
+    submission_count = 0;
+    emit();
+    CHECK(obtained.ready);
+    CHECK(submitted_hd_pixel(100, 0, tint));
+    CHECK(submitted_hd_pixel(28, 64, tint));
+    CHECK(!submitted_hd_pixel(12, 64, tint));
+    CHECK(test_images[obtained.canvas.image][32] == (KET_OPAQUE | 1));
+    CHECK(test_images[obtained.canvas.image][16] == 0);
+    const int paints = paint_calls, requests = image_requests, updates = image_ends;
+    for (int frame = 0; frame < 20; ++frame) {
+        CHECK(!khdays_ui_text_obtained_wants(0, 1));
+        submission_count = 0;
+        emit();
+    }
+    CHECK(paint_calls == paints && image_requests == requests && image_ends == updates);
+    test_hofs = 3;
+    test_vofs = 5;
+    submission_count = 0;
+    emit();
+    CHECK(submitted_hd_pixel(25, 59, tint));
+    map_cells[8 * 32 + 1] = 0; /* Partial tilemap clears must immediately remove the private overlay. */
+    submission_count = 0;
+    emit();
+    CHECK(!obtained.ready && !submitted_hd_pixel(25, 59, tint));
+    map_cells[8 * 32 + 1] = 0x250;
+    emit();
+    CHECK(obtained.ready);
+    graphics_map[0][address / 32] = 1u << 20;
+    emit();
+    CHECK(!obtained.ready); /* An ordinary PNG mapping always wins. */
+    graphics_map[0][address / 32] = 0;
+    emit();
+    CHECK(obtained.ready);
+    external_range(c, address, 1, 0); /* Even an identical-byte explicit overwrite ends the private capture. */
+    emit();
+    CHECK(!obtained.ready);
+    chars_loaded(0, 1, ram + 1024, address, c->bytes);
+    emit();
+    CHECK(obtained.ready); /* Republishing the real item cache restores the existing layout. */
+    khdays_ui_text_clear(cc, 0);
+    chars_loaded(0, 1, ram + 1024, address, c->bytes);
+    emit();
+    CHECK(!obtained.ready); /* Republishing an explicitly cleared source cannot revive old popup text. */
+    *(uint16_t *)KHDAYS_W(0x021004b8u) = 456; /* The same slot in another field can name a different item. */
+    emit();
+    CHECK(!obtained.ready);
+    CHECK(khdays_ui_text_obtained_wants(0, 1));
+    CHECK(obtained.key == 456);
+    CHECK(!khdays_ui_text_obtained_wants(0xffffu, 1));
+    CHECK(!obtained.active && obtained.canvas.image < 0);
+    *(uint32_t *)KHDAYS_W(0x0207f620u) = 0;
+    CHECK(!khdays_ui_text_obtained_wants(0, 1));
+    *(uint32_t *)KHDAYS_W(0x0207f620u) = 0x02100000u;
+    command_route = popup_route = 0;
+    CHECK(!khdays_ui_text_obtained_wants(0, 1));
+    CHECK(!obtained.active);
+    command_route = 0;
+    popup_route = 1;
+    unsigned char *large_ram = ram;
+    ram = small_ram;
+    ram_bytes = sizeof(small_ram);
+    setup(4);
+    free(large_ram);
+}
+
 int main(int argc, char **argv)
 {
     graphics_replacements();
@@ -778,6 +903,7 @@ int main(int argc, char **argv)
         free(canvases);
         return failures ? 1 : 0;
     }
+    obtained_popup();
     /* Native-resolution supplementary DS planes equal the prior expanded planes. */
     for (int bpp = 4; bpp <= 8; bpp += 4) {
         setup(bpp);

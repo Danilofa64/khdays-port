@@ -1650,6 +1650,7 @@ for _function, _scope in (
     ("DrawLoadedTally", "field.hud.status"),
     ("DrawMessageCaption", "field.hud.status"),
     ("ShowNoticeText", "field.hud.status"),
+    ("DrawPanelRowText", "field.command"),
 ):
     _name = f"Ov002_{_function}"
     UI_HOOKS[f"src/overlays/scenes/ov002_field/{_name}.c"] = [(_name, "text", _scope, "scope")]
@@ -1659,6 +1660,11 @@ for _function, _role in (("UpdateResultLabels", "summary"), ("RenderTextSurface"
     UI_HOOKS[f"src/overlays/scenes/ov005_mission_result/{_name}.c"] = [
         (_name, "text", f"mission.results.{_role}", "scope")
     ]
+
+
+for _function in ("DrawStringShadowed", "DrawNumber3Shadowed", "DrawDescriptionText", "OpenShopDetailPanel"):
+    _name = f"Ov026_{_function}"
+    UI_HOOKS[f"src/overlays/screens/ov026_shop/{_name}.c"] = [(_name, "text", "shop", "scope")]
 
 
 def ui_hook(text: str, rel: str, name: str, part: str, port: str, kind: str = "replace") -> str:
@@ -1909,6 +1915,52 @@ FILE_HOOKS = {
         ),
     ],
 }
+
+# The pickup banner aliases the Items list's character tiles. Draw its routed
+# name into a private, non-uploaded surface; text.c retains that capture only.
+FILE_HOOKS["src/overlays/scenes/ov002_field/Ov002_PanelDrawSlotCursor.c"] = [
+    (
+        '#include "nitro/types.h"',
+        '#include "nitro/types.h"\n'
+        "extern int khdays_ui_text_obtained_wants(unsigned int slot, int obtained);\n"
+        "extern void khdays_ui_text_obtained_capture(const void *surface);\n"
+        "extern void khdays_ui_text_scope_push(const char *scope);\n"
+        "extern void khdays_ui_text_scope_pop(void);\n"
+        "extern int khdays_ui_mode(int part);\n"
+        "extern char *data_ov002_0207f620;\n"
+        "extern char gOv002TextFontEu08SPath_2[];\n"
+        "extern int data_ov002_0207eb08[];\n"
+        "extern int Ov002_Hud_GetBlock24(void);\n"
+        "extern void *Ov002_FindNamedEntry(int key);\n"
+        "extern void Resource_BindByName(void *handle, void *name);\n"
+        "extern void FreeFieldAt8(char *handle);\n"
+        "extern int TileSurface_Init4bpp(int surface, int config);\n"
+        "extern void Ov002_PickTextFitting64(int surface, int font, int narrow, int text);\n"
+        "extern void Text_DrawWithShadow(void *surface, int x, int y, int style, void *text, int shadow);\n"
+        "extern void FreeAllListNodeSubBuffers(void *surface);",
+    ),
+    (
+        "    Ov002_SelectEntry(9);\n}",
+        "    Ov002_SelectEntry(9);\n"
+        "    if (khdays_ui_mode(0) != 0 && khdays_ui_text_obtained_wants(nSlot, nShift == -2)) {\n"
+        "        int surface[15];\n"
+        "        int narrow[3];\n"
+        "        int font = Ov002_Hud_GetBlock24();\n"
+        "        int config[10] = {0, 0, 8, 2, 0, 15, 0, 0, font, 0};\n"
+        "        void *text = Ov002_FindNamedEntry(*(u16 *)(data_ov002_0207f620 + 0x4b8 + nSlot * 12));\n"
+        "        if (text == 0) text = data_ov002_0207eb08;\n"
+        '        khdays_ui_text_scope_push("field.obtained");\n'
+        "        Resource_BindByName(narrow, gOv002TextFontEu08SPath_2);\n"
+        "        TileSurface_Init4bpp((int)surface, (int)config);\n"
+        "        Ov002_PickTextFitting64((int)surface, font, (int)narrow, (int)text);\n"
+        "        Text_DrawWithShadow(surface, 0, 3, 2, text, 1);\n"
+        "        khdays_ui_text_obtained_capture(surface);\n"
+        "        FreeAllListNodeSubBuffers(surface);\n"
+        "        FreeFieldAt8((char *)narrow);\n"
+        "        khdays_ui_text_scope_pop();\n"
+        "    }\n}",
+    ),
+]
 
 # New games start with Config's "Command list" (option 6) on X with the D-pad, not X alone, so the
 # command menu moves in all four directions (runtime/input/sequencers.c). Every place that makes a

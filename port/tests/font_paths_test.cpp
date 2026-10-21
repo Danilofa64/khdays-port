@@ -133,6 +133,8 @@ static bool mapping_rules_test(const char *json)
         "camp.story.screen.1.mission_select.rewards":{"text/small.nftr":"text/small.nftr"},
         "camp.save":{"text/small.nftr":"text/absent.nftr"},
         "field.tutorial":{"text/small.nftr":"text/paths.nftr"},
+        "shop":{"text/small.nftr":"text/paths.nftr"},
+        "field.obtained":{"text/small.nftr":"text/paths.nftr"},
         "field.hud":{"text/small.nftr":"text/paths.nftr"},
         "field.hud.area":{"text/small.nftr":"text/small.nftr"},
         "mission.results":{"text/small.nftr":"text/paths.nftr"}}})";
@@ -176,11 +178,12 @@ static bool mapping_rules_test(const char *json)
     ok = ok && khdays_hd_font_select("text/small.nftr", "field.tutorial", second, sizeof(second)) &&
          std::strcmp(selected, second) == 0 &&
          !khdays_hd_font_select("text/small.nftr", "field.dialogue", second, sizeof(second));
-    for (const char *scope :
-         {"field.hud.information", "field.hud.status", "mission.results.summary", "mission.results.rewards"})
+    for (const char *scope : {"field.hud.information", "field.hud.status", "mission.results.summary",
+                              "mission.results.rewards", "shop", "field.obtained"})
         ok = ok && khdays_hd_font_select("text/small.nftr", scope, second, sizeof(second)) &&
              std::strcmp(selected, second) == 0;
     ok = ok && !khdays_hd_font_select("text/small.nftr", "field.hud.area", second, sizeof(second)) &&
+         !khdays_hd_font_select("text/small.nftr", "field.command", second, sizeof(second)) &&
          !khdays_hd_font_select("text/small.nftr", "field.dialogue", second, sizeof(second));
     for (int i = 0; i < 100; ++i)
         ok = ok && khdays_hd_font_select("text/small.nftr", "camp.mission.screen.5", second, sizeof(second)) &&

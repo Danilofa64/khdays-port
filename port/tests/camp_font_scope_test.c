@@ -119,6 +119,24 @@ int main(void)
     overlay = 2;
     khdays_camp_font_scope(context + 0x9680u, scope, sizeof(scope));
     failures += scope[0] != 0;
+    const uint32_t shop_globals[] = {0x02090facu, 0x02091368u};
+    for (int mode = 0; mode < 2; ++mode) {
+        overlay = mode ? 26 : 8;
+        *(uint32_t *)KHDAYS_W(shop_globals[mode]) = context;
+        for (int i = 0; i < 3; ++i) {
+            khdays_camp_font_scope(context + 0xc13cu + i * 12u, scope, sizeof(scope));
+            failures += strcmp(scope, "shop") != 0;
+        }
+        khdays_camp_font_scope(context + 0xc13du, scope, sizeof(scope));
+        failures += scope[0] != 0;
+        overlay = 2;
+        khdays_camp_font_scope(context + 0xc13cu, scope, sizeof(scope));
+        failures += scope[0] != 0;
+        *(uint32_t *)KHDAYS_W(shop_globals[mode]) = 0;
+        overlay = mode ? 26 : 8;
+        khdays_camp_font_scope(context + 0xc13cu, scope, sizeof(scope));
+        failures += scope[0] != 0;
+    }
     free(khdays_window);
     printf("Camp font scopes: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures != 0;

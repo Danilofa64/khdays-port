@@ -60,6 +60,9 @@ itself cancels an inherited rule. Mappings do not chain (A → B does not apply 
 | `field.hud.information` | INFORMATION message: initial crawl, skip, restoration and retained line |
 | `field.hud.status` | Shared day/status panel, mission objective/progress text and replay caption |
 | `field.hud.area` | Area name, including its measurement and narrow-font choice |
+| `field.command` | Command labels and their Magic/Items lists, including fitting and shadows |
+| `field.obtained` | Item name in the small gameplay OBTAINED banner, independently of the Items list |
+| `shop` | Shop names, lists, descriptions, quantities, dialogs and measured detail headings |
 | `mission.results` | Mission results: summary/status and reward pages |
 | `mission.results.summary` | Result title and status text, including abort/completion |
 | `mission.results.rewards` | Reward headings, item names/counts, descriptions and prompts |
@@ -173,6 +176,43 @@ Artwork containing lettering, such as the static INFORMATION banner, and result
 counters/ranks drawn from sprite sequences are graphics, not NFTR glyphs. Font
 mappings do not replace those; use the existing texture replacement system.
 
+## Commands, shops and obtained items
+
+The command deck uses `font_eu_08.nftr` and its narrow `08s` alternative. To change
+it, map those two resources under `field.command`. It remains unchanged when that
+scope is absent. Enemy-name captions and normal dialogue are separate.
+
+The small OBTAINED banner has its own `field.obtained` scope. Its item name uses
+the same original 08/08s sources, even though the new target can be 10all. The
+game normally aliases the Items list's prepared tiles; the port captures a
+private 64x16 text surface when that banner changes. It runs the existing text
+layout and NFTR renderer with the popup's scope, retaining independent advances,
+fitting, shadows and original-glyph fallback. No native character VRAM is
+overwritten. The OBTAINED heading itself is pre-rendered artwork.
+
+Shop routing covers both the standalone shop and Mission Mode's embedded shop.
+Its original fonts are 10, 08 and 08s; map all three for a consistent replacement.
+Only add these two new entries to use 10all in shops and pickup banners:
+
+```json
+"shop": {
+  "text/font_eu_10.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_08.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_08s.nftr": "text/font_eu_10all.nftr"
+},
+"field.obtained": {
+  "text/font_eu_08.nftr": "text/font_eu_10all.nftr",
+  "text/font_eu_08s.nftr": "text/font_eu_10all.nftr"
+}
+```
+
+The private popup reuses one native-resolution plane and one bounded RGBA plane
+(256 KiB at 8x), with the existing glyph raster cache. Stable frames do not redraw
+or upload it. Its tilemap entries, source ownership and VRAM writes determine
+eligibility; clearing or overwriting the item tiles removes it. Scrolling and
+palette/flip handling use the existing canvas renderer. Allocation failure or a
+conflicting ordinary PNG mapping leaves the original rendering in charge.
+
 ## Design and provenance
 
 Verified against decompilation commit `a2b0478b87e3102732094c34f6ca89595f98ab93`:
@@ -250,6 +290,24 @@ These are operation scopes, not per-frame renderer callbacks. They use the
 existing scope stack and route cache without changing canvas tracking, VRAM
 ownership, compositing, glyph rasterization or font metrics.
 
+Additional paths at the same decompilation revision:
+
+- `Ov002_DrawPanelRowText` prepares the command labels, spells and item names
+  using 08/08s. `BuildPanelLabels` instead draws enemy-name captions and is not
+  part of this scope.
+- `Ov022_ApplyItemEffect` calls `Ov002_AnnounceWithSound`, then
+  `AnnounceSelection` and `PanelDrawSlotCursor`. The last writes sixteen cached
+  item-name tiles starting at `0x250 + slot * 16` into BG1 map rows 8/9. Its
+  nonzero shift selects the pickup banner at column 1; the unshifted item-use
+  variant retains command rendering. Slot keys are at command context `+0x4b8`,
+  stride 12. The private capture reads that same key/name and fits it with
+  `PickTextFitting64` before calling the existing `Text_DrawWithShadow`.
+- `Ov008_InitShopSurfaces` and `Ov026_InitShopSurfaces` bind three 12-byte font
+  handles at context `+0xc13c`, `+0xc148`, `+0xc154`. Their context globals are
+  `data_ov008_02090fac` and `data_ov026_02091368`. Exact loaded-owner checks cover
+  every draw and measurement, including the embedded shop. The standalone shop
+  also scopes its string, fixed-number, description and detail-layout helpers.
+
 ## Verification
 
 Run `port\tests\run_hd_fonts.cmd` (discovers VS2022 x64); add `asan` for
@@ -264,7 +322,7 @@ of a pre-existing camp scope.
 Mission tests cover all seven roles, inherited defaults for non-body elements,
 explicit original-font cancellation for the three bodies, nested tutorial/mission
 scope restoration, bounded stack overflow recovery, and retained captured fonts.
-Run `python port/tests/font_scope_hooks_test.py` for the four generator tests.
+Run `python port/tests/font_scope_hooks_test.py` for the six generator tests.
 They check both overlays' twelve element wrappers and initial instruction/world
 draws, including parameter comments containing commas or identifier-like words.
 The generated wrapper always pops its scope after the game function returns,
@@ -285,3 +343,12 @@ source definitions, including early-return functions. In-game verification:
 visit the hub day/area display, receive and skip INFORMATION messages, hold/resume
 the panel via a menu, enter a mission and observe progress changes, then abort
 and complete missions and inspect both results and rewards pages.
+
+Command/shop/pickup tests cover independent cached font identities, an absent
+command rule, mixed HD/native popup glyphs, stable-frame cache reuse, tilemap
+clears, scrolling, ordinary PNG precedence, identical-byte VRAM overwrites,
+republishing and invalid slots. Shop-owner tests cover both overlays' three exact
+handles, unloaded owners and unrelated handles. In-game checks: change all three
+command selections and their sublists, buy/sell/synthesize and open quantity and
+detail dialogs, collect different/repeated items, then pause/resume or change
+areas while a pickup banner is visible. Check these in Story and Mission Mode.

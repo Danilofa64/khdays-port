@@ -79,6 +79,43 @@ class ScopeHooks(unittest.TestCase):
             count += 1
         self.assertEqual(count, 2)
 
+    def test_command_and_shop_hooks(self):
+        expected = {
+            "Ov002_DrawPanelRowText": "field.command",
+            "Ov026_DrawStringShadowed": "shop",
+            "Ov026_DrawNumber3Shadowed": "shop",
+            "Ov026_DrawDescriptionText": "shop",
+            "Ov026_OpenShopDetailPanel": "shop",
+        }
+        found = set()
+        for rel, hooks in prepare.UI_HOOKS.items():
+            for name, part, scope, kind in hooks:
+                if name not in expected:
+                    continue
+                self.assertEqual((part, scope, kind), ("text", expected[name], "scope"))
+                text = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+                output = prepare.ui_hook(text, rel, name, part, scope, kind)
+                wrapper = output[output.rfind(f"void {name}(") :]
+                self.assertLess(wrapper.index("scope_push("), wrapper.index(f"{name}__khdays_game("))
+                self.assertLess(wrapper.index(f"{name}__khdays_game("), wrapper.index("scope_pop("))
+                found.add(name)
+        self.assertEqual(found, set(expected))
+        self.assertNotIn(
+            "src/overlays/scenes/ov002_field/Ov002_BuildPanelLabels.c", prepare.UI_HOOKS
+        )  # Enemy-name captions are not command labels.
+
+    def test_obtained_private_surface(self):
+        rel = "src/overlays/scenes/ov002_field/Ov002_PanelDrawSlotCursor.c"
+        text = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+        for before, after in prepare.FILE_HOOKS[rel]:
+            self.assertEqual(text.count(before), 1)
+            text = text.replace(before, after)
+        self.assertIn("khdays_ui_text_obtained_wants(nSlot, nShift == -2)", text)
+        self.assertIn("0x4b8 + nSlot * 12", text)
+        self.assertLess(text.index("TileSurface_Init4bpp((int)surface"), text.index("Text_DrawWithShadow(surface"))
+        self.assertLess(text.index("obtained_capture(surface)"), text.index("FreeAllListNodeSubBuffers(surface)"))
+        self.assertNotIn("GX_Load", text)  # Private captures never overwrite the command cache's VRAM.
+
 
 if __name__ == "__main__":
     unittest.main()

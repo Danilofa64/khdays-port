@@ -625,6 +625,20 @@ void khdays_camp_font_scope(uint32_t font, char *scope, int size)
     if (size <= 0)
         return;
     scope[0] = 0;
+    const struct {
+        int overlay;
+        u32 global;
+    } shops[] = {{8, 0x02090facu}, {26, 0x02091368u}};
+    for (int i = 0; i < 2; ++i) {
+        if (!khdays_overlay_loaded(shops[i].overlay))
+            continue;
+        const u32 context = rd32(shops[i].global);
+        if (in_ram(context) && font >= context + 0xc13cu && font <= context + 0xc154u &&
+            (font - context - 0xc13cu) % 12u == 0) {
+            snprintf(scope, (size_t)size, "shop");
+            return;
+        }
+    }
     for (int i = 0; i < CAMPS; ++i) {
         if (!khdays_overlay_loaded(camps[i].overlay))
             continue;

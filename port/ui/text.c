@@ -119,9 +119,18 @@ typedef struct Canvas {
     int display_count, display_room;
     int before_glyph;
     int scrolling;       /* the explicit scroll hook owns source updates until it completes */
+    int command_cache;   /* Names cached by Ov002_DrawPanelRowText. */
     int editing_display; /* temporary command-list views can dirty published images */
     MappedImage *extra;
 } Canvas;
+
+static struct {
+    Canvas canvas;
+    int active, slot, ready, bound, source_valid;
+    unsigned key;
+    uint32_t address;
+    KhdaysRef owner, owner_buffer;
+} obtained = {.canvas = {.image = -1, .hd_image = -1}, .slot = -1};
 
 static Canvas *canvases;
 static int canvas_count, canvas_room;
@@ -255,7 +264,7 @@ static void release_extra(Canvas *c)
     }
 }
 
-static void forget(Canvas *c)
+static void dispose_canvas(Canvas *c)
 {
     release_extra(c);
     free(c->seen);
@@ -271,7 +280,35 @@ static void forget(Canvas *c)
     free(c->owned);
     khdays_ui_image_put(c->hd_image);
     khdays_ui_image_put(c->image);
+}
+
+static void forget(Canvas *c)
+{
+    dispose_canvas(c);
     *c = canvases[--canvas_count];
+}
+
+static void obtained_reset(void)
+{
+    dispose_canvas(&obtained.canvas);
+    memset(&obtained, 0, sizeof(obtained));
+    obtained.canvas.image = obtained.canvas.hd_image = -1;
+    obtained.slot = -1;
+}
+
+static void obtained_written(int engine, uint32_t address, uint32_t bytes)
+{
+    if (engine == 0 && obtained.bound && address < obtained.address + 512 &&
+        (uint64_t)address + bytes > obtained.address) {
+        obtained.source_valid = obtained.ready = 0;
+    }
+}
+
+static int obtained_cell(const Canvas *c, const KhdaysBgLayer *l, int x, int y)
+{
+    return obtained.ready && c != &obtained.canvas && c->engine == 0 && c->bg == 1 &&
+           (x % l->wt + l->wt) % l->wt >= 1 && (x % l->wt + l->wt) % l->wt < 9 && (y % l->ht + l->ht) % l->ht >= 8 &&
+           (y % l->ht + l->ht) % l->ht < 10;
 }
 
 /* A canvas can outlive its source buffer: the game often uploads its characters
@@ -397,6 +434,77 @@ void khdays_ui_text_scope_pop(void)
         --operation_overflow;
     else if (operation_depth)
         --operation_depth;
+}
+
+static int obtained_wants(unsigned int slot, int announcement, unsigned key)
+{
+    if (!announcement || slot >= 24 || !hd_enabled() || !khdays_hd_font_mappings_enabled()) {
+        obtained_reset();
+        return 0;
+    }
+    if (obtained.active && obtained.slot == (int)slot && obtained.key == key && obtained.canvas.seen)
+        return 0;
+    obtained_reset();
+    int different = 0;
+    const char *sources[] = {"text/font_eu_08.nftr", "text/font_eu_08s.nftr"};
+    for (int i = 0; i < 2; ++i) {
+        char command[160], popup[160];
+        if (!khdays_hd_font_select(sources[i], "field.command", command, sizeof(command)))
+            snprintf(command, sizeof(command), "%s", sources[i]);
+        if (!khdays_hd_font_select(sources[i], "field.obtained", popup, sizeof(popup)))
+            snprintf(popup, sizeof(popup), "%s", sources[i]);
+        different |= strcmp(command, popup) != 0;
+    }
+    if (!different)
+        return 0;
+    obtained.active = 1;
+    obtained.slot = (int)slot;
+    obtained.key = key;
+    return 1;
+}
+
+static int obtained_item_key(unsigned slot, unsigned *key)
+{
+    if (slot >= 24 || !khdays_game_ram_ref(0x0207f620u))
+        return 0;
+    const uint32_t context = *(const uint32_t *)KHDAYS_W(0x0207f620u);
+    if (!context || context > UINT32_MAX - 0x5d8u || !khdays_game_ram_ref(context) ||
+        !khdays_game_ram_ref(context + 0x5d7u))
+        return 0;
+    if (slot >= *(const uint16_t *)KHDAYS_W(context + 0x4aeu))
+        return 0;
+    *key = *(const uint16_t *)KHDAYS_W(context + 0x4b8u + slot * 12u);
+    return 1;
+}
+
+int khdays_ui_text_obtained_wants(unsigned int slot, int announcement)
+{
+    unsigned key = 0;
+    const int valid = announcement && obtained_item_key(slot, &key);
+    return obtained_wants(slot, valid, key);
+}
+
+void khdays_ui_text_obtained_capture(const void *surface)
+{
+    const KhdaysRef object = *(const uint32_t *)((const uint8_t *)surface + 0x18);
+    Canvas *c = object ? find(object + SURFACE_OBJECT_CANVAS) : NULL;
+    if (!obtained.active || !c || c->bpp != 4 || c->area_w != 8 || c->area_h != 2 || c->param != 8)
+        return;
+    memcpy(c->seen, c->source, c->bytes);
+    memcpy(c->display_base, c->base, c->bytes);
+    c->display_ops = c->ops;
+    c->display_count = c->op_count;
+    c->display_room = c->op_room;
+    c->ops = NULL;
+    c->op_count = c->op_room = 0;
+    memset(c->owned, 0xff, 16 * sizeof(uint64_t));
+    snprintf(c->id, sizeof(c->id), "text.a1.1.8");
+    obtained.canvas = *c;
+    *c = canvases[--canvas_count];
+    obtained.canvas.detached = 1;
+    if (tracing())
+        say("HD obtained capture: slot %d, %d glyphs, independent native fallback", obtained.slot,
+            obtained.canvas.display_count);
 }
 
 void khdays_ui_text_field_tutorial_before(int step, int arg)
@@ -740,6 +848,8 @@ void khdays_ui_text_glyph_before(const void *canvas, const void *font, int x, in
     Canvas *c = canvas_of(canvas, "DrawGlyphLine input");
     if (!c)
         return;
+    if (operation_depth && !operation_overflow && strcmp(operation_scopes[operation_depth - 1], "field.command") == 0)
+        c->command_cache = 1;
     observe_source(c);
     c->before_glyph = 1;
 }
@@ -847,6 +957,7 @@ void khdays_ui_text_clear(const void *canvas, int cl)
     Canvas *c = canvas_of(canvas, "ClearContinuous");
     if (!c || c->scrolling)
         return;
+    c->command_cache = 0;
     memcpy(c->source, KHDAYS_W(c->buffer), c->bytes);
     memcpy(c->base, c->source, c->bytes);
     c->op_count = 0;
@@ -1149,6 +1260,7 @@ void khdays_ui_text_clear_area(const void *canvas, int cl, int x, int y, int w, 
     Canvas *c = canvas_of(canvas, "ClearAreaLine");
     if (!c || c->scrolling || w <= 0 || h <= 0)
         return;
+    c->command_cache = 0;
     if (x <= 0 && y <= 0 && (int64_t)x + w >= c->area_w * 8 && (int64_t)y + h >= c->area_h * 8) {
         khdays_ui_text_clear(canvas, cl);
         return;
@@ -1397,6 +1509,7 @@ static void publish_range(Canvas *c, uint32_t at, uint32_t size)
 
 static void external_range(Canvas *c, uint32_t to, uint32_t size, int relinquish)
 {
+    obtained_written(c->engine, to, size);
     const uint32_t first = to > c->vram ? to - c->vram : 0;
     const uint32_t end = (uint64_t)to + size < (uint64_t)c->vram + c->bytes ? to + size - c->vram : c->bytes;
     const uint32_t tile_bytes = 8u * c->bpp;
@@ -1457,6 +1570,7 @@ void khdays_ui_text_memory_clear(const void *destination, unsigned int size)
         if (!c->detached && !c->scrolling) {
             const uintptr_t buffer = (uintptr_t)KHDAYS_W(c->buffer);
             if (first < buffer + c->bytes && buffer < end) {
+                c->command_cache = 0;
                 const uint32_t at = first > buffer ? (uint32_t)(first - buffer) : 0;
                 const uint32_t last = end < buffer + c->bytes ? (uint32_t)(end - buffer) : c->bytes;
                 memcpy(c->source + at, (const void *)(buffer + at), last - at);
@@ -1546,6 +1660,7 @@ static void chars_loaded(int engine, int bg, const void *src_host, uint32_t offs
 {
     const KhdaysRef src = KHDAYS_REF(src_host);
     const uint32_t to = khdays_bg_chars_base(engine, bg) + offset; /* where the load wrote */
+    obtained_written(engine, to, size);
     Canvas *mine = NULL;
     for (int i = 0; i < canvas_count; ++i) {
         Canvas *c = &canvases[i];
@@ -1570,6 +1685,9 @@ static void chars_loaded(int engine, int bg, const void *src_host, uint32_t offs
     }
     if (mine != NULL) {
         observe_source(mine);
+        if (engine == 0 && mine->command_cache && obtained.bound && to <= obtained.address &&
+            (uint64_t)to + size >= obtained.address + 512)
+            obtained.source_valid = 1;
         const uint32_t at = src - mine->buffer;
         if (tracing() &&
             (!(mine->in_vram || mine->pending) || mine->engine != engine || mine->bg != bg || mine->vram != to - at)) {
@@ -1677,6 +1795,7 @@ static void observe_vram(Canvas *c)
         const uint8_t *now = khdays_bg_memory(c->engine, c->vram + at);
         if (!now || *now == c->seen[at])
             continue;
+        obtained_written(c->engine, c->vram + at, 1);
         const uint32_t tile = at / (8u * c->bpp);
         const int x = (int)(tile % c->param) * 8 + (int)(at % c->bpp) * (8 / c->bpp);
         const int y = (int)(tile / c->param) * 8 + (int)((at % (8u * c->bpp)) / c->bpp);
@@ -2113,6 +2232,8 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
             cells[at] = 0;
             if (x >= cols || y >= rows)
                 continue;
+            if (obtained_cell(c, l, x0 + x, y0 + y))
+                continue;
             const uint32_t entry = khdays_bg_map_entry(c->engine, l, x0 + x, y0 + y);
             const int k = canvas_char(c, l, entry);
             if (k < 0)
@@ -2265,7 +2386,9 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy)
         for (int col = 0; col < c->area_w; ++col) {
             const uint32_t entry = khdays_bg_map_entry(c->engine, l, ox + col, oy + row);
             const uint16_t cell =
-                canvas_char(c, l, entry) == row * c->param + col ? (uint16_t)(entry & 0xfc00u) : 0xffffu;
+                !obtained_cell(c, l, ox + col, oy + row) && canvas_char(c, l, entry) == row * c->param + col
+                    ? (uint16_t)(entry & 0xfc00u)
+                    : 0xffffu;
             if (c->cells[row * c->area_w + col] != cell) {
                 c->cells[row * c->area_w + col] = cell;
                 c->dirty[row * c->area_w + col] |= 3;
@@ -2317,6 +2440,93 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy)
     c->image_version = c->version;
 }
 
+/* The pickup keeps a separate layout, but only while the game's cached item
+ * tiles still occupy its banner. No comparison with native glyph ink is used. */
+static void prepare_obtained(int scale)
+{
+    obtained.ready = 0;
+    Canvas *c = &obtained.canvas;
+    KhdaysBgLayer l;
+    if (!obtained.active || !c->seen || !hd_enabled() || !khdays_bg_text_layer(0, 1, &l) || l.colors256)
+        return;
+    unsigned key;
+    if (!obtained_item_key((unsigned)obtained.slot, &key) || key != obtained.key)
+        return;
+    const uint32_t first = 0x250u + (uint32_t)obtained.slot * 16u;
+    const uint32_t address = l.chars + first * 32u;
+    Canvas *owner = NULL;
+    for (int i = 0; i < canvas_count; ++i) {
+        Canvas *candidate = &canvases[i];
+        if (candidate->command_cache && candidate->engine == 0 && candidate->bpp == 4 &&
+            (candidate->in_vram || candidate->pending) && candidate->vram <= address &&
+            (uint64_t)candidate->vram + candidate->bytes >= address + 512) {
+            owner = candidate;
+            break;
+        }
+    }
+    if (!owner)
+        return;
+    if (!obtained.bound || obtained.owner != owner->cc || obtained.owner_buffer != owner->buffer ||
+        obtained.address != address) {
+        obtained.bound = obtained.source_valid = 1;
+        obtained.address = address;
+        obtained.owner = owner->cc;
+        obtained.owner_buffer = owner->buffer;
+    }
+    observe_vram(owner);
+    if (!obtained.source_valid)
+        return;
+    for (int row = 0; row < 2; ++row)
+        for (int col = 0; col < 8; ++col) {
+            const uint32_t offset = (uint32_t)(row * 8 + col);
+            const uint32_t k = (address - owner->vram) / 32u + offset;
+            const uint32_t tile = (k / (uint32_t)owner->param) * (uint32_t)owner->area_w + k % (uint32_t)owner->param;
+            const uint32_t entry = khdays_bg_map_entry(0, &l, col + 1, row + 8);
+            if ((entry & 0x3ffu) != first + offset || tile >= (uint32_t)(owner->area_w * owner->area_h) ||
+                owner->owned[tile] != UINT64_MAX || !khdays_bg_memory(0, address + offset * 32u) ||
+                khdays_tiles2d_bg_tile(0, address + offset * 32u))
+                return;
+        }
+    c->engine = 0;
+    c->bg = 1;
+    c->vram = address;
+    const uint32_t palette = khdays_ui_palette_hash(0);
+    make_image(c, &l, 1, 8);
+    if (c->cells)
+        build_hd(c, scale, palette);
+    make_image(c, &l, 1, 8);
+    obtained.ready = c->image >= 0 && c->cells && (!c->display_count || c->hd_ready);
+}
+
+static void emit_obtained(void)
+{
+    Canvas *c = &obtained.canvas;
+    KhdaysBgLayer l;
+    if (!obtained.ready || !khdays_bg_text_layer(0, 1, &l))
+        return;
+    const int lw = l.wt * 8, lh = l.ht * 8;
+    const int x = ((8 - l.hofs) % lw + lw) % lw;
+    const int y = ((64 - l.vofs) % lh + lh) % lh;
+    KhdaysUiElement e = {c->id, 0, 1, 0, 0, 64, 16, c->image};
+    for (int ex = x - lw; ex < KHDAYS_SCREEN_W; ex += lw)
+        for (int ey = y - lh; ey < KHDAYS_SCREEN_H; ey += lh)
+            if (ex + 64 > 0 && ey + 16 > 0) {
+                e.x = (float)ex;
+                e.y = (float)ey;
+                e.image = c->image;
+                e.slot = 1;
+                khdays_ui_emit(KHDAYS_UI_TEXT, &e);
+                if (c->hd_image >= 0) {
+                    e.image = c->hd_image;
+                    e.slot |= KES_DIRECT;
+                    khdays_ui_emit(KHDAYS_UI_TEXT, &e);
+                }
+            }
+    for (int row = 8; row < 10; ++row)
+        for (int col = 1; col < 9; ++col)
+            khdays_ui_left_out_cell(KHDAYS_UI_TEXT, 0, 1, col, row);
+}
+
 static void emit(void)
 {
     const int profile = profiling();
@@ -2326,6 +2536,7 @@ static void emit(void)
     const int scale = khdays_ui_scale();
     uint32_t palettes[2] = {0};
     unsigned palettes_valid = 0;
+    prepare_obtained(scale);
     for (int i = 0; i < canvas_count; ++i) {
         Canvas *c = &canvases[i];
         KhdaysUiElement e;
@@ -2507,6 +2718,7 @@ static void emit(void)
             for (int k = 0; k < c->area_w * c->area_h; ++k)
                 c->dirty[k] &= 0xfeu;
     }
+    emit_obtained();
     if (profile) {
         const double ms = 1000.0 / CLOCKS_PER_SEC;
         const double total = (clock() - started) * ms;
