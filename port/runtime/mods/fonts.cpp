@@ -406,6 +406,16 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
             output->original_codes.insert(static_cast<std::uint32_t>(code));
     }
 
+    const auto native = doc.object.find("original_codepoints");
+    if (native != doc.object.end()) {
+        if (native->second.type != Value::Array || native->second.array.size() > 65536)
+            throw std::runtime_error("original_codepoints must be an array of at most 65536 codepoints");
+        for (const Value &code : native->second.array) {
+            if (code.type != Value::Integer || code.number < 0 || code.number > 0x10ffff ||
+                !output->original_codepoints.insert(static_cast<std::uint32_t>(code.number)).second)
+                throw std::runtime_error("invalid or duplicate original_codepoints entry");
+        }
+    }
     const auto pairs = doc.object.find("kerning");
     if (pairs != doc.object.end()) {
         if (pairs->second.type != Value::Array || pairs->second.array.size() > 65536)
@@ -549,6 +559,7 @@ std::shared_ptr<Atlas> routed_view(const std::shared_ptr<const Atlas> &base)
     view->scale = base->scale;
     view->glyphs = base->glyphs;
     view->charmap = base->charmap;
+    view->original_codepoints = base->original_codepoints;
     view->has_original = base->has_original;
     view->has_secondary = base->has_secondary;
     view->native_metrics = base->native_metrics;
@@ -636,7 +647,7 @@ std::string select(const std::string &original_resource, const std::string &scop
             return {};
     }
     const auto base = load(target);
-    const auto requested = base && !base->secondary ? load(original) : nullptr;
+    const auto requested = base ? load(original) : nullptr;
     std::lock_guard<std::mutex> lock(cache_mutex);
     const auto pair = std::make_pair(original, target);
     const auto found = routed.find(pair);
@@ -648,6 +659,8 @@ std::string select(const std::string &original_resource, const std::string &scop
     if (base && (!base->charmap.empty() || (base->primary_missing && base->secondary))) {
         key = "@font-route/" + std::to_string(routed.size());
         auto view = routed_view(base);
+        // The requested NFTR defines symbol meanings; the target's identically coded letters may differ.
+        view->original_codepoints = requested ? requested->original_codepoints : std::unordered_set<std::uint32_t>{};
         if (!view->secondary && requested)
             view->secondary = requested->secondary;
         cache.emplace(key, Entry{std::move(view), true, false});

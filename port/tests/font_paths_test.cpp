@@ -8,10 +8,13 @@
 
 static int lookups;
 static bool mapping_file;
+static bool source_font_file;
 static int png_w = 8, png_h = 8;
 extern "C" int khdays_mods_find(const char *relative, char *path, int size)
 {
     ++lookups;
+    if (source_font_file && std::strcmp(relative, "fonts/text/small.nftr.png") == 0)
+        return std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-source.nftr.png") < size;
     if (mapping_file && std::strcmp(relative, "fonts/mappings.json") == 0) {
         std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-mappings.json");
         return 1;
@@ -112,6 +115,61 @@ static bool original_fallback(const char *json)
         }
         ok = ok && rejected;
     }
+    return ok;
+}
+
+static bool source_symbols_test(const char *json)
+{
+    using namespace khdays::hd_fonts;
+    const std::string header = R"({"source":"text/paths.nftr","format":"NFTR","scale":0.5,
+        "atlas":{"width":8,"height":8},"cell_width":8,"cell_height":8,
+        "baseline":6,"line_feed":8,"max_width":8,
+        "glyphs":[{"index":0,"x":0,"y":0,"w":8,"h":8,"left":0,"width":8,"advance":12}],)";
+    const std::string target = header + R"("charmap":[{"codepoint":65,"glyph":0},
+        {"codepoint":65324,"glyph":0},{"codepoint":65346,"glyph":0}]})";
+    std::ofstream(json) << target;
+    std::string source = header + R"("charmap":[{"codepoint":65,"glyph":0}],
+        "original_codepoints":[65324,65346]})";
+    source.replace(source.find("text/paths.nftr"), std::strlen("text/paths.nftr"), "text/small.nftr");
+    const char *source_json = "build/tests/font-source.nftr.json";
+    std::ofstream(source_json) << source;
+    cache.clear();
+    routed.clear();
+    rules.clear();
+    rules_read = true;
+    rules["camp"]["text/small.nftr"] = "text/paths.nftr";
+    rules["camp"]["text/other.nftr"] = "text/paths.nftr";
+    source_font_file = true;
+    png_w = png_h = 8;
+    auto target_font = std::make_shared<Atlas>(*load("text/paths.nftr"));
+    target_font->secondary = std::make_shared<Atlas>(*target_font);
+    cache.at("text/paths.nftr").font = target_font;
+    const auto routed_source = select("text/small.nftr", "camp");
+    const auto routed_other = select("text/other.nftr", "camp");
+    const std::uint32_t codes[] = {65, 65324, 65346, 65};
+    bool ok = !routed_source.empty() && !routed_other.empty();
+    for (const auto &path :
+         {std::string("text/small.nftr"), routed_source, routed_other, std::string("text/paths.nftr")}) {
+        khdays_hd_font_bind_charmap(path.c_str(), codes, 4);
+        const bool native = path == "text/small.nftr" || path == routed_source;
+        ok = ok && khdays_hd_font_glyph_available(path.c_str(), 0) && khdays_hd_font_glyph_available(path.c_str(), 3);
+        for (int i : {1, 2})
+            ok = ok && khdays_hd_font_glyph_available(path.c_str(), i) == !native &&
+                 khdays_hd_font_metric_f(path.c_str(), i, KHDF_ADVANCE, 7) == (native ? 7 : 6);
+    }
+    for (const char *bad : {"true", "[true]", "[-1]", "[1114112]", "[65,65]"}) {
+        std::ofstream(source_json) << source.substr(0, source.find("\"original_codepoints\"")) +
+                                          "\"original_codepoints\":" + bad + "}";
+        bool rejected = false;
+        try {
+            (void)read_atlas("text/small.nftr", "build/tests/font-source.nftr.png");
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        ok = ok && rejected;
+    }
+    source_font_file = false;
+    std::remove(source_json);
     return ok;
 }
 
@@ -371,6 +429,7 @@ int main()
     cache.clear();
     ok = ok && std::abs(khdays_hd_font_metric_f("text/paths.nftr", 0, KHDF_ADVANCE, 0) - 6.3) < 1e-12;
     ok = original_fallback(json) && ok;
+    ok = source_symbols_test(json) && ok;
     ok = mapping_rules_test(json) && ok;
     std::filesystem::remove(json);
     std::printf("HD font paths: %s\n", ok ? "PASS" : "FAIL");

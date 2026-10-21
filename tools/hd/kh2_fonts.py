@@ -175,6 +175,14 @@ def definition(name: str, table: list[int], characters: dict[int, int]) -> dict:
     ]
     glyphs[-1]["advance"] = space
     mapping = international_map()
+    original = []
+    if name != "font_eu_10all":
+        original.append(0xFF2C)  # Days' circled L, not a fullwidth Latin letter.
+    if name in ("font_eu_08", "font_eu_08s"):
+        original.append(0xFF42)  # Days' SP symbol, not a fullwidth lowercase b.
+    for code in original:
+        mapping.pop(code, None)
+    mapping.update({0x2165: 88, 0x2167: 93})
     mapping.update({code: count - 1 for code in (0x20, 0xA0, 0x3000)})
     return {
         "source": f"text/{name}.nftr",
@@ -189,6 +197,7 @@ def definition(name: str, table: list[int], characters: dict[int, int]) -> dict:
         "atlas": {"width": aw, "height": ah, "columns": columns, "padding": 0},
         "glyphs": glyphs,
         "charmap": [{"codepoint": code, "glyph": mapping[code]} for code in sorted(characters) if code in mapping],
+        "original_codepoints": [code for code in original if code in characters],
         "kerning": [],
     }
 

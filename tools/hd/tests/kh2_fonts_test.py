@@ -128,13 +128,28 @@ class Generation(unittest.TestCase):
         mapping = {m["codepoint"]: m["glyph"] for m in doc["charmap"]}
         self.assertEqual([mapping[ord(c)] for c in "ABCDE"], [14, 15, 16, 17, 18])
         self.assertTrue(all(ord(c) not in mapping for c in "$*\ue000"))
-        self.assertEqual([mapping[ord(c)] for c in "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ"], [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 100, 101])
+        self.assertEqual([mapping[ord(c)] for c in "ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ"], [84, 85, 86, 87, 88, 88, 90, 93, 92, 93, 100, 101])
         self.assertEqual([mapping[ord(c)] for c in "Ｉ０~｡"], [22, 112, 54, 46])
         self.assertEqual(mapping[0x20], 335)
         # Do not interpret KH2 control bytes, Roman-numeral strings or unused slots as text.
         self.assertNotIn(0x01, k.international_map())
         self.assertNotIn(0x216C, k.international_map())
         self.assertNotIn(56, mapping.values())
+
+    def test_resource_specific_symbol_exclusions_and_numerals(self):
+        characters = {code: i for i, code in enumerate((0x41, 0xFF2C, 0xFF42, 0x2165, 0x2167))}
+        for name, (font, _, _) in k.REPLACEMENTS.items():
+            doc = k.definition(name, [12] * k.FONTS[font][5], characters)
+            mapped = {m["codepoint"]: m["glyph"] for m in doc["charmap"]}
+            excluded = [] if name == "font_eu_10all" else [0xFF2C]
+            if font == "sys" and name != "font_eu_10all":
+                excluded.append(0xFF42)
+            self.assertEqual(doc["original_codepoints"], excluded)
+            self.assertTrue(all(code not in mapped for code in excluded))
+            self.assertEqual(mapped[0x41], 14)
+            self.assertEqual((mapped[0x2165], mapped[0x2167]), (88, 93))
+            if name == "font_eu_10all":
+                self.assertEqual((mapped[0xFF2C], mapped[0xFF42]), (25, 123))
 
     def test_fractional_evt_spacing_is_not_baked_into_json(self):
         text = "pipsqueak."

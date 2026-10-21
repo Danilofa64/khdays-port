@@ -35,6 +35,7 @@ struct Atlas {
     double scale = 1;
     std::vector<Glyph> glyphs;
     std::vector<Mapping> charmap;
+    std::unordered_set<std::uint32_t> original_codepoints; // Source-specific native symbols, including routed views.
     bool has_original = false;
     bool has_secondary = false, native_metrics = false, primary_missing = false;
     std::shared_ptr<const Atlas> secondary;

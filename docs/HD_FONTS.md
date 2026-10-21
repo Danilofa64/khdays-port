@@ -58,6 +58,11 @@ expressed from the user's KH2/Days reference tables. No OpenKH implementation or
 reference JSON is distributed. First occurrences of duplicate punctuation win;
 fullwidth ASCII aliases use the corresponding normal glyph. Unicode Roman
 numerals I–XII use individual atlas pictures, preserving ordinary Latin I/V/X.
+The Days compatibility mappings use U+2165 → slot 88 and U+2167 → slot 93,
+as requested after inspecting Days' numeral artwork; this does not assert how
+the original game composes wider numerals. Both SYS and EVT sheets were checked:
+slot 88 contains V and slot 93 contains X in each. The small Days `08` fonts
+have no Roman-numeral CMAP entries; `10`, `10s` and `10all` use these mappings.
 The XIII picture has no single corresponding Unicode numeral and is not
 substituted for a Latin sequence. Control codes, unused slots, Japanese extension
 tables and unsupported characters are not assigned fabricated mappings.
@@ -65,6 +70,10 @@ tables and unsupported characters are not assigned fabricated mappings.
 Output glyph arrays retain every native KH2 slot. The charmap includes only
 supported codepoints present in each original Days NFTR. Missing characters use
 the existing secondary PNG / original NFTR fallback chain with no index shifts.
+Days repurposes U+FF2C as a circled L in `08`/`08s`/`10`/`10s`, and U+FF42 as
+an SP symbol in `08`/`08s`. These are omitted from their KH2 charmaps and listed
+in `original_codepoints`. In `10all` those codes are ordinary letters and stay
+mapped. Source-specific exclusions survive scoped overrides to `10all`.
 The generator also writes the approved scoped defaults to
 `mods/HD PACK/fonts/mappings.json`: camp, field tutorials, bottom-screen HUD,
 mission results, shops and pickup names use SYS through `font_eu_10all`;
@@ -131,6 +140,13 @@ the original. Missing codepoints fall back. An empty map preserves legacy
 index-based binding; it is unsuitable for routing between different NFTRs.
 Aliases of one original glyph use the first original codepoint encountered.
 Duplicate replacement codepoints are rejected.
+
+Optional `original_codepoints` lists codepoints that must use original NFTR
+artwork and metrics, bypassing both PNG layers. It is useful for game symbols
+stored under ordinary Unicode letter codes. Unlike an absent charmap entry,
+this explicit native policy follows the requested resource through scoped font
+overrides; it does not disable legitimate letters in the shared target font.
+Existing JSONs without the field keep their previous behavior.
 
 `source` must match the selected resource, including its original subtree.
 Leading NitroFS slashes and slash direction are normalized. A combined font such

@@ -56,7 +56,9 @@ int atlas_index(std::shared_ptr<const khdays::hd_fonts::Atlas> &atlas, int origi
 extern "C" int khdays_hd_font_map_ready(const char *resource)
 {
     auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
-    return !atlas || (atlas->charmap.empty() && !atlas->has_original && !atlas->has_secondary && !atlas->secondary) ||
+    return !atlas ||
+           (atlas->charmap.empty() && atlas->original_codepoints.empty() && !atlas->has_original &&
+            !atlas->has_secondary && !atlas->secondary) ||
            atlas->codes_bound;
 }
 
@@ -76,6 +78,10 @@ extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t
     std::vector<int> indices(static_cast<std::size_t>(count), -1);
     std::vector<int> secondary_indices(atlas->secondary ? static_cast<std::size_t>(count) : 0, -1);
     for (int i = 0; i < count; ++i) {
+        if (atlas->original_codepoints.count(codes[i])) {
+            atlas->original_codes.insert(codes[i]);
+            continue;
+        }
         const auto found = by_code.find(codes[i]);
         if (atlas->charmap.empty())
             indices[i] = static_cast<std::size_t>(i) < atlas->glyphs.size() ? i : -1;
@@ -86,6 +92,7 @@ extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t
             continue;
         const auto secondary = secondary_by_code.find(codes[i]);
         if ((!glyph || !glyph->original) && secondary != secondary_by_code.end() &&
+            !atlas->secondary->original_codepoints.count(codes[i]) &&
             !atlas->secondary->glyphs[secondary->second].original) {
             secondary_indices[i] = secondary->second;
             atlas->secondary_codes.insert(codes[i]);
