@@ -38,10 +38,18 @@ double exact_units(const khdays::hd_fonts::Atlas &atlas, int value)
     return value * (atlas.sized ? atlas.scale : 1.0);
 }
 
+bool map_ready(const khdays::hd_fonts::Atlas &atlas)
+{
+    return atlas.codes_bound || (atlas.charmap.empty() && atlas.original_codepoints.empty() && !atlas.has_original &&
+                                 !atlas.has_secondary && !atlas.secondary);
+}
+
 int atlas_index(std::shared_ptr<const khdays::hd_fonts::Atlas> &atlas, int original)
 {
     if (original < 0)
         return original;
+    if (!map_ready(*atlas))
+        return -1;
     const int index =
         atlas->original_glyphs.empty()
             ? original
@@ -66,10 +74,7 @@ int atlas_index(std::shared_ptr<const khdays::hd_fonts::Atlas> &atlas, int origi
 extern "C" int khdays_hd_font_map_ready(const char *resource)
 {
     auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
-    return !atlas ||
-           (atlas->charmap.empty() && atlas->original_codepoints.empty() && !atlas->has_original &&
-            !atlas->has_secondary && !atlas->secondary) ||
-           atlas->codes_bound;
+    return !atlas || map_ready(*atlas);
 }
 
 extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t *codes, int count)
@@ -118,18 +123,6 @@ extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t
 extern "C" int khdays_hd_font_has(const char *resource)
 {
     return resource && khdays::hd_fonts::load(resource) != nullptr;
-}
-
-extern "C" int khdays_hd_font_glyph_width(const char *resource, int index)
-{
-    if (!resource)
-        return 0;
-    auto atlas = khdays::hd_fonts::load(resource);
-    if (atlas)
-        index = atlas_index(atlas, index);
-    if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
-        return 0;
-    return atlas->native_metrics ? 0 : khdays::hd_fonts::layout_units(*atlas, atlas->glyphs[index].width);
 }
 
 extern "C" int khdays_hd_font_glyph_available(const char *resource, int index)
@@ -184,7 +177,7 @@ extern "C" double khdays_hd_font_kerning_f(const char *resource, unsigned int le
     if (!resource || !left || !right || left == '\n' || right == '\n')
         return 0;
     auto atlas = khdays::hd_fonts::load(resource);
-    if (!atlas)
+    if (!atlas || !map_ready(*atlas))
         return 0;
     if (atlas->original_codes.count(left) || atlas->original_codes.count(right))
         return 0;

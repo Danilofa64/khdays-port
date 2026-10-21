@@ -1,4 +1,7 @@
 // Synthetic atlas pairs exercise the real loader, glyph resolver, metrics and rasterizer.
+#ifdef NDEBUG
+#undef NDEBUG // Assertions must exercise their calls in Release builds too.
+#endif
 #include "../runtime/mods/fonts.cpp"
 #include "../runtime/mods/font_runtime.cpp"
 #include <cassert>
@@ -109,6 +112,9 @@ int main()
             assert(khdays_hd_font_metric_f(resource, 2, KHDF_ADVANCE, 7) == 7);
             assert(khdays_hd_font_metric_f(resource, -1, KHDF_LINE_FEED, 12) == 5);
             assert(khdays_hd_font_metric_f(resource, 1, KHDF_SIZED, 0) == (custom ? 1 : 0));
+            double ink[2];
+            assert(khdays_hd_font_ink(resource, 1, 8, 8, 4, ink));
+            assert(ink[0] == 0 && ink[1] == (custom ? 3 : 8)); // Native metrics ignore the secondary's width.
             assert(khdays_hd_font_baseline_f(resource, 1, 6) == (custom ? 2 : 0));
             assert(khdays_hd_font_extent_f(resource, 1, -3, 4, 7) == (custom ? 4 : 1));
             assert(khdays_hd_font_kerning_f(resource, 'A', 'B') == 0);

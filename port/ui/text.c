@@ -474,14 +474,20 @@ void khdays_ui_text_scope_pop(void)
 
 static int obtained_wants(unsigned int slot, int announcement, unsigned key)
 {
-    if (!announcement || slot >= 24 || !hd_enabled() || !khdays_hd_font_mappings_enabled()) {
+    if (!announcement || slot >= 24 || !hd_enabled()) {
         obtained_reset();
         return 0;
     }
     if (obtained.active && obtained.slot == (int)slot && obtained.key == key && obtained.canvas.seen)
         return 0;
     obtained_reset();
-    int different = 0;
+    double command_offset, popup_offset;
+    const double command_width = khdays_hd_font_fit_layout(KHDF_FIT_ITEMS, &command_offset);
+    const double popup_width = khdays_hd_font_fit_layout(KHDF_FIT_OBTAINED, &popup_offset);
+    int different = command_width != popup_width || (command_width > 0 && command_offset != popup_offset);
+    if (!different && !khdays_hd_font_mappings_enabled())
+        return 0;
+    int replacement = 0;
     const char *sources[] = {"text/font_eu_08.nftr", "text/font_eu_08s.nftr"};
     for (int i = 0; i < 2; ++i) {
         char command[160], popup[160];
@@ -490,8 +496,10 @@ static int obtained_wants(unsigned int slot, int announcement, unsigned key)
         if (!khdays_hd_font_select(sources[i], "field.obtained", popup, sizeof(popup)))
             snprintf(popup, sizeof(popup), "%s", sources[i]);
         different |= strcmp(command, popup) != 0;
+        if (different)
+            replacement |= khdays_hd_font_has(command) || khdays_hd_font_has(popup);
     }
-    if (!different)
+    if (!different || !replacement)
         return 0;
     obtained.active = 1;
     obtained.slot = (int)slot;
@@ -700,9 +708,11 @@ static const char *bind_font_file(const void *font, const char *name, KhdaysRef 
     if (strcmp(path + n - 5, ".nftr") != 0)
         return NULL;
     unbind_font(KHDAYS_REF(font));
-    const int replacement = khdays_hd_font_has(path);
-    if (replacement)
+    int replacement = khdays_hd_font_has(path);
+    if (replacement) {
         bind_charmap(path, font);
+        replacement = khdays_hd_font_map_ready(path);
+    }
     const KhdaysRef ref = KHDAYS_REF(font);
     int pos = 0;
     while (pos < binding_count && font_bindings[pos].font != ref)
@@ -982,12 +992,6 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
     if (op.paint_w == widths[1])
         op.paint_w = op.w; /* Preserve the existing full-cell PNG for unchanged metrics. */
     if (khdays_hd_font_metric(path, op.glyph, KHDF_SIZED, 0)) {
-        int geometry[3];
-        if (khdays_hd_font_geometry(path, op.glyph, table[0], table[1], widths[1], geometry)) {
-            op.w = geometry[0];
-            op.h = geometry[1];
-            op.paint_w = geometry[2];
-        }
         op.w = (int)ceil(khdays_hd_font_metric_f(path, op.glyph, KHDF_CELL_WIDTH, op.w));
         op.h = (int)ceil(khdays_hd_font_metric_f(path, op.glyph, KHDF_CELL_HEIGHT, op.h));
         op.paint_w = (int)ceil(khdays_hd_font_metric_f(path, op.glyph, KHDF_WIDTH, op.paint_w));
@@ -1171,26 +1175,18 @@ static void clear_hd_rect(Canvas *c, int x, int y, int w, int h)
    PNG overhang is artwork, not evidence that neighbouring storage belongs to text. */
 static void invalidate_draws(Canvas *c, int x, int y, int w, int h)
 {
-    for (int i = 0; i < c->op_count;) {
-        const GlyphOp hit = c->ops[i];
-        if (hit.source_x >= x + w || hit.source_x + hit.source_w <= x || hit.source_y >= y + h ||
-            hit.source_y + hit.source_h <= y) {
-            ++i;
-            continue;
-        }
-        int kept = 0;
-        for (int j = 0; j < c->op_count; ++j) {
-            const GlyphOp *a = &c->ops[j];
-            if (a->source_x == hit.source_x && a->source_y == hit.source_y && a->glyph == hit.glyph &&
-                a->native_glyph == hit.native_glyph && memcmp(a->resource, hit.resource, sizeof(hit.resource)) == 0) {
-                if (c->editing_display)
-                    dirty_rect(c, a->clip_l, a->clip_t, a->clip_r, a->clip_b);
-            } else
-                c->ops[kept++] = *a;
-        }
-        c->op_count = kept;
-        i = 0;
+    int kept = 0;
+    for (int i = 0; i < c->op_count; ++i) {
+        const GlyphOp *op = &c->ops[i];
+        /* Every fragment retains the complete native write footprint. */
+        if (op->source_x < x + w && op->source_x + op->source_w > x && op->source_y < y + h &&
+            op->source_y + op->source_h > y) {
+            if (c->editing_display)
+                dirty_rect(c, op->clip_l, op->clip_t, op->clip_r, op->clip_b);
+        } else
+            c->ops[kept++] = *op;
     }
+    c->op_count = kept;
 }
 
 static uint32_t pixel_offset(const Canvas *c, int x, int y)

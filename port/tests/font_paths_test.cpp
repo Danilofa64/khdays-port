@@ -11,29 +11,27 @@ static bool mapping_file;
 static bool source_font_file;
 static bool layout_file;
 static int png_w = 8, png_h = 8;
+static std::string mod_directory = "build/tests/", last_png_path;
 extern "C" int khdays_mods_find(const char *relative, char *path, int size)
 {
     ++lookups;
-    if (layout_file && std::strcmp(relative, "fonts/layouts.json") == 0) {
-        std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-layouts.json");
-        return 1;
-    }
-    if (source_font_file && std::strcmp(relative, "fonts/text/small.nftr.png") == 0)
-        return std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-source.nftr.png") < size;
-    if (mapping_file && std::strcmp(relative, "fonts/mappings.json") == 0) {
-        std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-mappings.json");
-        return 1;
-    }
-    if (std::strcmp(relative, "fonts/text/paths.nftr.png") != 0)
+    const char *name = nullptr;
+    if (layout_file && std::strcmp(relative, "fonts/layouts.json") == 0)
+        name = "font-layouts.json";
+    else if (source_font_file && std::strcmp(relative, "fonts/text/small.nftr.png") == 0)
+        name = "font-source.nftr.png";
+    else if (mapping_file && std::strcmp(relative, "fonts/mappings.json") == 0)
+        name = "font-mappings.json";
+    else if (std::strcmp(relative, "fonts/text/paths.nftr.png") == 0)
+        name = "font-paths.nftr.png";
+    if (!name)
         return 0;
-    const char *file = "build/tests/font-paths.nftr.png";
-    if (static_cast<int>(std::strlen(file)) >= size)
-        return 0;
-    std::strcpy(path, file);
-    return 1;
+    const std::string file = mod_directory + name;
+    return std::snprintf(path, static_cast<std::size_t>(size), "%s", file.c_str()) < size;
 }
-extern "C" std::uint8_t *khdays_png_read(const char *, int *w, int *h, const char **)
+extern "C" std::uint8_t *khdays_png_read(const char *path, int *w, int *h, const char **)
 {
+    last_png_path = path;
     *w = png_w;
     *h = png_h;
     auto *pixels = static_cast<std::uint8_t *>(std::malloc(static_cast<std::size_t>(*w) * *h * 4));
@@ -254,7 +252,9 @@ static bool mapping_rules_test(const char *json)
     ok = ok && lookups == before && first->original_glyphs[0] == 0; // No repeated file probes or remapping.
     for (const char *bad :
          {R"({"version":2,"scopes":{}})", R"({"version":1,"scopes":{"camp":{"text/a.nftr":"../escape.nftr"}}})",
-          R"({"version":1,"scopes":{"camp":{"text/a.nftr":12}}})", R"({"version":1,"scopes":{"camp..bad":{}}})"}) {
+          R"({"version":1,"scopes":{"camp":{"text/a.nftr":12}}})", R"({"version":1,"scopes":{"camp..bad":{}}})",
+          R"({"version":1,"scopes":{"camp":{"text/a.nftr":"text/a.nftr\u0000other.nftr"}}})",
+          R"({"version":1,"scopes":{"camp":{"text/a.nftr":"text/\bother.nftr"}}})"}) {
         bool rejected = false;
         try {
             (void)read_rules(Reader(bad).read());
@@ -321,7 +321,10 @@ static bool layout_rules_test()
         }
         ok = ok && rejected;
     }
-    const char *file = "build/tests/font-layouts.json";
+    mod_directory = "build/tests/\xe6\xb5\x8b\xe8\xaf\x95/";
+    const auto folder = u8(mod_directory);
+    std::filesystem::create_directories(folder);
+    const auto file = folder / "font-layouts.json";
     std::ofstream(file) << R"({"version":1,"scopes":{"camp":"font_metrics","camp.save":"original",
         "field.command.items.name":{"mode":"fit","max_width":53.5,"x_offset":1.25},
         "field.obtained":{"mode":"fit","max_width":32}}})";
@@ -340,6 +343,8 @@ static bool layout_rules_test()
     ok = ok && lookups == after_load;
     layout_file = false;
     std::filesystem::remove(file);
+    std::filesystem::remove(folder);
+    mod_directory = "build/tests/";
     return ok;
 }
 
@@ -387,6 +392,8 @@ int main()
     cache.clear();
     const std::uint32_t original_codes[] = {90, 65, 0xff21};
     ok = ok && !khdays_hd_font_map_ready("text/paths.nftr");
+    ok = ok && !khdays_hd_font_glyph_available("text/paths.nftr", 0) &&
+         khdays_hd_font_metric("text/paths.nftr", 0, KHDF_ADVANCE, 8) == 8;
     khdays_hd_font_bind_charmap("text/paths.nftr", original_codes, 3);
     ok = ok && khdays_hd_font_map_ready("text/paths.nftr") && khdays_hd_font_glyph_available("text/paths.nftr", 1) &&
          !khdays_hd_font_glyph_available("text/paths.nftr", 0) &&
@@ -483,6 +490,25 @@ int main()
     ok = source_symbols_test(json) && ok;
     ok = mapping_rules_test(json) && ok;
     ok = layout_rules_test() && ok;
+    // SDL mod paths and the PNG reader are UTF-8, including outside the Windows ANSI codepage.
+    mod_directory = "build/tests/\xe6\xb5\x8b\xe8\xaf\x95/";
+    const auto unicode_dir = u8(mod_directory);
+    std::filesystem::create_directories(unicode_dir);
+    std::ofstream(unicode_dir / "font-paths.nftr.json") << metadata;
+    std::ofstream(unicode_dir / "font-mappings.json") << R"({"version":1,"scopes":{"camp":{
+        "text/small.nftr":"text/paths.nftr"}}})";
+    cache.clear();
+    rules.clear();
+    rules_read = false;
+    mapping_file = true;
+    png_w = png_h = 8;
+    const auto unicode = load("text/paths.nftr");
+    ok = ok && unicode && unicode->png_path == mod_directory + "font-paths.nftr.png" &&
+         last_png_path == unicode->png_path && mappings_enabled();
+    std::filesystem::remove(unicode_dir / "font-paths.nftr.json");
+    std::filesystem::remove(unicode_dir / "font-mappings.json");
+    std::filesystem::remove(unicode_dir);
+    mod_directory = "build/tests/";
     std::filesystem::remove(json);
     std::printf("HD font paths: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;

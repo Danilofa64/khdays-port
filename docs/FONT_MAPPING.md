@@ -5,8 +5,9 @@ Font routing alone does not enable those corrections.
 
 Place `fonts/mappings.json` in an enabled mod, for example
 `mods/HD2/fonts/mappings.json`. Restart after edits. The highest-priority enabled
-mod providing the file wins; mapping files are not merged. No mapping is installed
-automatically. Without one, existing font behavior is unchanged.
+mod providing the file wins; mapping files are not merged. The HD PACK generator
+supplies its documented defaults. Other font mods opt in by providing this file;
+without one, existing font behavior is unchanged.
 
 ```json
 {
@@ -193,6 +194,8 @@ private 64x16 text surface when that banner changes. It runs the existing text
 layout and NFTR renderer with the popup's scope, retaining independent advances,
 fitting, shadows and original-glyph fallback. No native character VRAM is
 overwritten. The OBTAINED heading itself is pre-rendered artwork.
+Different fitting rules in `fonts/layouts.json` also select the private surface
+when the font choices match, including when no mappings file is installed.
 
 Shop routing covers both the standalone shop and Mission Mode's embedded shop.
 Its original fonts are 10, 08 and 08s; map all three for a consistent replacement.
@@ -326,12 +329,14 @@ of a pre-existing camp scope.
 Mission tests cover all seven roles, inherited defaults for non-body elements,
 explicit original-font cancellation for the three bodies, nested tutorial/mission
 scope restoration, bounded stack overflow recovery, and retained captured fonts.
-Run `python port/tests/font_scope_hooks_test.py` for the six generator tests.
+Run `python port/tests/font_scope_hooks_test.py` for the generator tests.
 They check both overlays' twelve element wrappers and initial instruction/world
 draws, including parameter comments containing commas or identifier-like words.
 The generated wrapper always pops its scope after the game function returns,
 including early returns inside that function.
 Existing layout, clearing, scrolling, placement, and overlay tests also run.
+The `khdays-font-tests` build target and `ctest -R khdays-font-` run these suites
+and the generator checks through the standard port test workflow.
 
 In-game verification remains necessary: install distinct alternates and visit
 root → Panels → diary/profiles → Save → root → dialogue, including Mission Mode.

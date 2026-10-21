@@ -17,7 +17,6 @@ int khdays_hd_font_ink(const char *resource, int index, int w, int h, int ink, d
 int khdays_hd_font_paint_fitted(const char *resource, int index, double x, double y, int logical_width,
                                 int logical_height, uint32_t rgba_color, uint32_t *rgba, int width, int height,
                                 int scale, int clip_l, int clip_t, int clip_r, int clip_b, double x_scale);
-int khdays_hd_font_glyph_width(const char *resource, int index);
 int khdays_hd_font_glyph_available(const char *resource, int index);
 enum { KHDF_LEFT, KHDF_WIDTH, KHDF_ADVANCE, KHDF_LINE_FEED, KHDF_SIZED, KHDF_CELL_WIDTH, KHDF_CELL_HEIGHT };
 int khdays_hd_font_baseline(const char *resource, int index, int days_baseline);

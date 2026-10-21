@@ -306,7 +306,9 @@ bool glyph_ink(const Atlas &atlas, int index, int days_width, int days_height, i
         w = g.image_w * ratio;
     } else if (w * g.image_h > h * g.image_w)
         w = std::max(1.0, std::round(h * g.image_w / g.image_h));
-    const double clip = !atlas.sized && g.width == days_ink_width ? w : g.width * (atlas.sized ? atlas.scale : 1);
+    const double clip = atlas.native_metrics || (!atlas.sized && g.width == days_ink_width)
+                            ? w
+                            : g.width * (atlas.sized ? atlas.scale : 1);
     const double padding = g.w > 0 ? .5 * g.image_w / g.w : .5;
     bounds[0] = std::max(0.0, g.ink_left - g.image_x - padding) * w / g.image_w;
     bounds[1] = std::min({w, clip, (g.ink_right - g.image_x + padding) * w / g.image_w});

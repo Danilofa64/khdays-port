@@ -112,6 +112,10 @@ fallback is unchanged. The supported menu canvases are 4-bpp with native cells n
 larger than 16x16; unsupported native cell sizes or writing directions, multiline
 names and strings over 512 characters keep their original layout.
 
+Different Items/OBTAINED fitting rules also create the private pickup capture when
+both use the same font, including without `mappings.json`. Equal font and fitting
+choices keep the shared cache. Neither configuration causes a per-frame redraw.
+
 Provenance at the decomp revision above: `Ov002_DrawPanelRowText` caches item names
 after `Ov002_PickTextFitting64` chooses the existing normal/narrow font. The port
 fits only that item-name draw, leaving spell and command labels alone.
@@ -332,8 +336,9 @@ Optional pair kerning uses codepoints:
 
 **Do not add `scale` to already scaled Days-unit metrics.** Existing KH2 packs
 using Days-unit values can retain compatibility mode. To use native sizing,
-regenerate their definitions with native KH2 cell dimensions and `fontinfo.bar`
-bearings, drawing widths and advances, then specify one scale. The renderer does
+regenerate their definitions with native KH2 cell dimensions and advances from
+`fontinfo.bar`, keeping bearings and drawing widths in the same source units,
+then specify one scale. The renderer does
 not change mod definitions. PNG upscaling requires no metric regeneration.
 
 ## Per-glyph and secondary fallback
@@ -505,12 +510,23 @@ Set these environment variables before launch for diagnostics:
 Keep them unset for ordinary play. No source regeneration is needed for changing
 mod files or these diagnostics. Regenerate only when generation hooks change.
 
+Font and configuration paths use UTF-8 consistently with the mod finder and PNG
+reader. A replacement that needs a character map stays on native glyphs and metrics
+until binding succeeds; an unbound map cannot use unrelated same-numbered slots.
+Secondary `metrics: original` artwork is measured at its actual native-cell size
+for fitting, independently of ignored secondary width metrics.
+
 ## Verification and remaining limits
 
+Build `khdays-font-tests` in the existing port build, then run
+`ctest --test-dir build/port/obj-x64 --output-on-failure -R khdays-font-`.
+CTest includes the runtime suites, NFTR decoder and generator-hook checks, with
+separate fixtures per build directory. Release tests retain assertion checks.
+
 Run `port\tests\run_hd_fonts.cmd`, or append `asan` for AddressSanitizer.
-It discovers VS2022 x64 and runs eight synthetic suites: camp scope selection,
+It discovers VS2022 x64 and runs nine synthetic suites: camp scope selection,
 canvas/VRAM behavior, layout following, metadata/routing, secondary fallback,
-rasterization, raster-cache bounds and generated SDK layout.
+rasterization, raster-cache bounds, NFTR decoding and generated SDK layout.
 
 Canvas tests also check ordinary PNGs with HD fonts disabled, partial uploads
 beside retained text, transparent and indexed art, flips, scrolling and image
@@ -521,7 +537,7 @@ fractional phases, tinted grayscale text and the shared memory/entry limits.
 The layout suite uses the existing
 `build/port/gen-x64` generated sources; prepare them once for the current hooks.
 Run `python port/tests/font_scope_hooks_test.py` for the generator-hook checks.
-The assets test target `khdays-font-test` covers NFTR decoding and malformed input.
+The assets test target `khdays-font-test` also covers NFTR decoding and malformed input.
 
 Coverage includes native KH2-sized cells over smaller Days cells, positive and
 negative bearings, `pipsqueak.` at scale 0.35, multiline/center/right alignment,

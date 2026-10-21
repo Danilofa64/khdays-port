@@ -585,18 +585,24 @@ int dump_font(const std::string &label, const std::vector<u8> &data, const std::
     }
 
     // Keep the complete original filename, e.g. text/font_eu_10.nftr.png.
-    const std::filesystem::path png = std::filesystem::path(folder) / "fonts" / (label + ".png");
+    const std::filesystem::path directory(std::u8string(folder.begin(), folder.end()));
+    const std::u8string filename = std::u8string(label.begin(), label.end()) + u8".png";
+    const std::filesystem::path png = directory / "fonts" / filename;
+    const auto png_utf8 = png.u8string();
+    const std::string png_name(png_utf8.begin(), png_utf8.end());
     std::error_code ec;
     std::filesystem::create_directories(png.parent_path(), ec);
-    if (ec || !khdays_textures_write_png(png.string().c_str(), rgba.data(), w, h)) {
-        std::fprintf(stderr, "graphics dump: cannot write font atlas %s\n", png.string().c_str());
+    if (ec || !khdays_textures_write_png(png_name.c_str(), rgba.data(), w, h)) {
+        std::fprintf(stderr, "graphics dump: cannot write font atlas %s\n", png_name.c_str());
         return 0;
     }
     std::filesystem::path json_path = png;
     json_path.replace_extension(".json");
+    const auto json_utf8 = json_path.u8string();
+    const std::string json_name(json_utf8.begin(), json_utf8.end());
     std::ofstream json(json_path, std::ios::binary);
     if (!json) {
-        std::fprintf(stderr, "graphics dump: cannot write font metadata %s\n", json_path.string().c_str());
+        std::fprintf(stderr, "graphics dump: cannot write font metadata %s\n", json_name.c_str());
         return 0;
     }
     json << "{\n  \"source\": " << json_quote(label) << ",\n  \"format\": \"NFTR\""
@@ -623,7 +629,7 @@ int dump_font(const std::string &label, const std::vector<u8> &data, const std::
     json << "  ]\n}\n";
     json.flush();
     if (!json.good()) {
-        std::fprintf(stderr, "graphics dump: failed writing %s\n", json_path.string().c_str());
+        std::fprintf(stderr, "graphics dump: failed writing %s\n", json_name.c_str());
         return 0;
     }
     return 1;

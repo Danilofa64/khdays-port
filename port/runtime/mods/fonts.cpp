@@ -7,6 +7,7 @@ extern "C" {
 extern "C" int khdays_mods_find(const char *relative, char *path, int size);
 
 #include <charconv>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -284,6 +285,11 @@ int integer(const Value &v, const char *name, int lo, int hi)
         throw std::runtime_error(std::string("out of range: ") + name);
     return static_cast<int>(n);
 }
+std::filesystem::path u8(const std::string &path)
+{
+    return std::filesystem::path(std::u8string(path.begin(), path.end()));
+}
+
 std::string text_file(const std::filesystem::path &path)
 {
     std::ifstream f(path, std::ios::binary | std::ios::ate);
@@ -340,7 +346,8 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
         output->native_metrics = metrics == "original";
     }
     output->source = resource;
-    output->png_path = png_path.string();
+    const auto utf8 = png_path.u8string();
+    output->png_path.assign(utf8.begin(), utf8.end());
     output->reference_width = integer(reference, "width", 1, 16384);
     output->reference_height = integer(reference, "height", 1, 16384);
     output->cell_width = integer(doc, "cell_width", 1, 256);
@@ -438,7 +445,7 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
     int iw = 0, ih = 0;
     const char *error = nullptr;
     std::unique_ptr<std::uint8_t, decltype(&khdays_png_free)> rgba(
-        khdays_png_read(png_path.string().c_str(), &iw, &ih, &error), &khdays_png_free);
+        khdays_png_read(output->png_path.c_str(), &iw, &ih, &error), &khdays_png_free);
     if (!rgba)
         throw std::runtime_error(std::string("PNG read failed: ") + (error ? error : "unknown"));
     if (iw < 1 || ih < 1 || iw > 16384 || ih > 16384 ||
@@ -477,8 +484,10 @@ bool font_path_valid(const std::string &path)
 {
     return !path.empty() && path.size() < 160 && path.front() != '/' && path.find('\\') == std::string::npos &&
            path.find(':') == std::string::npos && path.find("..") == std::string::npos &&
-           path.find_first_of("\r\n\t@") == std::string::npos && path.size() > 5 &&
-           path.compare(path.size() - 5, 5, ".nftr") == 0;
+           path.find('@') == std::string::npos &&
+           std::none_of(
+               path.begin(), path.end(), [](unsigned char c) { return c < 32 || c == 127; }) &&
+           path.size() > 5 && path.compare(path.size() - 5, 5, ".nftr") == 0;
 }
 
 FontRules read_rules(const Value &doc)
@@ -582,7 +591,7 @@ void load_rules()
     if (!khdays_mods_find("fonts/mappings.json", path, sizeof(path)))
         return;
     try {
-        rules = read_rules(Reader(text_file(path)).read());
+        rules = read_rules(Reader(text_file(u8(path))).read());
         std::fprintf(stderr, "HD font mappings: %s (%zu scopes)\n", path, rules.size());
     } catch (const std::exception &e) {
         std::fprintf(stderr, "HD font mappings: rejected %s: %s\n", path, e.what());
@@ -639,17 +648,14 @@ std::shared_ptr<Atlas> routed_view(const std::shared_ptr<const Atlas> &base)
 Entry load_pair(const std::string &original, bool secondary)
 {
     // Never let a mod-supplied path escape the fonts subtree.
-    if (original.empty() || original.front() == '/' || original.find('\\') != std::string::npos ||
-        original.find(':') != std::string::npos || original.find("..") != std::string::npos)
+    if (!font_path_valid(original))
         return {};
     const std::string relative = "fonts/" + original + (secondary ? ".fallback.png" : ".png");
-    if (relative.size() > 480)
-        return {};
     char path[4096]{};
     if (!khdays_mods_find(relative.c_str(), path, sizeof(path)))
         return {};
     try {
-        auto font = read_atlas(original, std::filesystem::path(path), secondary);
+        auto font = read_atlas(original, u8(path), secondary);
         std::fprintf(stderr, "HD fonts: %s <- %s (%dx%d from %dx%d, %zu glyphs)\n", original.c_str(), path, font->width,
                      font->height, font->reference_width, font->reference_height, font->glyphs.size());
         return {std::move(font), true, false};
@@ -754,7 +760,7 @@ const LayoutRules &cached_layouts()
         char path[4096]{};
         if (khdays_mods_find("fonts/layouts.json", path, sizeof(path))) {
             try {
-                layouts = read_layouts(Reader(text_file(path)).read());
+                layouts = read_layouts(Reader(text_file(u8(path))).read());
                 std::fprintf(stderr, "HD font layouts: %s (%zu scopes)\n", path, layouts.size());
             } catch (const std::exception &e) {
                 std::fprintf(stderr, "HD font layouts: rejected %s: %s\n", path, e.what());

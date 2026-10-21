@@ -29,7 +29,7 @@ static int font_probes;
 static const char *test_scope = "";
 static int test_camp_screen = KHDAYS_CAMP_NONE, test_camp_story = 1;
 static char selected_scope[80];
-static int command_route, popup_route = 1;
+static int command_route, popup_route = 1, test_mappings = 1;
 int khdays_camp_screen(int *story)
 {
     *story = test_camp_story;
@@ -37,7 +37,7 @@ int khdays_camp_screen(int *story)
 }
 int khdays_hd_font_mappings_enabled(void)
 {
-    return 1;
+    return test_mappings;
 }
 void khdays_camp_font_scope(uint32_t font, char *scope, int size)
 {
@@ -78,6 +78,7 @@ int khdays_hd_font_select(const char *resource, const char *scope, char *selecte
 static int metric_override, text_mode = KHDAYS_UI_ON;
 static int numeric_layout_enabled;
 static double fit_widths[2];
+static double fit_offsets[2];
 static int native_blits;
 static const void *native_hostrefs[2];
 static int native_hostref_count;
@@ -88,7 +89,7 @@ static void *native_hostref(KhdaysRef ref)
 double khdays_hd_font_fit_layout(int layout, double *offset)
 {
     if (offset)
-        *offset = 0;
+        *offset = layout >= 0 && layout < 2 ? fit_offsets[layout] : 0;
     return layout >= 0 && layout < 2 ? fit_widths[layout] : 0;
 }
 int khdays_hd_font_ink(const char *path, int index, int w, int h, int ink, double *bounds)
@@ -156,6 +157,12 @@ int khdays_hd_font_metric(const char *path, int index, int field, int fallback)
         return large_geometry;
     if (path && index == 0 && field == KHDF_WIDTH && glyph_width_override >= 0)
         return glyph_width_override;
+    if (path && large_geometry) {
+        if (field == KHDF_CELL_WIDTH || field == KHDF_WIDTH)
+            return 18;
+        if (field == KHDF_CELL_HEIGHT)
+            return 24;
+    }
     static const int metrics[] = {-2, 13, 11, 17};
     return path && metric_override && index <= 0 && field >= 0 && field < 4 ? metrics[field] : fallback;
 }
@@ -954,6 +961,22 @@ static void obtained_popup(void)
     command_route = popup_route = 0;
     CHECK(!khdays_ui_text_obtained_wants(0, 1));
     CHECK(!obtained.active);
+    /* Shared fonts still need separate captures for independent fitting rules. */
+    test_mappings = 0;
+    fit_widths[0] = 53;
+    CHECK(khdays_ui_text_obtained_wants(0, 1));
+    obtained_reset();
+    fit_widths[1] = 53;
+    CHECK(!khdays_ui_text_obtained_wants(0, 1));
+    fit_offsets[1] = 1;
+    CHECK(khdays_ui_text_obtained_wants(0, 1));
+    obtained_reset();
+    fit_widths[0] = fit_widths[1] = fit_offsets[1] = 0;
+    fit_widths[1] = 64;
+    CHECK(khdays_ui_text_obtained_wants(0, 1));
+    obtained_reset();
+    fit_widths[1] = 0;
+    test_mappings = 1;
     command_route = 0;
     popup_route = 1;
     unsigned char *large_ram = ram;
@@ -1385,6 +1408,9 @@ int main(int argc, char **argv)
     mapping_count = 0;
     bind_charmap("text/synthetic.nftr", font);
     CHECK(mapping_count == 0); // A malformed cycle must not register a partial map.
+    bind_font(font, "text/synthetic.nftr");
+    CHECK(font_path(KHDAYS_REF(font)) == NULL);
+    CHECK(khdays_ui_text_metric_f(font, 0, KHDF_ADVANCE, 8) == 8);
     setup(8);
     cc->area_height = 4;
     c = canvas_of(cc, "baseline rows");
@@ -1953,6 +1979,20 @@ int main(int argc, char **argv)
     CHECK(!record(c, &repeated) && c->ops_disabled && c->op_count == 0);
     khdays_ui_text_clear(cc, 0);
     CHECK(!c->ops_disabled && record(c, &repeated) && c->op_count == 1);
+    c->op_count = 0;
+    for (int i = 0; i < 4096; ++i) {
+        GlyphOp part = repeated;
+        part.source_x = i % 2 ? 8 : 0;
+        part.clip_l = i % 2 ? 8 : 12; // An overhanging fragment still belongs to its native draw.
+        part.clip_r = part.clip_l + 1;
+        CHECK(record(c, &part));
+    }
+    invalidate_draws(c, 0, 0, 1, 1);
+    CHECK(c->op_count == 2048);
+    for (int i = 0; i < c->op_count; ++i)
+        CHECK(c->ops[i].source_x == 8);
+    invalidate_draws(c, 8, 0, 1, 1);
+    CHECK(c->op_count == 0);
     command_menu_selections(1);
     command_menu_selections(2);
     /* Blank tile 0 repeated over a screen must not allocate one canvas per cell. */
