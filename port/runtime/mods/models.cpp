@@ -855,8 +855,6 @@ void draw(Model &m)
             o.b = rgb[2] * static_cast<float>(v.color[2]) / 255.0F;
             o.s = (v.texcoord[0] + offset[0]) / tex_w * 1024.0F * 16.0F;
             o.t = (v.texcoord[1] + offset[1]) / tex_h * 1024.0F * 16.0F;
-            if (mesh.sky && o.w > 0.0F)
-                o.z = o.w * 0.9999F; // as far as can be drawn: behind everything, never past the far plane
         }
         // the session log's diagnosis: where the mesh falls on the screen (x/w and y/w: -1..1
         // the view), and how near (w)
@@ -893,7 +891,7 @@ void draw(Model &m)
                                                 clip[mesh.indices[t + 2]]};
             uint32_t tri_attr;
             if (triangle_attr(mesh, t, attr, tri_attr))
-                khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, picture.replacement, picture.translucent);
+                khdays_g3d_mod_polygon(tri, 3, tri_attr, tex, picture.replacement, picture.translucent, mesh.sky);
         }
     }
 }

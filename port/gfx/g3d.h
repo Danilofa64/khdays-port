@@ -53,6 +53,7 @@ typedef struct KhdaysG3dPreInfo {
 #define KHDAYS_G3D_HUD 0x1       /* sent by the HUD's own drawing (khdays_g3d_set_hud) */
 #define KHDAYS_G3D_BEYOND_DS 0x2 /* the DS's polygon or vertex RAM would not have held it */
 #define KHDAYS_G3D_MOD 0x4       /* a mod's model's, drawn instead of the game's (runtime/mods/models.h): no DS's */
+#define KHDAYS_G3D_SKY 0x10      /* a mod's sky: behind everything else, its layers in their order */
 #define KHDAYS_G3D_OVER_2D                                                                                             \
     0x8 /* a HUD polygon the DS shows over all its 2D (its BG0 the top layer): the one
                                   * picture puts it in front of its shapes, widescreen leaves it in place (the
@@ -214,12 +215,15 @@ typedef struct KhdaysG3dClipVertex {
 } KhdaysG3dClipVertex;
 
 /* A polygon of a mod's model into the list being built: culled by `attr`'s
- * faces, its far-plane rule and the clip volume as the DS's are, marked
- * KHDAYS_G3D_MOD (and the HUD's while they are). Drawn with texture
- * `replacement` (runtime/mods/textures.h) over `tex`'s size and repeats, or
- * untextured when `replacement` is -1. Not counted against the DS's RAM. */
+ * faces and cut by the clip volume as the DS's are, but for the far plane: a
+ * mod's room can reach further than the game's, and what lies past it is drawn
+ * at its depth. Marked KHDAYS_G3D_MOD (and the HUD's while they are). A `sky`'s
+ * depth, once cut, is put behind everything else, its own order kept (KH2's
+ * skies are drawn first, as a background). Drawn with texture `replacement`
+ * (runtime/mods/textures.h) over `tex`'s size and repeats, or untextured when
+ * `replacement` is -1. Not counted against the DS's RAM. */
 void khdays_g3d_mod_polygon(const KhdaysG3dClipVertex *v, int n, uint32_t attr, uint32_t tex, int32_t replacement,
-                            int translucent);
+                            int translucent, int sky);
 
 /* For traces: `hook` hears of each polygon added to the list being built,
  * as it is added (NULL: none). */

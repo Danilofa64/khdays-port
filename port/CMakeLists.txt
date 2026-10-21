@@ -591,6 +591,11 @@ add_executable(khdays-elements-test tests/elements_test.c)
 target_link_libraries(khdays-elements-test PRIVATE khdays-gfx)
 target_compile_options(khdays-elements-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-elements COMMAND khdays-elements-test)
+# A mod's polygons into a list: the near plane only, a sky behind everything else.
+add_executable(khdays-mod-polygon-test tests/mod_polygon_test.c)
+target_link_libraries(khdays-mod-polygon-test PRIVATE khdays-gfx)
+target_compile_options(khdays-mod-polygon-test PRIVATE /W4 /std:c17)
+add_test(NAME khdays-mod-polygon COMMAND khdays-mod-polygon-test)
 # The one-screen picture: the compositions' places and the port's own file, the pass's steps and the 2D
 # apart from the 3D, on the CPU.
 add_executable(khdays-onescreen-test tests/onescreen_test.c ui/composition.c ui/situation.c ui/situation_decide.c

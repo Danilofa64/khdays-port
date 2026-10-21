@@ -306,7 +306,11 @@ game turns G; its head is where its parent's K puts it, so the mod keeps its
 own proportions. A joint at G's place with no correction is drawn with D_G
 itself; one that follows no node moves with its parent. A mesh is drawn both
 sides or front only as its file says (glTF `doubleSided`; FBX both), unless
-`<model>.bones.txt` says `cull back` or `cull none`. A room of a mission world
+`<model>.bones.txt` says `cull back` or `cull none`. Its polygons are cut by
+the clip volume but for the game's far plane, which neither cuts nor hides them
+(the DS's far-plane rule hid a polygon reaching past it whole: a KH2 room's
+floor, a few large triangles, went at once); what lies past it is drawn at its
+depth (`gfx/g3d_geometry.c` `finish_mod_polygon`). A room of a mission world
 whose world the same mod replaces is drawn with HD graphics off too: its new
 ground is played either way.
 
@@ -316,8 +320,10 @@ joint that follows no game node is drawn with its node's matrix now times its
 inverse bind, so a piece skinned to its own bones moves as the file says (a
 mesh on an animated node with no skin is made still on loading, and the log
 says so). The port's glTF extras say the rest: `khdays_sky` on a node (its
-meshes drawn as far as can be drawn, behind everything, never past the far
-plane), on a material `khdays_scroll` `[u, v]` (texture coordinates, 0..1 over
+meshes behind everything else, as KH2 draws its skies first: once cut by the
+near plane at their true depth, their depth goes to a band at the far end,
+ordered by their distance, the dome behind its clouds; set before the cut, a
+sky triangle reaching behind the camera came out near it and hid the room), on a material `khdays_scroll` `[u, v]` (texture coordinates, 0..1 over
 the picture, added each game frame) and `khdays_frames` `{"pictures": [...],
 "frames": [[picture, game frames], ...], "loop": true, "loop_from": i}`
 (pictures in turn), on an animation `khdays_loop` and `khdays_loop_from`
