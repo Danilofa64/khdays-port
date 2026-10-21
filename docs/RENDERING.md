@@ -320,10 +320,15 @@ joint that follows no game node is drawn with its node's matrix now times its
 inverse bind, so a piece skinned to its own bones moves as the file says (a
 mesh on an animated node with no skin is made still on loading, and the log
 says so). The port's glTF extras say the rest: `khdays_sky` on a node (its
-meshes behind everything else, as KH2 draws its skies first: once cut by the
-near plane at their true depth, their depth goes to a band at the far end,
-ordered by their distance, the dome behind its clouds; set before the cut, a
-sky triangle reaching behind the camera came out near it and hid the room), on a material `khdays_scroll` `[u, v]` (texture coordinates, 0..1 over
+meshes drawn as KH2 draws its skies: around the camera, turned with the room but
+not moved, and behind everything else, painted in turn with no depth among
+them -- the opaque and cut-out meshes in the file's order, then the blended
+ones, each layer a step nearer in a band of depth at the far end, set once the
+near plane has cut them at their true depth. Placed at the room's origin, a
+sky's inner ring of hills and trees was seen edge on as zigzags; with one depth
+for all, or their distance's, its layers covered one another in wedges; set
+before the cut, a sky triangle reaching behind the camera came out near it and
+hid the room), on a material `khdays_scroll` `[u, v]` (texture coordinates, 0..1 over
 the picture, added each game frame) and `khdays_frames` `{"pictures": [...],
 "frames": [[picture, game frames], ...], "loop": true, "loop_from": i}`
 (pictures in turn), on an animation `khdays_loop` and `khdays_loop_from`

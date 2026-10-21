@@ -1,6 +1,6 @@
 /* A mod's polygons into a list (gfx/g3d.h khdays_g3d_mod_polygon): cut by the near plane with their true
- * depth, a sky then put behind everything else in its own order, and nothing hidden or cut at the game's
- * far plane. The clip space is Days's field's: z = w - 0.2 (its near plane at w 0.1, no far one).
+ * depth, a sky's then put behind everything else, each layer in front of the ones painted before it, and
+ * nothing hidden or cut at the game's far plane. The clip space is Days's field's: z = w - 0.2 (its near plane at w 0.1, no far one).
  *   ctest --test-dir build/port/obj-x64 -R khdays-mod-polygon --output-on-failure */
 #include "../gfx/g3d.h"
 
@@ -48,11 +48,11 @@ int main(void)
      * behind before the cut, its cut corner came out at the near plane and hid the room */
     const KhdaysG3dClipVertex around[3] = {at(-30, -10, 50), at(30, -10, 50), at(0, -10, -60)};
     khdays_g3d_mod_polygon(around, 3, BOTH_SIDES, 0, -1, 0, 1);
-    /* 1 and 2: the sky's dome, then its clouds nearer: the clouds stay in front of the dome */
+    /* 1 and 2: the sky's dome, then its clouds painted over it though farther: the clouds stay in front */
     const KhdaysG3dClipVertex dome[3] = {at(-100, 50, 300), at(100, 50, 300), at(0, 150, 300)};
-    const KhdaysG3dClipVertex clouds[3] = {at(-60, 30, 200), at(60, 30, 200), at(0, 90, 200)};
+    const KhdaysG3dClipVertex clouds[3] = {at(-200, 100, 600), at(200, 100, 600), at(0, 300, 600)};
     khdays_g3d_mod_polygon(dome, 3, BOTH_SIDES, 0, -1, 0, 1);
-    khdays_g3d_mod_polygon(clouds, 3, BOTH_SIDES, 0, -1, 0, 1);
+    khdays_g3d_mod_polygon(clouds, 3, BOTH_SIDES, 0, -1, 0, 2);
     /* 3: a room's wall far away, beyond the sky's distance: in front of the sky all the same */
     const KhdaysG3dClipVertex wall[3] = {at(-500, -500, 1000), at(500, -500, 1000), at(0, 500, 1000)};
     khdays_g3d_mod_polygon(wall, 3, BOTH_SIDES, 0, -1, 0, 0);
@@ -70,9 +70,9 @@ int main(void)
         return 1;
     }
     float near0 = 0, far0 = 0, near1 = 0, far1 = 0, near2 = 0, far2 = 0, near3 = 0, far3 = 0, near4 = 0, far4 = 0;
-    CHECK(depths(l, 0, &near0, &far0) && near0 >= 0.99989f && far0 < 0.99995f);
+    CHECK(depths(l, 0, &near0, &far0) && near0 >= 0.99989f && far0 <= 0.99996f);
     CHECK(depths(l, 1, &near1, &far1) && depths(l, 2, &near2, &far2) && far2 < near1);
-    CHECK(near1 >= 0.99989f && far1 < 0.99995f && near2 >= 0.99989f);
+    CHECK(near1 >= 0.99989f && far1 <= 0.99996f && near2 >= 0.99989f);
     CHECK(depths(l, 3, &near3, &far3) && far3 < 0.9999f && far3 < near2);
     CHECK(depths(l, 4, &near4, &far4) && far4 <= 0.99991f && near4 < 0.7f);
     if (failures != 0) {

@@ -928,11 +928,11 @@ static int clip_plane_f(const KhdaysG3dClipVertex *in, int n, KhdaysG3dClipVerte
 }
 
 /* A mod's depths (z / w): the farthest of a room's, then a sky's band, short of 1 (the farthest
- * CLEAR_DEPTH clears to). A sky's place in its band is w / (w + MOD_SKY_DISTANCE): KH2's skies are tens
- * to hundreds of units away once a room is a Days one's size. */
+ * CLEAR_DEPTH clears to). A sky's layers take its steps from the far end, each nearer than the ones
+ * painted before it: KH2 paints its skies in turn with no depth among them. */
 #define MOD_FAR 0.9999f
 #define MOD_SKY_END 0.99995f
-#define MOD_SKY_DISTANCE 64.0f
+#define MOD_SKY_LAYERS 32
 
 static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, const Polygon *in,
                                const KhdaysG3dPreInfo *info, int report)
@@ -966,14 +966,19 @@ static void finish_mod_polygon(List *out, const KhdaysG3dClipVertex *v, int n, c
     if (count < 3) {
         return;
     }
-    /* the depth, once cut by its true one: past the far plane at it, and a sky behind all of that, in a
-     * band whose order is the sky's distance (its dome behind its clouds). Set before the cut, a sky
-     * triangle reaching behind the camera was cut at depths it did not have and hid the room. */
-    for (int i = 0; i < count; ++i) {
-        if (in->flags & KHDAYS_G3D_SKY) {
-            a[i].z = a[i].w * (MOD_FAR + (MOD_SKY_END - MOD_FAR) * a[i].w / (a[i].w + MOD_SKY_DISTANCE));
-        } else if (a[i].z > a[i].w * MOD_FAR) {
-            a[i].z = a[i].w * MOD_FAR;
+    /* the depth, once cut by its true one: past the far plane at it, and a sky's layer behind all of that.
+     * Set before the cut, a sky triangle reaching behind the camera was cut at depths it did not have and
+     * hid the room. */
+    {
+        const int layer = KHDAYS_G3D_SKY_LAYER(in->flags) < MOD_SKY_LAYERS ? KHDAYS_G3D_SKY_LAYER(in->flags)
+                                                                         : MOD_SKY_LAYERS;
+        const float sky = MOD_SKY_END - (float)(layer - 1) * ((MOD_SKY_END - MOD_FAR) / (float)MOD_SKY_LAYERS);
+        for (int i = 0; i < count; ++i) {
+            if (layer > 0) {
+                a[i].z = a[i].w * sky;
+            } else if (a[i].z > a[i].w * MOD_FAR) {
+                a[i].z = a[i].w * MOD_FAR;
+            }
         }
     }
     if (!khdays_g3d_list_reserve(out, out->npolys + 1, out->nverts + count)) {
@@ -1030,7 +1035,7 @@ void khdays_g3d_mod_polygon(const KhdaysG3dClipVertex *v, int n, uint32_t attr, 
     memset(&what, 0, sizeof(what));
     what.attr = attr;
     what.tex = replacement >= 0 ? tex : 0;
-    what.flags = KHDAYS_G3D_MOD | (sky ? KHDAYS_G3D_SKY : 0) |
+    what.flags = KHDAYS_G3D_MOD | (sky > 0 ? KHDAYS_G3D_SKY | (((sky < 255 ? sky : 255) & 0xff) << 8) : 0) |
                  (g.hud ? KHDAYS_G3D_HUD | (g.hud == 2 ? KHDAYS_G3D_OVER_2D : 0) : 0);
     what.replacement = replacement;
     what.translucent = translucent_ || translucent(attr, 0);

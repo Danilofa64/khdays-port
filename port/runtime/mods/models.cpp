@@ -215,7 +215,8 @@ struct Mesh {
     std::vector<Picture> frame_pictures;
     bool frames_loop = true;
     std::size_t frames_loop_from = 0;
-    bool sky = false; // drawn behind everything
+    // a sky's: 0 none, else its layer, painted in turn behind everything (1 first) around the camera
+    int sky = 0;
 };
 
 struct Model {
@@ -512,7 +513,7 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
                                                                                     : VertexAlpha::cut;
         out.cutoff = in.alpha_mode == AlphaMode::mask ? in.alpha_cutoff : 0.5F;
         out.scroll = in.scroll;
-        out.sky = in.sky;
+        out.sky = in.sky ? 1 : 0;
         for (const auto &[picture, length] : in.texture_frames) {
             Mesh::Picture shown;
             if (const Made *t = texture_for(picture, in.alpha_mode, in.alpha_cutoff)) {
@@ -528,6 +529,13 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
         triangles += out.indices.size() / 3;
         model->meshes.push_back(std::move(out));
     }
+    // the sky's layers, in the order KH2 paints them with no depth among them: the opaque and cut-out ones
+    // as the file has them, then the blended ones
+    int sky_layer = 0;
+    for (const bool blended : {false, true})
+        for (Mesh &mesh : model->meshes)
+            if (mesh.sky != 0 && mesh.translucent == blended)
+                mesh.sky = ++sky_layer;
     // its own animation: the nodes its skinned meshes' joints are (with their parents) move; one that moves
     // another node would move a mesh made still on loading, which is not played
     if (!mod.animations.empty()) {
@@ -557,7 +565,7 @@ std::unique_ptr<Model> load(const std::string &name, const std::string &path, co
         for (const Mesh &mesh : model->meshes) {
             scrolling += mesh.scroll[0] != 0.0F || mesh.scroll[1] != 0.0F ? 1 : 0;
             framed += mesh.frames.empty() ? 0 : 1;
-            sky += mesh.sky ? 1 : 0;
+            sky += mesh.sky != 0 ? 1 : 0;
         }
         khdays_log("models: %s: its own animation: %zu moving parts' animations, %zu scrolling and %zu changing "
                    "textures, %zu sky meshes",
@@ -821,7 +829,9 @@ void draw(Model &m)
                     continue;
                 const std::uint32_t jt = v.joints[static_cast<std::size_t>(w)];
                 const Mat &s = jt < skin.size() ? skin[jt] : unskinned;
-                const auto q = point(s, v.position);
+                // a sky around the camera: turned and scaled with the room but not moved (the view's
+                // space has the camera at its origin)
+                const auto q = mesh.sky != 0 ? vec(s, v.position) : point(s, v.position);
                 const auto n = vec(s, v.normal);
                 for (int c = 0; c < 3; ++c) {
                     p[static_cast<std::size_t>(c)] += weight * q[static_cast<std::size_t>(c)];
@@ -830,7 +840,7 @@ void draw(Model &m)
                 total += weight;
             }
             if (total <= 0.0F) {
-                p = point(unskinned, v.position);
+                p = mesh.sky != 0 ? vec(unskinned, v.position) : point(unskinned, v.position);
                 nrm = vec(unskinned, v.normal);
             } else if (std::fabs(total - 1.0F) > 1e-4F) {
                 for (int c = 0; c < 3; ++c)
