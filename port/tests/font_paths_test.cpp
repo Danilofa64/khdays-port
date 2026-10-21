@@ -9,10 +9,15 @@
 static int lookups;
 static bool mapping_file;
 static bool source_font_file;
+static bool layout_file;
 static int png_w = 8, png_h = 8;
 extern "C" int khdays_mods_find(const char *relative, char *path, int size)
 {
     ++lookups;
+    if (layout_file && std::strcmp(relative, "fonts/layouts.json") == 0) {
+        std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-layouts.json");
+        return 1;
+    }
     if (source_font_file && std::strcmp(relative, "fonts/text/small.nftr.png") == 0)
         return std::snprintf(path, static_cast<std::size_t>(size), "%s", "build/tests/font-source.nftr.png") < size;
     if (mapping_file && std::strcmp(relative, "fonts/mappings.json") == 0) {
@@ -292,6 +297,52 @@ static bool json_reader_test()
     return ok;
 }
 
+static bool layout_rules_test()
+{
+    using namespace khdays::hd_fonts;
+    const auto parsed = read_layouts(Reader(R"({"version":1,"scopes":{
+        "camp":"font_metrics","camp.save":"original",
+        "camp.save.play_time":"font_metrics","title.load.play_time":"font_metrics"}})")
+                                         .read());
+    bool ok = layout_for(parsed, "camp.panels.inventory.counter") && !layout_for(parsed, "camp.save.other") &&
+              layout_for(parsed, "camp.save.play_time") && !layout_for(parsed, "field") && !layout_for({}, "camp");
+    for (const char *invalid :
+         {R"({"version":2,"scopes":{}})", R"({"scopes":{"camp":true}})", R"({"scopes":{"camp":"unknown"}})",
+          R"({"scopes":{"camp..save":"original"}})",
+          R"({"scopes":{"field.command.items.name":{"mode":"fit","max_width":0}}})",
+          R"({"scopes":{"field.command.items.name":{"mode":"fit","max_width":65}}})",
+          R"({"scopes":{"field.command.items.name":{"mode":"fit","max_width":53,"x_offset":12}}})",
+          R"({"scopes":{"field.command.items.name":{"mode":"fit","max_width":true}}})"}) {
+        bool rejected = false;
+        try {
+            (void)read_layouts(Reader(invalid).read());
+        } catch (const std::exception &) {
+            rejected = true;
+        }
+        ok = ok && rejected;
+    }
+    const char *file = "build/tests/font-layouts.json";
+    std::ofstream(file) << R"({"version":1,"scopes":{"camp":"font_metrics","camp.save":"original",
+        "field.command.items.name":{"mode":"fit","max_width":53.5,"x_offset":1.25},
+        "field.obtained":{"mode":"fit","max_width":32}}})";
+    layout_file = true;
+    ok = ok && khdays_hd_font_numeric_layout(KHDF_LAYOUT_PANEL_COUNTER) &&
+         !khdays_hd_font_numeric_layout(KHDF_LAYOUT_LOAD_TIME) &&
+         !khdays_hd_font_numeric_layout(KHDF_LAYOUT_SAVE_TIME) && !khdays_hd_font_numeric_layout(-1) &&
+         !khdays_hd_font_numeric_layout(KHDF_LAYOUT_COUNT);
+    const int after_load = lookups;
+    double offset = 0;
+    ok = ok && khdays_hd_font_fit_layout(KHDF_FIT_ITEMS, &offset) == 53.5 && offset == 1.25 &&
+         khdays_hd_font_fit_layout(KHDF_FIT_OBTAINED, &offset) == 0 && offset == 0 &&
+         khdays_hd_font_fit_layout(-1, &offset) == 0;
+    for (int i = 0; i < 10000; ++i)
+        ok = ok && khdays_hd_font_numeric_layout(KHDF_LAYOUT_PANEL_COUNTER);
+    ok = ok && lookups == after_load;
+    layout_file = false;
+    std::filesystem::remove(file);
+    return ok;
+}
+
 int main()
 {
     const char *json = "build/tests/font-paths.nftr.json";
@@ -431,6 +482,7 @@ int main()
     ok = original_fallback(json) && ok;
     ok = source_symbols_test(json) && ok;
     ok = mapping_rules_test(json) && ok;
+    ok = layout_rules_test() && ok;
     std::filesystem::remove(json);
     std::printf("HD font paths: %s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;

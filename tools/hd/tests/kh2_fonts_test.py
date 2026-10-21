@@ -167,7 +167,9 @@ class Generation(unittest.TestCase):
         config = k.overrides()
         self.assertEqual(config["version"], 1)
         scopes = config["scopes"]
-        self.assertEqual(len(scopes), 16)
+        self.assertEqual(len(scopes), 17)
+        self.assertEqual(scopes["field.dialogue.speaker"]["text/font_eu_10.nftr"], "text/font_eu_10all.nftr")
+        self.assertNotIn("field.dialogue", scopes)
         self.assertNotIn("field.command", scopes)
         self.assertEqual(scopes["shop"]["text/font_eu_08.nftr"], "text/font_eu_10all.nftr")
         self.assertEqual(scopes["field.obtained"]["text/font_eu_08s.nftr"], "text/font_eu_10all.nftr")
@@ -219,6 +221,17 @@ class Generation(unittest.TestCase):
             first = {p.name: p.read_bytes() for p in out.iterdir()}
             self.assertEqual(len(first), 10)
             self.assertEqual(json.loads((out.parent / "mappings.json").read_text()), k.overrides())
+            self.assertEqual(json.loads((out.parent / "layouts.json").read_text()), k.layouts())
+            self.assertEqual(
+                k.layouts()["scopes"],
+                {
+                    "camp.panels.inventory.counter": "font_metrics",
+                    "title.load.play_time": "font_metrics",
+                    "camp.save.play_time": "font_metrics",
+                    "field.command.items.name": {"mode": "fit", "max_width": 61},
+                    "field.obtained.name": {"mode": "fit", "max_width": 64},
+                },
+            )
             for name in k.REPLACEMENTS:
                 doc = json.loads(first[f"{name}.nftr.json"])
                 self.assertEqual(doc["source"], f"text/{name}.nftr")

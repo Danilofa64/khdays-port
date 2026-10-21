@@ -1,6 +1,8 @@
 """Port-only scalar font metrics; retain NFTR bitmap records and glyph identity."""
 
 import font_fractional
+import font_numbers
+import font_fit
 
 DRAW = "libs/nns/g2d/calls/Text_DrawGlyph.c"
 LINE = "libs/nns/g2d/calls/Text_DrawLine.c"
@@ -8,10 +10,6 @@ MEASURE = "libs/nns/g2d/calls/NNSi_G2dFontGetStringWidth.c"
 RECT = "libs/nns/g2d/calls/NNSi_G2dFontGetTextRect.c"
 ALIGN = "libs/nns/g2d/calls/Text_DrawAlignedLines.c"
 CRAWL = "src/overlays/scenes/ov002_field/Ov002_StepCrawlChar.c"
-COUNTERS = (
-    "src/overlays/scenes/ov008_camp_menu/Ov008_DrawRowCountDigits.c",
-    "src/overlays/screens/ov025_camp_menu_2/Ov025_DrawRowCountDigits.c",
-)
 
 PATCHES = {
     DRAW: [
@@ -117,16 +115,11 @@ PATCHES = {
         ),
     ],
 }
-for counter in COUNTERS:
-    PATCHES[counter] = [
-        (
-            "NNS_G2dFontGetCharWidthsFromIndex(pFont, nGlyph)->nWidth",
-            "khdays_ui_text_metric(pFont, nGlyph, 2, NNS_G2dFontGetCharWidthsFromIndex(pFont, nGlyph)->nWidth)",
-        ),
-    ]
 
 
 def patch(text: str, rel: str) -> str:
+    text = font_fit.patch(text, rel)
+    text = font_numbers.patch(text, rel)
     if rel == "libs/nns/g2d/calls/Text_AlignAnchor.c":
         return font_fractional.patch(text, rel)
     if rel not in PATCHES:

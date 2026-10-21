@@ -14,6 +14,7 @@ GlyphGeometry glyph_geometry(const Atlas &atlas, int index, int days_width, int 
 int layout_units(const Atlas &atlas, int value);
 
 struct GlyphPaint {
+    double x_scale = 1;                        // Optional run fitting; independent of the uniform font size.
     int glyph_index = -1;                      // resolved by the original game, or use find_glyph() for Unicode
     double x = 0, y = 0;                       // destination glyph cell top-left, in original DS pixel coordinates
     int logical_width = 0, logical_height = 0; // DS pixel dimensions of the drawn cell
@@ -25,6 +26,7 @@ struct GlyphPaint {
 
 // Return -1 when absent. Always use mapping data instead of relying on glyph order.
 int find_glyph(const Atlas &atlas, std::uint32_t codepoint);
+bool glyph_ink(const Atlas &atlas, int index, int days_width, int days_height, int days_ink_width, double *bounds);
 
 // Render to an RGBA8 PC canvas. `scale` converts DS coordinates to destination pixels.
 // The caller owns the buffer; dimensions and stride are in PHYSICAL pixels/bytes.

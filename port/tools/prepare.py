@@ -1916,6 +1916,25 @@ FILE_HOOKS = {
     ],
 }
 
+# The portrait label is measured and drawn here, before dialogue window layout.
+FILE_HOOKS["src/overlays/scenes/ov002_field/Ov002_SceneApplyPanelRequest.c"] = [
+    (
+        "void Ov002_SceneApplyPanelRequest(int *pReq)",
+        "extern void khdays_ui_text_scope_push(const char *scope);\n"
+        "extern void khdays_ui_text_scope_pop(void);\n"
+        "void Ov002_SceneApplyPanelRequest(int *pReq)",
+    ),
+    (
+        "        Resource_BindByName(f.aBind, gOv002TextFontEu10SPath);",
+        '        khdays_ui_text_scope_push("field.dialogue.speaker");\n'
+        "        Resource_BindByName(f.aBind, gOv002TextFontEu10SPath);",
+    ),
+    (
+        "        FreeFieldAt8(f.aBind);",
+        "        FreeFieldAt8(f.aBind);\n        khdays_ui_text_scope_pop();",
+    ),
+]
+
 # The pickup banner aliases the Items list's character tiles. Draw its routed
 # name into a private, non-uploaded surface; text.c retains that capture only.
 FILE_HOOKS["src/overlays/scenes/ov002_field/Ov002_PanelDrawSlotCursor.c"] = [
@@ -1937,6 +1956,7 @@ FILE_HOOKS["src/overlays/scenes/ov002_field/Ov002_PanelDrawSlotCursor.c"] = [
         "extern int TileSurface_Init4bpp(int surface, int config);\n"
         "extern void Ov002_PickTextFitting64(int surface, int font, int narrow, int text);\n"
         "extern void Text_DrawWithShadow(void *surface, int x, int y, int style, void *text, int shadow);\n"
+        "extern void HD_FontFitShadow(void *surface, int x, int y, int style, void *text, int shadow, int layout);\n"
         "extern void FreeAllListNodeSubBuffers(void *surface);",
     ),
     (
@@ -1953,7 +1973,7 @@ FILE_HOOKS["src/overlays/scenes/ov002_field/Ov002_PanelDrawSlotCursor.c"] = [
         "        Resource_BindByName(narrow, gOv002TextFontEu08SPath_2);\n"
         "        TileSurface_Init4bpp((int)surface, (int)config);\n"
         "        Ov002_PickTextFitting64((int)surface, font, (int)narrow, (int)text);\n"
-        "        Text_DrawWithShadow(surface, 0, 3, 2, text, 1);\n"
+        "        HD_FontFitShadow(surface, 0, 3, 2, text, 1, 1);\n"
         "        khdays_ui_text_obtained_capture(surface);\n"
         "        FreeAllListNodeSubBuffers(surface);\n"
         "        FreeFieldAt8((char *)narrow);\n"

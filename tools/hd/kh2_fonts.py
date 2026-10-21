@@ -211,6 +211,7 @@ def overrides() -> dict:
         for scope in (
             "camp",
             "field.tutorial",
+            "field.dialogue.speaker",
             "field.hud.information",
             "field.hud.status",
             "field.hud.area",
@@ -226,6 +227,20 @@ def overrides() -> dict:
     scopes["shop"] = {"text/font_eu_10.nftr": "text/font_eu_10all.nftr", **item}
     scopes["field.obtained"] = item
     return {"version": 1, "scopes": scopes}
+
+
+def layouts() -> dict:
+    """Explicit numeric corrections and independent item-name fitting for this pack."""
+    return {
+        "version": 1,
+        "scopes": {
+            "camp.panels.inventory.counter": "font_metrics",
+            "title.load.play_time": "font_metrics",
+            "camp.save.play_time": "font_metrics",
+            "field.command.items.name": {"mode": "fit", "max_width": 61},
+            "field.obtained.name": {"mode": "fit", "max_width": 64},
+        },
+    }
 
 
 def make(kh2: Path, data: Path, out: Path) -> None:
@@ -247,6 +262,7 @@ def make(kh2: Path, data: Path, out: Path) -> None:
         (out / f"{name}.nftr.json").write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         print(f"{name}: {len(doc['charmap'])} supported characters, {font} scale {doc['scale']}")
     (out.parent / "mappings.json").write_text(json.dumps(overrides(), indent=2) + "\n", encoding="utf-8")
+    (out.parent / "layouts.json").write_text(json.dumps(layouts(), indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:

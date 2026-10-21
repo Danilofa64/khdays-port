@@ -45,9 +45,13 @@ if errorlevel 1 exit /b %errorlevel%
 build\tests\font_raster_cache_test.exe
 if errorlevel 1 exit /b %errorlevel%
 set "KHDAYS_LAYOUT_GEN=build\port\gen-x64\rewritten\libs\nns\g2d\calls"
+cl /nologo /W1 /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 /c build\port\gen-x64\rewritten\src\engine\Text_DrawWithShadow.c build\port\gen-x64\rewritten\src\engine\Text_DrawDirectional_2.c /Fobuild\tests\ /Fdbuild\tests\font_fit_gen.pdb
+if errorlevel 1 exit /b %errorlevel%
+cl /nologo /W1 /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 /c build\port\gen-x64\rewritten\src\engine\Obj_ForwardInnerPayload.c /Fobuild\tests\Obj_ForwardInnerPayload.obj /Fdbuild\tests\font_numbers_gen.pdb
+if errorlevel 1 exit /b %errorlevel%
 cl /nologo /W1 /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 /c "%KHDAYS_LAYOUT_GEN%\Text_DrawGlyph.c" "%KHDAYS_LAYOUT_GEN%\Text_DrawLine.c" "%KHDAYS_LAYOUT_GEN%\Text_DrawAlignedLines.c" "%KHDAYS_LAYOUT_GEN%\Text_AlignAnchor.c" "%KHDAYS_LAYOUT_GEN%\NNSi_G2dFontGetStringWidth.c" "%KHDAYS_LAYOUT_GEN%\NNSi_G2dFontGetTextRect.c" /Fobuild\tests\ /Fdbuild\tests\font_layout_gen.pdb
 if errorlevel 1 exit /b %errorlevel%
-cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 port\tests\font_layout_test.c build\tests\Text_DrawGlyph.obj build\tests\Text_DrawLine.obj build\tests\Text_DrawAlignedLines.obj build\tests\Text_AlignAnchor.obj build\tests\NNSi_G2dFontGetStringWidth.obj build\tests\NNSi_G2dFontGetTextRect.obj /Fobuild\tests\font_layout_test.obj /Febuild\tests\font_layout_test.exe /Fdbuild\tests\font_layout_test.pdb
+cl /nologo /W4 /WX /std:c17 %KHDAYS_TEST_FLAGS% /Iport\compat /Ibuild\port\gen-x64 port\tests\font_layout_test.c build\tests\Text_DrawGlyph.obj build\tests\Text_DrawLine.obj build\tests\Text_DrawAlignedLines.obj build\tests\Text_AlignAnchor.obj build\tests\NNSi_G2dFontGetStringWidth.obj build\tests\NNSi_G2dFontGetTextRect.obj build\tests\Obj_ForwardInnerPayload.obj build\tests\Text_DrawWithShadow.obj build\tests\Text_DrawDirectional_2.obj /Fobuild\tests\font_layout_test.obj /Febuild\tests\font_layout_test.exe /Fdbuild\tests\font_layout_test.pdb
 if errorlevel 1 exit /b %errorlevel%
 build\tests\font_layout_test.exe
 exit /b %errorlevel%

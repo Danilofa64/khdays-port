@@ -266,6 +266,53 @@ GlyphGeometry glyph_geometry(const Atlas &atlas, int index, int days_width, int 
     return {w, h, std::min(w, clip)};
 }
 
+bool glyph_ink(const Atlas &atlas, int index, int days_width, int days_height, int days_ink_width, double *bounds)
+{
+    if (index < 0 || static_cast<std::size_t>(index) >= atlas.glyphs.size())
+        return false;
+    const auto &g = atlas.glyphs[index];
+    if (g.image_w <= 0 || g.image_h <= 0 || atlas.width <= 0 || atlas.height <= 0 ||
+        atlas.pixels().size() != static_cast<std::size_t>(atlas.width) * atlas.height * 4)
+        return false;
+    std::lock_guard<std::mutex> guard(cache_mutex);
+    if (!g.ink_ready) {
+        const int left = std::clamp(static_cast<int>(std::floor(g.image_x)), 0, atlas.width);
+        const int right = std::clamp(static_cast<int>(std::ceil(g.image_x + g.image_w)), left, atlas.width);
+        const int top = std::clamp(static_cast<int>(std::floor(g.image_y)), 0, atlas.height);
+        const int bottom = std::clamp(static_cast<int>(std::ceil(g.image_y + g.image_h)), top, atlas.height);
+        g.ink_left = right;
+        g.ink_right = left;
+        if (static_cast<std::int64_t>(right - left) * (bottom - top) > 1048576) {
+            g.ink_left = left;
+            g.ink_right = right;
+        } else {
+            for (int y = top; y < bottom; ++y)
+                for (int x = left; x < right; ++x)
+                    if (atlas.pixels()[(static_cast<std::size_t>(y) * atlas.width + x) * 4 + 3]) {
+                        g.ink_left = std::min(g.ink_left, x);
+                        g.ink_right = std::max(g.ink_right, x + 1);
+                    }
+        }
+        g.ink_ready = true;
+    }
+    if (g.ink_left >= g.ink_right) {
+        bounds[0] = bounds[1] = 0;
+        return true;
+    }
+    double w = days_width, h = days_height;
+    if (atlas.sized) {
+        const double ratio =
+            std::min(atlas.cell_width * atlas.scale / g.image_w, atlas.cell_height * atlas.scale / g.image_h);
+        w = g.image_w * ratio;
+    } else if (w * g.image_h > h * g.image_w)
+        w = std::max(1.0, std::round(h * g.image_w / g.image_h));
+    const double clip = !atlas.sized && g.width == days_ink_width ? w : g.width * (atlas.sized ? atlas.scale : 1);
+    const double padding = g.w > 0 ? .5 * g.image_w / g.w : .5;
+    bounds[0] = std::max(0.0, g.ink_left - g.image_x - padding) * w / g.image_w;
+    bounds[1] = std::min({w, clip, (g.ink_right - g.image_x + padding) * w / g.image_w});
+    return true;
+}
+
 bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba, int width, int height, int stride,
                 int scale)
 {
@@ -295,7 +342,10 @@ bool draw_glyph(const Atlas &atlas, const GlyphPaint &paint, std::uint8_t *rgba,
     } else {
         h = std::max(1.0, std::round(w * g.image_h / g.image_w));
     }
-    if (!std::isfinite(x) || !std::isfinite(y) || w <= 0 || h <= 0 || w > 16384 || h > 16384)
+    w *= paint.x_scale;
+    ink_clip *= paint.x_scale;
+    if (!std::isfinite(paint.x_scale) || paint.x_scale <= 0 || paint.x_scale > 1 || !std::isfinite(x) ||
+        !std::isfinite(y) || w <= 0 || h <= 0 || w > 16384 || h > 16384)
         return false;
     const int tile_w = static_cast<int>(std::ceil(w)), tile_h = static_cast<int>(std::ceil(h));
     if (static_cast<std::int64_t>(tile_w) * tile_h * 4 > static_cast<std::int64_t>(CACHE_LIMIT))

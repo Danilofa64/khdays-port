@@ -18,6 +18,8 @@ struct Glyph {
     int left = 0, width = 0, advance = 0; // Days units, or source units with explicit scale
     // Actual image-pixel rectangle, scaled from the reference atlas.
     double image_x = 0, image_y = 0, image_w = 0, image_h = 0;
+    mutable bool ink_ready = false;
+    mutable int ink_left = 0, ink_right = 0;
 };
 struct Mapping {
     std::uint32_t codepoint = 0;
@@ -65,6 +67,9 @@ int probe(const std::string &original_resource);
 // Stable session identity for a scoped replacement; an empty result means no mapping.
 std::string select(const std::string &original_resource, const std::string &scope);
 bool mappings_enabled();
+// Opt-in numeric layouts, resolved once per session; unknown IDs retain game positioning.
+bool numeric_layout(int layout);
+double fit_layout(int layout, double *offset);
 
 } // namespace khdays::hd_fonts
 #endif

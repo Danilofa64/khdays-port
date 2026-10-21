@@ -1,5 +1,8 @@
 # Scoped HD font mappings
 
+Numeric placement corrections use a separate optional [`fonts/layouts.json`](HD_FONTS.md#optional-numeric-layout-corrections).
+Font routing alone does not enable those corrections.
+
 Place `fonts/mappings.json` in an enabled mod, for example
 `mods/HD2/fonts/mappings.json`. Restart after edits. The highest-priority enabled
 mod providing the file wins; mapping files are not merged. No mapping is installed
@@ -57,6 +60,7 @@ itself cancels an inherited rule. Mappings do not chain (A → B does not apply 
 | `camp.mission.screen.N` | One Mission Mode camp screen class |
 | `camp.save` | Standalone camp save (ov009), excluding title-screen load |
 | `field.tutorial` | Field tutorial text, during initial drawing and page turns |
+| `field.dialogue.speaker` | Cutscene portrait nameplate, including measurement and narrow-font choice; dialogue is separate |
 | `field.hud.information` | INFORMATION message: initial crawl, skip, restoration and retained line |
 | `field.hud.status` | Shared day/status panel, mission objective/progress text and replay caption |
 | `field.hud.area` | Area name, including its measurement and narrow-font choice |
@@ -352,3 +356,12 @@ handles, unloaded owners and unrelated handles. In-game checks: change all three
 command selections and their sublists, buy/sell/synthesize and open quantity and
 detail dialogs, collect different/repeated items, then pause/resume or change
 areas while a pickup banner is visible. Check these in Story and Mission Mode.
+
+`field.dialogue.speaker` covers only the portrait-label font binding, width
+measurement and two shadow passes in `Ov002_SceneApplyPanelRequest`, at decomp
+revision `a2b0478b87e3102732094c34f6ca89595f98ab93`. It ends before
+`Ov002_SceneLayoutPanelWindow`; dialogue lines in `Ov002_SceneDrawEntryLines`
+remain outside the scope. The label's existing scratch-to-portrait copy retains
+the captured font choice. HD PACK maps both `10` and `10s` to `10all` here.
+Tests check these hook boundaries and shared-handle restoration. Verify short
+and long names in cutscenes, including narrow-font selection and unchanged dialogue.

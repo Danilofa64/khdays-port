@@ -4,6 +4,134 @@ PNG fonts replace NFTR artwork through the existing mod loader. Menu-specific
 font choices are documented in [Scoped HD font mappings](FONT_MAPPING.md).
 No new third-party dependency is required.
 
+## Optional numeric layout corrections
+
+`fonts/layouts.json` opts into corrections for numeric fields originally drawn
+in fixed DS columns. It is separate from `fonts/mappings.json`, which chooses
+fonts. Missing files, unmatched scopes and `"original"` retain the game's layout;
+loading a replacement PNG alone does not enable a correction. The highest-priority
+mod supplying this file wins, as with font mappings. Restart after editing it.
+
+```json
+{
+  "version": 1,
+  "scopes": {
+    "camp.panels.inventory.counter": "font_metrics",
+    "title.load.play_time": "font_metrics",
+    "camp.save.play_time": "font_metrics"
+  }
+}
+```
+
+These scopes cover panel inventory counts in Story and Mission Mode, title Load
+times, and camp/standalone Save times respectively. Dot-separated numeric parent rules
+are inherited; a more specific `"original"` cancels an inherited opt-in. Unknown
+scopes are inert, allowing future corrections without changing this format.
+Invalid files log a diagnostic and keep original layouts. No active replacement
+also keeps the original path, even with `"font_metrics"` configured.
+
+The HD PACK generator writes these three opt-ins for its proportional KH2 fonts.
+A faithful HD Days recreation can omit the file or use `"original"`. The corrected
+counter treats both numbers and the slash as one right-aligned run, retaining
+their palette and shadow differences. Time fields become one `HH:MM:SS` run,
+using the game's separator and character spacing, with a common right edge.
+Both use fractional advances, bearings and kerning through the existing glyph
+renderer. Native fallback still uses native artwork/metrics and pixel positions.
+Other fields, including the Stats page's already-correct Slots string, are unchanged.
+
+Configuration is resolved once per session. Runs use bounded stack arrays and
+existing glyph capture, dirty tiles, raster caches and canvas transfers; there
+are no new frame updates, full-surface redraws or texture allocations.
+
+Provenance: `Obj_ForwardInnerPayload`, `Text_DrawDirectional_2`, the Ov008/Ov025
+`DrawRowCountDigits` and `DrawSaveSlotTexts`, Ov000 `DrawSaveSlotText`, and Ov009
+`SaveMenu_DrawSummaries`, inspected at decomp commit
+`a2b0478b87e3102732094c34f6ca89595f98ab93`. Counter columns step by four while
+subtracting each digit's advance; the previous port hook substituted a variable
+HD advance into that fixed grid. Time numbers and separators have independent
+alignment anchors designed for narrow native glyphs. Opted-in runs intentionally
+replace these horizontal layouts, retaining their original surfaces, row origins,
+title extra-entry vertical shift, clears and submission calls.
+
+Regression tests cover `30/30` versus `99/99`, three-digit hours, mixed native
+separators, both time scope IDs, shadow colors, exact fractional positions,
+configuration validation/inheritance and cached lookup. In-game verification:
+compare Load, Save and scrolling Panels in Story and Mission Mode, with KH2 opt-ins,
+without `layouts.json`, with a faithful Days atlas, and with fonts disabled.
+
+## Optional item-name fitting
+
+Two independent, exact scope entries in `fonts/layouts.json` can shrink names
+horizontally when their complete rendered bounds exceed the configured width:
+
+```json
+{
+  "version": 1,
+  "scopes": {
+    "field.command.items.name": { "mode": "fit", "max_width": 61 },
+    "field.obtained.name": { "mode": "fit", "max_width": 64 }
+  }
+}
+```
+
+Merge these entries with any numeric rules. Missing entries, `"original"`, no
+file, disabled HD text or no replacement font retain the existing rendering.
+Fit rules do not inherit from parent scopes: configuring Items cannot affect
+OBTAINED. HD PACK generation emits these two explicit entries. The Items rule
+covers both the Items list and the Use/Discard header; those views reuse the same
+cached item-name tiles. OBTAINED keeps its independent capture and font mapping.
+
+Widths are fractional DS pixels, between 0.25 and 64. Optional `"x_offset"` defaults
+to 0 and moves a fitted run to the right; the entire configured region must remain
+inside the 64-pixel strip. Fitting never enlarges or moves a name that already fits.
+HD PACK uses 61 pixels from the existing text origin, with no centering offset.
+The button's assembled tilemap repeats an 8-pixel middle tile, extending the
+53-pixel reference-texture interior to 61 pixels. The source strip is 64 pixels
+wide; the label's indent and selected-row shift are applied by the tilemap.
+
+The complete string is measured before canvas clipping, using cached PNG alpha
+bounds, fractional advances/bearings, kerning, game character spacing and shadow.
+One horizontal factor transforms every captured glyph and shadow position as well
+as its artwork; font size, baseline and vertical geometry stay unchanged. PNG
+alpha-bound padding is expressed in reference-atlas units, so doubling an atlas
+does not change the fit geometry. The normal raster LRU and dirty-tile compositor
+cache the result. There is no per-frame measurement, resampling or image allocation
+for an unchanged cache. Alpha bounds are scanned once per used glyph per atlas.
+
+The native write footprint remains unscaled for storage invalidation. Duplicate
+tilemap placements cover both that footprint and the fitted artwork, including
+tiles that now contain only the hidden DS text tail. Their base plane still
+preserves non-text graphics; the PNG's alpha never masks original font pixels.
+
+Mixed native fallback remains supported. Only inside a fitted run, the existing
+`DrawGlyphLine` renders each native glyph into a small scratch canvas. Its palette
+indices are retained inside the glyph operation's existing artwork-storage field,
+then painted with the same horizontal transform and the destination palette.
+This uses original DS artwork directly, never as a mask for PNG artwork. Ordinary
+fallback is unchanged. The supported menu canvases are 4-bpp with native cells no
+larger than 16x16; unsupported native cell sizes or writing directions, multiline
+names and strings over 512 characters keep their original layout.
+
+Provenance at the decomp revision above: `Ov002_DrawPanelRowText` caches item names
+after `Ov002_PickTextFitting64` chooses the existing normal/narrow font. The port
+fits only that item-name draw, leaving spell and command labels alone.
+The live BG3 button rows repeat middle tile `0x0db` (normal) or `0x11b`
+(selected); the assembled label area is one tile wider than the reference art.
+`Ov002_PanelRepaintListRow` and `Ov002_PanelRepaintCachedEntry` reuse its tiles via
+`Ov002_PanelWriteSlotLabel`. The private OBTAINED surface in
+`Ov002_PanelDrawSlotCursor` explicitly selects its separate fit rule. The latter
+never changes the command cache's VRAM or captured geometry.
+
+Tests cover `Gear Component C`, unchanged `Aerial Tech+`, independent scope
+eligibility, fractional advances and shadow offsets, PNG-resolution-independent
+bounds, native glyphs beyond the old clip boundary, partial/full clears and
+unchanged-frame image/cache reuse. Verify both menu views and the OBTAINED popup
+in-game with long, short and mixed native/HD names, including empty item slots.
+Duplicate-placement tests check the final lit pixel at the configured boundary
+at 1x through 8x, native-tail suppression, retained graphics and stable frames
+after a scale change. `KHDAYS_TRACE_TEXT=1` logs the fitted run's captured ink
+bounds and horizontal factor for comparison with its visible placement.
+
 ## Generating KH2 fonts
 
 The installer's HD menus step runs `tools/hd/kh2_fonts.py` and puts five generated

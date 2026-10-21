@@ -6,9 +6,55 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import prepare  # noqa: E402
+import font_layout  # noqa: E402
+import font_numbers  # noqa: E402
+import font_fit  # noqa: E402
 
 
 class ScopeHooks(unittest.TestCase):
+    def test_speaker_name_only(self):
+        rel = "src/overlays/scenes/ov002_field/Ov002_SceneApplyPanelRequest.c"
+        text = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+        for before, after in prepare.FILE_HOOKS[rel]:
+            self.assertEqual(text.count(before), 1)
+            text = text.replace(before, after)
+        start = text.index('scope_push("field.dialogue.speaker")')
+        end = text.index("khdays_ui_text_scope_pop();", start)
+        name = text[start:end]
+        self.assertIn("NNSi_G2dFontGetStringWidth(", name)
+        self.assertEqual(name.count("Text_DrawDirectional_2("), 2)
+        self.assertNotIn("Ov002_ReplaceOwnedString(", name)
+        self.assertLess(end, text.index("nCount = Ov002_SceneLayoutPanelWindow("))
+        dialogue = "src/overlays/scenes/ov002_field/Ov002_SceneDrawEntryLines.c"
+        self.assertNotIn(dialogue, prepare.UI_HOOKS)
+        self.assertNotIn(dialogue, prepare.FILE_HOOKS)
+
+    def test_item_fit_hooks(self):
+        source = prepare.transform((prepare.DECOMP / font_fit.ITEMS).read_text(encoding="utf-8"))
+        output = font_layout.patch(source, font_fit.ITEMS)
+        self.assertEqual(output.count("HD_FontFitShadow(pDst + nX, 0, nY + 3, 2, pText, 1, 0)"), 1)
+        self.assertIn("Text_DrawWithShadow(pDst + nX, 0, nY + 3, 2, pText, 1)", output)
+
+    def test_numeric_layout_hooks(self):
+        for rel in (*font_numbers.COUNTERS, *font_numbers.TIMES, font_numbers.PAYLOAD):
+            source = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+            output = font_layout.patch(source, rel)
+            if rel in font_numbers.COUNTERS:
+                self.assertIn("if (HD_FontCounter(", output)
+                self.assertIn("nX -= DIGIT_STEP;", output)
+                self.assertIn("nX - NNS_G2dFontGetCharWidthsFromIndex(pFont, nGlyph)->nWidth", output)
+                self.assertNotIn("khdays_ui_text_metric(pFont, nGlyph, 2", output)
+            elif rel in font_numbers.TIMES:
+                self.assertIn("hdTime = HD_FontTime(", output)
+                self.assertIn("if (hdTime &&", output)
+                self.assertIn("DrawWithShadow(", output)
+            else:
+                self.assertIn("double positions[64]", output)
+                self.assertIn("HD_FontDrawGlyph(owner, font,", output)
+        rel = "src/overlays/scenes/ov008_camp_menu/Ov008_DrawStatusField.c"
+        source = prepare.transform((prepare.DECOMP / rel).read_text(encoding="utf-8"))
+        self.assertEqual(font_layout.patch(source, rel), source)
+
     def test_parameter_comment(self):
         source = "void Example(int *menu, int *entry /* reloaded after every call, safely */, int *node) { return; }"
         output = prepare.ui_hook(source, "synthetic.c", "Example", "text", "mission_select.objectives", "scope")
@@ -112,7 +158,8 @@ class ScopeHooks(unittest.TestCase):
             text = text.replace(before, after)
         self.assertIn("khdays_ui_text_obtained_wants(nSlot, nShift == -2)", text)
         self.assertIn("0x4b8 + nSlot * 12", text)
-        self.assertLess(text.index("TileSurface_Init4bpp((int)surface"), text.index("Text_DrawWithShadow(surface"))
+        self.assertLess(text.index("TileSurface_Init4bpp((int)surface"), text.index("HD_FontFitShadow(surface"))
+        self.assertIn("HD_FontFitShadow(surface, 0, 3, 2, text, 1, 1)", text)
         self.assertLess(text.index("obtained_capture(surface)"), text.index("FreeAllListNodeSubBuffers(surface)"))
         self.assertNotIn("GX_Load", text)  # Private captures never overwrite the command cache's VRAM.
 

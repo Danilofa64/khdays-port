@@ -19,13 +19,20 @@ extern void Text_DrawAlignedLines(khdays_ref ctx, int x, int y, int width, int c
                                   TextDir dir);
 extern int NNSi_G2dFontGetStringWidth(khdays_ref font, int spacing, khdays_ref text, khdays_ref next);
 extern double HD_FontLineWidth(int font, int spacing, int text, khdays_ref next);
+extern int HD_FontCounter(khdays_ref surface, int row, int placed, int owned);
+extern int HD_FontTime(khdays_ref surface, int layout, int x, int y, unsigned hours, unsigned minutes, unsigned seconds,
+                       khdays_ref separator);
 unsigned char *khdays_window;
+extern void HD_FontFitShadow(khdays_ref surface, int x, int y, int depth, khdays_ref text, int shadow, int layout);
 static khdays_ref widths;
 static int original_second;
 static int failures, custom, custom_width = 12, bearing_case, sized_case, count, xs[2048], ys[2048];
 static double exact_xs[2048], exact_ys[2048], pending_x, pending_y;
 static int fractional_case, fractional_bearing, fractional_kerning;
 static double fractional_scale = .35;
+static int numeric_case, numeric_enabled, numeric_fallback, colours[2048];
+static double fit_targets[2], fit_factor = 1, fit_origin, fit_left, fit_offset;
+static int fit_begins;
 #define CHECK(c)                                                                                                       \
     do {                                                                                                               \
         if (!(c)) {                                                                                                    \
@@ -63,6 +70,7 @@ static int draw(int owner, khdays_ref font, int x, int y, int color, khdays_ref 
         ys[count] = y;
         exact_xs[count] = pending_x;
         exact_ys[count] = pending_y;
+        colours[count] = color;
     }
     ++count;
     return 0;
@@ -85,6 +93,8 @@ khdays_function_pointer khdays_function(khdays_ref ref)
 unsigned short NNS_G2dFontFindGlyphIndex(khdays_ref font, unsigned code)
 {
     (void)font;
+    if (numeric_case)
+        return (unsigned short)code;
     if (fractional_case) {
         const char *chars = "pisqueak.@";
         const char *found = strchr(chars, (int)code);
@@ -152,6 +162,15 @@ int khdays_ui_text_kerning(const void *font, int left, int right)
 
 double khdays_ui_text_metric_f(const void *font, int index, int field, double fallback)
 {
+    if (numeric_case) {
+        if (numeric_fallback && index == ':')
+            return fallback;
+        if (field == 0)
+            return 0;
+        if (field == 2)
+            return (index == '0' ? 11 : index == ':' ? 3 : 10) * .41;
+        return fallback;
+    }
     if (!fractional_case)
         return khdays_ui_text_metric(font, index, field, (int)fallback);
     if (index == 9)
@@ -171,12 +190,16 @@ double khdays_ui_text_metric_f(const void *font, int index, int field, double fa
 }
 double khdays_ui_text_kerning_f(const void *font, int left, int right)
 {
+    if (numeric_case)
+        return 0;
     if (fractional_case && fractional_kerning && left == 'p' && right == 'i')
         return -fractional_scale;
     return fractional_case ? 0 : khdays_ui_text_kerning(font, left, right);
 }
 double khdays_ui_text_extent_f(const void *font, int index, int left, int width, int advance)
 {
+    if (numeric_case)
+        return numeric_fallback && index == ':' ? advance : 18 * .41;
     return fractional_case ? (index == 9 ? left + width : (24 + fractional_bearing) * fractional_scale)
                            : khdays_ui_text_extent(font, index, left, width, advance);
 }
@@ -187,13 +210,131 @@ int khdays_ui_text_round(double value)
 void khdays_ui_text_position(const void *font, double x, double y)
 {
     if (font) {
-        pending_x = x;
+        pending_x = fit_factor < 1 ? fit_origin + (x - fit_origin - fit_left) * fit_factor + fit_offset : x;
         pending_y = y;
     }
 }
 double khdays_ui_text_pen_x(int x)
 {
     return x;
+}
+
+int khdays_ui_text_numeric(const void *font, int layout)
+{
+    CHECK(font != NULL && layout >= 0 && layout < 3);
+    return numeric_enabled;
+}
+
+double khdays_ui_text_fit_width(const void *font, int layout, double *offset)
+{
+    CHECK(font != NULL && layout >= 0 && layout < 2);
+    *offset = 0;
+    return fit_targets[layout];
+}
+int khdays_ui_text_ink(const void *font, int glyph, int w, int h, int ink, double *bounds)
+{
+    (void)font;
+    (void)glyph;
+    (void)w;
+    (void)h;
+    (void)ink;
+    bounds[0] = 0;
+    bounds[1] = 3.69;
+    return 1;
+}
+void khdays_ui_text_fit_begin(const void *font, double origin, double left, double factor, double offset)
+{
+    (void)font;
+    fit_origin = origin;
+    fit_left = left;
+    fit_factor = factor;
+    fit_offset = offset;
+    ++fit_begins;
+}
+void khdays_ui_text_fit_end(void)
+{
+    fit_factor = 1;
+}
+
+static void fitted_layout_tests(khdays_ref font, khdays_ref owner)
+{
+    unsigned int surface[12] = {0};
+    unsigned short name[] = {'G', 'e', 'a', 'r', ' ', 'C', 'o', 'm', 'p', 'o', 'n', 'e', 'n', 't', ' ', 'C', 0};
+    unsigned short short_name[] = {'A', 'e', 'r', 'i', 'a', 'l', ' ', 'T', 'e', 'c', 'h', '+', 0};
+    surface[7] = owner;
+    surface[8] = font;
+    numeric_case = 1;
+    count = 0;
+    HD_FontFitShadow(KHDAYS_REF(surface), 0, 3, 2, KHDAYS_REF(name), 1, 0);
+    CHECK(count == 32 && fit_begins == 0 && fabs(exact_xs[31] - 61.5) < 1e-9);
+    fit_targets[0] = 53;
+    count = 0;
+    HD_FontFitShadow(KHDAYS_REF(surface), 0, 3, 2, KHDAYS_REF(name), 1, 0);
+    const double factor = 53 / (61.5 + 3.69 + 1);
+    CHECK(count == 32 && fit_begins == 1 && fit_factor == 1);
+    CHECK(fabs(exact_xs[31] - 61.5 * factor) < 1e-9);
+    CHECK(fabs(exact_xs[17] - exact_xs[16] - 4.1 * factor) < 1e-9);
+    CHECK(fabs(exact_xs[0] - exact_xs[16] - factor) < 1e-9 && exact_ys[0] - exact_ys[16] == 1);
+    CHECK(fabs(exact_xs[15] + 3.69 * factor - 53) < 1e-9);
+    count = 0;
+    HD_FontFitShadow(KHDAYS_REF(surface), 0, 3, 2, KHDAYS_REF(short_name), 1, 0);
+    CHECK(count == 24 && fit_begins == 1 && fabs(exact_xs[23] - 45.1) < 1e-9);
+    count = 0;
+    HD_FontFitShadow(KHDAYS_REF(surface), 0, 3, 2, KHDAYS_REF(name), 1, 1);
+    CHECK(count == 32 && fit_begins == 1 && fabs(exact_xs[31] - 61.5) < 1e-9);
+    fit_targets[1] = 64;
+    count = 0;
+    HD_FontFitShadow(KHDAYS_REF(surface), 0, 3, 2, KHDAYS_REF(name), 1, 1);
+    CHECK(count == 32 && fit_begins == 2);
+    CHECK(fabs(exact_xs[15] + 3.69 * (64 / 66.19) - 64) < 1e-9);
+    numeric_case = 0;
+}
+
+static void numeric_layout_tests(khdays_ref font, khdays_ref owner)
+{
+    unsigned int surface[12] = {0};
+    unsigned short separator[] = {':', 0};
+    surface[0] = font;
+    surface[6] = owner - 8;
+    surface[7] = owner;
+    surface[8] = font;
+    numeric_case = 1;
+    fractional_case = 0;
+    count = 0;
+    CHECK(!HD_FontCounter(KHDAYS_REF(surface), 0, 0, 30) && count == 0);
+    CHECK(!HD_FontTime(KHDAYS_REF(surface), 1, 10, 20, 71, 52, 8, KHDAYS_REF(separator)) && count == 0);
+    numeric_enabled = 1;
+    for (int value = 30; value <= 99; value += 69) {
+        count = 0;
+        CHECK(HD_FontCounter(KHDAYS_REF(surface), 2, 0, value));
+        CHECK(count == 10);
+        CHECK(fabs(exact_xs[6] - exact_xs[5] - 4.1) < 1e-9);
+        CHECK(fabs(exact_xs[9] - exact_xs[8] - 4.1) < 1e-9);
+        CHECK(fabs(exact_xs[9] + (value == 30 ? 4.51 : 4.1) - 125) < 1e-9);
+        CHECK(exact_ys[5] == 35 && colours[5] == 0xf3 && colours[7] == 0xf3 && colours[8] == 0xf1);
+        CHECK(fabs(exact_xs[0] - exact_xs[5] - 1) < 1e-9 && colours[0] == 0xf2);
+    }
+    for (int layout = 1; layout <= 2; ++layout) {
+        for (int native_separator = 0; native_separator < 2; ++native_separator) {
+            numeric_fallback = native_separator;
+            count = 0;
+            CHECK(HD_FontTime(KHDAYS_REF(surface), layout, 10, 20, 71, 52, 8, KHDAYS_REF(separator)));
+            CHECK(count == 16);
+            CHECK(fabs(exact_xs[9] - exact_xs[8] - 4.1) < 1e-9);
+            CHECK(fabs(exact_xs[15] + 4.1 - 203) < 1e-9);
+            CHECK(fabs(exact_xs[11] - exact_xs[10] - (native_separator ? 5 : 1.23)) < 1e-9);
+            CHECK(exact_ys[8] == 20 && colours[0] == 1 && colours[8] == 2);
+            if (native_separator)
+                CHECK(xs[10] == khdays_ui_text_round(exact_xs[10]));
+            count = 0;
+            CHECK(HD_FontTime(KHDAYS_REF(surface), layout, 10, 28, 999, 30, 0, KHDAYS_REF(separator)));
+            CHECK(count == 18 && exact_ys[9] == 28);
+            CHECK(fabs(exact_xs[17] + 4.51 - 203) < 1e-9);
+        }
+    }
+    count = 0;
+    CHECK(HD_FontCounter(KHDAYS_REF(surface), 0, -1, 0) && count == 2);
+    numeric_fallback = numeric_case = numeric_enabled = 0;
 }
 
 int main(void)
@@ -358,6 +499,8 @@ int main(void)
     Text_DrawLine(KHDAYS_REF(ctx), 10, 20, 8, (int)KHDAYS_REF(fractional_lines), 0, (TextDir){1, 0});
     CHECK(count == 2 && fabs(exact_xs[1] - 14.5) < 1e-9);
     CHECK(fabs(HD_FontLineWidth((int)KHDAYS_REF(font), 1, (int)KHDAYS_REF(fractional_lines), 0) - 12.9) < 1e-9);
+    numeric_layout_tests(KHDAYS_REF(font), KHDAYS_REF(owner));
+    fitted_layout_tests(KHDAYS_REF(font), KHDAYS_REF(owner));
     printf("HD font layout: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

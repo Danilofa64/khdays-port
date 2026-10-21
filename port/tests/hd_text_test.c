@@ -66,12 +66,56 @@ int khdays_hd_font_select(const char *resource, const char *scope, char *selecte
         snprintf(selected, (size_t)size, "@font-route/tutorial");
         return 1;
     }
+    if (strcmp(scope, "field.dialogue.speaker") == 0) {
+        snprintf(selected, (size_t)size, "@font-route/speaker");
+        return 1;
+    }
     if (strcmp(scope, "camp.story.screen.2") != 0)
         return 0;
     snprintf(selected, (size_t)size, "@font-route/test");
     return 1;
 }
 static int metric_override, text_mode = KHDAYS_UI_ON;
+static int numeric_layout_enabled;
+static double fit_widths[2];
+static int native_blits;
+static const void *native_hostrefs[2];
+static int native_hostref_count;
+static void *native_hostref(KhdaysRef ref)
+{
+    return ref >= 0xfffffff0u && ref < 0xfffffff2u ? (void *)native_hostrefs[ref - 0xfffffff0u] : KHDAYS_W(ref);
+}
+double khdays_hd_font_fit_layout(int layout, double *offset)
+{
+    if (offset)
+        *offset = 0;
+    return layout >= 0 && layout < 2 ? fit_widths[layout] : 0;
+}
+int khdays_hd_font_ink(const char *path, int index, int w, int h, int ink, double *bounds)
+{
+    (void)path;
+    (void)index;
+    (void)w;
+    (void)h;
+    bounds[0] = 0;
+    bounds[1] = ink;
+    return 1;
+}
+void DrawGlyphLine(KhdaysRef canvas_ref, KhdaysRef font_ref, int x, int y, int colour, KhdaysRef glyph_ref)
+{
+    (void)font_ref;
+    (void)x;
+    (void)y;
+    (void)glyph_ref;
+    DsCanvas *ds = native_hostref(canvas_ref);
+    Canvas shape = {0};
+    shape.bpp = ds->dst_bpp;
+    shape.param = (int)ds->param;
+    ++native_blits;
+    for (int py = 0; py < 8; ++py)
+        for (int px = 0; px < 4; ++px)
+            put_pixel(&shape, native_hostref(ds->char_base), px, py, (unsigned)colour & 15u);
+}
 static int glyph_width_override = -1;
 static int large_geometry;
 static unsigned int available_glyphs = 1u;
@@ -185,6 +229,11 @@ static uint32_t tint = 0xff123456u;
 
 KhdaysRef khdays_reference(const void *p)
 {
+    if (fit_run.font && ((uintptr_t)p < (uintptr_t)ram || (uintptr_t)p >= (uintptr_t)ram + ram_bytes)) {
+        const int slot = native_hostref_count++ % 2;
+        native_hostrefs[slot] = p;
+        return 0xfffffff0u + (unsigned)slot;
+    }
     return (KhdaysRef)((const unsigned char *)p - ram);
 }
 void khdays_log(const char *format, ...)
@@ -195,6 +244,11 @@ int khdays_hd_font_has(const char *path)
 {
     ++font_probes;
     return path && strcmp(path, "text/missing.nftr") != 0;
+}
+int khdays_hd_font_numeric_layout(int layout)
+{
+    (void)layout;
+    return numeric_layout_enabled;
 }
 int khdays_hd_font_glyph_available(const char *path, int index)
 {
@@ -320,6 +374,22 @@ int khdays_hd_font_paint_clipped(const char *path, int index, double x, double y
     for (int py = t * scale; py < b * scale; ++py)
         for (int px = l * scale; px < r * scale; ++px)
             if (px >= (x + w / 2) * scale && px < (x + w) * scale && py >= y * scale && py < (y + h) * scale)
+                out[(size_t)py * width + px] = colour;
+    return 1;
+}
+
+int khdays_hd_font_paint_fitted(const char *path, int index, double x, double y, int w, int h, uint32_t colour,
+                                uint32_t *out, int width, int height, int scale, int l, int t, int r, int b,
+                                double factor)
+{
+    (void)path;
+    (void)index;
+    (void)height;
+    ++paint_calls;
+    for (int py = t * scale; py < b * scale; ++py)
+        for (int px = l * scale; px < r * scale; ++px)
+            if (px >= (x + w * factor / 2) * scale && px < (x + w * factor) * scale && py >= y * scale &&
+                py < (y + h) * scale)
                 out[(size_t)py * width + px] = colour;
     return 1;
 }
@@ -893,6 +963,118 @@ static void obtained_popup(void)
     free(large_ram);
 }
 
+static void fitted_capture_tests(void)
+{
+    setup(4);
+    fit_widths[0] = 53;
+    double offset = 7;
+    CHECK(khdays_ui_text_fit_width(font, KHDF_FIT_ITEMS, &offset) == 53 && offset == 0);
+    CHECK(khdays_ui_text_fit_width(font, KHDF_FIT_OBTAINED, &offset) == 0);
+    text_mode = KHDAYS_UI_OFF;
+    CHECK(khdays_ui_text_fit_width(font, KHDF_FIT_ITEMS, &offset) == 0);
+    text_mode = KHDAYS_UI_ON;
+    available_glyphs = 0;
+    const int before = native_blits;
+    khdays_ui_text_fit_begin(font, 0, 0, .25, 0);
+    khdays_ui_text_position(font, 40.25, 0);
+    khdays_ui_text_glyph_before(cc, font, 40, 0, 1, glyph);
+    khdays_ui_text_glyph(cc, font, 40, 0, 1, glyph);
+    khdays_ui_text_position(NULL, 0, 0);
+    khdays_ui_text_fit_end();
+    CHECK(native_blits == before + 1 && c->op_count == 1 && c->ops[0].native_glyph);
+    CHECK(fabs(c->ops[0].x - 10.0625) < 1e-9 && c->ops[0].clip_r == 12);
+    upload(0, c->bytes);
+    test_scale = 4;
+    emit();
+    CHECK(c->hd_image >= 0 && test_images[c->hd_image][40] == tint);
+    const int uploads = image_ends, paints = paint_calls;
+    emit();
+    CHECK(image_ends == uploads && paint_calls == paints && native_blits == before + 1);
+    scroll_text(1);
+    upload(0, c->bytes);
+    emit();
+    CHECK(test_images[c->hd_image][40] == tint && test_images[c->hd_image][7 * 4 * 64 + 40] == 0);
+    khdays_ui_text_clear_area(cc, 0, 10, 0, 1, 8);
+    upload(0, c->bytes);
+    emit();
+    CHECK(test_images[c->hd_image][40] == 0);
+    memset(ram + 1024, 0, c->bytes);
+    khdays_ui_text_clear(cc, 0);
+    upload(0, c->bytes);
+    emit();
+    CHECK(c->display_count == 0);
+    available_glyphs = 1;
+    khdays_ui_text_fit_begin(font, 0, 0, .25, 0);
+    khdays_ui_text_position(font, 40.25, 0);
+    khdays_ui_text_glyph_before(cc, font, 40, 0, 1, glyph);
+    khdays_ui_text_glyph(cc, font, 40, 0, 1, glyph);
+    khdays_ui_text_position(NULL, 0, 0);
+    khdays_ui_text_fit_end();
+    CHECK(c->op_count == 1 && !c->ops[0].native_glyph && c->ops[0].x_scale == .25);
+    upload(0, c->bytes);
+    emit();
+    CHECK(c->hd_image >= 0 && test_images[c->hd_image][45] == tint);
+    fit_widths[0] = 0;
+}
+
+static void fitted_duplicate_tail_tests(void)
+{
+    setup(4);
+    forget(c);
+    cc->area_width = cc->param = 8;
+    c = canvas_of(cc, "fitted duplicate tail");
+    map_width = map_height = 32;
+    for (int col = 0; col < 8; ++col) {
+        map_cells[col + 1] = (uint16_t)(col + 1);
+        map_cells[2 * 32 + col + 1] = (uint16_t)(col + 1);
+    }
+    put_pixel(c, ram + 1024, 63, 7, 2); /* Non-text art in the tail tile survives. */
+    observe_source(c);
+    fit_widths[0] = 53;
+    double offset = 0;
+    CHECK(khdays_ui_text_fit_width(font, KHDF_FIT_ITEMS, &offset) == 53);
+    khdays_ui_text_fit_begin(font, 0, 0, 53.0 / 64, 0);
+    draw(0);
+    draw(57); /* Full cell/filter padding exceeds the measured ink boundary. */
+    khdays_ui_text_fit_end();
+    CHECK(c->op_count == 2 && c->ops[1].source_x == 57 && c->ops[1].source_w == 4 && c->ops[1].clip_r == 53);
+    upload(0, c->bytes);
+    emit();
+    CHECK(c->extra && c->extra->source[2 * EXTRA_COLS + 8] == 7);
+    CHECK(suppressed[2 * 32 + 8]);
+    CHECK(pixel(c, c->display_base, 57, 0) == 0 && pixel(c, c->seen, 57, 0) == 1);
+    CHECK(pixel(c, c->display_base, 63, 7) == 2);
+    CHECK(c->extra && test_images[c->extra->image][23 * EXTRA_COLS * 8 + 71] != 0);
+    for (test_scale = 1; test_scale <= 8; test_scale *= 2) {
+        emit();
+        int primary_right = -1, duplicate_right = -1;
+        const int stride = EXTRA_COLS * 8 * test_scale;
+        for (int y = 0; y < 8 * test_scale; ++y) {
+            for (int x = 0; x < 64 * test_scale; ++x) {
+                if (test_images[c->hd_image][y * 64 * test_scale + x])
+                    primary_right = x > primary_right ? x : primary_right;
+                if (test_images[c->extra->hd_image][(y + 16 * test_scale) * stride + x + 8 * test_scale])
+                    duplicate_right = x > duplicate_right ? x : duplicate_right;
+            }
+        }
+        CHECK(primary_right == 53 * test_scale - 1 && duplicate_right == primary_right);
+    }
+    test_scale = 8;
+    emit(); /* Settle the primary image's scale-change invalidation. */
+    const int images = image_requests, updates = image_ends, paints = paint_calls;
+    emit();
+    CHECK(image_requests == images && image_ends == updates && paint_calls == paints);
+    put_pixel(c, ram + 1024, 57, 0, 0);
+    observe_source(c);
+    CHECK(c->op_count == 1); /* Invalidate by native writes, not fitted coordinates. */
+    memset(map_cells, 0, sizeof(map_cells));
+    memset(suppressed, 0, sizeof(suppressed));
+    submission_count = 0;
+    emit();
+    CHECK(!c->extra && submission_count == 0 && !suppressed[2 * 32 + 8]);
+    fit_widths[0] = 0;
+}
+
 int main(int argc, char **argv)
 {
     graphics_replacements();
@@ -904,6 +1086,19 @@ int main(int argc, char **argv)
         return failures ? 1 : 0;
     }
     obtained_popup();
+    fitted_capture_tests();
+    fitted_duplicate_tail_tests();
+    setup(4);
+    CHECK(!khdays_ui_text_numeric(font, KHDF_LAYOUT_PANEL_COUNTER));
+    numeric_layout_enabled = 1;
+    CHECK(khdays_ui_text_numeric(font, KHDF_LAYOUT_PANEL_COUNTER));
+    text_mode = KHDAYS_UI_OFF;
+    CHECK(!khdays_ui_text_numeric(font, KHDF_LAYOUT_PANEL_COUNTER));
+    text_mode = KHDAYS_UI_ON;
+    bind_font(font, "text/missing.nftr");
+    CHECK(!khdays_ui_text_numeric(font, KHDF_LAYOUT_PANEL_COUNTER));
+    CHECK(!khdays_ui_text_numeric(NULL, KHDF_LAYOUT_PANEL_COUNTER));
+    numeric_layout_enabled = 0;
     /* Native-resolution supplementary DS planes equal the prior expanded planes. */
     for (int bpp = 4; bpp <= 8; bpp += 4) {
         setup(bpp);
@@ -1396,6 +1591,16 @@ int main(int argc, char **argv)
     CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/tutorial") == 0);
     khdays_ui_text_field_tutorial(0, 0);
     CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/test") == 0);
+    test_scope = "";
+    khdays_ui_text_scope_push("field.dialogue.speaker");
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "@font-route/speaker") == 0);
+    draw(0);
+    khdays_ui_text_scope_pop();
+    CHECK(strcmp(c->ops[c->op_count - 1].resource, "@font-route/speaker") == 0);
+    CHECK(strcmp(font_path(KHDAYS_REF(font)), "text/synthetic.nftr") == 0);
+    draw(4);
+    CHECK(strcmp(c->ops[c->op_count - 1].resource, "text/synthetic.nftr") == 0);
+    test_scope = "camp.story.screen.2";
     /* Absolute HUD/results scopes isolate shared fonts from camp and dialogue.
        Captured choices survive scope exit, and nested draws restore their owner. */
     const char *hud_scopes[] = {"field.hud.information", "field.hud.status", "field.hud.area",

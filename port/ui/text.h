@@ -51,6 +51,11 @@ double khdays_ui_text_extent_f(const void *font, int glyph, int left, int width,
 int khdays_ui_text_round(double value);
 void khdays_ui_text_position(const void *font, double x, double y);
 double khdays_ui_text_pen_x(int x);
+int khdays_ui_text_numeric(const void *font, int layout);
+double khdays_ui_text_fit_width(const void *font, int layout, double *offset);
+int khdays_ui_text_ink(const void *font, int glyph, int w, int h, int ink, double *bounds);
+void khdays_ui_text_fit_begin(const void *font, double origin, double left, double factor, double offset);
+void khdays_ui_text_fit_end(void);
 void khdays_ui_text_crawl_begin(const void *context, const void *text, int index, int x, int y, double kerning);
 int khdays_ui_text_crawl_advance(double advance);
 void khdays_ui_text_field_tutorial_before(int step, int arg);

@@ -24,6 +24,7 @@
 #include <time.h>
 
 extern int khdays_game_ram_ref(unsigned int reference);
+extern void DrawGlyphLine(KhdaysRef canvas, KhdaysRef font, int x, int y, int colour, KhdaysRef glyph);
 
 /* --- The game's structures, as the DS lays them out ----------------------------- */
 
@@ -51,7 +52,9 @@ typedef struct GlyphOp {
     int source_x, source_y, source_w, source_h; /* Native write footprint, independent of PNG geometry. */
     double x, y;                                /* Exact artwork position; native write bounds remain integer. */
     int w, h, cl, glyph;
-    int paint_w; /* Edited logical width clips artwork; ownership keeps the full cell. */
+    int paint_w;      /* Edited logical width clips artwork; ownership keeps the full cell. */
+    double x_scale;   /* Zero retains the original geometry; fitting is an explicit run operation. */
+    int native_glyph; /* resource stores a 16x16, 4-bpp snapshot from the original glyph blitter. */
     /* The replacement artwork stays at x/y, but only this surviving rectangle
        is visible after partial clears. Coordinates are in DS pixels. */
     int clip_l, clip_t, clip_r, clip_b;
@@ -137,6 +140,39 @@ static int canvas_count, canvas_room;
 static int trace = -1;
 static KhdaysRef positioned_font;
 static double positioned_x, positioned_y;
+static int tracing(void);
+static void say(const char *format, ...);
+static struct {
+    KhdaysRef font;
+    double origin, left, factor, offset, width;
+    double ink_left, ink_right;
+    int report, ink_count;
+} fit_run;
+static int fitting_native;
+
+void khdays_ui_text_fit_begin(const void *font, double origin, double left, double factor, double offset)
+{
+    fit_run.font = KHDAYS_REF(font);
+    fit_run.origin = origin;
+    fit_run.left = left;
+    fit_run.factor = factor;
+    fit_run.offset = offset;
+    fit_run.report = tracing();
+    fit_run.ink_count = 0;
+}
+
+void khdays_ui_text_fit_end(void)
+{
+    if (fit_run.report)
+        say("HD fit: font %08x origin %.3f factor %.9f, captured ink [%.3f, %.3f), %d glyph passes", fit_run.font,
+            fit_run.origin, fit_run.factor, fit_run.ink_left, fit_run.ink_right, fit_run.ink_count);
+    memset(&fit_run, 0, sizeof(fit_run));
+}
+
+static double fitted_x(double x)
+{
+    return fit_run.origin + (x - fit_run.origin - fit_run.left) * fit_run.factor + fit_run.offset;
+}
 
 typedef struct CrawlPen {
     KhdaysRef context, text;
@@ -752,6 +788,35 @@ int khdays_ui_text_metric(const void *font, int glyph, int field, int fallback)
     return khdays_hd_font_metric(font_path(KHDAYS_REF(font)), glyph, field, fallback);
 }
 
+int khdays_ui_text_numeric(const void *font, int layout)
+{
+    if (!font || !khdays_hd_font_numeric_layout(layout) || !hd_enabled() ||
+        khdays_ui_mode(KHDAYS_UI_TEXT) == KHDAYS_UI_OFF)
+        return 0;
+    const char *path = font_path(KHDAYS_REF(font));
+    return path && khdays_hd_font_has(path);
+}
+
+double khdays_ui_text_fit_width(const void *font, int layout, double *offset)
+{
+    if (fit_run.font)
+        return 0;
+    fit_run.width = 0;
+    if (!font || !hd_enabled() || khdays_ui_mode(KHDAYS_UI_TEXT) == KHDAYS_UI_OFF)
+        return 0;
+    const double width = khdays_hd_font_fit_layout(layout, offset);
+    const char *path = width > 0 ? font_path(KHDAYS_REF(font)) : NULL;
+    /* Retain the selected limit through begin/end, including filtering margins. */
+    return fit_run.width = path && khdays_hd_font_has(path) ? width : 0;
+}
+
+int khdays_ui_text_ink(const void *font, int glyph, int w, int h, int ink, double *bounds)
+{
+    bounds[0] = 0;
+    bounds[1] = ink;
+    return khdays_hd_font_ink(font_path(KHDAYS_REF(font)), glyph, w, h, ink, bounds);
+}
+
 int khdays_ui_text_kerning(const void *font, int left, int right)
 {
     if (!font || !hd_enabled() || khdays_ui_mode(KHDAYS_UI_TEXT) == KHDAYS_UI_OFF)
@@ -838,6 +903,8 @@ static void dirty_rect(Canvas *c, int l, int t, int r, int b)
 
 void khdays_ui_text_glyph_before(const void *canvas, const void *font, int x, int y, int cl, const void *glyph)
 {
+    if (fitting_native)
+        return;
     (void)font;
     (void)x;
     (void)y;
@@ -856,6 +923,8 @@ void khdays_ui_text_glyph_before(const void *canvas, const void *font, int x, in
 
 void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, int cl, const void *glyph)
 {
+    if (fitting_native)
+        return;
     Canvas *c = find(KHDAYS_REF(canvas));
     const char *path = font_path(KHDAYS_REF(font));
     if (!c || !c->before_glyph)
@@ -881,12 +950,17 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
     const uint8_t *table = (const uint8_t *)KHDAYS_W(table_ref);
     const uint32_t stride = table[2] | (uint32_t)table[3] << 8;
     const uint32_t start = table_ref + 8u;
-    if (!stride || g[1] < start || (g[1] - start) % stride != 0 ||
-        !khdays_hd_font_glyph_available(path, (int)((g[1] - start) / stride))) {
+    if (!stride || g[1] < start || (g[1] - start) % stride != 0) {
         fallback_glyph(c, font, glyph, x, y);
         return;
     }
     const uint8_t *widths = (const uint8_t *)KHDAYS_W(g[0]);
+    const int native = !khdays_hd_font_glyph_available(path, (int)((g[1] - start) / stride));
+    const int fitted = fit_run.font == KHDAYS_REF(font) && fit_run.factor > 0 && fit_run.factor < 1;
+    if (native && (!fitted || c->bpp != 4 || table[0] > 16 || table[1] > 16 || widths[1] > 16)) {
+        fallback_glyph(c, font, glyph, x, y);
+        return;
+    }
     if (!table[0] || !table[1]) {
         fallback_glyph(c, font, glyph, x, y);
         return;
@@ -932,9 +1006,52 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
     if (op.clip_b > c->area_h * 8)
         op.clip_b = c->area_h * 8;
     snprintf(op.resource, sizeof(op.resource), "%s", path);
+    if (native) {
+        unsigned char pixels[128] = {0};
+        DsCanvas scratch = *(const DsCanvas *)canvas;
+        scratch.char_base = KHDAYS_REF(pixels);
+        scratch.area_width = scratch.area_height = scratch.param = 2;
+        fitting_native = 1;
+        DrawGlyphLine(KHDAYS_REF(&scratch), KHDAYS_REF(font), 0, 0, cl, KHDAYS_REF(glyph));
+        fitting_native = 0;
+        memset(op.resource, 0, sizeof(op.resource));
+        memcpy(op.resource, pixels, sizeof(pixels));
+        op.native_glyph = 1;
+        op.w = op.paint_w = widths[1];
+        op.h = table[1];
+    }
+    if (fitted) {
+        op.x = fitted_x(op.x);
+        op.x_scale = fit_run.factor;
+        op.clip_l = (int)floor(op.x);
+        op.clip_r = (int)ceil(op.x + op.w * op.x_scale);
+        if (fit_run.width > 0) {
+            const int right = (int)ceil(fit_run.origin + fit_run.offset + fit_run.width);
+            if (op.clip_r > right)
+                op.clip_r = right;
+        }
+        if (op.clip_l < 0)
+            op.clip_l = 0;
+        if (op.clip_r > c->area_w * 8)
+            op.clip_r = c->area_w * 8;
+        if (fit_run.report) {
+            double bounds[2] = {0, widths[1]};
+            if (!native)
+                khdays_hd_font_ink(path, op.glyph, table[0], table[1], widths[1], bounds);
+            if (bounds[1] > bounds[0]) {
+                const double left = op.x + bounds[0] * op.x_scale, right = op.x + bounds[1] * op.x_scale;
+                if (!fit_run.ink_count || left < fit_run.ink_left)
+                    fit_run.ink_left = left;
+                if (!fit_run.ink_count || right > fit_run.ink_right)
+                    fit_run.ink_right = right;
+                ++fit_run.ink_count;
+            }
+        }
+    }
     /* Reissuing at the same pen position replaces that draw, including colour. */
     for (int i = 0; i < c->op_count;) {
-        if (c->ops[i].source_x == x && c->ops[i].source_y == y && c->ops[i].x == op.x && c->ops[i].y == op.y) {
+        if (c->ops[i].source_x == op.source_x && c->ops[i].source_y == op.source_y && c->ops[i].x == op.x &&
+            c->ops[i].y == op.y) {
             memmove(&c->ops[i], &c->ops[i + 1], (size_t)(c->op_count - i - 1) * sizeof(*c->ops));
             --c->op_count;
         } else
@@ -1065,7 +1182,7 @@ static void invalidate_draws(Canvas *c, int x, int y, int w, int h)
         for (int j = 0; j < c->op_count; ++j) {
             const GlyphOp *a = &c->ops[j];
             if (a->source_x == hit.source_x && a->source_y == hit.source_y && a->glyph == hit.glyph &&
-                strcmp(a->resource, hit.resource) == 0) {
+                a->native_glyph == hit.native_glyph && memcmp(a->resource, hit.resource, sizeof(hit.resource)) == 0) {
                 if (c->editing_display)
                     dirty_rect(c, a->clip_l, a->clip_t, a->clip_r, a->clip_b);
             } else
@@ -1945,6 +2062,46 @@ static void underlay_graphics(const Canvas *c, int tile, uint16_t cell, int scal
     }
 }
 
+static double painted_width(const GlyphOp *op)
+{
+    return op->paint_w * (op->x_scale > 0 ? op->x_scale : 1);
+}
+
+static void paint_op(const Canvas *c, const GlyphOp *op, uint16_t cell, double x, double y, uint32_t *out, int width,
+                     int height, int scale, int l, int t, int r, int b)
+{
+    const double factor = op->x_scale > 0 ? op->x_scale : 1;
+    if (!op->native_glyph) {
+        if (factor == 1)
+            khdays_hd_font_paint_clipped(op->resource, op->glyph, x, y, op->w, op->h, glyph_colour(c, op, cell), out,
+                                         width, height, scale, l, t, r, b);
+        else
+            khdays_hd_font_paint_fitted(op->resource, op->glyph, x, y, op->w, op->h, glyph_colour(c, op, cell), out,
+                                        width, height, scale, l, t, r, b, factor);
+        return;
+    }
+    uint32_t colours[16] = {0};
+    const unsigned char *pixels = (const unsigned char *)op->resource;
+    for (int py = t * scale; py < b * scale && py < height; ++py) {
+        const int sy = (int)floor((py + .5) / scale - y);
+        if (sy < 0 || sy >= op->h)
+            continue;
+        for (int px = l * scale; px < r * scale && px < width; ++px) {
+            const int sx = (int)floor(((px + .5) / scale - x) / factor);
+            if (sx < 0 || sx >= op->w)
+                continue;
+            const int at = ((sy / 8) * 2 + sx / 8) * 32 + (sy & 7) * 4 + (sx & 7) / 2;
+            const unsigned value = (pixels[at] >> ((sx & 1) * 4)) & 15u;
+            if (!value)
+                continue;
+            if (!colours[value])
+                colours[value] = khdays_ui_palette_colour(c->engine, (uint32_t)c->bg,
+                                                          KET_OPAQUE | ((uint32_t)cell >> 12) * 16u | value);
+            out[(size_t)py * width + px] = over_graphics(colours[value], out[(size_t)py * width + px]);
+        }
+    }
+}
+
 static int primary_graphics_visible(const Canvas *c)
 {
     if (c->graphics_count)
@@ -1961,7 +2118,7 @@ static int primary_text_visible(const Canvas *c)
     for (int i = 0; i < c->display_count; ++i) {
         const GlyphOp *op = &c->display_ops[i];
         int right = op->clip_r;
-        const int ink_right = (int)ceil(op->x + op->paint_w);
+        const int ink_right = (int)ceil(op->x + painted_width(op));
         if (right > ink_right)
             right = ink_right;
         if (op->paint_w <= 0 || op->clip_l >= right || op->clip_t >= op->clip_b)
@@ -2049,13 +2206,12 @@ static void build_hd(Canvas *c, int scale, uint32_t palette)
                     const int cl = op->clip_l > l ? op->clip_l : l;
                     const int ct = op->clip_t > t ? op->clip_t : t;
                     int cr = op->clip_r < r ? op->clip_r : r;
-                    if (cr > op->x + op->paint_w)
-                        cr = (int)ceil(op->x + op->paint_w);
+                    if (cr > op->x + painted_width(op))
+                        cr = (int)ceil(op->x + painted_width(op));
                     const int cb = op->clip_b < b ? op->clip_b : b;
                     if (cl >= cr || ct >= cb)
                         continue;
-                    khdays_hd_font_paint_clipped(op->resource, op->glyph, op->x, op->y, op->w, op->h,
-                                                 glyph_colour(c, op, cell), out, width, height, scale, cl, ct, cr, cb);
+                    paint_op(c, op, cell, op->x, op->y, out, width, height, scale, cl, ct, cr, cb);
                     ++paints;
                 }
                 /* Flip the finished tile, including transparent PNG padding. */
@@ -2162,12 +2318,11 @@ static void mapped_tile(const Canvas *c, int k, uint16_t cell, int scale, int hd
             const int cl = op->clip_l > l ? op->clip_l - l : 0;
             const int ct = op->clip_t > t ? op->clip_t - t : 0;
             int cr = op->clip_r < l + 8 ? op->clip_r - l : 8;
-            if (cr > op->x + op->paint_w - l)
-                cr = (int)ceil(op->x + op->paint_w - l);
+            if (cr > op->x + painted_width(op) - l)
+                cr = (int)ceil(op->x + painted_width(op) - l);
             const int cb = op->clip_b < t + 8 ? op->clip_b - t : 8;
             if (cl < cr && ct < cb)
-                khdays_hd_font_paint_clipped(op->resource, op->glyph, op->x - l, op->y - t, op->w, op->h,
-                                             glyph_colour(c, op, cell), out, n, n, scale, cl, ct, cr, cb);
+                paint_op(c, op, cell, op->x - l, op->y - t, out, n, n, scale, cl, ct, cr, cb);
         }
     } else if (!c->graphics[tile]) {
         const uint8_t *ch = (hide_ds ? c->display_base : c->seen) + (size_t)k * 8 * c->bpp;
@@ -2213,12 +2368,30 @@ static void build_extra(Canvas *c, const KhdaysBgLayer *l, int ox, int oy, int s
     uint8_t text_tiles[16384 / 8] = {0}; /* One bit per possible canvas tile. */
     for (int i = 0; i < c->display_count; ++i) {
         const GlyphOp *op = &c->display_ops[i];
-        for (int row = op->clip_t / 8; row <= (op->clip_b - 1) / 8; ++row)
-            for (int col = op->clip_l / 8; col <= (op->clip_r - 1) / 8; ++col)
-                if (row >= 0 && row < c->area_h && col >= 0 && col < c->area_w) {
+        /* Fitting moves artwork, but duplicate placements must also hide the
+           native text's tail. Both footprints belong to the captured draw. */
+        const int fitted = op->x_scale > 0 && op->x_scale < 1;
+        for (int pass = 0; pass <= fitted; ++pass) {
+            int left = pass ? op->source_x : op->clip_l;
+            int top = pass ? op->source_y : op->clip_t;
+            int right = pass ? op->source_x + op->source_w : op->clip_r;
+            int bottom = pass ? op->source_y + op->source_h : op->clip_b;
+            if (left < 0)
+                left = 0;
+            if (top < 0)
+                top = 0;
+            if (right > c->area_w * 8)
+                right = c->area_w * 8;
+            if (bottom > c->area_h * 8)
+                bottom = c->area_h * 8;
+            if (left >= right || top >= bottom)
+                continue;
+            for (int row = top / 8; row <= (bottom - 1) / 8; ++row)
+                for (int col = left / 8; col <= (right - 1) / 8; ++col) {
                     const int tile = row * c->area_w + col;
                     text_tiles[tile / 8] |= (uint8_t)(1u << (tile & 7));
                 }
+        }
     }
     int sources[EXTRA_CELLS], count = 0;
     uint16_t cells[EXTRA_CELLS];
@@ -2394,6 +2567,8 @@ static void make_image(Canvas *c, const KhdaysBgLayer *l, int ox, int oy)
                 c->dirty[row * c->area_w + col] |= 3;
                 changed = 1;
             }
+            if (c->dirty[row * c->area_w + col] & 2)
+                changed = 1;
         }
     }
     if (!changed && c->image_version == c->version) {

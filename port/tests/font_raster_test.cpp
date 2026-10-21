@@ -293,6 +293,89 @@ int main()
                 CHECK(pixel[0] == 37 && pixel[1] == 83 && pixel[2] == 19);
         }
     }
+    Atlas fitted;
+    fitted.width = fitted.cell_width = 40;
+    fitted.height = fitted.cell_height = 8;
+    fitted.scale = 1;
+    fitted.sized = true;
+    fitted.rgba.assign(40 * 8 * 4, 0);
+    for (int y = 0; y < 8; ++y)
+        for (int x = 5; x < 35; ++x)
+            for (int ch = 0; ch < 4; ++ch)
+                fitted.rgba[(y * 40 + x) * 4 + ch] = 255;
+    Glyph fitted_glyph;
+    fitted_glyph.w = fitted_glyph.width = 40;
+    fitted_glyph.image_w = 40;
+    fitted_glyph.image_h = 8;
+    fitted.glyphs.push_back(fitted_glyph);
+    double bounds[2];
+    CHECK(glyph_ink(fitted, 0, 8, 8, 4, bounds));
+    CHECK(bounds[0] == 4.5 && bounds[1] == 35.5 && fitted.glyphs[0].ink_ready);
+    Atlas doubled = fitted;
+    doubled.width = 80;
+    doubled.height = 16;
+    doubled.glyphs[0].image_w = 80;
+    doubled.glyphs[0].image_h = 16;
+    doubled.glyphs[0].ink_ready = false;
+    doubled.rgba.assign(80 * 16 * 4, 0);
+    for (int y = 0; y < 16; ++y)
+        for (int x = 0; x < 80; ++x)
+            for (int ch = 0; ch < 4; ++ch)
+                doubled.rgba[(y * 80 + x) * 4 + ch] = fitted.rgba[((y / 2) * 40 + x / 2) * 4 + ch];
+    double doubled_bounds[2];
+    CHECK(glyph_ink(doubled, 0, 8, 8, 4, doubled_bounds));
+    CHECK(bounds[0] == doubled_bounds[0] && bounds[1] == doubled_bounds[1]);
+    GlyphPaint fitted_paint;
+    fitted_paint.glyph_index = 0;
+    fitted_paint.x = 1.125;
+    fitted_paint.y = 2;
+    fitted_paint.x_scale = .73125;
+    fitted_paint.logical_width = fitted_paint.logical_height = 8;
+    std::vector<unsigned char> fitted_pixels(256 * 64 * 4);
+    CHECK(draw_glyph(fitted, fitted_paint, fitted_pixels.data(), 256, 64, 256 * 4, 4));
+    int lit = 0;
+    for (int y = 0; y < 64; ++y)
+        for (int x = 0; x < 256; ++x)
+            if (fitted_pixels[(y * 256 + x) * 4 + 3]) {
+                ++lit;
+                CHECK(y >= 8 && y < 40);
+                CHECK(x < (fitted_paint.x + bounds[1] * fitted_paint.x_scale) * 4 + 1);
+            }
+    CHECK(lit > 0);
+    // A whole synthetic name fills the requested range, rather than having
+    // its pen positions or artwork compressed twice. PNG density is independent.
+    for (const Atlas *density : {&fitted, &doubled}) {
+        for (int target : {53, 61}) {
+            for (int output_scale : {1, 4, 8}) {
+                constexpr int count = 4, advance = 35;
+                const double run_right = (count - 1) * advance + bounds[1] + 1;
+                const double factor = target / run_right;
+                const int row_width = 64 * output_scale, rows = 16 * output_scale;
+                std::vector<unsigned char> run(static_cast<std::size_t>(row_width) * rows * 4);
+                for (int pass = 0; pass < 2; ++pass) {
+                    for (int letter = 0; letter < count; ++letter) {
+                        GlyphPaint run_paint;
+                        run_paint.glyph_index = 0;
+                        run_paint.x = (letter * advance + (pass == 0 ? 1 : 0)) * factor;
+                        run_paint.y = pass == 0 ? 1 : 0;
+                        run_paint.x_scale = factor;
+                        run_paint.clip_right = target;
+                        run_paint.logical_width = run_paint.logical_height = 8;
+                        CHECK(
+                            draw_glyph(*density, run_paint, run.data(), row_width, rows, row_width * 4, output_scale));
+                    }
+                }
+                int last = -1;
+                for (int y = 0; y < rows; ++y)
+                    for (int x = 0; x < row_width; ++x)
+                        if (run[(y * row_width + x) * 4 + 3])
+                            last = std::max(last, x);
+                CHECK(last >= (target - 1) * output_scale && last < target * output_scale);
+            }
+        }
+    }
+    fitted_paint.x_scale = 0;
+    CHECK(!draw_glyph(fitted, fitted_paint, fitted_pixels.data(), 256, 64, 256 * 4, 4));
     std::printf("HD font raster: %s (%d failures)\n", failures ? "FAIL" : "PASS", failures);
     return failures ? 1 : 0;
 }

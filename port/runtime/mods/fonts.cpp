@@ -7,6 +7,7 @@ extern "C" {
 extern "C" int khdays_mods_find(const char *relative, char *path, int size);
 
 #include <charconv>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -507,6 +508,71 @@ FontRules read_rules(const Value &doc)
     return result;
 }
 
+struct LayoutRule {
+    bool numeric = false;
+    double max_width = 0, offset = 0;
+};
+using LayoutRules = std::map<std::string, LayoutRule>;
+
+double layout_number(const Value &doc, const char *name, double low, double high)
+{
+    const auto found = doc.object.find(name);
+    if (found == doc.object.end() || (found->second.type != Value::Integer && found->second.type != Value::Real))
+        throw std::runtime_error(std::string("missing or invalid layout field: ") + name);
+    const auto &v = found->second;
+    const double result = v.type == Value::Integer ? static_cast<double>(v.number) : v.real;
+    if (!std::isfinite(result) || result < low || result > high)
+        throw std::runtime_error(std::string("out of range layout field: ") + name);
+    return result;
+}
+
+LayoutRules read_layouts(const Value &doc)
+{
+    if (integer(doc, "version", 1, 1) != 1)
+        throw std::runtime_error("unsupported font layout version; use version 1");
+    const auto &scopes = field(doc, "scopes", Value::Object).object;
+    if (scopes.size() > 64)
+        throw std::runtime_error("at most 64 font layout scopes are allowed");
+    LayoutRules result;
+    for (const auto &[scope, mode] : scopes) {
+        if (scope.empty() || scope.size() >= 80 || scope.front() == '.' || scope.back() == '.' ||
+            scope.find("..") != std::string::npos ||
+            scope.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789._-") != std::string::npos ||
+            (mode.type != Value::String && mode.type != Value::Object))
+            throw std::runtime_error("invalid font layout scope: " + scope);
+        LayoutRule rule;
+        if (mode.type == Value::Object) {
+            if (field(mode, "mode", Value::String).str != "fit")
+                throw std::runtime_error("invalid layout mode in " + scope + "; use fit");
+            rule.max_width = layout_number(mode, "max_width", .25, 64);
+            if (mode.object.count("x_offset"))
+                rule.offset = layout_number(mode, "x_offset", 0, 64);
+            if (rule.offset + rule.max_width > 64)
+                throw std::runtime_error("fit region exceeds the 64-pixel item-name strip in " + scope);
+        } else {
+            if (mode.str != "original" && mode.str != "font_metrics")
+                throw std::runtime_error("invalid font layout in " + scope + "; use original or font_metrics");
+            rule.numeric = mode.str == "font_metrics";
+        }
+        result.emplace(scope, rule);
+    }
+    return result;
+}
+
+bool layout_for(const LayoutRules &layouts, std::string scope)
+{
+    while (!scope.empty()) {
+        const auto found = layouts.find(scope);
+        if (found != layouts.end())
+            return found->second.numeric;
+        const auto dot = scope.rfind('.');
+        if (dot == std::string::npos)
+            break;
+        scope.resize(dot);
+    }
+    return false;
+}
+
 void load_rules()
 {
     if (rules_read)
@@ -679,5 +745,52 @@ bool mappings_enabled()
     std::lock_guard<std::mutex> lock(cache_mutex);
     load_rules();
     return !rules.empty();
+}
+
+const LayoutRules &cached_layouts()
+{
+    static const LayoutRules cached = [] {
+        LayoutRules layouts;
+        char path[4096]{};
+        if (khdays_mods_find("fonts/layouts.json", path, sizeof(path))) {
+            try {
+                layouts = read_layouts(Reader(text_file(path)).read());
+                std::fprintf(stderr, "HD font layouts: %s (%zu scopes)\n", path, layouts.size());
+            } catch (const std::exception &e) {
+                std::fprintf(stderr, "HD font layouts: rejected %s: %s\n", path, e.what());
+            }
+        }
+        return layouts;
+    }();
+    return cached;
+}
+
+bool numeric_layout(int layout)
+{
+    static const std::array<bool, 3> enabled = {layout_for(cached_layouts(), "camp.panels.inventory.counter"),
+                                                layout_for(cached_layouts(), "title.load.play_time"),
+                                                layout_for(cached_layouts(), "camp.save.play_time")};
+    return layout >= 0 && static_cast<std::size_t>(layout) < enabled.size() && enabled[layout];
+}
+
+double fit_layout(int layout, double *offset)
+{
+    static const std::array<LayoutRule, 2> fitting = [] {
+        std::array<LayoutRule, 2> result{};
+        const char *scopes[] = {"field.command.items.name", "field.obtained.name"};
+        for (std::size_t i = 0; i < result.size(); ++i) {
+            const auto found = cached_layouts().find(scopes[i]);
+            if (found != cached_layouts().end())
+                result[i] = found->second;
+        }
+        return result;
+    }();
+    if (offset)
+        *offset = 0;
+    if (layout < 0 || static_cast<std::size_t>(layout) >= fitting.size())
+        return 0;
+    if (offset)
+        *offset = fitting[layout].offset;
+    return fitting[layout].max_width;
 }
 } // namespace khdays::hd_fonts

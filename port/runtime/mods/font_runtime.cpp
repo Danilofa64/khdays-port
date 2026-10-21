@@ -11,6 +11,16 @@ extern "C" int khdays_hd_font_mappings_enabled(void)
     return khdays::hd_fonts::mappings_enabled();
 }
 
+extern "C" int khdays_hd_font_numeric_layout(int layout)
+{
+    return khdays::hd_fonts::numeric_layout(layout);
+}
+
+extern "C" double khdays_hd_font_fit_layout(int layout, double *offset)
+{
+    return khdays::hd_fonts::fit_layout(layout, offset);
+}
+
 extern "C" int khdays_hd_font_select(const char *resource, const char *scope, char *selected, int size)
 {
     if (!resource || !scope || !selected || size <= 0)
@@ -255,10 +265,18 @@ extern "C" int khdays_hd_font_geometry(const char *resource, int index, int days
     return 1;
 }
 
-extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, double x, double y, int logical_width,
-                                            int logical_height, std::uint32_t rgba_color, std::uint32_t *rgba,
-                                            int width, int height, int scale, int clip_l, int clip_t, int clip_r,
-                                            int clip_b)
+extern "C" int khdays_hd_font_ink(const char *resource, int index, int w, int h, int ink, double *bounds)
+{
+    auto atlas = resource ? khdays::hd_fonts::load(resource) : nullptr;
+    if (atlas)
+        index = atlas_index(atlas, index);
+    return atlas && index >= 0 && bounds && khdays::hd_fonts::glyph_ink(*atlas, index, w, h, ink, bounds);
+}
+
+extern "C" int khdays_hd_font_paint_fitted(const char *resource, int index, double x, double y, int logical_width,
+                                           int logical_height, std::uint32_t rgba_color, std::uint32_t *rgba, int width,
+                                           int height, int scale, int clip_l, int clip_t, int clip_r, int clip_b,
+                                           double x_scale)
 {
     if (!resource || !rgba || width <= 0 || height <= 0 || scale <= 0)
         return 0;
@@ -268,6 +286,7 @@ extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, dou
     if (!atlas || index < 0 || static_cast<std::size_t>(index) >= atlas->glyphs.size())
         return 0;
     khdays::hd_fonts::GlyphPaint paint;
+    paint.x_scale = x_scale;
     paint.glyph_index = index;
     paint.x = x;
     paint.y = y;
@@ -285,6 +304,15 @@ extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, dou
                                         scale)
                ? 1
                : 0;
+}
+
+extern "C" int khdays_hd_font_paint_clipped(const char *resource, int index, double x, double y, int logical_width,
+                                            int logical_height, std::uint32_t rgba_color, std::uint32_t *rgba,
+                                            int width, int height, int scale, int clip_l, int clip_t, int clip_r,
+                                            int clip_b)
+{
+    return khdays_hd_font_paint_fitted(resource, index, x, y, logical_width, logical_height, rgba_color, rgba, width,
+                                       height, scale, clip_l, clip_t, clip_r, clip_b, 1);
 }
 
 extern "C" int khdays_hd_font_paint(const char *resource, int index, double x, double y, int logical_width,
