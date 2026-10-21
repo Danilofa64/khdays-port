@@ -264,7 +264,8 @@ once:
 - **Antialiasing** (off, 2x, 3x, 4x): the picture made that many times
   larger, then shrunk to the size shown, each pixel the average of what is
   under it -- the 3D's edges come out smooth instead of in steps. 2x is four times the graphics
-  card's work, 4x sixteen; off by default. (A mod's textures, and the HD
+  card's work, 4x sixteen; off by default, and the settings warn while it is on, as the internal
+  resolution already draws the 3D at the window's size or larger. (A mod's textures, and the HD
   replacements, are read at the size they are drawn whatever this says:
   smaller copies of each are kept, so a model far away does not break into
   steps that flicker.)

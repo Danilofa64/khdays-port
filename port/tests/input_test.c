@@ -966,6 +966,10 @@ static void test_settings_model(void)
                         CHECK(r->label != NULL && r->label[0] != '\0');
                     }
                 }
+                /* antialiasing warns while it is on: the internal resolution already scales the 3D */
+                if (r->id == KHDAYS_SET_ANTIALIASING) {
+                    CHECK(r->warning != NULL && r->warning[0] != '\0' && r->safe == 1 && *r->value == 1);
+                }
             }
         }
         for (size_t e = 0; e < sizeof(expected) / sizeof(expected[0]); ++e) {

@@ -400,6 +400,22 @@ static const char *const texts[TXT_COUNT][5] = {
                                      "lisci. 2x è quattro volte il lavoro per la scheda grafica, 4x sedici.",
                                      "La imagen se hace tantas veces más grande y se reduce: los bordes del 3D salen "
                                      "suaves. 2x es cuatro veces el trabajo de la tarjeta gráfica, 4x dieciséis."},
+    [TXT_VIDEO_ANTIALIASING_WARNING] =
+        {"The internal resolution already draws the 3D at the window's size or larger: antialiasing "
+         "multiplies that work, so the game can slow down and use much more of the graphics card. "
+         "Leave it Off unless your card has power to spare.",
+         "La résolution interne dessine déjà la 3D à la taille de la fenêtre ou plus : l'anticrénelage "
+         "multiplie ce travail, le jeu peut ralentir et solliciter bien plus la carte graphique. "
+         "Laissez-le sur Non si votre carte n'a pas de puissance à revendre.",
+         "Die interne Auflösung zeichnet das 3D schon in Fenstergröße oder größer: die Kantenglättung "
+         "vervielfacht diese Arbeit, das Spiel kann langsamer werden und die Grafikkarte viel stärker "
+         "belasten. Lass sie auf Aus, wenn deine Karte keine Leistung übrig hat.",
+         "La risoluzione interna disegna già il 3D alla dimensione della finestra o più: l'antialiasing "
+         "moltiplica quel lavoro, il gioco può rallentare e impegnare molto di più la scheda grafica. "
+         "Lascialo su No se la tua scheda non ha potenza da vendere.",
+         "La resolución interna ya dibuja el 3D al tamaño de la ventana o mayor: el antialiasing "
+         "multiplica ese trabajo, y el juego puede ir más lento y exigir mucho más a la tarjeta gráfica. "
+         "Déjalo en No salvo que tu tarjeta vaya sobrada."},
     [TXT_VIDEO_SCREENS] = {"Screens", "Écrans", "Bildschirme", "Schermi", "Pantallas"},
     [TXT_VIDEO_SCREENS_TWO] = {"Two (DS)", "Deux (DS)", "Zwei (DS)", "Due (DS)", "Dos (DS)"},
     [TXT_VIDEO_SCREENS_ONE] = {"One", "Un", "Einer", "Uno", "Una"},
