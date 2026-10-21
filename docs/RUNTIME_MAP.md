@@ -36,6 +36,17 @@ and a day-357 save loaded into the Grey Area and challenge 07.
 | 6 | a mission's results | ov005 (`ov005_mission_result`) |
 | 12 | "Error de conexión. Pulsa A para volver a la pantalla principal." | ov010 (`scenes/ov010`) |
 
+**Overlays unloaded.** An overlay is loaded for the port from `FS_StartOverlay` until
+`FS_UnloadOverlayImage` (the end of `FS_UnloadOverlay`, the info's first word its id:
+`khdays_overlay_ended`) or another overlay starting over its range. Before 2026-10-21 only the
+second counted, and one the game unloaded but left in memory stayed "loaded": the credits' ov011
+(`0205ac40-0205e980`) is overlapped by neither the title's ov000 (`0204cac0-0205ac40`) nor the
+post-credits save's ov009, so after the credits the one-screen situation stayed "the-end" (it is
+decided before the scene) and the port's HD screens (the title, the save lists, the menus) gave way
+to the DS's until the field's ov002 started over it (the testers: "when you finish the game, the
+HUD returns to its original state"). Traced: on a new game every overlay ends as its scene is
+left (ov000 at f1732, ov012 and ov024 at f2154, ov004 at f2372; ov028 starts and ends at once).
+
 **Resets.** `OS_ResetSystem` (0x02003948) restarts the console, and
 `Boot_InitScene` picks the first scene from the word it left at
 `0x027ffc20`: 0 (a cold boot) and -2 give scene 1, anything else scene 12.
