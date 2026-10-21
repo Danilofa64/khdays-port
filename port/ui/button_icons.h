@@ -75,9 +75,12 @@ static inline void khdays_button_fit(double bw, double bh, int iw, int ih, doubl
 }
 
 /* The icon of the input the player has for `button` on the device played: the collection's from a
- * mod's layouts (HD PACK), else Kenney's for a gamepad; RGBA rows, `width` x `height`. NULL when
- * there is none (a key with no icon, a D-pad on the keyboard): the game's own glyph is drawn. */
-const uint8_t *khdays_button_icon(int button, int *width, int *height);
+ * mod's layouts (HD PACK), else Kenney's (a gamepad's, the mouse's); RGBA rows, `width` x `height`.
+ * NULL when there is none (a key with no icon, a D-pad on the keyboard): the game's own glyph is
+ * drawn. `field`: the text tells the field's controls (a tutorial), where with the D-pad command menu
+ * on (the KH2 preset) the DS's X that cycles the commands is that menu's input and its D-pad is the
+ * stick that moves. */
+const uint8_t *khdays_button_icon(int button, int field, int *width, int *height);
 
 /* Changes whenever the icons would: the device played, the gamepad, the bindings. */
 uint32_t khdays_button_icons_signature(void);

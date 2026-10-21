@@ -57,6 +57,7 @@ typedef struct GlyphOp {
     double x_scale;   /* Zero retains the original geometry; fitting is an explicit run operation. */
     int native_glyph; /* resource stores a 16x16, 4-bpp snapshot from the original glyph blitter. */
     int button, piece; /* the DS button the glyph draws (KHDAYS_BUTTON_*: its icon instead), which of its glyphs */
+    int field;         /* the text tells the field's controls (khdays_button_icon) */
     /* The replacement artwork stays at x/y, but only this surviving rectangle
        is visible after partial clears. Coordinates are in DS pixels. */
     int clip_l, clip_t, clip_r, clip_b;
@@ -702,14 +703,27 @@ static void bind_charmap(const char *path, const void *font)
     free(codes);
 }
 
-/* The DS buttons the game's fonts' glyphs draw (button_icons.h), by font: for each glyph its button
-   and piece (button | piece << 5), 0 for the others; `buttons` NULL when its tables were unreadable. */
+/* The DS buttons the game's fonts' glyphs draw (button_icons.h), by font (its tables' places and its
+   first CMAP block's range and method: another font loaded where one was differs there): for each
+   glyph its button and piece (button | piece << 5), 0 for the others; `buttons` NULL when its tables
+   were unreadable. */
 typedef struct ButtonFont {
-    uint32_t info, glyphs, map, count;
+    uint32_t info, glyphs, map, head, count;
     uint8_t *buttons;
 } ButtonFont;
 static ButtonFont *button_fonts;
 static int button_font_count, button_font_room;
+
+/* Whether the text drawn now tells the field's controls: a field tutorial's page, or the camp's
+   Tutorials (screen 6, docs/FONT_MAPPING.md). */
+static int field_controls_text(void)
+{
+    int story;
+    for (unsigned i = 0; i < operation_depth; ++i)
+        if (strcmp(operation_scopes[i], "field.tutorial") == 0)
+            return 1;
+    return khdays_camp_screen(&story) == 6;
+}
 
 static int glyph_button(const void *font, int glyph, int *piece)
 {
@@ -718,6 +732,8 @@ static int glyph_button(const void *font, int glyph, int *piece)
     if (!info)
         return KHDAYS_BUTTON_NONE;
     const uint32_t *finf = (const uint32_t *)KHDAYS_W(info);
+    const uint16_t *block = finf[4] ? (const uint16_t *)KHDAYS_W(finf[4]) : NULL;
+    const uint32_t head = block ? ((uint32_t)block[0] | (uint32_t)block[1] << 16) ^ block[2] : 0;
     ButtonFont *f = NULL;
     for (int i = 0; i < button_font_count && !f; ++i)
         if (button_fonts[i].info == info && button_fonts[i].glyphs == finf[2] && button_fonts[i].map == finf[4])
@@ -732,10 +748,16 @@ static int glyph_button(const void *font, int glyph, int *piece)
             button_font_room = room;
         }
         f = &button_fonts[button_font_count++];
+        f->buttons = NULL;
+        f->head = ~head; /* read below */
+    }
+    if (f->head != head) { /* new, or another font loaded where this one was */
+        free(f->buttons);
         memset(f, 0, sizeof(*f));
         f->info = info;
         f->glyphs = finf[2];
         f->map = finf[4];
+        f->head = head;
         uint32_t *codes = font_codes(font, &f->count);
         if (codes && (f->buttons = (uint8_t *)calloc(f->count, 1)) != NULL)
             for (uint32_t g = 0; g < f->count; ++g) {
@@ -1136,6 +1158,15 @@ void khdays_ui_text_glyph(const void *canvas, const void *font, int x, int y, in
         } else
             ++i;
     }
+    /* a tutorial's buttons are the field's controls, but for an X among the face buttons ("A B X or
+       Y": another of them just before it on its line) */
+    int listed = 0;
+    for (int i = 0; button == KHDAYS_BUTTON_X && i < c->op_count && !listed; ++i) {
+        const GlyphOp *o = &c->ops[i];
+        listed = (o->button == KHDAYS_BUTTON_A || o->button == KHDAYS_BUTTON_B || o->button == KHDAYS_BUTTON_Y) &&
+                 o->source_y == op.source_y && o->source_x < op.source_x && op.source_x - o->source_x <= 64;
+    }
+    op.field = button && !listed && field_controls_text();
     /* START and SELECT are three glyphs: the first one's icon covers the others' */
     for (int i = op.piece > 0 ? c->op_count - 1 : -1; i >= 0; --i) {
         GlyphOp *first = &c->ops[i];
@@ -2159,7 +2190,7 @@ static int paint_button(const Canvas *c, const GlyphOp *op, uint16_t cell, doubl
                         int height, int scale, int l, int t, int r, int b)
 {
     int iw = 0, ih = 0;
-    const uint8_t *icon = khdays_button_icon(op->button, &iw, &ih);
+    const uint8_t *icon = khdays_button_icon(op->button, op->field, &iw, &ih);
     if (!icon || iw <= 0 || ih <= 0)
         return 0;
     if (op->piece > 0)

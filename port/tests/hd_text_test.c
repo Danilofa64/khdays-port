@@ -267,8 +267,9 @@ int khdays_hd_font_glyph_available(const char *path, int index)
 static int button_icon_on;
 static uint32_t button_signature;
 static const uint8_t button_icon_red[2 * 2 * 4] = {255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255};
-const uint8_t *khdays_button_icon(int button, int *width, int *height)
+const uint8_t *khdays_button_icon(int button, int field, int *width, int *height)
 {
+    (void)field;
     if (!button_icon_on || button != KHDAYS_BUTTON_A)
         return NULL;
     *width = *height = 2;
@@ -1030,6 +1031,32 @@ static void button_icon_tests(void)
     button_signature = 2;
     render();
     CHECK(primary_hd_pixel(0 * 16 + 1) == tint && primary_hd_pixel(3 * 16 + 1) == tint);
+    /* in a tutorial an X tells the field's controls (cycling the commands), but not among the
+       face buttons: the CMAP's pairs, U+3349 (A) glyph 0 and U+3322 (X) glyph 1 */
+    setup(4);
+    *(uint32_t *)(ram + 128 + 16) = 700;
+    *(uint32_t *)(ram + 252) = 16 + 2 * 8;
+    map = (uint16_t *)(ram + 700);
+    map[0] = 0x3322;
+    map[1] = 0x3349;
+    map[2] = 2;
+    *(uint32_t *)(map + 4) = 0;
+    map[6] = 2;
+    map[7] = 0x3349, map[8] = 0;
+    map[9] = 0x3322, map[10] = 1;
+    available_glyphs = 0;
+    test_camp_screen = 6;
+    glyph[1] = 272;
+    draw(8);
+    CHECK(c->op_count == 1 && c->ops[0].button == KHDAYS_BUTTON_X && c->ops[0].field);
+    glyph[1] = 264;
+    draw(0);
+    glyph[1] = 272;
+    draw(8); /* drawn again where it was: the earlier one replaced */
+    CHECK(c->op_count == 2 && c->ops[0].button == KHDAYS_BUTTON_A && c->ops[0].field);
+    CHECK(c->ops[1].button == KHDAYS_BUTTON_X && !c->ops[1].field);
+    glyph[1] = 264;
+    test_camp_screen = KHDAYS_CAMP_NONE;
     available_glyphs = 1u;
 }
 

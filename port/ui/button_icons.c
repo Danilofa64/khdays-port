@@ -153,9 +153,18 @@ static const char *family(SDL_Gamepad *pad)
 }
 
 /* The icon of one input: a gamepad's (the collection's for an Xbox or a PlayStation one, else
- * Kenney's as the Controls section shows it) or a key's (the collection's). */
+ * Kenney's as the Controls section shows it), a key's (the collection's) or the mouse's (Kenney's). */
 static const Icon *input_icon(SDL_Gamepad *pad, int input)
 {
+    static const char *const mouse[KHDAYS_MOUSE_COUNT] = {
+        [KHDAYS_MOUSE_LEFT] = "mouse_left",
+        [KHDAYS_MOUSE_MIDDLE] = "mouse_scroll",
+        [KHDAYS_MOUSE_RIGHT] = "mouse_right",
+        [KHDAYS_MOUSE_X1] = "mouse_side_back",
+        [KHDAYS_MOUSE_X2] = "mouse_side_forward",
+        [KHDAYS_MOUSE_WHEEL_UP] = "mouse_scroll_up",
+        [KHDAYS_MOUSE_WHEEL_DOWN] = "mouse_scroll_down",
+    };
     char name[64];
     if (pad != NULL) {
         const char *f = family(pad), *input_name = khdays_pad_input_name(input);
@@ -169,11 +178,42 @@ static const Icon *input_icon(SDL_Gamepad *pad, int input)
         const char *kenney = khdays_pad_icon_name(input);
         return kenney != NULL ? kenney_icon(kenney) : NULL;
     }
+    if (input >= KHDAYS_MOUSE_INPUT && input < KHDAYS_KEYBOARD_INPUTS) {
+        return kenney_icon(mouse[input - KHDAYS_MOUSE_INPUT]);
+    }
     if (input < 0 || input >= KHDAYS_MOUSE_INPUT) {
         return NULL;
     }
     snprintf(name, sizeof(name), "key:%d", input);
     return find_icon(name);
+}
+
+/* The icon of the first of `action`'s inputs in `layer` on the device played that has one. */
+static const Icon *action_icon(const KhdaysProfile *profile, SDL_Gamepad *pad, int layer, int action)
+{
+    const int16_t *inputs = profile->input[pad != NULL ? KHDAYS_DEVICE_GAMEPAD : KHDAYS_DEVICE_KEYBOARD][layer][action];
+    const Icon *icon = NULL;
+    for (int k = 0; k < KHDAYS_INPUTS_PER_ACTION && icon == NULL; ++k) {
+        if (inputs[k] != KHDAYS_NO_INPUT) {
+            icon = input_icon(pad, inputs[k]);
+        }
+    }
+    return icon;
+}
+
+/* The stick that drives the DS's D-pad, with `way` marked ("up", "horizontal"...; NULL none). */
+static const Icon *stick_icon(const KhdaysProfile *profile, SDL_Gamepad *pad, const char *way)
+{
+    const char *f = family(pad);
+    char name[64];
+    for (int s = 0; s < 2; ++s) {
+        if (profile->stick[s].role == KHDAYS_STICK_DPAD) {
+            snprintf(name, sizeof(name), "%s_stick_%c%s%s", f != NULL ? f : "xbox", s == 0 ? 'l' : 'r',
+                     way != NULL ? "_" : "", way != NULL ? way : "");
+            return kenney_icon(name);
+        }
+    }
+    return NULL;
 }
 
 /* The D-pad whole or two of its ways on the gamepad: the D-pad's when the DS's D-pad is on it,
@@ -199,17 +239,22 @@ static const Icon *dpad_icon(const KhdaysProfile *profile, SDL_Gamepad *pad, int
                                                          : "none");
         return kenney_icon(name);
     }
-    for (int s = 0; s < 2; ++s) {
-        if (profile->stick[s].role == KHDAYS_STICK_DPAD) {
-            snprintf(name, sizeof(name), "%s_stick_%c", f, s == 0 ? 'l' : 'r');
-            return kenney_icon(name);
-        }
-    }
-    return NULL;
+    return stick_icon(profile, pad,
+                      button == KHDAYS_BUTTON_DPAD_HORIZONTAL ? "horizontal"
+                      : button == KHDAYS_BUTTON_DPAD_VERTICAL ? "vertical"
+                                                              : NULL);
 }
 
-const uint8_t *khdays_button_icon(int button, int *width, int *height)
+const uint8_t *khdays_button_icon(int button, int field, int *width, int *height)
 {
+    static const char *const ways[KHDAYS_BUTTON_COUNT] = {
+        [KHDAYS_BUTTON_UP] = "up",
+        [KHDAYS_BUTTON_DOWN] = "down",
+        [KHDAYS_BUTTON_LEFT] = "left",
+        [KHDAYS_BUTTON_RIGHT] = "right",
+        [KHDAYS_BUTTON_DPAD_HORIZONTAL] = "horizontal",
+        [KHDAYS_BUTTON_DPAD_VERTICAL] = "vertical",
+    };
     static const int actions[KHDAYS_BUTTON_COUNT] = {
         [KHDAYS_BUTTON_A] = KHDAYS_ACT_A,         [KHDAYS_BUTTON_B] = KHDAYS_ACT_B,
         [KHDAYS_BUTTON_X] = KHDAYS_ACT_X,         [KHDAYS_BUTTON_Y] = KHDAYS_ACT_Y,
@@ -227,16 +272,18 @@ const uint8_t *khdays_button_icon(int button, int *width, int *height)
     if (!layouts_read) {
         read_layouts();
     }
-    if (button >= KHDAYS_BUTTON_DPAD) {
-        icon = pad != NULL ? dpad_icon(profile, pad, button) : NULL;
-    } else {
-        const int16_t *inputs = profile->input[pad != NULL ? KHDAYS_DEVICE_GAMEPAD : KHDAYS_DEVICE_KEYBOARD]
-                                              [KHDAYS_LAYER_BASE][actions[button]];
-        for (int k = 0; k < KHDAYS_INPUTS_PER_ACTION && icon == NULL; ++k) {
-            if (inputs[k] != KHDAYS_NO_INPUT) {
-                icon = input_icon(pad, inputs[k]);
-            }
-        }
+    /* in the field with the D-pad command menu on: the commands cycle by that menu's input, and
+       the DS's D-pad (moving, the free camera) is the stick */
+    const int menu = field && profile->enh.dpad_command_menu;
+    if (menu && button == KHDAYS_BUTTON_X) {
+        icon = action_icon(profile, pad, KHDAYS_LAYER_FIELD, KHDAYS_ACT_MENU_DOWN);
+    } else if (menu && pad != NULL && button >= KHDAYS_BUTTON_UP) {
+        icon = stick_icon(profile, pad, ways[button]);
+    }
+    if (icon == NULL) {
+        icon = button < KHDAYS_BUTTON_DPAD ? action_icon(profile, pad, KHDAYS_LAYER_BASE, actions[button])
+               : pad != NULL               ? dpad_icon(profile, pad, button)
+                                           : NULL;
     }
     if (icon == NULL || icon->rgba == NULL) {
         return NULL;
@@ -255,12 +302,15 @@ uint32_t khdays_button_icons_signature(void)
     h = (h ^ (pad != NULL ? (uint32_t)SDL_GetGamepadID(pad) : 0u)) * 16777619u;
     h = (h ^ (pad != NULL ? (uint32_t)SDL_GetGamepadType(pad) : 0u)) * 16777619u;
     if (profile != NULL) {
-        for (int a = 0; a < KHDAYS_ACT_DS_COUNT; ++a) {
-            for (int k = 0; k < KHDAYS_INPUTS_PER_ACTION; ++k) {
-                h = (h ^ (uint16_t)profile->input[device][KHDAYS_LAYER_BASE][a][k]) * 16777619u;
+        for (int layer = 0; layer < KHDAYS_LAYER_COUNT; ++layer) {
+            for (int a = 0; a < KHDAYS_ACT_COUNT; ++a) {
+                for (int k = 0; k < KHDAYS_INPUTS_PER_ACTION; ++k) {
+                    h = (h ^ (uint16_t)profile->input[device][layer][a][k]) * 16777619u;
+                }
             }
         }
         h = (h ^ (uint32_t)profile->stick[0].role << 4 ^ (uint32_t)profile->stick[1].role) * 16777619u;
+        h = (h ^ (uint32_t)profile->enh.dpad_command_menu) * 16777619u;
     }
     return h;
 }
