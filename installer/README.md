@@ -70,6 +70,12 @@ others are made all the same: the installer says which, keeps what each said who
 pictures a tool cuts at known places are taken at their places scaled to the copy's picture, as a
 mod may have put a smaller one there.
 
+The menus step also generates the five European Days PNG font replacements in
+`mods/HD PACK/fonts/text/` from KH2's SYS/EVT font sheets and advance tables,
+matched to the player's Days NFTR character maps. The conversion and defaults
+are described in [HD font rendering](../docs/HD_FONTS.md#generating-kh2-fonts).
+Only the generator ships; all font images and JSON definitions are made locally.
+
 ## Add to Steam
 
 Optional, off by default, on a page of its own shown only when Steam is found: the port added to
