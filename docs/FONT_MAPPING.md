@@ -243,7 +243,7 @@ partial clears, canvas copying, VRAM publication, and compositing.
 
 Routed views share immutable PNG pixels and raster-cache entries, with separate
 CMAP/native-fallback metadata per (original source, alternate target). Views are
-reused across scopes; limits are 64 scopes and 256 rules/views. Without mappings,
+reused across scopes, as many as the mappings name. Without mappings,
 layout/drawing skips scope lookup. No bitmap comparison or forced redraw is added.
 Other contexts can provide scopes through the same selection API in future.
 
@@ -317,8 +317,8 @@ Additional paths at the same decompilation revision:
 
 ## Verification
 
-Run `port\tests\run_hd_fonts.cmd` (discovers VS2022 x64); add `asan` for
-AddressSanitizer. Synthetic tests cover the actual scope provider's four handles,
+`ctest -R khdays-font-` in the port's build (the `port/build.py --asan` tree runs them under
+AddressSanitizer). Synthetic tests cover the actual scope provider's four handles,
 all screen indices, both camp variants, save/report modes, unrelated or released
 handles; inherited/page rules, identity cancellation, dialogue isolation, missing
 targets, invalid config, repeated cached lookup, shared artwork with different

@@ -490,16 +490,17 @@ translation, clipping and tint reuse samples. No pen positions are rounded for
 cache keys. PNG alpha bounds and grayscale/white-mask fast paths reduce sampling
 and blending. Each individual raster is also limited to 32 MiB.
 
-Each canvas accepts at most 8,192 source or displayed command fragments and
-512 KiB of storage per observation/graphics plane. Limits or allocation failures
-return to native rendering; a full clear enables capture again. Supplementary
-images cover at most 33x25 tiles. The existing dimension-based compositor image
-pool has no new global GPU-memory budget or retirement policy.
+A canvas's command fragments, the bound fonts and the canvases copied in RAM
+grow as needed; a copy lives as long as its memory. Only an allocation failure
+returns a canvas to native rendering; a full clear enables capture again. A
+canvas may be any size, its characters in the game's memory. Supplementary images
+cover at most 33x25 tiles. The existing dimension-based compositor image pool
+has no new global GPU-memory budget or retirement policy.
 
-Metadata limits include 16 MiB per JSON, 16,384 glyphs, 65,536 map entries or
-kerning pairs, 16,384-pixel atlas sides and scale from 1/64 through 16. Invalid
-metadata logs its path and reason, then preserves fallback. JSON numbers are
-locale independent. Mappings add their own bounded route cache.
+Metadata may hold any number of glyphs, map entries, kerning pairs, mappings and
+scopes; atlas sides go up to 16,384 pixels (the GPU's texture limit) and scale
+from 1/64 through 16. Invalid metadata logs its path and reason, then preserves
+fallback. JSON numbers are locale independent.
 
 Set these environment variables before launch for diagnostics:
 
@@ -523,10 +524,10 @@ Build `khdays-font-tests` in the existing port build, then run
 CTest includes the runtime suites, NFTR decoder and generator-hook checks, with
 separate fixtures per build directory. Release tests retain assertion checks.
 
-Run `port\tests\run_hd_fonts.cmd`, or append `asan` for AddressSanitizer.
-It discovers VS2022 x64 and runs nine synthetic suites: camp scope selection,
-canvas/VRAM behavior, layout following, metadata/routing, secondary fallback,
-rasterization, raster-cache bounds, NFTR decoding and generated SDK layout.
+The same suites run under AddressSanitizer in the `port/build.py --asan` tree.
+There are nine synthetic suites: camp scope selection, canvas/VRAM behavior,
+layout following, metadata/routing, secondary fallback, rasterization,
+raster-cache bounds, NFTR decoding and generated SDK layout.
 
 Canvas tests also check ordinary PNGs with HD fonts disabled, partial uploads
 beside retained text, transparent and indexed art, flips, scrolling and image

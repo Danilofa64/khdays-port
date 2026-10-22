@@ -296,8 +296,8 @@ std::string text_file(const std::filesystem::path &path)
     if (!f)
         throw std::runtime_error("cannot open metadata JSON");
     const auto size = f.tellg();
-    if (size < 0 || size > 16 * 1024 * 1024)
-        throw std::runtime_error("metadata JSON too large");
+    if (size < 0)
+        throw std::runtime_error("cannot read metadata JSON");
     std::string data(static_cast<std::size_t>(size), '\0');
     f.seekg(0);
     if (!data.empty() && !f.read(data.data(), size))
@@ -369,8 +369,8 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
     }
 
     const Value &glyphs = field(doc, "glyphs", Value::Array);
-    if (glyphs.array.empty() || glyphs.array.size() > 16384)
-        throw std::runtime_error("invalid glyph count");
+    if (glyphs.array.empty())
+        throw std::runtime_error("no glyphs");
     output->glyphs.resize(glyphs.array.size());
     std::vector<bool> seen(glyphs.array.size());
     for (const Value &g : glyphs.array) {
@@ -401,8 +401,6 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
         dst.advance = integer(g, "advance", -1024, 1024);
     }
     const Value &charmap = field(doc, "charmap", Value::Array);
-    if (charmap.array.size() > 65536)
-        throw std::runtime_error("charmap must contain at most 65536 entries");
     std::unordered_map<std::uint32_t, bool> mapped_codes;
     for (const Value &m : charmap.array) {
         const auto code = integer(m, "codepoint", 0, 0x10ffff);
@@ -416,8 +414,8 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
 
     const auto native = doc.object.find("original_codepoints");
     if (native != doc.object.end()) {
-        if (native->second.type != Value::Array || native->second.array.size() > 65536)
-            throw std::runtime_error("original_codepoints must be an array of at most 65536 codepoints");
+        if (native->second.type != Value::Array)
+            throw std::runtime_error("original_codepoints must be an array of codepoints");
         for (const Value &code : native->second.array) {
             if (code.type != Value::Integer || code.number < 0 || code.number > 0x10ffff ||
                 !output->original_codepoints.insert(static_cast<std::uint32_t>(code.number)).second)
@@ -426,8 +424,8 @@ std::shared_ptr<const Atlas> read_atlas(const std::string &resource, const std::
     }
     const auto pairs = doc.object.find("kerning");
     if (pairs != doc.object.end()) {
-        if (pairs->second.type != Value::Array || pairs->second.array.size() > 65536)
-            throw std::runtime_error("kerning must be an array of at most 65536 pairs");
+        if (pairs->second.type != Value::Array)
+            throw std::runtime_error("kerning must be an array of pairs");
         for (const Value &pair : pairs->second.array) {
             const auto left = integer(pair, "left", 0, 0x10ffff);
             const auto right = integer(pair, "right", 0, 0x10ffff);
@@ -495,10 +493,7 @@ FontRules read_rules(const Value &doc)
     if (integer(doc, "version", 1, 1) != 1)
         throw std::runtime_error("unsupported font mapping version");
     const auto &scopes = field(doc, "scopes", Value::Object).object;
-    if (scopes.size() > 64)
-        throw std::runtime_error("at most 64 font scopes are allowed");
     FontRules result;
-    std::size_t count = 0;
     for (const auto &[scope, mappings] : scopes) {
         if (scope.empty() || scope.size() >= 80 || scope.front() == '.' || scope.back() == '.' ||
             scope.find("..") != std::string::npos ||
@@ -508,7 +503,7 @@ FontRules read_rules(const Value &doc)
         for (const auto &[source, target] : mappings.object) {
             const auto from = resource_path(source);
             const auto to = resource_path(target.str);
-            if (++count > 256 || target.type != Value::String || !font_path_valid(from) || !font_path_valid(to))
+            if (target.type != Value::String || !font_path_valid(from) || !font_path_valid(to))
                 throw std::runtime_error("invalid font mapping in scope: " + scope);
             if (!result[scope].emplace(from, to).second)
                 throw std::runtime_error("duplicate normalized font path in scope: " + scope);
@@ -540,8 +535,6 @@ LayoutRules read_layouts(const Value &doc)
     if (integer(doc, "version", 1, 1) != 1)
         throw std::runtime_error("unsupported font layout version; use version 1");
     const auto &scopes = field(doc, "scopes", Value::Object).object;
-    if (scopes.size() > 64)
-        throw std::runtime_error("at most 64 font layout scopes are allowed");
     LayoutRules result;
     for (const auto &[scope, mode] : scopes) {
         if (scope.empty() || scope.size() >= 80 || scope.front() == '.' || scope.back() == '.' ||

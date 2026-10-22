@@ -79,7 +79,7 @@ extern "C" int khdays_hd_font_map_ready(const char *resource)
 
 extern "C" void khdays_hd_font_bind_charmap(const char *resource, const uint32_t *codes, int count)
 {
-    if (!resource || !codes || count <= 0 || count > 16384)
+    if (!resource || !codes || count <= 0)
         return;
     auto atlas = khdays::hd_fonts::load(resource);
     if (!atlas || atlas->codes_bound)

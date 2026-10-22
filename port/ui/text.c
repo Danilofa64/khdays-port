@@ -53,9 +53,9 @@ typedef struct GlyphOp {
     int source_x, source_y, source_w, source_h; /* Native write footprint, independent of PNG geometry. */
     double x, y;                                /* Exact artwork position; native write bounds remain integer. */
     int w, h, cl, glyph;
-    int paint_w;      /* Edited logical width clips artwork; ownership keeps the full cell. */
-    double x_scale;   /* Zero retains the original geometry; fitting is an explicit run operation. */
-    int native_glyph; /* resource stores a 16x16, 4-bpp snapshot from the original glyph blitter. */
+    int paint_w;       /* Edited logical width clips artwork; ownership keeps the full cell. */
+    double x_scale;    /* Zero retains the original geometry; fitting is an explicit run operation. */
+    int native_glyph;  /* resource stores a 16x16, 4-bpp snapshot from the original glyph blitter. */
     int button, piece; /* the DS button the glyph draws (KHDAYS_BUTTON_*: its icon instead), which of its glyphs */
     int field;         /* the text tells the field's controls (khdays_button_icon) */
     /* The replacement artwork stays at x/y, but only this surviving rectangle
@@ -73,8 +73,8 @@ typedef struct FontBinding {
     int scoped, route_enabled;
 } FontBinding;
 
-static FontBinding font_bindings[256];
-static int binding_count;
+static FontBinding *font_bindings;
+static int binding_count, binding_room;
 
 /* One viewport-sized pair covers every tile outside the primary translation. */
 #define EXTRA_COLS 33
@@ -430,8 +430,10 @@ static Canvas *canvas_of(const void *cc_host, const char *made_by)
     const DsCanvas *cc = (const DsCanvas *)cc_host;
     const KhdaysRef ref = KHDAYS_REF(cc_host);
     const int bpp = cc->dst_bpp == 8 ? 8 : 4;
-    if (cc->area_width <= 0 || cc->area_height <= 0 || cc->param < (uint32_t)cc->area_width ||
-        (uint64_t)cc->param * cc->area_height > (512u * 1024u) / (8u * bpp))
+    const uint64_t end = (uint64_t)cc->char_base + (uint64_t)cc->param * (uint32_t)cc->area_height * 8u * (unsigned)bpp;
+    /* any size, as long as its characters lie in the game's memory: anything else is no canvas */
+    if (cc->area_width <= 0 || cc->area_height <= 0 || cc->param < (uint32_t)cc->area_width || end > UINT32_MAX ||
+        !khdays_game_ram_ref(cc->char_base) || !khdays_game_ram_ref((uint32_t)end - 1u))
         return NULL;
     Canvas *c = find(ref);
     if (c != NULL && (c->buffer != cc->char_base || c->area_w != cc->area_width || c->area_h != cc->area_height ||
@@ -817,10 +819,15 @@ static const char *bind_font_file(const void *font, const char *name, KhdaysRef 
     while (pos < binding_count && font_bindings[pos].font != ref)
         ++pos;
     if (pos == binding_count) {
-        if (binding_count < (int)(sizeof(font_bindings) / sizeof(font_bindings[0])))
-            ++binding_count;
-        else
-            pos = 0; /* bounded: replace oldest entry */
+        if (binding_count == binding_room) {
+            const int room = binding_room ? binding_room * 2 : 32;
+            FontBinding *grown = (FontBinding *)realloc(font_bindings, (size_t)room * sizeof(*grown));
+            if (!grown)
+                return NULL; /* out of memory: the game's own font */
+            font_bindings = grown;
+            binding_room = room;
+        }
+        ++binding_count;
     }
     font_bindings[pos].font = ref;
     font_bindings[pos].info = *(const uint32_t *)font;
@@ -965,17 +972,10 @@ static int record(Canvas *c, const GlyphOp *op)
 {
     if (c->ops_disabled)
         return 0;
-    if ((unsigned)c->op_count >= 8192u) {
-        if (tracing())
-            say("HD fallback: canvas %08x hit 8192 active glyph fragments", c->cc);
-        c->ops_disabled = 1;
-        c->op_count = 0;
-        return 0; /* keep original rendering on excessive event streams */
-    }
     if (c->op_count >= c->op_room) {
-        const int room = c->op_count < 64 ? 64 : c->op_count < 4096 ? c->op_count * 2 : 8192;
+        const int room = c->op_room ? c->op_room * 2 : 64;
         GlyphOp *grown = (GlyphOp *)realloc(c->ops, (size_t)room * sizeof(GlyphOp));
-        if (!grown) {
+        if (!grown) { /* out of memory: the canvas keeps the game's own drawing */
             c->ops_disabled = 1;
             c->op_count = 0;
             return 0;
@@ -1248,12 +1248,6 @@ static void clear_hd_rect(Canvas *c, int x, int y, int w, int h)
         dirty_rect(c, left, top, right, bottom);
     int out_count = 0;
     GlyphOp *next;
-    if (capacity > 8192) {
-        /* In unusually fragmented layouts, prefer the exact original pixels. */
-        c->ops_disabled = 1;
-        c->op_count = 0;
-        return;
-    }
     if (!capacity) {
         c->op_count = 0;
         return;
@@ -1392,14 +1386,9 @@ void khdays_ui_text_memory_copy(const void *src_host, void *dst_host, unsigned i
     const uintptr_t src = (uintptr_t)src_host, dst = (uintptr_t)dst_host;
     if (src + size < src || dst + size < dst || (src < dst + size && dst < src + size))
         return;
-    int from = -1, to = -1, copies = 0;
-    uint32_t copy_bytes = 0;
+    int from = -1, to = -1;
     for (int i = 0; i < canvas_count; ++i) {
         Canvas *c = &canvases[i];
-        if (c->copied) {
-            ++copies;
-            copy_bytes += c->bytes;
-        }
         if (c->detached)
             continue;
         if (!c->copied && ((const DsCanvas *)KHDAYS_W(c->cc))->char_base != c->buffer)
@@ -1423,11 +1412,11 @@ void khdays_ui_text_memory_copy(const void *src_host, void *dst_host, unsigned i
         return;
     observe_source(source);
     if (tracing())
-        say("canvas copy %08x -> %08x: %u bytes, %d glyph operations, target %d, staging %d/%u bytes", source->buffer,
-            KHDAYS_REF(dst_host), size, source->op_count, to, copies, copy_bytes);
+        say("canvas copy %08x -> %08x: %u bytes, %d glyph operations, target %d", source->buffer, KHDAYS_REF(dst_host),
+            size, source->op_count, to);
     if (to < 0) {
-        if (!source->op_count || copies >= 16 || copy_bytes >= 2u * 1024u * 1024u ||
-            size > 2u * 1024u * 1024u - copy_bytes)
+        /* a copy is kept while its memory lives (khdays_ui_text_freed drops it) */
+        if (!source->op_count)
             return;
         Canvas *created = new_canvas(0, KHDAYS_REF(dst_host), source->area_w, source->area_h, source->bpp,
                                      source->param, "SDK canvas copy");

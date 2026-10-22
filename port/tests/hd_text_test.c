@@ -1466,7 +1466,7 @@ int main(int argc, char **argv)
     const int ram_canvases = canvas_count;
     khdays_ui_text_memory_copy(ram + 1024, vram + 64, staged_size, 0);
     CHECK(canvas_count == ram_canvases);
-    /* Repeated copies reuse the staging record and have a fixed budget. */
+    /* Repeated copies reuse the staging record. */
     for (int pass = 0; pass < 50; ++pass) {
         memcpy(ram + 8192, ram + 1024, staged_size);
         khdays_ui_text_memory_copy(ram + 1024, ram + 8192, staged_size, 8192);
@@ -1479,7 +1479,7 @@ int main(int argc, char **argv)
         memcpy(ram + dst, ram + 1024, staged_size);
         khdays_ui_text_memory_copy(ram + 1024, ram + dst, staged_size, (unsigned int)dst);
     }
-    CHECK(canvas_count == 17); // One real canvas, at most sixteen copied records.
+    CHECK(canvas_count == ram_canvases + 24); // A record for each copy while its memory lives.
     setup(4);
     mapping_ready = 0;
     *(uint32_t *)(ram + 252) = 32;  // CGLP: two original glyphs.
@@ -2074,10 +2074,9 @@ int main(int argc, char **argv)
     setup(4);
     draw(0);
     const GlyphOp repeated = c->ops[0];
-    for (int i = 1; i < 8192; ++i)
+    for (int i = 1; i < 20000; ++i) /* the fragments grow as needed */
         CHECK(record(c, &repeated));
-    CHECK(c->op_count == 8192 && c->op_room == 8192);
-    CHECK(!record(c, &repeated) && c->ops_disabled && c->op_count == 0);
+    CHECK(c->op_count == 20000 && c->op_room >= 20000 && !c->ops_disabled);
     khdays_ui_text_clear(cc, 0);
     CHECK(!c->ops_disabled && record(c, &repeated) && c->op_count == 1);
     c->op_count = 0;
