@@ -378,3 +378,4 @@ it what it needs with `mod.share`, and `random` draws the same for both from eac
 | `infinite-hp` | `frame`, the player's HP and a toggle |
 | `options` | a choice, a number and a button in the Mods page |
 | `actions` | Mods-page buttons giving a potion, playing a sound and showing the field's notice |
+| `endless-arena` | a whole mode with version 2: its title entry and difficulty list, a loadout set in the deck at Mission Mode's camp and the mission started from there, the mission's own enemies held back and endless waves of the mod's (other missions' kinds among them), an arena's edge, music, a timer, a reward chosen between waves, the defeat held and a result screen, the deck put back; one player |
