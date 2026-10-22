@@ -191,8 +191,8 @@ runs again.
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
 out rather than guessed: warping and the field's current area, a loaded save's event, the mission's
 chests. Making the field's enemies, holding the player's defeat (with who dealt the hit), how a
-mission ended, starting and leaving missions, title entries and screens, and the deck are in version
-2.
+mission ended, starting and leaving missions, title entries and screens, the deck, timers, the game's
+music and a room's shared draws are in version 2.
 
 ## The interface, version 2
 
@@ -314,6 +314,37 @@ starts a mission: a deck changed in the field counts from the next one. While on
 open (the Panels keep their own copy) every change answers `"not now"`; a guest's and a visual mod's
 answer `"guest"` and `"visual mod"`.
 
+### Time, music, chance and sharing
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `timer.after(seconds, fn)` | calls `fn` once, `seconds` of the game's time later | a handle |
+| `timer.every(seconds, fn)` | calls `fn` every `seconds` (above 0) of the game's time, until cancelled | a handle |
+| `timer.cancel(h)` | stops a timer | `true`; `"no such timer"` |
+| `music.play(track, fade)` | plays a track of the game in place of the game's own music: `track` its name in the sound archive (`"TwilightR_F"` or `"seq/TwilightR_F"`, as a mod's `sounds/` names it), `fade` seconds (0.5) | `true`; `"unknown track"` |
+| `music.stop(fade)` | the game's own music again | `true`; `"not playing"` (none of this mod's) |
+| `random(n)`, `random(a, b)` | a whole number, 1 to `n` or `a` to `b`, each as likely | the number |
+| `mod.share(t)` | sends the table `t` (nil, booleans, numbers, texts and tables of them; any size) from the host's mod to the guests' copies of it | `true`; `"guest"` |
+
+| Event | Fields | When |
+|---|---|---|
+| `shared` | `data` (the table) | a guest's copy of the mod: the host's shared one |
+
+The game's time stands still while the game is paused (its pause, its menus that pause it); a timer
+fires at the frame point it falls due, once even after a long frame. Timers of a mod that stops go with
+it.
+
+A track plays on the game's own music player, as the game switches its music (its fades, its sound
+heap): while it plays, the game's own changes of music are kept back and the last of them is made when
+the mod stops its track, else the music it took the place of comes back. It ends by itself as the scene
+changes (the field's end, the title's next screen) and when its mod stops.
+
+`random` draws from a seed every player of a room shares: chosen as the room opens and changed by the
+host as each mission ends, so every copy starts each mission with the same one. Each mod has its own
+run of draws, started again from that seed at each mission's start: the copies of a room draw the same
+numbers in the same order from there, as long as their mods draw alike. Alone, the seed is the copy's
+own.
+
 ## Multiplayer
 
 The host's game decides for everyone in a room, so a room takes only players with the same gameplay
@@ -324,7 +355,9 @@ plays with. Visual mods are each player's own and never keep anyone out.
 In a room, a guest's scripts still run and hear the events, but what they would change in the game
 is refused (`nil, "guest"`): the host's mods make those changes, with the host's option values, and
 they reach the guests as the rest of the game does. A guest's gameplay mods' options are shown locked
-in the Mods page. A mod turned on, off or moved while in a room counts from the next room.
+in the Mods page. A mod turned on, off or moved while in a room counts from the next room. What a guest's
+copy of a mod shows of the run (its screens, its timers, its music) is its own: the host's mod tells
+it what it needs with `mod.share`, and `random` draws the same for both from each mission's start.
 
 ## Examples
 

@@ -22,6 +22,9 @@ typedef struct KhdaysModCallbacks {
     int on_choose, on_cancel, on_close, on_select;
 } KhdaysModCallbacks;
 
+/* A timer a mod set (api_time.c). */
+typedef struct KhdaysModTimer KhdaysModTimer;
+
 typedef struct KhdaysModV2 {
     KhdaysModEnemy *enemies;
     int enemy_count, enemy_room;
@@ -29,6 +32,9 @@ typedef struct KhdaysModV2 {
     int loading; /* its main script runs: title entries are made then */
     KhdaysModCallbacks *callbacks;
     int callback_count, callback_room;
+    KhdaysModTimer *timers;
+    int timer_count, timer_room;
+    unsigned long long draws[4]; /* its `random`'s state */
 } KhdaysModV2;
 
 /* Every part's names, in an api 2 mod's state (scripts.c, as it loads). */
@@ -52,6 +58,16 @@ void khdays_api_screens_frame(void);
 
 /* The deck (api_deck.c). */
 void khdays_api_deck_open(KhdaysMod *mod);
+
+/* Time, music, the draws and sharing (api_time.c): the timers fired and the shares heard at the frame
+ * point; every mod's draws started again from the room's seed as a mission starts. */
+void khdays_api_time_open(KhdaysMod *mod);
+void khdays_api_time_release(KhdaysMod *mod);
+void khdays_api_time_frame(void);
+void khdays_api_time_mission_start(void);
+/* A `shared` event's share (its `a`): whether it is for `mod`, and its table pushed. */
+int khdays_api_time_shared_for(const KhdaysMod *mod, int share);
+void khdays_api_time_push_shared(struct lua_State *L, int share);
 
 /* The run's end (api_run.c): the player's defeat a mod holds. */
 void khdays_api_run_open(KhdaysMod *mod);

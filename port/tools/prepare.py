@@ -1480,6 +1480,40 @@ HOOKS = {
             "        { extern void khdays_link_hit_from(void *source); khdays_link_hit_from(0); }\n",
         )
     ],
+    # The music a mod plays (runtime/scripts/game_link.h): while it plays, the game's own requests to
+    # the sound manager's queue (its four ways in) are kept back, the last of them made as it ends.
+    "main@020335ec": [
+        (  # SetSelectionIfChanged: request 2
+            "    int base = gSoundMgr;\n",
+            "    int base = gSoundMgr;\n"
+            "    { extern int khdays_link_music_request(int kind, int arg, int value);\n"
+            "      if (khdays_link_music_request(2, param_1, 0)) return 1; }\n",
+        )
+    ],
+    "main@02033660": [
+        (  # SoundMgr_QueueKind1: request 1
+            "int SoundMgr_QueueKind1(int arg) {\n",
+            "int SoundMgr_QueueKind1(int arg) {\n"
+            "    { extern int khdays_link_music_request(int kind, int arg, int value);\n"
+            "      if (khdays_link_music_request(1, arg, 0)) return 1; }\n",
+        )
+    ],
+    "main@020336a4": [
+        (  # RequestQueue_SetOrPushKind3: request 3, the music stopped
+            "void RequestQueue_SetOrPushKind3(int arg) {\n",
+            "void RequestQueue_SetOrPushKind3(int arg) {\n"
+            "    { extern int khdays_link_music_request(int kind, int arg, int value);\n"
+            "      if (khdays_link_music_request(3, 0, arg)) return; }\n",
+        )
+    ],
+    "main@020336e8": [
+        (  # SoundMgr_QueueRequest: requests 4 and 5 (SoundMgr_SwitchBgm, SoundMgr_SwitchBgmResume)
+            "    unsigned char *ptr;\n",
+            "    unsigned char *ptr;\n"
+            "    { extern int khdays_link_music_request(int kind, int arg, int value);\n"
+            "      if (khdays_link_music_request(kind, arg1, arg2)) return; }\n",
+        )
+    ],
     # The field's enemies (runtime/scripts/enemies_link.h): the actor a marker row made (a mod's enemy
     # is made that way), every defeat, the area's enemies let go; the class asked for, the spawners and
     # their slots given back only for KHDAYS_TRACE_ENEMIES.
@@ -2432,10 +2466,11 @@ PORT_DS_SYMBOLS = (
     "gLangPath",
     "data_0204c238",
     # the mods' interface (runtime/scripts/game_link.c): the game's state, the object list's frame
-    # count, the current mission
+    # count, the current mission, the sound manager (its track playing)
     "gGameState",
     "gObjSystem",
     "data_0204c23c",
+    "gSoundMgr",
 )
 
 

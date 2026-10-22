@@ -672,6 +672,7 @@ void khdays_scripts_frame(void)
         look_at_files();
     }
     khdays_script_events_frame();
+    khdays_api_time_frame();
     if (tracing > 0) {
         trace_time();
     }
@@ -703,6 +704,7 @@ void khdays_scripts_mission_start(void)
     if (count == 0) {
         return;
     }
+    khdays_api_time_mission_start(); /* every player of a room draws the same from here */
     memset(&e, 0, sizeof(e));
     e.id = KHDAYS_EVENT_MISSION_START;
     e.a = khdays_link_mission();
@@ -721,6 +723,7 @@ void khdays_scripts_mission_end(int mission, int rank, int complete)
     KhdaysEvent e;
     const int given_up = khdays_link_flag(KHDAYS_LINK_GIVEN_UP);
     khdays_autosave_mission_end(); /* the port's autosave hears the same moment (runtime/menus/autosave.h) */
+    khdays_link_next_seed();
     if (tracing > 0) {
         fprintf(stderr, "mods-trace: mission end: mission %d, rank %d, complete %d, given up %d, %s\n", mission, rank,
                 complete, given_up, ending(given_up));

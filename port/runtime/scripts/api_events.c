@@ -17,8 +17,8 @@
 #define SCENE_TITLE 1
 
 static const char *const NAMES[KHDAYS_EVENT_COUNT] = {
-    "frame",     "scene",      "title", "mission_start",  "mission_end",    "hp",    "item", "munny",
-    "menu_open", "menu_close", "save",  "enemy_appeared", "enemy_defeated", "defeat"};
+    "frame",     "scene",      "title", "mission_start",  "mission_end",    "hp",     "item",  "munny",
+    "menu_open", "menu_close", "save",  "enemy_appeared", "enemy_defeated", "defeat", "shared"};
 
 static int depth; /* scripts running now */
 static KhdaysEvent *waiting;
@@ -104,6 +104,7 @@ static int hears(const KhdaysMod *m, const KhdaysEvent *e)
     switch (e->id) {
     case KHDAYS_EVENT_ENEMY_APPEARED: return khdays_api_enemies_handle(m, (unsigned)e->a) != 0;
     case KHDAYS_EVENT_DEFEAT: return m == khdays_api_run_holder();
+    case KHDAYS_EVENT_SHARED: return khdays_api_time_shared_for(m, e->a);
     default: return 1;
     }
 }
@@ -176,6 +177,10 @@ static void push_event(lua_State *L, const KhdaysMod *m, const KhdaysEvent *e)
         }
         break;
     }
+    case KHDAYS_EVENT_SHARED:
+        khdays_api_time_push_shared(L, e->a);
+        lua_setfield(L, -2, "data");
+        break;
     default: break;
     }
 }

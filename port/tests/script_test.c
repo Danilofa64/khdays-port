@@ -54,9 +54,11 @@ unsigned khdays_link_frame(void)
     return fake_frame;
 }
 
+static int fake_paused;
+
 int khdays_link_paused(void)
 {
-    return 0;
+    return fake_paused;
 }
 
 unsigned khdays_link_scene(unsigned *argument)
@@ -276,6 +278,78 @@ int khdays_link_where(void)
                               : KHDAYS_WHERE_ELSEWHERE;
 }
 
+/* Time, music, the seed, sharing: VBlanks the test counts; tracks 2 TwilightR_F and 8 Herc_B; a fixed
+ * seed; the bytes shared last, and shares waiting for a guest. */
+static unsigned fake_vblanks;
+static int fake_music = -1, fake_music_holding;
+static unsigned long long fake_seed = 12345;
+static unsigned char *fake_share_sent;
+static unsigned fake_share_sent_size;
+static unsigned char *fake_share_waiting;
+static unsigned fake_share_waiting_size;
+
+unsigned khdays_link_vblanks(void)
+{
+    return fake_vblanks;
+}
+
+int khdays_link_music_track(const char *name)
+{
+    return strcmp(name, "TwilightR_F") == 0 || strcmp(name, "seq/TwilightR_F") == 0 ? 2
+           : strcmp(name, "Herc_B") == 0                                            ? 8
+                                                                                    : -1;
+}
+
+const char *khdays_link_music_play(int track, int fade)
+{
+    (void)fade;
+    fake_music = track;
+    fake_music_holding = 1;
+    return NULL;
+}
+
+void khdays_link_music_stop(int fade)
+{
+    (void)fade;
+    fake_music = -1;
+    fake_music_holding = 0;
+}
+
+int khdays_link_music_playing(void)
+{
+    return fake_music_holding;
+}
+
+void khdays_link_music_frame(void) {}
+
+unsigned long long khdays_link_seed(int *in_room)
+{
+    *in_room = 0;
+    return fake_seed;
+}
+
+void khdays_link_next_seed(void) {}
+
+int khdays_link_share(const void *data, unsigned size)
+{
+    free(fake_share_sent);
+    fake_share_sent = malloc(size);
+    memcpy(fake_share_sent, data, size);
+    fake_share_sent_size = size;
+    return 1;
+}
+
+int khdays_link_shared(unsigned char **data, unsigned *size)
+{
+    if (fake_share_waiting == NULL) {
+        return 0;
+    }
+    *data = fake_share_waiting;
+    *size = fake_share_waiting_size;
+    fake_share_waiting = NULL;
+    return 1;
+}
+
 /* The deck: panels 2-9 one cell each, 10 two cells across (its own the left), all of category 1; 11 a
  * link panel (category 4); each its id's kind. No other item is a panel. */
 static unsigned short fake_deck[KHDAYS_LINK_DECK_CELLS];
@@ -385,6 +459,14 @@ static void reset_game(void)
     memset(fake_flags, 0, sizeof(fake_flags));
     memset(fake_deck, 0, sizeof(fake_deck));
     fake_deck_busy = 0;
+    fake_paused = 0;
+    fake_vblanks = 0;
+    fake_music = -1;
+    fake_music_holding = 0;
+    free(fake_share_sent);
+    fake_share_sent = NULL;
+    free(fake_share_waiting);
+    fake_share_waiting = NULL;
 }
 
 /* ---- the cases' folders ----------------------------------------------------------------------------- */
@@ -1223,6 +1305,102 @@ static void test_deck_busy(void)
     end_case();
 }
 
+static void test_timers(void)
+{
+    int fired_at = 0, every = 0;
+    begin_case("timers");
+    mod_folder_api(
+        "Clock", "test.clock", "gameplay", 2,
+        "local n = 0\n"
+        "timer.after(60, function() print('fired') end)\n"
+        "local h\n"
+        "h = timer.every(1, function() n = n + 1; if n == 3 then timer.cancel(h) end; print('tick', n) end)\n"
+        "print('bad', pcall(timer.every, 0, print), pcall(timer.after, -1, print), select(2, "
+        "timer.cancel(999)))\n");
+    start();
+    for (int second = 1; second <= 90; ++second) {
+        fake_paused = second > 40 && second <= 60; /* 20 seconds paused */
+        fake_vblanks += 60;
+        frames(1);
+        if (fired_at == 0 && log_has("fired")) {
+            fired_at = second;
+        }
+    }
+    every = log_has("tick\t3") && !log_has("tick\t4");
+    CHECK(fired_at == 80);
+    CHECK(every);
+    CHECK(log_has("bad\tfalse\tfalse\tno such timer"));
+    end_case();
+}
+
+static void test_draws_and_music(void)
+{
+    begin_case("draws_music");
+    mod_folder_api("Clock", "test.clock", "gameplay", 2,
+                   "local function ten() local t = {} for i = 1, 10 do t[i] = random(100) end return "
+                   "table.concat(t, ' ') end\n"
+                   "local seen = {}\n"
+                   "for i = 1, 1000 do seen[random(3, 5)] = true end\n"
+                   "print('range', seen[3], seen[4], seen[5], seen[2], seen[6], random(7, 7))\n"
+                   "print('bad', pcall(random, 5, 4), pcall(random))\n"
+                   "local first\n"
+                   "mod.on('mission_start', function()\n"
+                   "  local now = ten()\n"
+                   "  if first == nil then first = now else print('same again', first == now) end\n"
+                   "end)\n"
+                   "print('track', select(2, music.play('Nope')), music.play('TwilightR_F'), music.stop(), "
+                   "select(2, music.stop()))\n");
+    start();
+    khdays_scripts_field_begins();
+    khdays_scripts_mission_start();
+    khdays_scripts_field_begins();
+    khdays_scripts_mission_start();
+    frames(1);
+    CHECK(log_has("range\ttrue\ttrue\ttrue\tnil\tnil\t7"));
+    CHECK(log_has("bad\tfalse\tfalse"));
+    CHECK(log_has("same again\ttrue"));
+    CHECK(log_has("track\tunknown track\ttrue\ttrue\tnot playing"));
+    CHECK(fake_music == -1 && !fake_music_holding);
+    end_case();
+}
+
+static void test_share(void)
+{
+    begin_case("share");
+    mod_folder_api("Clock", "test.clock", "gameplay", 2,
+                   "mod.on('shared', function(e)\n"
+                   "  print('heard', e.data.wave, e.data.names[2], e.data.done, e.data.deep.x.y)\n"
+                   "end)\n"
+                   "print('shared', mod.share({ wave = 3, names = { 'a', 'b' }, done = false, deep = { x = { y = 1.5 "
+                   "} } }))\n"
+                   "print('bad', pcall(mod.share, { f = print }))\n");
+    mod_folder_api("Other", "test.other", "gameplay", 2, "mod.on('shared', function(e) print('not mine') end)\n");
+    start();
+    CHECK(log_has("test.clock print scripts/main.lua:4 shared\ttrue"));
+    CHECK(log_has("bad\tfalse"));
+    CHECK(fake_share_sent != NULL && strcmp((const char *)fake_share_sent, "test.clock") == 0);
+    if (fake_share_sent != NULL) {
+        fake_share_waiting = malloc(fake_share_sent_size); /* as a guest's copy gets it */
+        memcpy(fake_share_waiting, fake_share_sent, fake_share_sent_size);
+        fake_share_waiting_size = fake_share_sent_size;
+    }
+    frames(1);
+    CHECK(log_has("heard\t3\tb\tfalse\t1.5"));
+    CHECK(!log_has("not mine"));
+    end_case();
+}
+
+static void test_share_guest(void)
+{
+    begin_case("share_guest");
+    mod_folder_api("Clock", "test.clock", "gameplay", 2, "print('guest', select(2, mod.share({})))\n");
+    fake_guest = 1;
+    start();
+    CHECK(log_has("guest\tguest"));
+    CHECK(fake_share_sent == NULL);
+    end_case();
+}
+
 static void test_leave(void)
 {
     begin_case("leave");
@@ -1387,6 +1565,10 @@ int main(void)
     RUN(test_screens_stop);
     RUN(test_deck);
     RUN(test_deck_busy);
+    RUN(test_timers);
+    RUN(test_draws_and_music);
+    RUN(test_share);
+    RUN(test_share_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

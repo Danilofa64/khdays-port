@@ -18,6 +18,7 @@ void khdays_api_v2_open(KhdaysMod *m)
     khdays_api_run_open(m);
     khdays_api_screens_open(m);
     khdays_api_deck_open(m);
+    khdays_api_time_open(m);
 }
 
 void khdays_api_v2_release(KhdaysMod *m)
@@ -28,6 +29,7 @@ void khdays_api_v2_release(KhdaysMod *m)
     khdays_api_enemies_release(m);
     khdays_api_run_release(m);
     khdays_api_screens_release(m);
+    khdays_api_time_release(m);
     free(m->v2);
     m->v2 = NULL;
 }

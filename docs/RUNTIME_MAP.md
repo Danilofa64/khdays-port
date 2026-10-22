@@ -4811,3 +4811,31 @@ open cells all set; the old save and the play walk's, 96 set of 100); the Englis
   its Mission Mode game has an empty deck and 25 open cells): Level Up and Fire set at cells 1.1.1 and
   1.1.2, mission file 2 started, left 600 frames in, the kept deck restored as it ended; back at the
   camp the deck as kept.
+
+## 27. The game's music (spec 031)
+
+Read in the decompilation and in the session logs' sound lines (`sound: seq/<name> starts on player
+N`).
+
+- **The tracks** are the sound archive's 39 sequences (`seq/TwilightR_F`, `seq/Herc_B`, ...; 0 and 27
+  unnamed): every sequence is music, the effects are sequence archives' entries. `_F` and `_B` are a
+  world's field and battle tracks; `data_02042124` gives each of the first 48 numbers its kind (1 a
+  field's, 2 a battle's, 3 the bosses' and a few others), so a switch from a field's track to its battle's keeps the field's place to
+  come back to.
+- **The sound manager** (`gSoundMgr`) plays them on one player (`+0xb44c4`), the track playing at
+  `+0xb46f6` (-1 none). Every change of music is a request in its queue of four (`ScriptQueue_Push`,
+  `+0xb47a2`), made through one of four routines: `SoundMgr_QueueKind1` (kind 1),
+  `SetSelectionIfChanged` (2), `RequestQueue_SetOrPushKind3` (3: stop, with a fade) and
+  `SoundMgr_QueueRequest` (4 `SoundMgr_SwitchBgm`, 5 `SoundMgr_SwitchBgmResume`: switch with a fade,
+  5 resuming a field track's place). `SoundMgr_Update` takes one request a frame, fades the track out
+  (`NNS_SndPlayerStopSeq`), clears the music's sound heap and has the loader read the next
+  (`StoreU16FieldAndRefresh`, `Loader_PostIdRequest`), then starts it
+  (`NNS_SndArcPlayerStartSeq(player, track)`): a request's track is the sequence's number.
+- **Who asks**: the event scripts (`Game_ActionEnqueueCmdIfChanged`: SwitchBgmResume for tracks 1, 6,
+  8, 10, 12, 14, 17 and 34, SwitchBgm for the others), the field between its field and battle tracks
+  (`Ov002_TickGameplayState`, `Ov002_StepIdleNudge`, fade 0x1e), the battle's end and the movies.
+  `Ov002_UpdateFieldMusic` has nothing of music: it takes the mission bar's icon as every step is
+  done.
+- **A mod's track** (`music.play`) is asked for the game's way (`SoundMgr_SwitchBgm`); meanwhile the
+  four routines keep the game's requests back (prepare.py's joins, `khdays_link_music_request`), and
+  the last of them is made as the mod's track ends.

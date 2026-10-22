@@ -20,6 +20,7 @@ enum KhdaysEventId {
     KHDAYS_EVENT_ENEMY_APPEARED, /* a: the actor, b: its kind; to the mod that made it */
     KHDAYS_EVENT_ENEMY_DEFEATED, /* a: the actor, b: its kind */
     KHDAYS_EVENT_DEFEAT, /* a: the damage, b: the attacker's actor (0 unknown), c: its kind (-1); to the holder */
+    KHDAYS_EVENT_SHARED, /* a: the share (api_time.c); to the mod it is for */
     KHDAYS_EVENT_COUNT
 };
 
