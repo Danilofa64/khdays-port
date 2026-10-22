@@ -404,6 +404,7 @@ add_executable(khdays-native
     runtime/scripts/api_enemies.c      # ... the field's enemies they make
     runtime/scripts/api_run.c          # ... the end of a run: the player's defeat
     runtime/scripts/api_screens.c      # ... their title entries and screens
+    runtime/scripts/api_deck.c         # ... the deck they read and change
     runtime/scripts/screens.c          # ... shared with the window that draws them
     runtime/scripts/game_link.c        # ... the game's side of their interface
     runtime/scripts/enemies_link.c     # ... the field's enemies, the game's side
@@ -692,8 +693,8 @@ add_executable(khdays-script-test tests/script_test.c runtime/scripts/scripts.c 
                runtime/scripts/mods_log.c runtime/scripts/queue.c runtime/scripts/api_events.c
                runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/scripts/api_menus.c
                runtime/scripts/api_actions.c runtime/scripts/api_v2.c runtime/scripts/api_enemies.c
-               runtime/scripts/api_run.c runtime/scripts/api_screens.c runtime/scripts/screens.c
-               runtime/scripts/view.c runtime/core/sha256.c)
+               runtime/scripts/api_run.c runtime/scripts/api_screens.c runtime/scripts/api_deck.c
+               runtime/scripts/screens.c runtime/scripts/view.c runtime/core/sha256.c)
 target_link_libraries(khdays-script-test PRIVATE khdays-lua SDL3::SDL3)
 target_compile_options(khdays-script-test PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>

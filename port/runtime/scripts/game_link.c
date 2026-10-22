@@ -2,6 +2,7 @@
 #include "game_link.h"
 
 #include "../core/language.h"
+#include "../core/session_log.h"
 #include "../core/window.h"
 #include "../core/events.h"
 #include "../../host/app/instance.h"
@@ -12,6 +13,7 @@
 #include "khdays_ds_symbols.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 extern int GameState_IsFlagSet(int flag);
 extern int GameState_SetFlag(int flag);
@@ -386,4 +388,144 @@ void khdays_link_trace_hp(const void *entity, int before)
             "%08x\n",
             KHDAYS_REF(entity), e[ENT_OWNER], e[ENT_ID], *(const unsigned *)(e + 4), *(const unsigned *)e, before, hp,
             max, Session_GetLocalPlayerIndex(), player_actor());
+}
+
+/* ---- The deck ---------------------------------------------------------------------------------- */
+
+#define STATE_DECK 0xee0u /* GameState: the deck's cells, an item id each */
+#define DB_ROW 0x14u      /* data_0204c238's rows (MsgDb_InitTable): +8 the records, +0xc their count */
+#define DB_RECORDS 0x8u
+#define DB_COUNT 0xcu
+#define DB_PANELS 0x15      /* the items' records, from id 1 (MsgDb_LoadRecord15) */
+#define DB_SHAPES 0x1b      /* the panels' shapes, a 64-bit cell mask each (MsgDb_FetchEntryPair0x1b) */
+#define DB_SLOT 0xe         /* where the game loads them (Ov008_BuildMenuGrid) */
+#define PANEL_BYTES 0x64u   /* +0 category, +6 kind, +8 shape (signed), +9 / +0xa the panel's cell in it */
+#define CAMP_MENU 0         /* khdays_camp_screen's menu */
+#define CATEGORY_MATERIAL 2 /* the synthesis materials, recipes and techs: no panels of the deck */
+
+extern int MsgDb_IsLoaded(int id);
+extern int MsgDb_LoadDb(int id, int slot);
+extern int ResSlot_Release_2(int id);
+extern int Ov008_IsGridItemEligible(int itemId);
+
+static KhdaysLinkPanel *panels; /* by id - 1 */
+static int panel_count, panels_read;
+
+static unsigned rd16(KhdaysRef at)
+{
+    return *(const volatile unsigned short *)KHDAYS_W(at);
+}
+
+static unsigned rd8(KhdaysRef at)
+{
+    return *(const volatile unsigned char *)KHDAYS_W(at);
+}
+
+/* KHDAYS_TRACE_DECK: each panel's record as read, and the deck then, on stderr. */
+static void trace_panels(void)
+{
+    unsigned short cells[KHDAYS_LINK_DECK_CELLS];
+    for (int i = 0; i < panel_count; ++i) {
+        const KhdaysLinkPanel *p = &panels[i];
+        fprintf(stderr, "deck-trace: panel %d: category %d kind %d shape %d at %d,%d cells %016llx\n", i + 1,
+                p->category, p->kind, p->shape, p->col, p->row, p->cells);
+    }
+    if (khdays_link_deck(cells)) {
+        for (int c = 0; c < KHDAYS_LINK_DECK_CELLS; ++c) {
+            if (cells[c] != 0) {
+                fprintf(stderr, "deck-trace: cell %d (page %d row %d col %d): %u\n", c, c / KHDAYS_LINK_DECK_PAGE,
+                        c % KHDAYS_LINK_DECK_PAGE / KHDAYS_LINK_DECK_COLS, c % KHDAYS_LINK_DECK_COLS, cells[c]);
+            }
+        }
+    }
+}
+
+/* The panels' records, read once from the game's databases (loaded for it when they are not). */
+static void read_panels(void)
+{
+    const unsigned table = rd32(KHDAYS_DS_data_0204c238);
+    const int dbs[2] = {DB_PANELS, DB_SHAPES};
+    int loaded[2] = {0, 0};
+    if (table == 0 || khdays_link_state() == 0) {
+        return; /* the game is not up yet: another time */
+    }
+    panels_read = 1;
+    for (int d = 0; d < 2; ++d) {
+        if (!MsgDb_IsLoaded(dbs[d])) {
+            MsgDb_LoadDb(dbs[d], DB_SLOT);
+            loaded[d] = 1;
+        }
+    }
+    if (MsgDb_IsLoaded(DB_PANELS) && MsgDb_IsLoaded(DB_SHAPES)) {
+        const unsigned records = rd32(table + DB_PANELS * DB_ROW + DB_RECORDS);
+        const unsigned shapes = rd32(table + DB_SHAPES * DB_ROW + DB_RECORDS);
+        const int shape_count = (int)rd16(table + DB_SHAPES * DB_ROW + DB_COUNT);
+        const int count = (int)rd16(table + DB_PANELS * DB_ROW + DB_COUNT);
+        panels = count > 0 ? calloc((size_t)count, sizeof(*panels)) : NULL;
+        panel_count = panels != NULL ? count : 0;
+        for (int i = 0; i < panel_count; ++i) {
+            const unsigned r = records + (unsigned)i * PANEL_BYTES;
+            KhdaysLinkPanel *p = &panels[i];
+            p->category = (int)rd16(r);
+            p->kind = (short)rd16(r + 6u);
+            p->shape = (signed char)rd8(r + 8u);
+            p->col = (int)rd8(r + 9u);
+            p->row = (int)rd8(r + 0xau);
+            if (p->shape >= shape_count) {
+                p->shape = -1;
+            }
+            if (p->shape >= 0) {
+                const unsigned at = shapes + (unsigned)p->shape * 8u;
+                p->cells = (unsigned long long)rd32(at) | (unsigned long long)rd32(at + 4u) << 32;
+            }
+        }
+    }
+    for (int d = 1; d >= 0; --d) {
+        if (loaded[d]) {
+            ResSlot_Release_2(dbs[d]);
+        }
+    }
+    khdays_log("mods: %d panels' records read", panel_count);
+    if (getenv("KHDAYS_TRACE_DECK") != NULL) {
+        trace_panels();
+    }
+}
+
+int khdays_link_panel(int id, KhdaysLinkPanel *out)
+{
+    if (!panels_read) {
+        read_panels();
+    }
+    if (id < 1 || id > panel_count || !Ov008_IsGridItemEligible(id) || panels[id - 1].category == CATEGORY_MATERIAL) {
+        return 0;
+    }
+    *out = panels[id - 1];
+    return 1;
+}
+
+int khdays_link_deck(unsigned short *cells)
+{
+    const unsigned state = khdays_link_state();
+    if (state == 0) {
+        return 0;
+    }
+    for (int c = 0; c < KHDAYS_LINK_DECK_CELLS; ++c) {
+        cells[c] = (unsigned short)rd16(state + STATE_DECK + 2u * (unsigned)c);
+    }
+    return 1;
+}
+
+const char *khdays_link_deck_busy(void)
+{
+    int story;
+    const int screen = khdays_camp_screen(&story);
+    return screen == KHDAYS_CAMP_NONE || screen == CAMP_MENU ? NULL : "not now";
+}
+
+void khdays_link_set_deck(const unsigned short *cells)
+{
+    const unsigned state = khdays_link_state();
+    for (int c = 0; state != 0 && c < KHDAYS_LINK_DECK_CELLS; ++c) {
+        *(volatile unsigned short *)KHDAYS_W(state + STATE_DECK + 2u * (unsigned)c) = cells[c];
+    }
 }

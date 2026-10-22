@@ -189,9 +189,10 @@ runs again.
 ### Not in version 1
 
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
-out rather than guessed: warping and the field's current area, the deck and abilities, a loaded
-save's event, the mission's chests. Making the field's enemies, holding the player's defeat (with who
-dealt the hit), how a mission ended, and starting and leaving missions are in version 2.
+out rather than guessed: warping and the field's current area, a loaded save's event, the mission's
+chests. Making the field's enemies, holding the player's defeat (with who dealt the hit), how a
+mission ended, starting and leaving missions, title entries and screens, and the deck are in version
+2.
 
 ## The interface, version 2
 
@@ -290,6 +291,28 @@ lines, docs/HD_SCREENS.md) with the pieces `veil`, `help_bar`, `row`, `row_selec
 `glove`, `trough`, `thumb`, the line `rows TOP PITCH SHOWN`, an optional `art` picture, and the text
 styles `heading`, `message`, `single`, `players` and `help`. Without one, the port draws the screen in
 the HD theater's list when the HD PACK is there, else in the game's own font.
+
+### The deck
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `deck.read()` | the deck: `open` (its cells open: the Slot Releasers + 15, at most 120), `panels` (each set panel's `panel`, `page`, `row`, `col`, from 1, in the deck's order), `spare` (`[panel] = copies` owned and not set) | a table; `"no game"` |
+| `deck.info(panel)` | a panel's `category`, `kind`, `link` (whether it is set on another panel's cells) and `cells` (the `{row, col}` it takes from its own cell) | a table; `"unknown panel"` |
+| `deck.give(panel)` | a copy more, as the game's rewards give one: spare, for the camp's Panels | `true`; `"unknown panel"`, `"no room"` (99 copies) |
+| `deck.give(panel, at)` | a copy more, set at `at` (`{page = , row = , col = }`), or with `true` at the first cell it may take | `true`; `"no room"` (the cell taken or closed, or nowhere it may go) |
+| `deck.take(panel, n)` | `n` copies fewer (1): the spare ones first, then the set ones from the deck's last cell | `true`; `"not there"` (fewer owned) |
+| `deck.save()` | the deck as it is: `grid` (its 120 cells' panels, 0 empty) and `owned` (`[panel] = copies`) | a table |
+| `deck.restore(saved)` | puts a saved deck back, its panels' copies too | `true`; `"does not fit"`, `"unknown panel"` (refused whole) |
+
+A panel is an item the camp's Panels list (items, magic, Level Up and its doublers, gears, abilities,
+links, rings and charms; not the synthesis materials, the Slot Releaser or the badges), by its item
+number. The deck holds as the camp lets the player set it: a multi-cell panel within its page, on open
+cells and over no other; a link (marked Ｌ) on a cell of a multi-cell panel of its category; one gear,
+one ring or charm, one multi-cell ability of a kind. A change that would break that, or more copies set
+than owned, is refused whole, nothing changed. The player's stats come from the deck as the camp
+starts a mission: a deck changed in the field counts from the next one. While one of a camp's pages is
+open (the Panels keep their own copy) every change answers `"not now"`; a guest's and a visual mod's
+answer `"guest"` and `"visual mod"`.
 
 ## Multiplayer
 

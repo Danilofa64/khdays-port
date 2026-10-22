@@ -276,6 +276,43 @@ int khdays_link_where(void)
                               : KHDAYS_WHERE_ELSEWHERE;
 }
 
+/* The deck: panels 2-9 one cell each, 10 two cells across (its own the left), all of category 1; 11 a
+ * link panel (category 4); each its id's kind. No other item is a panel. */
+static unsigned short fake_deck[KHDAYS_LINK_DECK_CELLS];
+static int fake_deck_busy;
+
+int khdays_link_deck(unsigned short *cells)
+{
+    if (fake_state == 0) {
+        return 0;
+    }
+    memcpy(cells, fake_deck, sizeof(fake_deck));
+    return 1;
+}
+
+const char *khdays_link_deck_busy(void)
+{
+    return fake_deck_busy ? "not now" : NULL;
+}
+
+void khdays_link_set_deck(const unsigned short *cells)
+{
+    memcpy(fake_deck, cells, sizeof(fake_deck));
+}
+
+int khdays_link_panel(int id, KhdaysLinkPanel *out)
+{
+    if (id < 2 || id > 11) {
+        return 0;
+    }
+    memset(out, 0, sizeof(*out));
+    out->category = id == 11 ? 4 : 1;
+    out->kind = id;
+    out->shape = id == 10 ? 1 : -1; /* one cell: no shape, as the game has them */
+    out->cells = id == 10 ? 3u : 0;
+    return 1;
+}
+
 /* The field's enemies: kinds 0 and 1, actors from 0x1000 up; the last make's level, HP and strength. */
 static unsigned fake_next_actor;
 static int fake_level;
@@ -346,6 +383,8 @@ static void reset_game(void)
     fake_game_over = fake_cleared = fake_left = fake_started = fake_title_idle = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
+    memset(fake_deck, 0, sizeof(fake_deck));
+    fake_deck_busy = 0;
 }
 
 /* ---- the cases' folders ----------------------------------------------------------------------------- */
@@ -1121,6 +1160,69 @@ static void test_defeat(void)
     end_case();
 }
 
+static void test_deck(void)
+{
+    begin_case("deck");
+    mod_folder_api("Loadout", "test.loadout", "gameplay", 2,
+                   "local n = 0\n"
+                   "local function ok(c, what) if c then n = n + 1 else print('not ok', what) end end\n"
+                   "local function says(want, a, b) return a == nil and b == want end\n"
+                   "local function at(id)\n"
+                   "  for _, p in ipairs(deck.read().panels) do if p.panel == id then return p end end\n"
+                   "end\n"
+                   "local d = deck.read()\n"
+                   "ok(d.open == 16 and #d.panels == 13 and d.spare[3] == 1 and d.spare[9] == nil, 'read')\n"
+                   "ok(at(2).page == 1 and at(2).row == 1 and at(2).col == 2, 'cell')\n"
+                   "local saved = deck.save()\n"
+                   "ok(says('unknown panel', deck.give(40)) and says('unknown panel', deck.info(1)), 'unknown')\n"
+                   "ok(deck.info(10).link == false and #deck.info(10).cells == 2 and deck.info(11).link, 'info')\n"
+                   "ok(deck.give(4) == true and deck.read().spare[4] == 1, 'spare')\n"
+                   "ok(deck.give(10, true) == true and at(10).col == 3, 'first fit')\n"
+                   "ok(says('no room', deck.give(10, { page = 1, row = 1, col = 5 })), 'taken cell')\n"
+                   "ok(says('no room', deck.give(5, { page = 1, row = 4, col = 2 })), 'closed')\n"
+                   "ok(deck.give(5, { page = 1, row = 4, col = 1 }) == true, 'at')\n"
+                   "ok(says('no room', deck.give(11, true)), 'a link panel without its panel')\n"
+                   "ok(deck.give(6, true) == true and at(6).col == 4, 'on a panel of its category')\n"
+                   "ok(says('no room', deck.give(7, true)), 'full')\n"
+                   "ok(deck.read().spare[7] == nil and deck.read().spare[11] == nil, 'nothing changed')\n"
+                   "ok(says('not there', deck.take(3, 2)) and deck.take(2) == true and at(2) == nil, 'take')\n"
+                   "local bad = deck.save()\n"
+                   "bad.grid[40] = 7\n"
+                   "bad.owned[7] = 1\n"
+                   "ok(says('does not fit', deck.restore(bad)) and deck.read().spare[7] == nil, 'refused whole')\n"
+                   "ok(deck.restore(saved) == true, 'restore')\n"
+                   "ok(at(2) ~= nil and at(10) == nil and deck.read().spare[4] == nil, 'restored')\n"
+                   "ok(not pcall(deck.restore, {}) and not pcall(deck.give, 2, 'x'), 'bad arguments')\n"
+                   "print('deck', n)\n");
+    fake_items[1] = 1; /* 16 cells open: rows 1-3 of page 1 and the first of row 4 */
+    fake_items[2] = 1;
+    fake_items[3] = 1;
+    fake_deck[1] = 2;
+    /* full but for the cells panel 10 and 5 take: everything else on page 1's open cells */
+    for (int c = 0; c < 15; ++c) {
+        if (c != 1 && c != 2 && c != 3) {
+            fake_deck[c] = 9;
+        }
+    }
+    fake_items[9] = 12;
+    start();
+    CHECK(log_has("test.loadout print scripts/main.lua:30 deck\t18"));
+    CHECK(fake_deck[1] == 2 && fake_deck[2] == 0 && fake_items[4] == 0 && fake_items[10] == 0);
+    end_case();
+}
+
+static void test_deck_busy(void)
+{
+    begin_case("deck_busy");
+    mod_folder_api("Loadout", "test.loadout", "gameplay", 2,
+                   "print('busy', select(2, deck.give(2)), deck.read() ~= nil)\n");
+    fake_deck_busy = 1;
+    start();
+    CHECK(log_has("test.loadout print scripts/main.lua:1 busy\tnot now\ttrue"));
+    CHECK(fake_items[2] == 0);
+    end_case();
+}
+
 static void test_leave(void)
 {
     begin_case("leave");
@@ -1283,6 +1385,8 @@ int main(void)
     RUN(test_start);
     RUN(test_screens);
     RUN(test_screens_stop);
+    RUN(test_deck);
+    RUN(test_deck_busy);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

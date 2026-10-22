@@ -50,6 +50,9 @@ void khdays_api_screens_open(KhdaysMod *mod);
 void khdays_api_screens_release(KhdaysMod *mod);
 void khdays_api_screens_frame(void);
 
+/* The deck (api_deck.c). */
+void khdays_api_deck_open(KhdaysMod *mod);
+
 /* The run's end (api_run.c): the player's defeat a mod holds. */
 void khdays_api_run_open(KhdaysMod *mod);
 void khdays_api_run_release(KhdaysMod *mod);

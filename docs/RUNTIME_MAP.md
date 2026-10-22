@@ -4766,3 +4766,48 @@ Read in the port's own code and seen in a window (2026-10-22, the title walk wit
 - **Input icons**: in an HD layout an input the player has on the mouse (the keyboard's default Y is
   the right button, A the left) had neither icon nor name and drew nothing; it now draws Kenney's mouse
   icons, as the Controls section does (`layout_screen.c`).
+
+## 26. The deck (spec 031)
+
+Read in the decompilation, then traced with `KHDAYS_TRACE_DECK` (each panel's record as the port reads
+it) and checked against the decks of four saves (2026-10-22: the 100% save and the run07 walk's, 120
+open cells all set; the old save and the play walk's, 96 set of 100); the English names from
+`db_en.p2`'s entry 0x15 (each item's name and description).
+
+- **Where**: `gGameState + 0xee0`, 3 pages of 40 cells (8 rows of 5) of item ids, page, row and column
+  in that order. A panel's id stands at its own cell; the other cells a multi-cell panel covers hold 0
+  or a one-cell panel set on it (one id a cell). Open are the first cells: item 1's copies (the Slot
+  Releaser) + 15, at most 120 (`Ov008_GridMenuInitStep`); the camp marks the rest locked
+  (`Ov008_InitPageGrid`).
+- **The copies owned** are `aItemCount` (`+0x810`), set or not: a reward adds one
+  (`Ov008_AddItemCount`, at most 99, the owned flag 0x4db + id); the camp sets at most that many
+  (`Ov008_LoadGridFromSave`); `Ov004_RemoveLoadoutEntries` takes set copies from the last cell.
+- **The panels' records** are message database 0x15 (`MsgDb_LoadRecord15`, 630 records of 0x64 bytes
+  from id 1, `data_0204c238`'s row 0x15: `+8` the records, `+0xc` their count): `+0` the category, `+6`
+  the kind, `+8` the shape (signed; -1 one cell), `+9` / `+0xa` the panel's own cell in its shape. The
+  shapes are database 0x1b, a 64-bit mask each, bit column + 8 x row (`MsgDb_FetchEntryPair0x1b`).
+- **Categories**, by the names: 0 items (Potion ...), 1 magic (Fire ...; multi-cell Magic LV2,
+  Doublecast ...), 2 synthesis materials, recipes and techs, 3 Level Up and the LV Doublers (and the
+  Slot Releaser, Backpack, Limit Pass, the badges), 4 the gears (multi-cell) and the units marked Ｌ
+  (one cell), 5 the abilities (multi-cell) and their links marked Ｌ (one cell), 6 the rings and charms
+  (kind 300 all). The camp's Panels list only what `Ov008_IsGridItemEligible` lets in (not items
+  513-630, 1, 12, 392, 403-416, 450-452, 456, 457), in the tabs All, 0, 3, 1, 5, 4, 6, 2
+  (`data_ov008_0208f208`).
+- **How the camp holds it** (`Ov008_CanPlaceShape`, `Ov008_CanPlaceRecord`, `Ov008_LoadGridFromSave`),
+  every save's deck so: a multi-cell panel within its page, on open cells, over no other; a link (one
+  cell, category 4 or 5) on a cell of a multi-cell panel of its category, not that panel's own (the
+  camp drops one that is not); other one-cell panels on a cell of their own or on such a panel of
+  their category (Level Up on a Doubler, magic on Doublecast); one gear (items 0xbf-0xf0), one
+  multi-cell ability of a kind, one ring or charm of a kind (so one in all). Links of a kind repeat.
+- **When it counts**: the player's stats are folded from the deck as a camp commits a mission
+  (`Ov008_RefreshAndPickScene` -> `Ov008_ResetPartyMemberAndLayout` -> `Ov008_RunTransientLayoutPass`
+  -> `PlayRecord_FoldFrame`); a deck changed in the field counts from the next mission. The camp's
+  Panels keep their own copy and write it back as they close (`Ov008_DestroyGridMenu`); the results
+  take set potions, ethers and elixirs (items 2-11) beyond their limits
+  (`Ov005_ClampEquippedItemCounts`); the calendar drops set copies the player no longer owns
+  (`Ov004_BuildMissionObjectLists`). The deck's three presets are at `+0xc10`, 0xf0 bytes each
+  (`Ov008_RunPendingGridAction`).
+- **Seen** with the test mod `port/tests/mods_v2/loadout` (Mission Mode's camp, the play walk's save:
+  its Mission Mode game has an empty deck and 25 open cells): Level Up and Fire set at cells 1.1.1 and
+  1.1.2, mission file 2 started, left 600 frames in, the kept deck restored as it ended; back at the
+  camp the deck as kept.
