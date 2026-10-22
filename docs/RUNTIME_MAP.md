@@ -4583,8 +4583,13 @@ the story walk and `KHDAYS_TEST_DAY`).
   and silence over its first half second, its last goes down to them over its last
   (`khdays_hd_fades`: its pictures' level, its sound scaled sample by sample, from the file's time),
   and once the scene ends the game comes up from black and silence over half a second. A Theater
-  chapter starts at once from its list; a movie's videos have no fades (the DS's movies begin and
-  end in black).
+  chapter starts at once from its list. A movie's videos fade the same way, its first in and its
+  last out, but the game goes on through its own movie, unheld: the DS's movies begin and end in
+  black, and a part cut out of a longer video (hd833's first, to 128.4 s, cut halfway through its
+  fade to black with its music still playing) goes down to black and silence instead of stopping
+  mid-picture (the maintainer, 2026-10-22). hd833's music cannot be left out of its first part:
+  it is in the video's one sound track, mixed with the voices (from about 52 s, a wide stereo bed
+  under the centred lines, the side channel up from -48 to -30 dB).
 - **The pause over a movie.** The DS has none: START skips a movie where its player allows it
   (`Ov024_MobiClip_UpdatePlayback`'s flag bit 3), and the game's pause belongs to the event scenes
   (`PauseMenu_PollInput`, `gPauseAllowed`). A player asked for one over the HD movies, as over the HD

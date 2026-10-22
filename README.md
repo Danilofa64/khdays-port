@@ -633,7 +633,9 @@ them from your copy with `tools/hd/theater_movies.py --videos` (see
 nothing of them is in this repository, and `data/` is never committed. With the Movies setting on HD, a movie that has one shows it over
 the whole window with its own sound, in both screen layouts; the game plays
 its own movie behind it, unseen, and waits at its end until the video ends.
-Where the DS lets you skip the movie, START pauses the video under the
+The video comes up from black and silence over its first half second and goes
+down to them over its last, so a part cut out of a longer video (hd833's
+first, below) ends without a cut. Where the DS lets you skip the movie, START pauses the video under the
 DS's own scene pause (PAUSE, Continue, Skip), drawn from the game's pieces:
 the game has no pause over its movies, but the HD scenes have the game's, so
 the movies have the same. Windows decodes
