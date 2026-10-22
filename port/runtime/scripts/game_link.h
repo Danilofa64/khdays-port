@@ -70,6 +70,14 @@ int khdays_link_game_over(void);
 /* Whether the results being recorded record the mission cleared (Ov005_CommitMissionResults' rule). */
 int khdays_link_results_cleared(void);
 
+/* The mission ended as the pause's Give Up does (PauseMenu_ConfirmFrame's yes: Ov002_PauseMissionScene and
+ * game field 0x20ef), on to the results and the camp; NULL when done, else why not. */
+const char *khdays_link_leave_mission(void);
+
+/* Mission file `number` (mi/mi/<number>) started from Mission Mode's camp, by the camp's own presses
+ * (runtime/menus/mission_start.h); NULL when on its way, else why not. */
+const char *khdays_link_start_mission(int number);
+
 /* KHDAYS_TRACE_MODS: what the interface's open questions are answered from, on stderr: each HP
  * change's entity against the field's players, the game over's flags, the frame points per scene. */
 void khdays_link_trace_frame(void);

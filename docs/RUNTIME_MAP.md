@@ -4709,3 +4709,36 @@ the local player falling to 0 HP in that run, `"abandoned"` with flag 0x2087 oth
 when the results record the mission cleared (`Ov005_CommitMissionResults`' own rule, shared with the
 autosave), `"lost"` otherwise. Seen: the defeat's walk `lost`, the mission walk's give-up `abandoned`,
 mission 2 cleared `cleared`.
+
+## 24. Starting and leaving a mission (spec 031)
+
+Read in the decompilation, then traced with `KHDAYS_TRACE_UPDATES` and `KHDAYS_TRACE_MISSION_START=1`
+(2026-10-22, the play walk's save in Mission Mode's camp).
+
+- **Mission Mode's camp** (scene 19, ov008) runs one scene task: `Ov008_MainMenuTopState` ->
+  `_TopState_2` -> `Ov008_CommitSelectedPage` -> `Ov008_RouteCommittedPageState`, which stays while
+  the camp's menu and its pages run (their ten modes through `Ov008_RunModeCallback`, not objects of
+  their own). Once a page commits (`Ov008_CommitPage`'s `+0x9614`) with action 8 (`+0x9678`) it goes
+  on to `Ov008_RefreshAndPickScene` -> `Ov008_CommitSynchronizedSnapshotState` -> destroy, and the
+  scene class's method `Ov008_MainMenuExit` asks for the field (`Scene_RequestPending(2)`): a scene
+  ends only when its task ends (`Scene_AdvanceToPending`).
+- **The player's way in**: Holo-Missions (the menu's first option) opens the list of a world's
+  missions (the play walk's save: Villa Crepúsculo, "Tutorial del modo Misión"); A shows its details,
+  A asks "¿Emprender esta misión?" (No by default), LEFT and A answer Yes:
+  `Ov008_StartSelectedMission` writes the mission (`data_0204c23c` its Mission Mode number,
+  `data_0204c240` the field record: flags 0xf alone, 0x13, the mission file, kind; the thresholds at
+  `data_0204c254`). Back on the menu the camp shows "MISIÓN ACEPTADA, Pulsa START" -- alone, with no
+  flag the port's view reads (0x200c stays clear) -- and START leaves for the field. The list of
+  missions (`Ov008_GetNextMissionEntry_5`) exists only while Holo-Missions' page is up.
+- **A mod's `mission.start(file)`** (`runtime/menus/mission_start.c`): the port presses that way for
+  the player, each press waiting for the page it is for (the camp's screen as `camp.c` reads it), the
+  player's buttons held back meanwhile, and the field record is given the mod's mission file at
+  `Ov002_ConstructGameplayScene` (as `KHDAYS_TEST_EVENT` does). Seen: asked at the camp's arrival,
+  Holo-Missions 90 game frames later, the list 45, the details 45, Yes 57, START 45, the field 78 later
+  with the record `0f 13 02 00 00 00 04 00` -- mission file 2 in place of the tutorial's 10, its first
+  area's Shadows -- and `data_0204c23c` the tutorial's 94 (the results' mission).
+- **Leaving** as the pause's Give Up does: `PauseMenu_ConfirmFrame`'s Yes on the entry calls
+  `Ov002_PauseMissionScene` (the field's root `+0x8b64` bit 0, `+0x8b68` |= 0x10) and sets game field
+  0x20ef; the field's session tick then goes through the game over's sub-flow (ov027, flag 0x2087) to
+  the results. A mod's `mission.leave()` does the same: seen 600 frames into the tutorial,
+  `abandoned`, the camp again; refused during mission 2's opening (its battle not loaded yet).

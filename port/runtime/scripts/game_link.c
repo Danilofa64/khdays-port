@@ -6,6 +6,7 @@
 #include "../../host/app/instance.h"
 #include "../menus/autosave.h"
 #include "../menus/camp.h"
+#include "../menus/mission_start.h"
 #include "../sound/sound_bridge.h"
 #include "khdays_ds_symbols.h"
 
@@ -21,7 +22,9 @@ extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
 extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
 extern void Ov002_ShowNoticeText(KhdaysRef text);
 extern void Ov022_ActorSetHp(KhdaysRef pEnt, int nValue); /* the game's pointers are references (window.h) */
-int khdays_overlay_loaded(int id);                        /* runtime/core/overlays.c */
+extern void Ov002_PauseMissionScene(void);
+extern void GameState_SetField(unsigned int field, unsigned int bits, unsigned int value);
+int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 
 #define TITLE_SCENE 1u
 #define FIELD_SCENE 2u
@@ -46,6 +49,9 @@ int khdays_overlay_loaded(int id);                        /* runtime/core/overla
 #define ENT_HP 0x12u
 #define ENT_HP_MAX 0x16u
 #define OV_GAME_OVER 27
+#define FIELD_ROOT 0x0207fa00u /* data_ov002_0207fa00: the field's root */
+#define ROOT_STOPPING 0x8b64u  /* bits 0-1: the field stopping or stopped (Ov002_PauseMissionScene) */
+#define GIVE_UP_FIELD 0x20efu  /* the game field the pause's Give Up sets as it confirms */
 #define ENEMY_KIND 0x19cu
 #define QUIT_FLAG 0x2087 /* set by Ov002_RetireSubFlow on giving up (runtime/menus/retry.c) */
 
@@ -242,6 +248,31 @@ int khdays_link_game_over(void)
 int khdays_link_results_cleared(void)
 {
     return khdays_autosave_results_cleared();
+}
+
+const char *khdays_link_start_mission(int number)
+{
+    return khdays_mission_start_request(number);
+}
+
+const char *khdays_link_leave_mission(void)
+{
+    const unsigned root = rd32(FIELD_ROOT);
+    if (khdays_link_scene(NULL) != FIELD_SCENE || !khdays_overlay_loaded(OV_FIELD) || !khdays_game_ram(root)) {
+        return "not in the field";
+    }
+    if (khdays_link_where() != KHDAYS_WHERE_FIELD) {
+        return "not now"; /* the field's opening, before its battle is loaded */
+    }
+    if (khdays_link_paused() || khdays_link_menu_open(KHDAYS_LINK_PAUSE) || (rd32(root + ROOT_STOPPING) & 3u)) {
+        return "not now";
+    }
+    Ov002_PauseMissionScene();
+    if (!(rd32(root + ROOT_STOPPING) & 1u)) {
+        return "not now"; /* the field is held by something else (an event, a talk) */
+    }
+    GameState_SetField(GIVE_UP_FIELD, 1, 0);
+    return NULL;
 }
 
 static int in_field(void)

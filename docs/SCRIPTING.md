@@ -189,10 +189,9 @@ runs again.
 ### Not in version 1
 
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
-out rather than guessed: warping and the field's current area, the deck and abilities, starting a
-mission (`Ov025_MissionList_StartMission` needs the story camp's list on screen: not yet tried in
-play), a loaded save's event, the mission's chests. Making the field's enemies, holding the player's
-defeat (with who dealt the hit) and how a mission ended are in version 2.
+out rather than guessed: warping and the field's current area, the deck and abilities, a loaded
+save's event, the mission's chests. Making the field's enemies, holding the player's defeat (with who
+dealt the hit), how a mission ended, and starting and leaving missions are in version 2.
 
 ## The interface, version 2
 
@@ -257,6 +256,17 @@ a give-up from the pause, `"cleared"` when the results record the mission cleare
 with its objective done, a Mission Mode one ranked), `"lost"` otherwise. In Mission Mode the field
 revives a fallen player a few times before the game over: a mod that wants every fall holds the
 defeat.
+
+### Missions
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `mission.start(number)` | starts mission file `number` (`mi/mi/<number>`, as the studio numbers them: any mission, its field, its areas and enemies) from Mission Mode's camp: the port takes the camp's own way in for the player -- Holo-Missions, the first mission listed, its Yes, START -- holding the player's buttons back for those few seconds, and the field is built with the mod's mission | `true` (it begins a few seconds later: `mission_start` tells it); `"unknown mission"`, `"not in a camp"` (Mission Mode's), `"not now"` (a start already on its way), `"not in multiplayer yet"` |
+| `mission.leave()` | ends the mission as the pause's Give Up does: to the results (`ending` `"abandoned"`), then the camp | `true`; `"not in the field"`, `"not now"` (paused, already leaving, or the mission's opening before its battle) |
+
+The results of a mission a mod started count for the camp's mission it went in by (its name on the
+results screen, its records); a mode of a mod's own shows its own end and leaves with
+`mission.leave()`. A mission file the game made for the story may expect the story's state.
 
 ## Multiplayer
 

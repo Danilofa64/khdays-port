@@ -180,6 +180,29 @@ int khdays_link_results_cleared(void)
     return fake_cleared;
 }
 
+static int fake_left, fake_started;
+
+const char *khdays_link_start_mission(int number)
+{
+    if (fake_scene != 19) {
+        return "not in a camp";
+    }
+    if (number != 10 && number != 2) {
+        return "unknown mission";
+    }
+    fake_started = number;
+    return NULL;
+}
+
+const char *khdays_link_leave_mission(void)
+{
+    if (fake_scene != 2) {
+        return "not in the field";
+    }
+    ++fake_left;
+    return NULL;
+}
+
 void khdays_link_trace_frame(void) {}
 
 void khdays_link_trace_hp(const void *entity, int before)
@@ -309,7 +332,7 @@ static void reset_game(void)
     fake_removed = 0;
     fake_attacker = 0;
     fake_attacker_kind = -1;
-    fake_game_over = fake_cleared = 0;
+    fake_game_over = fake_cleared = fake_left = fake_started = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
 }
@@ -1087,6 +1110,42 @@ static void test_defeat(void)
     end_case();
 }
 
+static void test_leave(void)
+{
+    begin_case("leave");
+    mod_folder_api("Leaver", "test.leaver", "gameplay", 2,
+                   "print('title', mission.leave())\n"
+                   "mod.on('scene', function(e) if e.to == 2 then print('field', mission.leave()) end end)\n");
+    mod_folder("Old", "test.old", "gameplay", "print('old', mission.leave == nil)\n");
+    start();
+    frames(1);
+    fake_scene = 2;
+    frames(1);
+    CHECK(log_has("test.leaver print scripts/main.lua:1 title\tnil\tnot in the field"));
+    CHECK(log_has("test.leaver print scripts/main.lua:2 field\ttrue") && fake_left == 1);
+    CHECK(log_has("test.old print scripts/main.lua:1 old\ttrue"));
+    end_case();
+}
+
+static void test_start(void)
+{
+    begin_case("start");
+    mod_folder_api("Starter", "test.starter", "gameplay", 2,
+                   "print('title', mission.start(10))\n"
+                   "mod.on('scene', function(e)\n"
+                   "  if e.to == 19 then print('camp', mission.start(4000), mission.start(10, {})) end\n"
+                   "end)\n"
+                   "print('bad', pcall(mission.start, 'x'), pcall(mission.start, 10, 5))\n");
+    start();
+    frames(1);
+    fake_scene = 19;
+    frames(1);
+    CHECK(log_has("test.starter print scripts/main.lua:1 title\tnil\tnot in a camp"));
+    CHECK(log_has("test.starter print scripts/main.lua:3 camp\tnil\ttrue") && fake_started == 10);
+    CHECK(log_has("test.starter print scripts/main.lua:5 bad\tfalse"));
+    end_case();
+}
+
 static void test_endings(void)
 {
     int entity[3] = {0, 50, 1}; /* the player at 0 HP */
@@ -1140,6 +1199,8 @@ int main(void)
     RUN(test_enemies_guest);
     RUN(test_defeat);
     RUN(test_endings);
+    RUN(test_leave);
+    RUN(test_start);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

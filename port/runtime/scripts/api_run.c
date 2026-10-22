@@ -1,7 +1,7 @@
-/* The run's end (api_v2.h): the player's defeat a mod holds. While a mod holds it, the hit that would
- * take the local player's HP to 0 leaves 1 -- what Ov022_ActorSetHp itself does for a host's peer in
- * Mission Mode -- so the downed state and the game over never come, and the mod hears `defeat`. One
- * mod holds it at a time: the first that asks. */
+/* The run's end (api_v2.h): the mission left as the pause's Give Up leaves it, and the player's defeat a
+ * mod holds. While a mod holds it, the hit that would take the local player's HP to 0 leaves 1 -- what
+ * Ov022_ActorSetHp itself does for a host's peer in Mission Mode -- so the downed state and the game
+ * over never come, and the mod hears `defeat`. One mod holds it at a time: the first that asks. */
 #include "api_v2.h"
 
 #include "api.h"
@@ -38,6 +38,44 @@ static int take_defeat(lua_State *L)
     return 1;
 }
 
+/* mission.start(number) */
+static int start_mission(lua_State *L)
+{
+    const lua_Integer number = luaL_checkinteger(L, 1);
+    const char *why;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+    }
+    if (!khdays_api_may_change(L, 1)) {
+        return 2;
+    }
+    why = number < 1 || number > 9999 ? "unknown mission" : khdays_link_start_mission((int)number);
+    if (why != NULL) {
+        lua_pushnil(L);
+        lua_pushstring(L, why);
+        return 2;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+/* mission.leave() */
+static int leave(lua_State *L)
+{
+    const char *why;
+    if (!khdays_api_may_change(L, 1)) {
+        return 2;
+    }
+    why = khdays_link_leave_mission();
+    if (why != NULL) {
+        lua_pushnil(L);
+        lua_pushstring(L, why);
+        return 2;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
 int khdays_scripts_lethal(void *entity, int value)
 {
     KhdaysEvent e = {KHDAYS_EVENT_DEFEAT, 0, 0, -1, 0, NULL};
@@ -62,6 +100,12 @@ void khdays_api_run_open(KhdaysMod *m)
     lua_getglobal(m->L, "player");
     lua_pushcfunction(m->L, take_defeat);
     lua_setfield(m->L, -2, "take_defeat");
+    lua_pop(m->L, 1);
+    lua_getglobal(m->L, "mission");
+    lua_pushcfunction(m->L, start_mission);
+    lua_setfield(m->L, -2, "start");
+    lua_pushcfunction(m->L, leave);
+    lua_setfield(m->L, -2, "leave");
     lua_pop(m->L, 1);
 }
 

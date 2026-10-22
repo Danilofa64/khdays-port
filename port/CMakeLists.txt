@@ -388,6 +388,7 @@ add_executable(khdays-native
     runtime/menus/charselect.c         # Mission Mode's character select, read and steered for the port
     runtime/menus/camp.c               # Mission Mode's camp menu, read for the port
     runtime/menus/retry.c              # Mission Mode's Retry in the pause
+    runtime/menus/mission_start.c      # a mod's mission.start: the camp's own presses
     runtime/scripts/scripts.c          # gameplay mods' scripts: found, loaded, run at the frame point
     runtime/scripts/sandbox.c          # ... each in its own Lua state
     runtime/scripts/manifest.c
