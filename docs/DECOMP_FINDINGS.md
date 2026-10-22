@@ -198,6 +198,20 @@ the port follows its names since. Left open:
   Settings for Mission Mode's first two tabs, 2 Universal Settings for the
   others, 0 for the story's list). Found for the port's Preferences page,
   2026-10-10 (`docs/RUNTIME_MAP.md` 16.4).
+- An enemy's level goes by "height": `Ov002_GetEffectiveHeight` is the
+  enemy's level -- the mission's level (root + 0x8bae) plus the marker row's
+  signed adjustment (+4), capped at 0x78 (120) and floored at 1 -- and
+  `Ov002_CreateActorFromMarker` hands it to `pSetHeight` (+0x1ec), which is
+  `Ov107_AiState_LoadStats(self, recordIndex)`: the record is the level,
+  kept at +0x19d. `pActivate` (+0x1f0) is `Ov107_LoadMsUpRecord`. In the same
+  object, what `Ov107_Spawner_Run` calls `pair218` (a "timer", refilled to its
+  maximum) is the enemy's HP (`Ov107_AiState_LoadStats` sets +0x218 and +0x21a
+  from the level's record, `Ov107_AiState_ApplyHit` takes +0x21a down to the
+  defeat); `Ov107_StoreHitInfo` (+0x1f4) stores the enemy's home and its reach
+  (the spawner's point and radius, `field_110`), no hit; `Ov107_StoreSlotEvent`
+  (+0x1d8) stores attack i's power at +0x290 + 6 * i. Found for the port's
+  spec 031, 2026-10-22 (`docs/RUNTIME_MAP.md` 22: a level 6 Shadow had HP 93
+  and attacks 6 and 18, a level 1 one 75, 3 and 9).
 
 Taken up (for the record of what the old names were):
 

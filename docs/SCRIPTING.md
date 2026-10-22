@@ -37,7 +37,7 @@ description = Keeps the player's HP full.
 | `id` | required | letters, digits, `.`, `_`, `-`; no two mods may share one |
 | `name`, `version` | required | shown to the player; versions are compared as text |
 | `kind` | required | `gameplay` (it changes the game) or `visual` (it only listens: its changes are refused) |
-| `api` | required | the interface version it needs: this port gives `1` |
+| `api` | required | the interface version it needs: `1`, or `2` for version 1 and what a game mode of its own needs (below) |
 | `main` | optional | the first script, under `scripts/` (default `scripts/main.lua`) |
 | `author`, `description` | optional | shown to the player |
 
@@ -191,9 +191,52 @@ runs again.
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
 out rather than guessed: warping and the field's current area, the deck and abilities, starting a
 mission (`Ov025_MissionList_StartMission` needs the story camp's list on screen: not yet tried in
-play), making a mission's enemies (`Ov002_CreateActorFromMarker` needs one of its spawners: none was
-there whenever it was tried), who dealt a hit, a loaded save's event, the mission's chests, telling
-a cleared mission from a lost one.
+play), who dealt a hit, a loaded save's event, the mission's chests, telling a cleared mission from a
+lost one. Making the field's enemies is in version 2.
+
+## The interface, version 2
+
+A mod whose `mod.ini` says `api = 2` has everything of version 1 and the names below; a version 1 mod
+has none of them (`enemies` is `nil`, `mod.on` refuses their events). Their calls answer as version
+1's do, and also `"not in the field"` where they act only there.
+
+### `enemies`
+
+The field's enemies, made by the game's own routine from the mission's enemy table: an area that has
+enemies gives some of the table's kinds a place, and a mod makes those kinds only. A mod's enemies
+fight as the mission's, give none of the mission's tallies or drops (the mod rewards), and are let go
+with the area: a mission that moves on to its next area takes them away (`enemies.list()` empties)
+and offers that area's kinds.
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `enemies.kinds()` | the kinds this area makes | a list of `{kind = <id>, name = <the enemy's name>}`; empty where the area has no enemies |
+| `enemies.make{kind, at, count, spread, level, hp, strength}` | makes `count` (default 1) enemies of `kind` at `at` (`{x, y, z}` in the field's units, or `"player"`), round it at `spread` units (default 0); their level the area's for that kind plus `level` (default 0; the game's levels are 1 to 120), their HP and the power of their attacks times `hp` and `strength` (default 1) | a list of handles (and the reason, when fewer than `count` were made); `"unknown kind"`, `"not this mission's kind"`, `"no enemies here"` (an area without enemies), `"not in multiplayer yet"` |
+| `enemies.remove(e)` | sends enemy `e` (a handle, or a list of them) away as the game does when the player leaves its spawner: no defeat | `true`; `"gone"` |
+| `enemies.list()` | the handles of the mod's enemies still standing | |
+| `enemies.info(e)` | `{kind, hp, max_hp, level, x, y, z}` | `nil, "gone"` |
+
+A handle is the mod's own number for an enemy it made, unique for the session; once the enemy is
+defeated, sent away or let go, it is gone. An enemy that was defeated or sent away is idle in the
+area again and is reused for the next one of its kind, so waves cost no more of the game's memory
+than the most that stood at once.
+
+| Event | Fields | When |
+|---|---|---|
+| `enemy_appeared` | `enemy`, `kind` | an enemy the mod made is in the field (to that mod only) |
+| `enemy_defeated` | `enemy` (the handle; `nil` for the mission's own and other mods'), `kind`, `mine` | any enemy is defeated |
+
+```lua
+-- a wave of three Shadows round the player, tougher, once the mission's first area is built
+mod.on("frame", function()
+  if #enemies.list() == 0 and #enemies.kinds() > 0 then
+    enemies.make{ kind = enemies.kinds()[1].kind, at = "player", count = 3, spread = 4, hp = 2 }
+  end
+end)
+mod.on("enemy_defeated", function(e)
+  if e.mine then game.give_item(1) end
+end)
+```
 
 ## Multiplayer
 

@@ -22,9 +22,14 @@ extern void Ov002_ShowNoticeText(KhdaysRef text);
 extern void Ov022_ActorSetHp(KhdaysRef pEnt, int nValue); /* the game's pointers are references (window.h) */
 int khdays_overlay_loaded(int id);                        /* runtime/core/overlays.c */
 
+#define TITLE_SCENE 1u
 #define FIELD_SCENE 2u
+#define STORY_CAMP_SCENE 5u
+#define MISSION_CAMP_SCENE 19u
 #define OV_BATTLE 22
 #define OV_FIELD 2
+#define OV_MISSION_CAMP 8
+#define OV_STORY_CAMP 25
 #define CAPTIONS 0x0207f62cu /* data_ov002_0207f62c: [1] the field's captions (Ov002_ShowNoticeText) */
 #define CAPTION_LINE 0xb8u   /* the notice held, 0 while none */
 #define OBJ_FRAME 0x8u       /* gObjSystem: [2] the game's frame count */
@@ -70,6 +75,19 @@ unsigned khdays_link_scene(unsigned *argument)
         *argument = rd32(KHDAYS_DS_gSceneCtl + SCENE_ARGUMENT);
     }
     return rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT);
+}
+
+int khdays_link_where(void)
+{
+    const unsigned scene = khdays_link_scene(NULL);
+    if (scene == FIELD_SCENE && khdays_overlay_loaded(OV_FIELD) && khdays_overlay_loaded(OV_BATTLE)) {
+        return KHDAYS_WHERE_FIELD;
+    }
+    if ((scene == MISSION_CAMP_SCENE && khdays_overlay_loaded(OV_MISSION_CAMP)) ||
+        (scene == STORY_CAMP_SCENE && khdays_overlay_loaded(OV_STORY_CAMP))) {
+        return KHDAYS_WHERE_CAMP;
+    }
+    return scene == TITLE_SCENE ? KHDAYS_WHERE_TITLE : KHDAYS_WHERE_ELSEWHERE;
 }
 
 unsigned khdays_link_state(void)

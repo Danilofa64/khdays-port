@@ -1,7 +1,10 @@
 /* Gameplay mods' scripts (runtime/scripts) against a game of the test's own: SHA-256, manifests, the
  * load order, the sandbox, a stopped mod beside a running one, an endless loop paused, the events and
- * the state names. Each case writes its mods under a folder of its own, removed at the end. */
+ * the state names, the interface's version 2. Each case writes its mods under a folder of its own,
+ * removed at the end. */
 #include "../runtime/core/sha256.h"
+#include "../runtime/scripts/api_v2.h"
+#include "../runtime/scripts/enemies_link.h"
 #include "../runtime/scripts/folders.h"
 #include "../runtime/scripts/game_link.h"
 #include "../runtime/scripts/manifest.h"
@@ -206,6 +209,68 @@ int khdays_link_guest(void)
     return fake_guest;
 }
 
+int khdays_link_where(void)
+{
+    return fake_scene == 2    ? KHDAYS_WHERE_FIELD
+           : fake_scene == 19 ? KHDAYS_WHERE_CAMP
+           : fake_scene == 1  ? KHDAYS_WHERE_TITLE
+                              : KHDAYS_WHERE_ELSEWHERE;
+}
+
+/* The field's enemies: kinds 0 and 1, actors from 0x1000 up; the last make's level, HP and strength. */
+static unsigned fake_next_actor;
+static int fake_level;
+static double fake_enemy_hp, fake_strength;
+static unsigned fake_removed;
+
+int khdays_enemies_kinds(int *out, int room)
+{
+    if (fake_scene != 2) {
+        return 0;
+    }
+    for (int i = 0; out != NULL && i < room && i < 2; ++i) {
+        out[i] = i;
+    }
+    return 2;
+}
+
+const char *khdays_enemies_name(int kind)
+{
+    return kind == 0 ? "Shadow" : kind == 1 ? "Yellow Opera" : NULL;
+}
+
+unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, double strength, const char **why)
+{
+    (void)at;
+    *why = NULL;
+    if (kind > 1) {
+        *why = "not this mission's kind";
+        return 0;
+    }
+    fake_level = level;
+    fake_enemy_hp = hp;
+    fake_strength = strength;
+    return 0x1000u + fake_next_actor++;
+}
+
+int khdays_enemies_remove(unsigned actor)
+{
+    fake_removed = actor;
+    return 1;
+}
+
+int khdays_enemies_info(unsigned actor, KhdaysEnemyInfo *out)
+{
+    out->kind = 0;
+    out->hp = out->max_hp = 30;
+    out->level = 5;
+    out->at[0] = (float)(actor - 0x1000u);
+    out->at[1] = out->at[2] = 0;
+    return 1;
+}
+
+void khdays_enemies_frame(void) {}
+
 static void reset_game(void)
 {
     fake_scene = 1;
@@ -215,6 +280,8 @@ static void reset_game(void)
     fake_guest = 0;
     fake_hp = 40;
     fake_sound[0] = fake_notice[0] = 0;
+    fake_next_actor = 0;
+    fake_removed = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
 }
@@ -230,15 +297,20 @@ static void put(const char *relative, const char *text)
     CHECK(khdays_folders_write(path, text, strlen(text)));
 }
 
-/* A mod folder with its mod.ini and main script. */
-static void mod_folder(const char *folder, const char *id, const char *kind, const char *main_lua)
+/* A mod folder with its mod.ini (the interface `api`) and main script. */
+static void mod_folder_api(const char *folder, const char *id, const char *kind, int api, const char *main_lua)
 {
     char path[512], ini[512];
-    snprintf(ini, sizeof(ini), "id = %s\nname = %s\nversion = 1.0\nkind = %s\napi = 1\n", id, id, kind);
+    snprintf(ini, sizeof(ini), "id = %s\nname = %s\nversion = 1.0\nkind = %s\napi = %d\n", id, id, kind, api);
     snprintf(path, sizeof(path), "mods/%s/mod.ini", folder);
     put(path, ini);
     snprintf(path, sizeof(path), "mods/%s/scripts/main.lua", folder);
     put(path, main_lua);
+}
+
+static void mod_folder(const char *folder, const char *id, const char *kind, const char *main_lua)
+{
+    mod_folder_api(folder, id, kind, 1, main_lua);
 }
 
 static void remove_all(const char *path)
@@ -451,7 +523,7 @@ static void test_faults(void)
     mod_folder("C loop", "test.loop", "gameplay", "mod.on('frame', function() while true do end end)\n");
     mod_folder("D caught loop", "test.caught", "gameplay",
                "mod.on('frame', function()\n  while true do pcall(function() while true do end end) end\nend)\n");
-    put("mods/E newer/mod.ini", "id = test.newer\nname = Newer\nversion = 1\nkind = gameplay\napi = 2\n");
+    put("mods/E newer/mod.ini", "id = test.newer\nname = Newer\nversion = 1\nkind = gameplay\napi = 3\n");
     put("mods/F same id/mod.ini", "id = test.counter\nname = Twin\nversion = 1\nkind = gameplay\napi = 1\n");
     put("mods/G no main/mod.ini", "id = test.nomain\nname = No main\nversion = 1\nkind = gameplay\napi = 1\n");
     put("mods/H syntax/mod.ini", "id = test.syntax\nname = Syntax\nversion = 1\nkind = gameplay\napi = 1\n");
@@ -468,7 +540,7 @@ static void test_faults(void)
     CHECK(m != NULL && m->state == KHDAYS_MOD_PAUSED);
     m = mod_by_folder("E newer");
     CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED &&
-          strcmp(m->reason, "needs mod interface 2, this port has 1") == 0);
+          strcmp(m->reason, "needs mod interface 3, this port has 2") == 0);
     m = mod_by_folder("F same id");
     CHECK(m != NULL && m->state == KHDAYS_MOD_REFUSED && strcmp(m->reason, "same id as B counter") == 0);
     m = mod_by_folder("G no main");
@@ -856,6 +928,90 @@ static void test_guest(void)
     end_case();
 }
 
+static void test_api_versions(void)
+{
+    begin_case("versions");
+    mod_folder("One", "test.one", "gameplay",
+               "print('one', enemies == nil, pcall(mod.on, 'enemy_defeated', function() end))\n");
+    mod_folder_api(
+        "Two", "test.two", "gameplay", 2,
+        "print('two', type(enemies), type(enemies.make), mod.on('enemy_defeated', function() end) ~= nil)\n");
+    mod_folder_api("Three", "test.three", "gameplay", 3, "print('three')\n");
+    start();
+    CHECK(log_has("test.one print scripts/main.lua:1 one\ttrue\tfalse"));
+    CHECK(log_has("test.two print scripts/main.lua:1 two\ttable\tfunction\ttrue"));
+    CHECK(mod_by_folder("Three")->state == KHDAYS_MOD_REFUSED);
+    end_case();
+}
+
+static void test_enemies(void)
+{
+    begin_case("enemies");
+    mod_folder_api("Waves", "test.waves", "gameplay", 2,
+                   "local n, seen, heard = 0, 0, {}\n"
+                   "local function ok(c, what) if c then n = n + 1 else print('not ok', what) end end\n"
+                   "local function says(want, a, b) return a == nil and b == want end\n"
+                   "local made\n"
+                   "mod.on('enemy_appeared', function(e) seen = seen + 1 end)\n"
+                   "mod.on('enemy_defeated', function(e)\n"
+                   "  heard[#heard + 1] = tostring(e.enemy) .. ' ' .. e.kind .. ' ' .. tostring(e.mine)\n"
+                   "end)\n"
+                   "ok(says('not in the field', enemies.make{ kind = 0, at = 'player' }), 'title')\n"
+                   "mod.on('scene', function(e)\n"
+                   "  if e.to ~= 2 then return end\n"
+                   "  local k = enemies.kinds()\n"
+                   "  ok(#k == 2 and k[1].kind == 0 and k[1].name == 'Shadow', 'kinds')\n"
+                   "  made = enemies.make{ kind = 0, at = 'player', count = 3, spread = 2, level = 4, hp = 2,"
+                   " strength = 1.5 }\n"
+                   "  ok(#made == 3 and made[1] ~= made[2], 'made')\n"
+                   "  ok(says(\"not this mission's kind\", enemies.make{ kind = 5, at = { 0, 0, 0 } }), 'kind 5')\n"
+                   "  ok(says('unknown kind', enemies.make{ kind = 300, at = { 0, 0, 0 } }), 'kind 300')\n"
+                   "  ok(not pcall(enemies.make, { kind = 0, at = 'player', count = 0 }), 'count 0')\n"
+                   "  ok(not pcall(enemies.make, { kind = 'x', at = 'player' }), 'kind x')\n"
+                   "  ok(#enemies.list() == 3 and enemies.info(made[1]).max_hp == 30, 'list')\n"
+                   "  ok(enemies.remove(made[1]) == true and says('gone', enemies.remove(made[1])), 'remove')\n"
+                   "  ok(#enemies.list() == 2 and says('gone', enemies.info(made[1])), 'removed')\n"
+                   "  print('field', n)\n"
+                   "end)\n"
+                   "mod.on('frame', function(e)\n"
+                   "  if e.frame == 4 then print('heard', seen, table.concat(heard, ','), #enemies.list()) end\n"
+                   "end)\n");
+    mod_folder_api("Other", "test.other", "gameplay", 2,
+                   "mod.on('enemy_appeared', function(e) print('not mine appeared') end)\n"
+                   "mod.on('enemy_defeated', function(e) print('other', tostring(e.enemy), e.mine) end)\n");
+    start();
+    frames(1); /* the title seen, then the field */
+    fake_scene = 2;
+    frames(1);
+    CHECK(log_has("test.waves print scripts/main.lua:23 field\t10"));
+    CHECK(fake_level == 4 && fake_enemy_hp == 2 && fake_strength == 1.5 && fake_removed == 0x1000u);
+    khdays_api_enemies_defeated(0x1001u, 0); /* a made one */
+    khdays_api_enemies_defeated(0x2000u, 1); /* the mission's own */
+    frames(1);
+    khdays_api_enemies_field_left();
+    frames(1);
+    CHECK(log_has("test.waves print scripts/main.lua:26 heard\t3\t2 0 true,nil 1 false\t0"));
+    CHECK(log_has("test.other print scripts/main.lua:2 other\tnil\tfalse"));
+    CHECK(!log_has("not mine appeared"));
+    end_case();
+}
+
+static void test_enemies_guest(void)
+{
+    begin_case("enemies_guest");
+    mod_folder_api("Guest", "test.guest", "gameplay", 2,
+                   "mod.on('scene', function(e)\n"
+                   "  if e.to == 2 then print('guest', enemies.make{ kind = 0, at = 'player' }) end\n"
+                   "end)\n");
+    fake_guest = 1;
+    start();
+    frames(1);
+    fake_scene = 2;
+    frames(1);
+    CHECK(log_has("test.guest print scripts/main.lua:2 guest\tnil\tguest"));
+    end_case();
+}
+
 #define RUN(test) (fprintf(stderr, "%s\n", #test), test())
 
 int main(void)
@@ -876,6 +1032,9 @@ int main(void)
     RUN(test_room_fingerprint);
     RUN(test_reload);
     RUN(test_guest);
+    RUN(test_api_versions);
+    RUN(test_enemies);
+    RUN(test_enemies_guest);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

@@ -1467,6 +1467,52 @@ HOOKS = {
             "}\n",
         ),
     ],
+    # The field's enemies (runtime/scripts/enemies_link.h): the actor a marker row made (a mod's enemy
+    # is made that way), every defeat, the area's enemies let go; the class asked for, the spawners and
+    # their slots given back only for KHDAYS_TRACE_ENEMIES.
+    "ov002@02073d0c": [
+        (  # Ov002_CreateActorFromMarker: the actor made from a marker row
+            "    if(pRow->bId==0x55){\n",
+            "    { extern void khdays_enemies_marker_made(int source, int row, void *actor, int id);\n"
+            "      khdays_enemies_marker_made(nSourceIndex, nRowIndex, pActor, pRow->bId); }\n"
+            "    if(pRow->bId==0x55){\n",
+        )
+    ],
+    "ov107@020c2ea8": [
+        (  # Ov107_SpawnEntityClass
+            "    unsigned char state = data_ov107_020cbb20[id];\n",
+            "    unsigned char state = data_ov107_020cbb20[id];\n"
+            "    { extern void khdays_enemies_class(int id); khdays_enemies_class(id); }\n",
+        )
+    ],
+    "ov107@020c1870": [
+        (  # Ov107_Spawner_Run
+            "    table = 0;\n",
+            "    { extern void khdays_enemies_spawner_run(void *spawner, int op); khdays_enemies_spawner_run(obj, op); }\n"
+            "    table = 0;\n",
+        )
+    ],
+    "ov107@020c1e80": [
+        (  # Ov107_Spawner_OnActorRetired
+            "    Ov107Object *obj = actor->pSpawner;\n",
+            "    Ov107Object *obj = actor->pSpawner;\n"
+            "    { extern void khdays_enemies_retired(void *actor); khdays_enemies_retired(actor); }\n",
+        )
+    ],
+    "ov107@020c7da4": [
+        (  # Ov107_AiState_OnDefeat: any enemy defeated, before its reward and its spawner's slot
+            "    context = self->field_04;\n",
+            "    { extern void khdays_enemies_defeated(void *actor); khdays_enemies_defeated(self); }\n"
+            "    context = self->field_04;\n",
+        )
+    ],
+    "ov002@020736c0": [
+        (  # Ov002_ReleaseResources: the area's enemies let go
+            "    Ov002Res *r = data_ov002_0207fa14;\n",
+            "    Ov002Res *r = data_ov002_0207fa14;\n"
+            "    { extern void khdays_enemies_area_left(void); khdays_enemies_area_left(); }\n",
+        )
+    ],
 }
 
 

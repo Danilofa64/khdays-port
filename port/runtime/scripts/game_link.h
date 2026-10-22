@@ -20,6 +20,12 @@ int khdays_link_paused(void);
 /* The current scene (gSceneCtl) and its argument. */
 unsigned khdays_link_scene(unsigned *argument);
 
+/* Where the game is, for the names of version 2 that act only there (api_v2.h): the field (scene 2 with
+ * the field's and the battle's overlays), a camp (Mission Mode's, scene 19 with ov008; the story's,
+ * scene 5 with ov025), the title (scene 1). */
+enum KhdaysWhere { KHDAYS_WHERE_ELSEWHERE, KHDAYS_WHERE_FIELD, KHDAYS_WHERE_CAMP, KHDAYS_WHERE_TITLE };
+int khdays_link_where(void);
+
 /* The game's state (gGameState's reference), 0 while there is none: the state names and the item
  * actions need it. */
 unsigned khdays_link_state(void);

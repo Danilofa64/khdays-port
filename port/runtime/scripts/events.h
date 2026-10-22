@@ -16,8 +16,13 @@ enum KhdaysEventId {
     KHDAYS_EVENT_MENU_OPEN,
     KHDAYS_EVENT_MENU_CLOSE,
     KHDAYS_EVENT_SAVE,
+    /* version 2's (api_v2.h): an api 1 mod cannot listen to these */
+    KHDAYS_EVENT_ENEMY_APPEARED, /* a: the actor, b: its kind; to the mod that made it */
+    KHDAYS_EVENT_ENEMY_DEFEATED, /* a: the actor, b: its kind */
     KHDAYS_EVENT_COUNT
 };
+
+#define KHDAYS_EVENT_FIRST_V2 KHDAYS_EVENT_ENEMY_APPEARED
 
 /* An event's details; which fields mean what is each event's own (api_events.c). */
 typedef struct KhdaysEvent {

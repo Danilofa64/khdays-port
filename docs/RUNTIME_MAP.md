@@ -4624,3 +4624,56 @@ the story walk and `KHDAYS_TEST_DAY`).
   schedule is followed instead (`tools/hd/theater_movies.py --music`, `host/movies/theater_music.c`).
   Seen: hd004 (day 8) played bgm_213 50.4 s from its first frame, the video 1,513 frames; hd818 (the
   prologue's movie) bgm_219 from frame 1038 for 64.6 s, both as their schedules say.
+
+## 22. The field's enemies (spec 031)
+
+Read in the decompilation, then traced with `KHDAYS_TRACE_ENEMIES=1` (2026-10-22: the play walk with
+`KHDAYS_TEST_EVENT=2/0`, which opens mission 2 in place of mission 10, and the test mod
+`port/tests/mods_v2/waves`).
+
+- **An area makes its enemies once, from the mission's enemy table.** The table (`em0`, `em0m` in
+  multiplayer) is loaded by the start script (`Ov002_ScriptCmd_LoadObjectRecords`) into the field's
+  objects (`data_ov002_0207fa14` + 4: its rows of 16 bytes, its groups). An area that has enemies
+  then, in its own start script: makes its tables (`Ov002_ScriptCmd_InitObjectTables(spawners,
+  places)`), gives some rows a place (`Ov002_ScriptCmd_UpdateSlotLookup(row)`, `-1` to close: the
+  row's class registered with ov107's actor manager), makes a source per room
+  (`Ov002_ScriptCmd_RecreateObjectSlot(i)`: an ov107 region, objects + 0x1c, whose members are shown
+  and hidden with their room), makes every enemy it will use, idle, in a source
+  (`Ov002_ScriptCmd_CreateActorFromMarker(source, row)`), puts its spawners
+  (`Ov002_ScriptCreateSlotObject`: a group of the table at a point, with a reach of 14-16 units) and
+  last files every actor by its id (`Ov002_ScriptCmd_BuildSceneIdTable`). Mission 10's first area
+  (11) does none of it -- ov107 is not even loaded there (the earlier "no source whenever it was
+  tried"); its areas 21 and 31 do. Mission 2's first area made 3 Shadows (row 0, class 0) in source 0
+  at the area's build; its spawner ran op 0 every 32 frames.
+- **The level is the row's.** `Ov002_GetEffectiveHeight(row)` -- the mission's level (root + 0x8bae)
+  plus the row's adjustment, 1 to 120 -- goes to the actor's +0x1ec, `Ov107_AiState_LoadStats`,
+  which reads the class's stats at that level (`+0x19d`): its HP (`+0x218` maximum, `+0x21a` now),
+  its eight attacks' power (`+0x290 + 6 * i`, through `+0x1d8`, `Ov107_StoreSlotEvent`). A Shadow
+  of mission 2: level 1, HP 75, attacks 3 and 9; at level 6, HP 93, attacks 6 and 18. A Yellow
+  Opera at level 1: HP 75, attacks 7 and 8.
+- **A hit** (`Ov107_AiState_ApplyHit`) takes `+0x21a` down (75, 67, 59, 37, 24 ... 2 seen); at 0
+  the enemy is defeated: `Ov107_AiState_OnDefeat` (the class's `+0x1d4`; `+0x25c` the last
+  attacker) hands the players amounts from the class's table (`+0x1a0`) and `+0x19f` (which the row's
+  boost raises) through ov022, then calls `+0x1e8`, which a spawner sets to
+  `Ov107_Spawner_OnActorRetired` (its slot back, the group's tally and drops,
+  `Ov002_OnPartActorRetired`). By then the HP reads full again. Enemies' HP never goes through
+  `Ov022_ActorSetHp` (the players' alone).
+- **Set going** (`Ov107_Spawner_Run` op 0): the HP refilled, the actor's home and reach (`+0x1f4`,
+  `Ov107_StoreHitInfo`), moved (`Ov107_MoveNodeAndRelayout`) and its event 0 (`+0x1cc`): its +0x60
+  word gains 0x300; 0x100 is cleared at the defeat and once sent away. Event 1 sends it away (the
+  spawner's op 1 when the player leaves it): the Shadow left in 67 frames.
+- **An area's end** releases them all (`Ov002_ReleaseResources`: the actor manager's node destroyed,
+  ov107 unloaded, the tables freed). Mission 2 moves to its next area once its enemies there are
+  defeated: Shadows (row 0) in the first, Yellow Operas (row 1) in the next, then another.
+
+**A mod's enemy** (`runtime/scripts/enemies_link.c`) is made the way the area makes its own --
+`Ov002_CreateActorFromMarker` with a row of the kind the area placed and the source of the room shown
+-- then set going as op 0 does, without a spawner: its spawner word holds its source so that no
+mission spawner takes it while it stands, and it gives none of the mission's tallies or drops. The
+id table is made again after each new actor: one made after it has an id past the table, and the
+first message to it read beyond (seen: a fault in `Ov107_DispatchMessage`). An idle actor a mod made
+before is reused for the next of its kind (its level's stats loaded again first): the test mod's
+second wave of 3 reused the first wave's 2 defeated Shadows and the one sent away. Seen with the test
+mod: HP times 2 gave 150; level + 5 and strength times 2 gave level 6, HP 93, attacks 12 and 36, and
+the player took 18-19 from those Shadows against 8-9 from the mission's own (Yellow Operas: 14-16
+against 6-8).

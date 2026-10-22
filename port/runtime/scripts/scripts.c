@@ -3,8 +3,10 @@
 #include "scripts.h"
 
 #include "api.h"
+#include "api_v2.h"
 #include "events.h"
 #include "folders.h"
+#include "enemies_link.h"
 #include "game_link.h"
 #include "mod.h"
 #include "mods_log.h"
@@ -130,6 +132,7 @@ static long long newest_file(const KhdaysMod *m)
 
 static void unload(KhdaysMod *m)
 {
+    khdays_api_v2_release(m);
     khdays_api_menus_free(m);
     khdays_sandbox_close(m);
     free(m->handlers);
@@ -148,6 +151,9 @@ static void load(KhdaysMod *m)
     khdays_api_state_open(m);
     khdays_api_menus_open(m);
     khdays_api_actions_open(m);
+    if (m->manifest.api >= 2) {
+        khdays_api_v2_open(m);
+    }
     m->stamp = newest_file(m);
     m->spent = 0;
     m->allowance = khdays_sandbox_frame_allowance;
@@ -177,6 +183,10 @@ static int examine(KhdaysMod *m)
         return 0;
     }
     free(text);
+    if (m->manifest.api < 1) {
+        refused(m, "mod.ini: api missing or not valid");
+        return 0;
+    }
     if (m->manifest.api > KHDAYS_MODS_API) {
         snprintf(reason, sizeof(reason), "needs mod interface %d, this port has %d", m->manifest.api, KHDAYS_MODS_API);
         refused(m, reason);
@@ -623,6 +633,7 @@ void khdays_scripts_frame(void)
     if (tracing) {
         khdays_link_trace_frame();
     }
+    khdays_enemies_frame();
     if (!started) {
         const char *mods_path, *user;
         khdays_link_folders(&mods_path, &user);
