@@ -11,6 +11,7 @@
 #include "mod.h"
 #include "mods_log.h"
 #include "screens.h"
+#include "time_link.h"
 #include "order.h"
 #include "queue.h"
 #include "sandbox.h"
@@ -642,9 +643,6 @@ void khdays_scripts_frame(void)
     if (tracing < 0) {
         tracing = getenv("KHDAYS_TRACE_MODS") != NULL;
     }
-    if (tracing) {
-        khdays_link_trace_frame();
-    }
     {
         const int up = khdays_link_game_over();
         if (up && !game_over_up && fell_at != 0 && khdays_link_frame() + 1u - fell_at <= FALL_TO_GAME_OVER) {
@@ -745,9 +743,6 @@ void khdays_scripts_hp(void *entity, int before)
 {
     KhdaysEvent e;
     int hp, max;
-    if (tracing > 0) {
-        khdays_link_trace_hp(entity, before);
-    }
     khdays_link_entity_hp(entity, &hp, &max);
     if (hp == 0 && before > 0 && khdays_link_is_player(entity)) {
         fell_at = khdays_link_frame() + 1u;

@@ -18,8 +18,8 @@
 extern int Session_IsActive(void);
 
 #define SCENE_CURRENT 0x8u
-#define CAMP_SCENE 19u       /* Mission Mode's camp */
-#define RECORD_MISSION 2     /* the field record's mission file (u16; data_0204c240 when no argument) */
+#define CAMP_SCENE 19u   /* Mission Mode's camp */
+#define RECORD_MISSION 2 /* the field record's mission file (u16; data_0204c240 when no argument) */
 #define BUTTON_A 0x0001u
 #define BUTTON_START 0x0008u
 #define BUTTON_LEFT 0x0020u

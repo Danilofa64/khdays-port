@@ -4,6 +4,7 @@
  * removed at the end. */
 #include "../runtime/core/sha256.h"
 #include "../runtime/scripts/api_v2.h"
+#include "../runtime/scripts/deck_link.h"
 #include "../runtime/scripts/enemies_link.h"
 #include "../runtime/scripts/folders.h"
 #include "../runtime/scripts/game_link.h"
@@ -13,6 +14,7 @@
 #include "../runtime/scripts/queue.h"
 #include "../runtime/scripts/scripts.h"
 #include "../runtime/scripts/screens.h"
+#include "../runtime/scripts/time_link.h"
 #include "../runtime/scripts/view.h"
 
 #include <SDL3/SDL.h>
@@ -222,14 +224,6 @@ const char *khdays_link_leave_mission(void)
     }
     ++fake_left;
     return NULL;
-}
-
-void khdays_link_trace_frame(void) {}
-
-void khdays_link_trace_hp(const void *entity, int before)
-{
-    (void)entity;
-    (void)before;
 }
 
 static char fake_sound[64], fake_notice[64];

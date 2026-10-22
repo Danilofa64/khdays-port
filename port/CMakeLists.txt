@@ -408,6 +408,8 @@ add_executable(khdays-native
     runtime/scripts/api_time.c         # ... their timers, music, draws and shares
     runtime/scripts/screens.c          # ... shared with the window that draws them
     runtime/scripts/game_link.c        # ... the game's side of their interface
+    runtime/scripts/deck_link.c        # ... the deck, the game's side
+    runtime/scripts/time_link.c        # ... music, the room's seed and the shares, the game's side
     runtime/scripts/enemies_link.c     # ... the field's enemies, the game's side
     runtime/scripts/enemy_names.c
     runtime/core/sha256.c             # SHA-256: the mods' fingerprints

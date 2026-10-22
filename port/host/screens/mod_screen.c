@@ -1,10 +1,6 @@
-/* A mod's screens and the title's mods' prompt (mod_screen.h). Drawn in the mod's own layout when its
- * screen names one (its layouts/<name>.txt, the port's lines: docs/HD_SCREENS.md, with the pieces and
- * places below), else in the HD theater's list the HD PACK's room list is drawn in
- * (layouts/rooms/<lang>/rooms.txt), else plainly: the game's own font over a veil.
- * The pieces a layout gives: veil, help_bar, row, row_selected, square, glove, trough, thumb; its places
- * the same and rule; its lines `rows TOP PITCH SHOWN` and `art FILE`; its texts heading, message,
- * single (a row's), players (a result's value), help. */
+/* A mod's screens and the title's mods' prompt (mod_screen.h): in the mod's own layout when its screen
+ * names one (layouts/<name>.txt, docs/HD_SCREENS.md), else in the HD PACK's room list layout, else
+ * plainly in the game's own font over a veil. docs/SCRIPTING.md lists the pieces a layout gives. */
 #include "mod_screen.h"
 
 #include "layout_screen.h"

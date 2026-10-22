@@ -1,10 +1,7 @@
-/* The field's enemies, the game's side (enemies_link.h). An area that has enemies builds them from the
- * mission's enemy table: its script gives some rows a place (Ov002_UpdateSlotLookup), makes a source per
- * room (Ov002_RecreateObjectSlot: the enemies of that room, shown and hidden with it), makes the enemies
- * idle in a source (Ov002_CreateActorFromMarker) and puts spawners that set idle ones going when the
- * player comes near (Ov107_Spawner_Run op 0). A mod's enemy is made the same way and set going as op 0
- * does, at the mod's point; it stays in the source's pool, and the next one of its kind reuses it once it
- * is idle again. docs/RUNTIME_MAP.md, "The field's enemies". */
+/* The field's enemies, the game's side (enemies_link.h). An area makes its enemies idle from the
+ * mission's enemy table (Ov002_CreateActorFromMarker) and its spawners set them going as the player comes
+ * near (Ov107_Spawner_Run op 0). A mod's enemy is made the same way and set going at the mod's point;
+ * once idle again, the next one of its kind reuses it. docs/RUNTIME_MAP.md, "The field's enemies". */
 #include "enemies_link.h"
 
 #include "api_v2.h"
@@ -42,9 +39,8 @@ const char *khdays_enemy_name(int id); /* enemy_names.c */
 
 /* data_ov002_0207fa14: the field's objects */
 #define OBJECTS 0x0207fa14u
-#define OBJECTS_TABLE 0x4u    /* the mission's enemy table: u8 rows, u8 groups, ..; +4 the rows (16 bytes each) */
-#define OBJECTS_SOURCES 0x1cu /* one per room, 8 */
-#define OBJECTS_MARKER_IDS 0x3cu
+#define OBJECTS_TABLE 0x4u        /* the mission's enemy table: u8 rows, u8 groups, ..; +4 the rows (16 bytes each) */
+#define OBJECTS_SOURCES 0x1cu     /* one per room, 8 */
 #define OBJECTS_PLACES 0x4cu      /* the rows the area placed: {s8 row, u8 handle} */
 #define OBJECTS_PLACE_COUNT 0x51u /* u8 */
 #define SOURCES 8
@@ -58,7 +54,6 @@ const char *khdays_enemy_name(int id); /* enemy_names.c */
 /* An enemy (ov107's AI state) */
 #define AI_FLAGS 0x60u    /* 0x100 standing: set going (event 0), cleared at the defeat and once away */
 #define AI_POSITION 0xb0u /* 20.12 fixed point */
-#define AI_STATUS 0x179u
 #define AI_KIND 0x19cu
 #define AI_LEVEL 0x19du /* the stats' record (Ov107_AiState_LoadStats) */
 #define AI_BOOST 0x19fu
@@ -587,66 +582,8 @@ void khdays_enemies_area_left(void)
     forget();
 }
 
-/* The field's objects as they change: the enemy table's rows, the sources, the marker ids. */
-static void trace_objects(void)
-{
-    static unsigned last_hash;
-    unsigned hash = 2166136261u, objs, table;
-    if (rd32(KHDAYS_DS_gSceneCtl + SCENE_CURRENT) != FIELD_SCENE || !khdays_overlay_loaded(OV_FIELD)) {
-        return;
-    }
-    objs = rd32(OBJECTS);
-    table = objs != 0 ? rd32(objs + OBJECTS_TABLE) : 0;
-    hash = (hash ^ objs) * 16777619u;
-    hash = (hash ^ table) * 16777619u;
-    for (unsigned i = 0; objs != 0 && i < SOURCES; ++i) {
-        const unsigned source = rd32(objs + OBJECTS_SOURCES + 4u * i);
-        hash = (hash ^ source) * 16777619u;
-        hash = (hash ^ (source != 0 ? rd32(source + SOURCE_FLAGS) : 0)) * 16777619u;
-    }
-    hash = (hash ^ (unsigned)khdays_overlay_loaded(OV_BATTLE) << 1 ^ (unsigned)khdays_overlay_loaded(OV_ENEMIES)) *
-           16777619u;
-    if (hash == last_hash) {
-        return;
-    }
-    last_hash = hash;
-    fprintf(stderr, "enemies: f%u objects %08x table %08x (ov022 %d, ov107 %d) sources", khdays_link_frame(), objs,
-            table, khdays_overlay_loaded(OV_BATTLE), khdays_overlay_loaded(OV_ENEMIES));
-    for (unsigned i = 0; objs != 0 && i < SOURCES; ++i) {
-        const unsigned source = rd32(objs + OBJECTS_SOURCES + 4u * i);
-        fprintf(stderr, " %08x", source);
-        if (source != 0) {
-            fprintf(stderr, "(%x)", rd32(source + SOURCE_FLAGS));
-        }
-    }
-    if (objs != 0) {
-        fprintf(stderr, " ids %d %d %d %d places %u", (short)rd16(objs + OBJECTS_MARKER_IDS),
-                (short)rd16(objs + OBJECTS_MARKER_IDS + 2), (short)rd16(objs + OBJECTS_MARKER_IDS + 4),
-                (short)rd16(objs + OBJECTS_MARKER_IDS + 6), rd8(objs + OBJECTS_PLACE_COUNT));
-    }
-    fprintf(stderr, "\n");
-    if (table != 0 && khdays_game_ram(table)) {
-        const unsigned count = rd8(table), rows = rd32(table + 4);
-        for (unsigned r = 0; r < count && khdays_game_ram(rows + r * ROW); ++r) {
-            const unsigned char *b = (const unsigned char *)KHDAYS_W(rows + r * ROW);
-            fprintf(stderr,
-                    "enemies:   row %u class 0x%02x kinds %u boost %u profile %u height %d param %d value %d %d\n", r,
-                    b[0], b[1], b[2], b[3], (signed char)b[4], (signed char)b[5], (short)(b[6] | b[7] << 8),
-                    (short)(b[8] | b[9] << 8));
-        }
-    }
-}
-
 void khdays_enemies_frame(void)
 {
-    if (traced()) {
-        trace_objects();
-        if (pool_count > 0 && khdays_link_frame() % 30 == 0) {
-            for (int i = 0; i < pool_count; ++i) {
-                trace_actor(pool[i].leaving ? "leaving" : "pooled", pool[i].actor);
-            }
-        }
-    }
     if (pool_count == 0) {
         return;
     }

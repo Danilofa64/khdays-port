@@ -1,4 +1,4 @@
-/* Time, music, chance and sharing for the mods (api_v2.h; game_link.h has the game's side). Timers run
+/* Time, music, chance and sharing for the mods (api_v2.h; time_link.h is the game's side). Timers run
  * on the game's time, which stands still while the game is paused. `random` draws from the room's seed
  * (each mod its own run of draws), started again at each mission's start, so every player of a room
  * draws the same from there. `mod.share` sends a table from the host's mod to the guests' copies of it,
@@ -9,6 +9,7 @@
 #include "events.h"
 #include "game_link.h"
 #include "sandbox.h"
+#include "time_link.h"
 
 #include <lauxlib.h>
 #include <lua.h>

@@ -1,16 +1,12 @@
-/* The deck a mod reads and changes (api_v2.h; game_link.h has where the game keeps it). Every change is
- * made on a copy of the deck and the panels owned, checked whole as the camp's Panels would hold it and
- * then written, or refused with nothing changed.
- *
- * A panel takes its own cell, or the cells of its shape (a multi-cell panel: Ov008_CanPlaceShape's rule,
- * within its page, on open cells, over no other). A link panel (one cell, category 4 or 5) is set on a
- * multi-cell panel's cell other than its own, and the camp drops one that is not
- * (Ov008_LoadGridFromSave); an accessory (category 6) never is. The deck holds one gear (items
- * 0xbf-0xf0), one multi-cell ability (category 5) of a kind and one accessory of a kind
- * (Ov008_CanPlaceRecord). The players' decks are held so (docs/RUNTIME_MAP.md, "The deck"). */
+/* The deck a mod reads and changes (api_v2.h; deck_link.h is the game's side). A change is made on a
+ * copy, checked whole by the camp's own rules, then written; refused, nothing changes. The rules: a
+ * panel takes its own cell or its shape's cells, on open cells and over no other; a link panel sits on
+ * a multi-cell panel's cell; one gear, one ring or charm, one multi-cell ability of a kind
+ * (docs/RUNTIME_MAP.md, "The deck"). */
 #include "api_v2.h"
 
 #include "api.h"
+#include "deck_link.h"
 #include "game_link.h"
 
 #include <lauxlib.h>

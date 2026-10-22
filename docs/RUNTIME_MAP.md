@@ -4710,7 +4710,7 @@ units along x, then kept within 6 units of a point while chasing enemies.
 
 ## 23. The player's defeat and how a run ends (spec 031)
 
-Read in the decompilation, then traced with `KHDAYS_TRACE_MODS=1` (2026-10-22: the play walk opening
+Read in the decompilation, then traced in the game (2026-10-22: the play walk opening
 mission 2 with `KHDAYS_TEST_EVENT=2/0` -- Mission Mode, `data_0204c23c` still 94 -- with the test mod
 `port/tests/mods_v2/last-stand`, and the mission walk's give-up).
 
@@ -4799,8 +4799,7 @@ Read in the port's own code and seen in a window (2026-10-22, the title walk wit
 
 ## 26. The deck (spec 031)
 
-Read in the decompilation, then traced with `KHDAYS_TRACE_DECK` (each panel's record as the port reads
-it) and checked against the decks of four saves (2026-10-22: the 100% save and the run07 walk's, 120
+Read in the decompilation, then each panel's record traced as the port reads it and checked against the decks of four saves (2026-10-22: the 100% save and the run07 walk's, 120
 open cells all set; the old save and the play walk's, 96 set of 100); the English names from
 `db_en.p2`'s entry 0x15 (each item's name and description).
 
