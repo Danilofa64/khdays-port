@@ -418,6 +418,13 @@ const char *khdays_enemies_name(int kind)
 }
 
 /* Six kinds: the area's 0 and 1, 2 of another mission whose overlay fits, 3-5 that do not. */
+static int fake_held;
+
+void khdays_enemies_hold_mission(int on)
+{
+    fake_held = on;
+}
+
 int khdays_enemies_kind_count(void)
 {
     return 6;
@@ -1447,6 +1454,21 @@ static void test_set_position(void)
     end_case();
 }
 
+static void test_hold_mission(void)
+{
+    begin_case("hold_mission");
+    mod_folder_api("Arena", "test.arena", "gameplay", 2,
+                   "print('hold', enemies.hold_mission(true), pcall(enemies.hold_mission, 'yes'))\n");
+    mod_folder_api("Other", "test.other", "gameplay", 2, "print('other', select(2, enemies.hold_mission(true)))\n");
+    start();
+    CHECK(log_has("test.arena print scripts/main.lua:1 hold\ttrue\tfalse"));
+    CHECK(log_has("test.other print scripts/main.lua:1 other\theld by test.arena"));
+    CHECK(fake_held == 1);
+    khdays_scripts_stop(); /* the holder stopped: the mission's own come back */
+    CHECK(fake_held == 0);
+    remove_all(root);
+}
+
 static void test_leave(void)
 {
     begin_case("leave");
@@ -1616,6 +1638,7 @@ int main(void)
     RUN(test_share);
     RUN(test_share_guest);
     RUN(test_set_position);
+    RUN(test_hold_mission);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

@@ -1533,9 +1533,10 @@ HOOKS = {
         )
     ],
     "ov107@020c1870": [
-        (  # Ov107_Spawner_Run
+        (  # Ov107_Spawner_Run: op 0 (an idle enemy set going) skipped while a mod holds the mission's own
             "    table = 0;\n",
-            "    { extern void khdays_enemies_spawner_run(void *spawner, int op); khdays_enemies_spawner_run(obj, op); }\n"
+            "    { extern int khdays_enemies_spawner_run(void *spawner, int op);\n"
+            "      if (khdays_enemies_spawner_run(obj, op)) return; }\n"
             "    table = 0;\n",
         )
     ],

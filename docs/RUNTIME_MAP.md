@@ -4694,6 +4694,12 @@ Soldier (another mission's: HP 372 at level 1) was made, drawn, targeted and fou
 after it; a Bulky Vendor next, then 5; the Turret then had no room and was refused, where the game
 would have stopped.
 
+**The mission's own held back** (`enemies.hold_mission`): its spawners' op 0 (an idle enemy set going
+as the player comes near, every 32 frames) is skipped at its join while a mod holds them; the
+mission's enemies stay idle in their sources, nothing of the area's tally moves and the area never
+ends by them. Seen in mission 2's first area: the spawner's op 0 skipped every 32 frames while the
+test mod's waves fought, and the mission stayed in its first area.
+
 **The player placed** as the game's scripts place a player (`Ov002_ScriptPlaceSlot` ->
 `Ov002_ApplyRosterSlotToNode` -> `func_ov022_02088218`): its actor moved with its child
 (`Actor_SetVecAndSyncChild`), its position (`+0x48c`) set and its motion reset

@@ -220,6 +220,7 @@ and offers that area's kinds.
 | `enemies.remove(e)` | sends enemy `e` (a handle, or a list of them) away as the game does when the player leaves its spawner: no defeat | `true`; `"gone"` |
 | `enemies.list()` | the handles of the mod's enemies still standing | |
 | `enemies.info(e)` | `{kind, hp, max_hp, level, x, y, z}` | `nil, "gone"` |
+| `enemies.hold_mission(on)` | while `true`, the mission's own enemies are not set going (their spawners wait), so its areas never end by their enemies and a mod's waves are the only ones; those already standing stay | `true`; `"held by <mod id>"` while another mod holds them |
 
 A handle is the mod's own number for an enemy it made, unique for the session; once the enemy is
 defeated, sent away or let go, it is gone. An enemy that was defeated or sent away is idle in the

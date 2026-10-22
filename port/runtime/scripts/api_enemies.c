@@ -276,16 +276,44 @@ static int info(lua_State *L)
     return 1;
 }
 
+static const KhdaysMod *holder; /* the mod holding the mission's own enemies back, NULL none */
+
+/* enemies.hold_mission(on): while on, the mission's own enemies are not set going (its areas never end
+ * by them); one mod holds them at a time. */
+static int hold_mission(lua_State *L)
+{
+    const KhdaysMod *m = khdays_sandbox_mod(L);
+    const int on = lua_toboolean(L, 1);
+    luaL_checktype(L, 1, LUA_TBOOLEAN);
+    if (!khdays_api_v2_may(L, KHDAYS_WHERE_ELSEWHERE)) {
+        return 2;
+    }
+    if (holder != NULL && holder != m) {
+        lua_pushnil(L);
+        lua_pushfstring(L, "held by %s", holder->manifest.id);
+        return 2;
+    }
+    holder = on ? m : NULL;
+    khdays_enemies_hold_mission(on);
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
 void khdays_api_enemies_open(KhdaysMod *m)
 {
     static const luaL_Reg enemies[] = {{"kinds", kinds}, {"make", make}, {"remove", remove_enemies},
-                                       {"list", list},   {"info", info}, {NULL, NULL}};
+                                       {"list", list},   {"info", info}, {"hold_mission", hold_mission},
+                                       {NULL, NULL}};
     luaL_newlib(m->L, enemies);
     lua_setglobal(m->L, "enemies");
 }
 
 void khdays_api_enemies_release(KhdaysMod *m)
 {
+    if (holder == m) {
+        holder = NULL;
+        khdays_enemies_hold_mission(0);
+    }
     if (m->v2 != NULL) {
         free(m->v2->enemies);
         m->v2->enemies = NULL;

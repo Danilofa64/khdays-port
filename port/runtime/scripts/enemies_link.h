@@ -38,10 +38,14 @@ int khdays_enemies_info(unsigned actor, KhdaysEnemyInfo *out);
 /* The joins. */
 void khdays_enemies_marker_made(int source, int row, void *actor, int id); /* Ov002_CreateActorFromMarker */
 void khdays_enemies_class(int id);                                         /* Ov107_SpawnEntityClass */
-void khdays_enemies_spawner_run(void *spawner, int op);                    /* Ov107_Spawner_Run */
+int khdays_enemies_spawner_run(void *spawner, int op);                     /* Ov107_Spawner_Run: 1 to skip it */
 void khdays_enemies_retired(void *actor);                                  /* Ov107_Spawner_OnActorRetired */
 void khdays_enemies_defeated(void *actor);                                 /* Ov107_AiState_OnDefeat */
 void khdays_enemies_area_left(void);                                       /* Ov002_ReleaseResources */
+
+/* While `on`, the mission's own spawners set none of their idle enemies going (their op 0 skipped): the
+ * mission's areas then never end by their enemies. Those standing stay. */
+void khdays_enemies_hold_mission(int on);
 
 /* The frame point (scripts.c): the enemies sent away settled, the field left. */
 void khdays_enemies_frame(void);

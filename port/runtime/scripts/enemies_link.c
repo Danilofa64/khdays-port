@@ -539,11 +539,20 @@ void khdays_enemies_class(int id)
     }
 }
 
-void khdays_enemies_spawner_run(void *spawner, int op)
+static int mission_held;
+
+void khdays_enemies_hold_mission(int on)
+{
+    mission_held = on;
+}
+
+int khdays_enemies_spawner_run(void *spawner, int op)
 {
     if (traced() && op != 1) {
-        fprintf(stderr, "enemies: f%u spawner %08x op %d\n", khdays_link_frame(), ref_of(spawner), op);
+        fprintf(stderr, "enemies: f%u spawner %08x op %d%s\n", khdays_link_frame(), ref_of(spawner), op,
+                op == 0 && mission_held ? ", held" : "");
     }
+    return op == 0 && mission_held;
 }
 
 void khdays_enemies_retired(void *actor)
