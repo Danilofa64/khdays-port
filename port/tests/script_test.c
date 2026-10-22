@@ -133,6 +133,14 @@ int khdays_link_position(float at[3])
 
 static int fake_hp = 40, fake_hp_max = 50;
 
+static float fake_set_at[3];
+
+const char *khdays_link_set_position(const float at[3])
+{
+    memcpy(fake_set_at, at, sizeof(fake_set_at));
+    return NULL;
+}
+
 int khdays_link_player_hp(int *hp, int *max)
 {
     *hp = fake_hp;
@@ -409,12 +417,26 @@ const char *khdays_enemies_name(int kind)
     return kind == 0 ? "Shadow" : kind == 1 ? "Yellow Opera" : NULL;
 }
 
+/* Six kinds: the area's 0 and 1, 2 of another mission whose overlay fits, 3-5 that do not. */
+int khdays_enemies_kind_count(void)
+{
+    return 6;
+}
+
+const char *khdays_enemies_can_make(int kind)
+{
+    return fake_scene != 2         ? "not in the field"
+           : kind < 0 || kind >= 6 ? "unknown kind"
+           : kind > 2              ? "no room for its kind"
+                                   : NULL;
+}
+
 unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, double strength, const char **why)
 {
     (void)at;
     *why = NULL;
-    if (kind > 1) {
-        *why = "not this mission's kind";
+    if (kind > 2) {
+        *why = "no room for its kind";
         return 0;
     }
     fake_level = level;
@@ -1130,35 +1152,39 @@ static void test_api_versions(void)
 static void test_enemies(void)
 {
     begin_case("enemies");
-    mod_folder_api("Waves", "test.waves", "gameplay", 2,
-                   "local n, seen, heard = 0, 0, {}\n"
-                   "local function ok(c, what) if c then n = n + 1 else print('not ok', what) end end\n"
-                   "local function says(want, a, b) return a == nil and b == want end\n"
-                   "local made\n"
-                   "mod.on('enemy_appeared', function(e) seen = seen + 1 end)\n"
-                   "mod.on('enemy_defeated', function(e)\n"
-                   "  heard[#heard + 1] = tostring(e.enemy) .. ' ' .. e.kind .. ' ' .. tostring(e.mine)\n"
-                   "end)\n"
-                   "ok(says('not in the field', enemies.make{ kind = 0, at = 'player' }), 'title')\n"
-                   "mod.on('scene', function(e)\n"
-                   "  if e.to ~= 2 then return end\n"
-                   "  local k = enemies.kinds()\n"
-                   "  ok(#k == 2 and k[1].kind == 0 and k[1].name == 'Shadow', 'kinds')\n"
-                   "  made = enemies.make{ kind = 0, at = 'player', count = 3, spread = 2, level = 4, hp = 2,"
-                   " strength = 1.5 }\n"
-                   "  ok(#made == 3 and made[1] ~= made[2], 'made')\n"
-                   "  ok(says(\"not this mission's kind\", enemies.make{ kind = 5, at = { 0, 0, 0 } }), 'kind 5')\n"
-                   "  ok(says('unknown kind', enemies.make{ kind = 300, at = { 0, 0, 0 } }), 'kind 300')\n"
-                   "  ok(not pcall(enemies.make, { kind = 0, at = 'player', count = 0 }), 'count 0')\n"
-                   "  ok(not pcall(enemies.make, { kind = 'x', at = 'player' }), 'kind x')\n"
-                   "  ok(#enemies.list() == 3 and enemies.info(made[1]).max_hp == 30, 'list')\n"
-                   "  ok(enemies.remove(made[1]) == true and says('gone', enemies.remove(made[1])), 'remove')\n"
-                   "  ok(#enemies.list() == 2 and says('gone', enemies.info(made[1])), 'removed')\n"
-                   "  print('field', n)\n"
-                   "end)\n"
-                   "mod.on('frame', function(e)\n"
-                   "  if e.frame == 4 then print('heard', seen, table.concat(heard, ','), #enemies.list()) end\n"
-                   "end)\n");
+    mod_folder_api(
+        "Waves", "test.waves", "gameplay", 2,
+        "local n, seen, heard = 0, 0, {}\n"
+        "local function ok(c, what) if c then n = n + 1 else print('not ok', what) end end\n"
+        "local function says(want, a, b) return a == nil and b == want end\n"
+        "local made\n"
+        "mod.on('enemy_appeared', function(e) seen = seen + 1 end)\n"
+        "mod.on('enemy_defeated', function(e)\n"
+        "  heard[#heard + 1] = tostring(e.enemy) .. ' ' .. e.kind .. ' ' .. tostring(e.mine)\n"
+        "end)\n"
+        "ok(says('not in the field', enemies.make{ kind = 0, at = 'player' }), 'title')\n"
+        "mod.on('scene', function(e)\n"
+        "  if e.to ~= 2 then return end\n"
+        "  local k = enemies.kinds()\n"
+        "  ok(#k == 2 and k[1].kind == 0 and k[1].name == 'Shadow', 'kinds')\n"
+        "  made = enemies.make{ kind = 0, at = 'player', count = 3, spread = 2, level = 4, hp = 2,"
+        " strength = 1.5 }\n"
+        "  ok(#made == 3 and made[1] ~= made[2], 'made')\n"
+        "  ok(says('no room for its kind', enemies.make{ kind = 5, at = { 0, 0, 0 } }), 'kind 5')\n"
+        "  ok(says('unknown kind', enemies.make{ kind = 300, at = { 0, 0, 0 } }), 'kind 300')\n"
+        "  ok(not pcall(enemies.make, { kind = 0, at = 'player', count = 0 }), 'count 0')\n"
+        "  ok(not pcall(enemies.make, { kind = 'x', at = 'player' }), 'kind x')\n"
+        "  ok(#enemies.list() == 3 and enemies.info(made[1]).max_hp == 30, 'list')\n"
+        "  ok(enemies.remove(made[1]) == true and says('gone', enemies.remove(made[1])), 'remove')\n"
+        "  ok(#enemies.list() == 2 and says('gone', enemies.info(made[1])), 'removed')\n"
+        "  local all = enemies.kinds('all')\n"
+        "  ok(#all == 6 and all[3].ready and not all[4].ready and all[1].name == 'Shadow', 'all')\n"
+        "  ok(#enemies.make{ kind = 2, at = { 0, 0, 0 }, level = 4, hp = 2, strength = 1.5 } == 1 and #enemies.list() == 3, 'another kind')\n"
+        "  print('field', n)\n"
+        "end)\n"
+        "mod.on('frame', function(e)\n"
+        "  if e.frame == 4 then print('heard', seen, table.concat(heard, ','), #enemies.list()) end\n"
+        "end)\n");
     mod_folder_api("Other", "test.other", "gameplay", 2,
                    "mod.on('enemy_appeared', function(e) print('not mine appeared') end)\n"
                    "mod.on('enemy_defeated', function(e) print('other', tostring(e.enemy), e.mine) end)\n");
@@ -1166,14 +1192,14 @@ static void test_enemies(void)
     frames(1); /* the title seen, then the field */
     fake_scene = 2;
     frames(1);
-    CHECK(log_has("test.waves print scripts/main.lua:23 field\t10"));
+    CHECK(log_has("test.waves print scripts/main.lua:26 field\t12"));
     CHECK(fake_level == 4 && fake_enemy_hp == 2 && fake_strength == 1.5 && fake_removed == 0x1000u);
     khdays_api_enemies_defeated(0x1001u, 0); /* a made one */
     khdays_api_enemies_defeated(0x2000u, 1); /* the mission's own */
     frames(1);
     khdays_api_enemies_field_left();
     frames(1);
-    CHECK(log_has("test.waves print scripts/main.lua:26 heard\t3\t2 0 true,nil 1 false\t0"));
+    CHECK(log_has("test.waves print scripts/main.lua:29 heard\t3\t2 0 true,nil 1 false\t0"));
     CHECK(log_has("test.other print scripts/main.lua:2 other\tnil\tfalse"));
     CHECK(!log_has("not mine appeared"));
     end_case();
@@ -1401,6 +1427,26 @@ static void test_share_guest(void)
     end_case();
 }
 
+static void test_set_position(void)
+{
+    begin_case("set_position");
+    mod_folder_api(
+        "Edge", "test.edge", "gameplay", 2,
+        "print('title', select(2, player.set_position(1, 2, 3)))\n"
+        "mod.on('scene', function(e)\n"
+        "  if e.to == 2 then print('field', player.set_position(4, 0.5, -6), pcall(player.set_position, 1, 2)) "
+        "end\n"
+        "end)\n");
+    start();
+    frames(1);
+    fake_scene = 2;
+    frames(1);
+    CHECK(log_has("test.edge print scripts/main.lua:1 title\tnot in the field"));
+    CHECK(log_has("test.edge print scripts/main.lua:3 field\ttrue\tfalse"));
+    CHECK(fake_set_at[0] == 4.0f && fake_set_at[1] == 0.5f && fake_set_at[2] == -6.0f);
+    end_case();
+}
+
 static void test_leave(void)
 {
     begin_case("leave");
@@ -1569,6 +1615,7 @@ int main(void)
     RUN(test_draws_and_music);
     RUN(test_share);
     RUN(test_share_guest);
+    RUN(test_set_position);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

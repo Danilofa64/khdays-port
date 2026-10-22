@@ -13,12 +13,19 @@ typedef struct KhdaysEnemyInfo {
  * of them into `out` (NULL to count); how many there are, 0 where the area has no enemies. */
 int khdays_enemies_kinds(int *out, int room);
 
-/* A kind's name as the decompilation names its enemy (enemy_names.c); NULL for none. */
+/* A kind's name as the decompilation names its enemy (enemy_names.c); NULL for none. How many kinds the
+ * game has (ov107's table of their overlays). */
 const char *khdays_enemies_name(int kind);
+int khdays_enemies_kind_count(void);
+
+/* Whether an enemy of `kind` can be made here now (NULL), else why not: the area makes it, or its
+ * overlay is loaded or still fits among the six places the game keeps for the enemies' overlays
+ * (Ov107_SpawnEntityClass, which stops the game past them). */
+const char *khdays_enemies_can_make(int kind);
 
 /* One enemy of `kind` made by the game's routine at `at` (the field's units), its level the area's for
- * that kind plus `level`, its HP and attacks times `hp` and `strength`, and set going; its actor, or 0
- * and why. */
+ * that kind (the mission's for a kind the area does not make) plus `level`, its HP and attacks times `hp`
+ * and `strength`, and set going; its actor, or 0 and why. */
 unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, double strength, const char **why);
 
 /* Sends a standing enemy away as a spawner does when the player leaves it (no defeat, no reward); 0

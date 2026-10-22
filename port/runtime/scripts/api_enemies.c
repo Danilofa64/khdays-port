@@ -65,39 +65,40 @@ static int add(KhdaysModV2 *v, unsigned actor, int kind)
     return v->enemies[v->enemy_count++].handle;
 }
 
+/* enemies.kinds(): the kinds the area makes. enemies.kinds("all"): every kind of the game, `ready` when
+ * one can be made here now. */
 static int kinds(lua_State *L)
 {
-    int count = khdays_enemies_kinds(NULL, 0);
+    const int all = lua_isstring(L, 1) && strcmp(lua_tostring(L, 1), "all") == 0;
+    int count = all ? khdays_enemies_kind_count() : khdays_enemies_kinds(NULL, 0);
     int *list = count > 0 ? malloc((size_t)count * sizeof(*list)) : NULL;
     if (count > 0 && list == NULL) {
         return luaL_error(L, "not enough memory");
     }
-    count = list != NULL ? khdays_enemies_kinds(list, count) : 0;
+    if (!lua_isnoneornil(L, 1) && !all) {
+        free(list);
+        return luaL_argerror(L, 1, "nothing, or \"all\"");
+    }
+    for (int i = 0; all && i < count; ++i) {
+        list[i] = i;
+    }
+    count = all || list == NULL ? count : khdays_enemies_kinds(list, count);
     lua_createtable(L, count, 0);
     for (int i = 0; i < count; ++i) {
         const char *name = khdays_enemies_name(list[i]);
-        lua_createtable(L, 0, 2);
+        lua_createtable(L, 0, 3);
         lua_pushinteger(L, list[i]);
         lua_setfield(L, -2, "kind");
         lua_pushstring(L, name != NULL ? name : "");
         lua_setfield(L, -2, "name");
+        if (all) {
+            lua_pushboolean(L, khdays_enemies_can_make(list[i]) == NULL);
+            lua_setfield(L, -2, "ready");
+        }
         lua_rawseti(L, -2, i + 1);
     }
     free(list);
     return 1;
-}
-
-static int is_kind(int kind)
-{
-    const int count = khdays_enemies_kinds(NULL, 0);
-    int *list = count > 0 ? malloc((size_t)count * sizeof(*list)) : NULL;
-    const int listed = list != NULL ? khdays_enemies_kinds(list, count) : 0;
-    int found = 0;
-    for (int i = 0; i < listed && i < count && !found; ++i) {
-        found = list[i] == kind;
-    }
-    free(list);
-    return found;
 }
 
 static double number_field(lua_State *L, const char *key, double fallback)
@@ -161,11 +162,9 @@ static int make(lua_State *L)
         return luaL_error(L, "enemies.make: at must be {x, y, z} or \"player\"");
     }
     lua_pop(L, 1);
-    if (kind < 0 || kind > 255) {
-        return refuse(L, "unknown kind");
-    }
-    if (!is_kind(kind)) {
-        return refuse(L, "not this mission's kind");
+    why = khdays_enemies_can_make(kind);
+    if (why != NULL) {
+        return refuse(L, why);
     }
     tidy(m->v2);
     lua_createtable(L, count, 0);

@@ -189,10 +189,10 @@ runs again.
 ### Not in version 1
 
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
-out rather than guessed: warping and the field's current area, a loaded save's event, the mission's
-chests. Making the field's enemies, holding the player's defeat (with who dealt the hit), how a
-mission ended, starting and leaving missions, title entries and screens, the deck, timers, the game's
-music and a room's shared draws are in version 2.
+out rather than guessed: the field's current area, a loaded save's event, the mission's chests.
+Making the field's enemies, holding the player's defeat (with who dealt the hit), how a mission
+ended, starting and leaving missions, placing the player, title entries and screens, the deck,
+timers, the game's music and a room's shared draws are in version 2.
 
 ## The interface, version 2
 
@@ -203,7 +203,11 @@ has none of them (`enemies` is `nil`, `mod.on` refuses their events). Their call
 ### `enemies`
 
 The field's enemies, made by the game's own routine from the mission's enemy table: an area that has
-enemies gives some of the table's kinds a place, and a mod makes those kinds only. A mod's enemies
+enemies gives some of the table's kinds a place, and a mod makes those kinds and any other of the game
+whose code still has room. The game keeps the enemies' code in six places, and each kind fits only some
+of them: a kind is loaded as its first enemy is made and keeps its place for the field, so the kinds a
+mod can add depend on the area's and on those already made (`enemies.kinds("all")` says which are
+ready); past the six the game would stop, so the port refuses first. A mod's enemies
 fight as the mission's, give none of the mission's tallies or drops (the mod rewards), and are let go
 with the area: a mission that moves on to its next area takes them away (`enemies.list()` empties)
 and offers that area's kinds.
@@ -211,7 +215,8 @@ and offers that area's kinds.
 | Name | Does | Returns / refused |
 |---|---|---|
 | `enemies.kinds()` | the kinds this area makes | a list of `{kind = <id>, name = <the enemy's name>}`; empty where the area has no enemies |
-| `enemies.make{kind, at, count, spread, level, hp, strength}` | makes `count` (default 1) enemies of `kind` at `at` (`{x, y, z}` in the field's units, or `"player"`), round it at `spread` units (default 0); their level the area's for that kind plus `level` (default 0; the game's levels are 1 to 120), their HP and the power of their attacks times `hp` and `strength` (default 1) | a list of handles (and the reason, when fewer than `count` were made); `"unknown kind"`, `"not this mission's kind"`, `"no enemies here"` (an area without enemies), `"not in multiplayer yet"` |
+| `enemies.kinds("all")` | every kind of the game, `ready` when one can be made here now | a list of `{kind, name, ready}` |
+| `enemies.make{kind, at, count, spread, level, hp, strength}` | makes `count` (default 1) enemies of `kind` at `at` (`{x, y, z}` in the field's units, or `"player"`), round it at `spread` units (default 0); their level the area's for that kind (the mission's for another kind) plus `level` (default 0; the game's levels are 1 to 120), their HP and the power of their attacks times `hp` and `strength` (default 1) | a list of handles (and the reason, when fewer than `count` were made); `"unknown kind"`, `"no room for its kind"`, `"no enemies here"` (an area without enemies), `"not in multiplayer yet"` |
 | `enemies.remove(e)` | sends enemy `e` (a handle, or a list of them) away as the game does when the player leaves its spawner: no defeat | `true`; `"gone"` |
 | `enemies.list()` | the handles of the mod's enemies still standing | |
 | `enemies.info(e)` | `{kind, hp, max_hp, level, x, y, z}` | `nil, "gone"` |
@@ -243,6 +248,7 @@ end)
 | Name | Does | Returns / refused |
 |---|---|---|
 | `player.take_defeat(on)` | with `true`, the hit that would defeat the player leaves 1 HP and the mod hears `defeat` instead of the game over (what the game itself does for a host's partners in Mission Mode); `false` gives it back to the game | `true`; `"taken by <mod id>"` while another mod holds it |
+| `player.set_position(x, y, z)` | puts the player there (the field's units, as `player.position()` gives them), the way the game's scripts place a player: its motion stops with it; the ground and the walls are the mod's to choose (an arena's edge keeps the player inside by putting it back) | `true`; `"not in the field"`, `"not now"` (before the battle begins), `"guest"` |
 
 One mod holds the defeat at a time, the first that asks; a mod stopped by an error, turned off or
 reloaded gives it back.

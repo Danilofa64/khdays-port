@@ -106,6 +106,10 @@ int khdays_link_mission(void);
  * and maximum at +0x16 (Ov022_ActorSetHp's entity). Each returns 0 without the actor. */
 int khdays_link_position(float at[3]);
 int khdays_link_player_hp(int *hp, int *max);
+/* The local player put at `at` (the field's units) by the game's own routine for it
+ * (func_ov022_02088218: its actor moved with its child, its position +0x48c, its motion reset after the
+ * move); NULL when done, else why not. */
+const char *khdays_link_set_position(const float at[3]);
 /* Through Ov022_ActorSetHp, as the game's own hits and cures do. */
 int khdays_link_set_player_hp(int hp);
 

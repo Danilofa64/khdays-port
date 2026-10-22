@@ -4678,6 +4678,30 @@ mod: HP times 2 gave 150; level + 5 and strength times 2 gave level 6, HP 93, at
 the player took 18-19 from those Shadows against 8-9 from the mission's own (Yellow Operas: 14-16
 against 6-8).
 
+**Any kind** (seen 2026-10-22, the test mods `waves` and `arena-edge` in mission 2's first area). A
+kind's code is an overlay of its own, loaded as its first enemy is made (`Ov107_SpawnEntityClass`), not
+as the area starts: the enemies' overlays share six places of 0x1e00 bytes, each kind has builds of its
+overlay linked for some of the places (`data_ov107_020cb6a4`, six bytes a kind, 0xff none: the Shadow
+at the first only, the Yellow Opera at the first and third, ...), and the next kind takes the first
+place from the next free one (`data_ov107_020cbb04`) it has a build for, overlay 114 + the build,
+taking its size / 0x1e00 + 1 places (`Ov107_LoadEnemyOverlay`); past the six the game stops
+(`OS_Terminate`). A kind loaded keeps its place (`data_ov107_020cbb20`, its place + 1) for the field.
+The table's row the enemy is made from only gives it its kind, level, boost, resistances' profile and
+two values, all read as it is made. So a kind the area does not make is made from a row of the area's,
+written as that kind with the mission's level for the call and put back after; the port first checks
+the kind's overlay is loaded or fits. Seen: with the Shadow's place taken, 76 of the 118 kinds fit; a
+Soldier (another mission's: HP 372 at level 1) was made, drawn, targeted and fought, and 28 fitted
+after it; a Bulky Vendor next, then 5; the Turret then had no room and was refused, where the game
+would have stopped.
+
+**The player placed** as the game's scripts place a player (`Ov002_ScriptPlaceSlot` ->
+`Ov002_ApplyRosterSlotToNode` -> `func_ov022_02088218`): its actor moved with its child
+(`Actor_SetVecAndSyncChild`), its position (`+0x48c`) set and its motion reset
+(`Ov022_ResetActorAfterPlace`, which reads the battle's frame time: the battle context
+`data_ov022_020b2e60` exists only once `Ov022_BeginScene` ran; before it the field's players are
+already there, and the routine faults). The battle's beginning places the player itself. Seen: moved 3
+units along x, then kept within 6 units of a point while chasing enemies.
+
 ## 23. The player's defeat and how a run ends (spec 031)
 
 Read in the decompilation, then traced with `KHDAYS_TRACE_MODS=1` (2026-10-22: the play walk opening

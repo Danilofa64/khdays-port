@@ -95,11 +95,38 @@ int khdays_scripts_lethal(void *entity, int value)
     return 1;
 }
 
+/* player.set_position(x, y, z): the local player put there, as the game's scripts put a player. */
+static int set_position(lua_State *L)
+{
+    float at[3];
+    const char *why;
+    for (int i = 0; i < 3; ++i) {
+        const lua_Number v = luaL_checknumber(L, i + 1);
+        if (!(v > -500000 && v < 500000)) {
+            return luaL_argerror(L, i + 1, "a place in the field's units");
+        }
+        at[i] = (float)v;
+    }
+    if (!khdays_api_v2_may(L, KHDAYS_WHERE_FIELD)) {
+        return 2;
+    }
+    why = khdays_link_set_position(at);
+    if (why != NULL) {
+        lua_pushnil(L);
+        lua_pushstring(L, why);
+        return 2;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
 void khdays_api_run_open(KhdaysMod *m)
 {
     lua_getglobal(m->L, "player");
     lua_pushcfunction(m->L, take_defeat);
     lua_setfield(m->L, -2, "take_defeat");
+    lua_pushcfunction(m->L, set_position);
+    lua_setfield(m->L, -2, "set_position");
     lua_pop(m->L, 1);
     lua_getglobal(m->L, "mission");
     lua_pushcfunction(m->L, start_mission);

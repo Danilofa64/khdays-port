@@ -29,7 +29,8 @@ extern void FreeInstanceMemory(KhdaysRef p);
 extern int Session_IsActive(void);
 extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
 extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
-int khdays_overlay_loaded(int id);     /* runtime/core/overlays.c */
+int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
+int khdays_overlay_size(int id);
 unsigned khdays_link_frame(void);      /* game_link.c */
 const char *khdays_enemy_name(int id); /* enemy_names.c */
 
@@ -80,6 +81,17 @@ const char *khdays_enemy_name(int id); /* enemy_names.c */
 #define MANAGER_IDS 0x48u /* gOv107ActorManager: an actor by its id (+2), made by Ov107_Scene_BuildIdTable */
 #define STANDING 0x100u
 #define LEVEL_MAX 0x78 /* Ov002_GetEffectiveHeight */
+/* The enemies' overlays (Ov107_SpawnEntityClass, Ov107_LoadEnemyOverlay): six places of 0x1e00 bytes;
+ * each kind has a build of its overlay for some of them (ov107's table, 0xff none), overlay 114 + the
+ * build, which takes its size / 0x1e00 + 1 places. A kind's overlay is loaded as its first enemy is
+ * made, at the first place from the next free one it has a build for. */
+#define KIND_BUILDS 0x020cb6a4u /* data_ov107_020cb6a4: six bytes a kind */
+#define KIND_PLACE 0x020cbb20u  /* data_ov107_020cbb20: a kind's place + 1, 0 not loaded */
+#define NEXT_PLACE 0x020cbb04u  /* data_ov107_020cbb04: the next free place (int) */
+#define KINDS (708 / 6)
+#define PLACES 6
+#define PLACE_SIZE 0x1e00
+#define FIRST_BUILD 114 /* FS_OVERLAY_ID_ov113 + 1 */
 
 typedef void (*PlaceFn)(KhdaysRef self, KhdaysRef at, int reach);
 typedef int (*EventFn)(KhdaysRef self, int event);
@@ -206,6 +218,42 @@ int khdays_enemies_kinds(int *out, int room)
 const char *khdays_enemies_name(int kind)
 {
     return khdays_enemy_name(kind);
+}
+
+int khdays_enemies_kind_count(void)
+{
+    return KINDS;
+}
+
+/* Whether `kind`'s overlay is loaded, or would still fit. */
+static int overlay_fits(int kind)
+{
+    if (rd8(KIND_PLACE + (unsigned)kind) != 0) {
+        return 1;
+    }
+    for (int place = (int)rd32(NEXT_PLACE); place >= 0 && place < PLACES; ++place) {
+        const unsigned build = rd8(KIND_BUILDS + 6u * (unsigned)kind + (unsigned)place);
+        if (build != 0xff) {
+            const int size = khdays_overlay_size(FIRST_BUILD + (int)build);
+            return size >= 0 && place + size / PLACE_SIZE + 1 <= PLACES;
+        }
+    }
+    return 0;
+}
+
+const char *khdays_enemies_can_make(int kind)
+{
+    const unsigned objs = objects();
+    if (objs == 0) {
+        return "not in the field";
+    }
+    if (kind < 0 || kind >= KINDS) {
+        return "unknown kind";
+    }
+    if (rd8(objs + OBJECTS_PLACE_COUNT) == 0) {
+        return "no enemies here";
+    }
+    return placed_row(objs, kind) >= 0 || overlay_fits(kind) ? NULL : "no room for its kind";
 }
 
 /* The source a mod's enemy joins: the first room's that is shown, else the first. */
@@ -357,32 +405,13 @@ static void trace_actor(const char *what, unsigned actor)
     fprintf(stderr, "\n");
 }
 
-unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, double strength, const char **why)
+/* An enemy of `kind` made from row `row` in source `source`: an idle one of the mod's reused, else made. */
+static unsigned make_from(unsigned objs, int source, int row, int kind, const float at[3], int level, double hp,
+                          double strength, const char **why)
 {
-    const unsigned objs = objects();
-    int row, source;
-    unsigned row_ref, actor = 0;
+    const unsigned row_ref = row_at(objs, row);
+    unsigned actor;
     Pooled *p = NULL;
-    *why = NULL;
-    if (objs == 0) {
-        *why = "not in the field";
-        return 0;
-    }
-    if (Session_IsActive()) {
-        *why = "not in multiplayer yet";
-        return 0;
-    }
-    source = source_index(objs);
-    if (source < 0) {
-        *why = "no enemies here";
-        return 0;
-    }
-    row = placed_row(objs, kind);
-    if (row < 0) {
-        *why = "not this mission's kind";
-        return 0;
-    }
-    row_ref = row_at(objs, row);
     for (int i = 0; i < pool_count && p == NULL; ++i) {
         if (pool[i].kind == kind && !pool[i].leaving && idle(pool[i].actor)) {
             p = &pool[i];
@@ -417,6 +446,48 @@ unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, 
     }
     if (traced()) {
         trace_actor("made for a mod", actor);
+    }
+    return actor;
+}
+
+unsigned khdays_enemies_make(int kind, const float at[3], int level, double hp, double strength, const char **why)
+{
+    const unsigned objs = objects();
+    int row, source;
+    unsigned actor, borrowed = 0;
+    unsigned char kept_row[ROW];
+    *why = NULL;
+    if (objs == 0) {
+        *why = "not in the field";
+        return 0;
+    }
+    if (Session_IsActive()) {
+        *why = "not in multiplayer yet";
+        return 0;
+    }
+    source = source_index(objs);
+    if (source < 0) {
+        *why = "no enemies here";
+        return 0;
+    }
+    row = placed_row(objs, kind);
+    if (row < 0) {
+        /* a kind the area does not make: from a row of the area's, as that kind with the mission's level
+         * and nothing of its own, put back once the enemy is made (an enemy keeps nothing of its row) */
+        *why = khdays_enemies_can_make(kind);
+        if (*why != NULL) {
+            return 0;
+        }
+        row = (signed char)rd8(rd32(objs + OBJECTS_PLACES));
+        borrowed = row_at(objs, row);
+        for (unsigned i = 0; i < ROW; ++i) {
+            kept_row[i] = (unsigned char)rd8(borrowed + i);
+            wr8(borrowed + i, i == 0 ? (unsigned)kind : 0);
+        }
+    }
+    actor = make_from(objs, source, row, kind, at, level, hp, strength, why);
+    for (unsigned i = 0; borrowed != 0 && i < ROW; ++i) {
+        wr8(borrowed + i, kept_row[i]);
     }
     return actor;
 }

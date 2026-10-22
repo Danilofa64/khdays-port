@@ -25,6 +25,7 @@ extern int GameState_SetFlag(int flag);
 extern void GameState_ClearFlag(int flag);
 extern unsigned int Session_GetLocalPlayerIndex(void);
 extern int GetEntryField20ByIndex(int idx);
+extern void func_ov022_02088218(int player, KhdaysRef at);
 extern int PlaySound(int sequence_archive, int entry);
 extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
 extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
@@ -55,6 +56,7 @@ int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 #define STATE_ITEMS 0x810u    /* GameState: aItemCount */
 #define FLAG_ITEM_OWNED 0x4db /* Ov008_AddItemCount */
 #define PLAYERS 0x020b2e7cu   /* *: the field's players, 0xc bytes each; +4 a record whose +0x20 is the actor */
+#define BATTLE 0x020b2e60u    /* data_ov022_020b2e60: the battle's context, set as it begins (Ov022_BeginScene) */
 #define ACTOR_POSITION 0x48cu
 #define ENT_OWNER 0x8u /* Ov022_ActorSetHp's entity: nOwner, nId +9, nHp +0x12, nHpMax +0x16 */
 #define ENT_ID 0x9u
@@ -197,6 +199,30 @@ int khdays_link_position(float at[3])
         at[i] = (float)(int)rd32(actor + ACTOR_POSITION + 4u * (unsigned)i) / 4096.0f;
     }
     return 1;
+}
+
+const char *khdays_link_set_position(const float at[3])
+{
+    KhdaysRef vec;
+    if (player_actor() == 0) {
+        return "no player";
+    }
+    if (rd32(BATTLE) == 0) {
+        return "not now"; /* the routine reads the battle's frame time: the battle has not begun */
+    }
+    vec = NNSi_FndAllocFromDefaultExpHeap(12);
+    if (vec == 0) {
+        return "not enough memory";
+    }
+    for (int i = 0; i < 3; ++i) {
+        const double v = (double)at[i] * 4096.0;
+        *(volatile int *)KHDAYS_W(vec + 4u * (unsigned)i) = (int)(v < -2147483647.0  ? -2147483647.0
+                                                                  : v > 2147483647.0 ? 2147483647.0
+                                                                                     : v);
+    }
+    func_ov022_02088218((int)Session_GetLocalPlayerIndex(), vec);
+    NNSi_FndFreeFromDefaultHeap(vec);
+    return NULL;
 }
 
 int khdays_link_player_hp(int *hp, int *max)

@@ -14,6 +14,7 @@
 
 typedef struct Overlay {
     u32 start, end; /* RAM range, BSS included */
+    u32 size;       /* its RAM size, BSS not included (FSOverlayInfo's ram_size) */
     u32 loaded;     /* load order, 0 = not loaded */
     int ended;      /* the game unloaded it: no longer running, though its code is still there */
 } Overlay;
@@ -41,6 +42,7 @@ static void read_table(void)
         if (entry[0] < entries) {
             overlays[entry[0]].start = entry[1];
             overlays[entry[0]].end = entry[1] + entry[2] + entry[3];
+            overlays[entry[0]].size = entry[2];
             if ((int)entry[0] >= count) {
                 count = (int)entry[0] + 1;
             }
@@ -111,6 +113,16 @@ int khdays_overlay_loaded(int id)
         read_table();
     }
     return id >= 0 && id < count && overlays[id].loaded != 0 && !overlays[id].ended;
+}
+
+/* Overlay `id`'s RAM size (its BSS not included), as FS_LoadOverlayInfo gives it; -1 for no such
+ * overlay. */
+int khdays_overlay_size(int id)
+{
+    if (count < 0) {
+        read_table();
+    }
+    return id >= 0 && id < count ? (int)overlays[id].size : -1;
 }
 
 /* The overlay loaded at `address`, or -1. */
