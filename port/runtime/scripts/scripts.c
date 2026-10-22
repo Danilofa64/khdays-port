@@ -34,6 +34,12 @@ static void reload(KhdaysMod *m);
 static int started;
 static int tracing = -1;
 static int field_begun; /* the field was made: its first run is the mission's start */
+/* The run lost: the game over's sub-flow (ov027) also takes a give-up from the pause, so a run is lost
+ * when it comes up soon after the local player fell to 0 HP (in Mission Mode after the last of the
+ * falls the field revives). */
+#define FALL_TO_GAME_OVER 600 /* game frames */
+static unsigned fell_at;      /* the game frame the local player last fell, + 1; 0 for none this run */
+static int game_over_up, lost;
 static unsigned looked; /* frame points since the mods' files were last looked at */
 static char *user_folder;
 static KhdaysOrder order;
@@ -633,6 +639,13 @@ void khdays_scripts_frame(void)
     if (tracing) {
         khdays_link_trace_frame();
     }
+    {
+        const int up = khdays_link_game_over();
+        if (up && !game_over_up && fell_at != 0 && khdays_link_frame() + 1u - fell_at <= FALL_TO_GAME_OVER) {
+            lost = 1;
+        }
+        game_over_up = up;
+    }
     khdays_enemies_frame();
     if (!started) {
         const char *mods_path, *user;
@@ -675,6 +688,8 @@ void khdays_scripts_mission_start(void)
         return;
     }
     field_begun = 0;
+    lost = 0;
+    fell_at = 0;
     if (tracing > 0) {
         fprintf(stderr, "mods-trace: mission start: mission %d\n", khdays_link_mission());
     }
@@ -687,14 +702,21 @@ void khdays_scripts_mission_start(void)
     khdays_script_events_raise(&e);
 }
 
+/* How the run ended: lost after the game over of a fall (its give-up sets flag 0x2087 too), abandoned
+ * with flag 0x2087, cleared as the results record it, lost otherwise. */
+static const char *ending(int given_up)
+{
+    return lost ? "lost" : given_up ? "abandoned" : khdays_link_results_cleared() ? "cleared" : "lost";
+}
+
 void khdays_scripts_mission_end(int mission, int rank, int complete)
 {
     KhdaysEvent e;
     const int given_up = khdays_link_flag(KHDAYS_LINK_GIVEN_UP);
     khdays_autosave_mission_end(); /* the port's autosave hears the same moment (runtime/menus/autosave.h) */
     if (tracing > 0) {
-        fprintf(stderr, "mods-trace: mission end: mission %d, rank %d, complete %d, given up %d\n", mission, rank,
-                complete, given_up);
+        fprintf(stderr, "mods-trace: mission end: mission %d, rank %d, complete %d, given up %d, %s\n", mission, rank,
+                complete, given_up, ending(given_up));
     }
     if (count == 0) {
         return;
@@ -705,6 +727,7 @@ void khdays_scripts_mission_end(int mission, int rank, int complete)
     e.b = rank;
     e.c = complete;
     e.d = given_up;
+    e.text = ending(given_up); /* api 2's `ending` */
     khdays_script_events_raise(&e);
 }
 
@@ -715,10 +738,13 @@ void khdays_scripts_hp(void *entity, int before)
     if (tracing > 0) {
         khdays_link_trace_hp(entity, before);
     }
+    khdays_link_entity_hp(entity, &hp, &max);
+    if (hp == 0 && before > 0 && khdays_link_is_player(entity)) {
+        fell_at = khdays_link_frame() + 1u;
+    }
     if (count == 0) {
         return;
     }
-    khdays_link_entity_hp(entity, &hp, &max);
     if (hp == before) {
         return;
     }

@@ -17,8 +17,8 @@
 #define SCENE_TITLE 1
 
 static const char *const NAMES[KHDAYS_EVENT_COUNT] = {
-    "frame",     "scene",      "title", "mission_start",  "mission_end",   "hp", "item", "munny",
-    "menu_open", "menu_close", "save",  "enemy_appeared", "enemy_defeated"};
+    "frame",     "scene",      "title", "mission_start",  "mission_end",    "hp",    "item", "munny",
+    "menu_open", "menu_close", "save",  "enemy_appeared", "enemy_defeated", "defeat"};
 
 static int depth; /* scripts running now */
 static KhdaysEvent *waiting;
@@ -97,10 +97,15 @@ static void set_text(lua_State *L, const char *key, const char *value)
     lua_setfield(L, -2, key);
 }
 
-/* Whether `m` hears `e`: an enemy appeared is told only to the mod that made it. */
+/* Whether `m` hears `e`: an enemy appeared is told only to the mod that made it, a defeat to the mod
+ * holding it. */
 static int hears(const KhdaysMod *m, const KhdaysEvent *e)
 {
-    return e->id != KHDAYS_EVENT_ENEMY_APPEARED || khdays_api_enemies_handle(m, (unsigned)e->a) != 0;
+    switch (e->id) {
+    case KHDAYS_EVENT_ENEMY_APPEARED: return khdays_api_enemies_handle(m, (unsigned)e->a) != 0;
+    case KHDAYS_EVENT_DEFEAT: return m == khdays_api_run_holder();
+    default: return 1;
+    }
 }
 
 static void push_event(lua_State *L, const KhdaysMod *m, const KhdaysEvent *e)
@@ -127,6 +132,9 @@ static void push_event(lua_State *L, const KhdaysMod *m, const KhdaysEvent *e)
         if (e->c >= 0) {
             lua_pushboolean(L, e->c);
             lua_setfield(L, -2, "complete");
+        }
+        if (m->manifest.api >= 2 && e->text != NULL) {
+            set_text(L, "ending", e->text);
         }
         break;
     case KHDAYS_EVENT_HP:
@@ -155,6 +163,17 @@ static void push_event(lua_State *L, const KhdaysMod *m, const KhdaysEvent *e)
         set_int(L, "kind", e->b);
         lua_pushboolean(L, handle != 0);
         lua_setfield(L, -2, "mine");
+        break;
+    }
+    case KHDAYS_EVENT_DEFEAT: {
+        const int handle = e->b != 0 ? khdays_api_enemies_handle(m, (unsigned)e->b) : 0;
+        set_int(L, "damage", e->a);
+        if (handle != 0) {
+            set_int(L, "enemy", handle);
+        }
+        if (e->c >= 0) {
+            set_int(L, "kind", e->c);
+        }
         break;
     }
     default: break;

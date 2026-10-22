@@ -59,6 +59,17 @@ void khdays_link_entity_hp(const void *entity, int *hp, int *max);
 /* Whether that entity is the local player's actor. */
 int khdays_link_is_player(const void *entity);
 
+/* The hit being dealt (Ov022_ReceiveHit's join): its source, NULL once dealt. Its attacker: the enemy's
+ * actor into `*actor` and its kind returned; -1 when the hit is no enemy's or none is being dealt. */
+void khdays_link_hit_from(void *source);
+int khdays_link_attacker(unsigned *actor);
+
+/* Whether the game over (ov027) is up. */
+int khdays_link_game_over(void);
+
+/* Whether the results being recorded record the mission cleared (Ov005_CommitMissionResults' rule). */
+int khdays_link_results_cleared(void);
+
 /* KHDAYS_TRACE_MODS: what the interface's open questions are answered from, on stderr: each HP
  * change's entity against the field's players, the game over's flags, the frame points per scene. */
 void khdays_link_trace_frame(void);

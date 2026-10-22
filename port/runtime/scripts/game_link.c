@@ -4,6 +4,7 @@
 #include "../core/window.h"
 #include "../core/events.h"
 #include "../../host/app/instance.h"
+#include "../menus/autosave.h"
 #include "../menus/camp.h"
 #include "../sound/sound_bridge.h"
 #include "khdays_ds_symbols.h"
@@ -45,6 +46,7 @@ int khdays_overlay_loaded(int id);                        /* runtime/core/overla
 #define ENT_HP 0x12u
 #define ENT_HP_MAX 0x16u
 #define OV_GAME_OVER 27
+#define ENEMY_KIND 0x19cu
 #define QUIT_FLAG 0x2087 /* set by Ov002_RetireSubFlow on giving up (runtime/menus/retry.c) */
 
 static unsigned rd32(KhdaysRef at)
@@ -210,6 +212,36 @@ int khdays_link_is_player(const void *entity)
 {
     const unsigned actor = player_actor();
     return actor != 0 && KHDAYS_REF(entity) == actor;
+}
+
+static unsigned hit_source; /* the hit being dealt's source, 0 between hits */
+
+void khdays_link_hit_from(void *source)
+{
+    hit_source = source != NULL ? KHDAYS_REF(source) : 0;
+}
+
+int khdays_link_attacker(unsigned *actor)
+{
+    *actor = 0;
+    /* an enemy is an ov107 actor: its first halfword's 0x40 files it among a room's enemies
+     * (Ov107_Region_AddMember), +0x19c its kind (Ov107_Spawner_FindFreeActor) */
+    if (hit_source == 0 || !khdays_game_ram(hit_source) ||
+        !(*(const volatile unsigned short *)KHDAYS_W(hit_source) & 0x40u)) {
+        return -1;
+    }
+    *actor = hit_source;
+    return *(const volatile unsigned char *)KHDAYS_W(hit_source + ENEMY_KIND);
+}
+
+int khdays_link_game_over(void)
+{
+    return khdays_overlay_loaded(OV_GAME_OVER);
+}
+
+int khdays_link_results_cleared(void)
+{
+    return khdays_autosave_results_cleared();
 }
 
 static int in_field(void)

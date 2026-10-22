@@ -191,8 +191,8 @@ runs again.
 What the decompilation does not explain yet, or what was not yet seen working in the game, is left
 out rather than guessed: warping and the field's current area, the deck and abilities, starting a
 mission (`Ov025_MissionList_StartMission` needs the story camp's list on screen: not yet tried in
-play), who dealt a hit, a loaded save's event, the mission's chests, telling a cleared mission from a
-lost one. Making the field's enemies is in version 2.
+play), a loaded save's event, the mission's chests. Making the field's enemies, holding the player's
+defeat (with who dealt the hit) and how a mission ended are in version 2.
 
 ## The interface, version 2
 
@@ -237,6 +237,26 @@ mod.on("enemy_defeated", function(e)
   if e.mine then game.give_item(1) end
 end)
 ```
+
+### The run's end
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `player.take_defeat(on)` | with `true`, the hit that would defeat the player leaves 1 HP and the mod hears `defeat` instead of the game over (what the game itself does for a host's partners in Mission Mode); `false` gives it back to the game | `true`; `"taken by <mod id>"` while another mod holds it |
+
+One mod holds the defeat at a time, the first that asks; a mod stopped by an error, turned off or
+reloaded gives it back.
+
+| Event | Fields | When |
+|---|---|---|
+| `defeat` | `damage`; `enemy` (the handle, when the mod made the attacker); `kind` (the attacker's kind when an enemy hit, `nil` for a fall or another damage of no enemy's) | a hit would have defeated the player while this mod holds the defeat (to that mod only) |
+| `mission_end` | version 1's, and `ending`: `"cleared"`, `"abandoned"` or `"lost"` | as in version 1 |
+
+`ending` is `"lost"` when the run ended in the game over after the player fell, `"abandoned"` after
+a give-up from the pause, `"cleared"` when the results record the mission cleared (a story mission
+with its objective done, a Mission Mode one ranked), `"lost"` otherwise. In Mission Mode the field
+revives a fallen player a few times before the game over: a mod that wants every fall holds the
+defeat.
 
 ## Multiplayer
 

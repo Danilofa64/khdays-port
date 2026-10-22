@@ -15,6 +15,7 @@ void khdays_api_v2_open(KhdaysMod *m)
         m->v2 = calloc(1, sizeof(*m->v2));
     }
     khdays_api_enemies_open(m);
+    khdays_api_run_open(m);
 }
 
 void khdays_api_v2_release(KhdaysMod *m)
@@ -23,6 +24,7 @@ void khdays_api_v2_release(KhdaysMod *m)
         return;
     }
     khdays_api_enemies_release(m);
+    khdays_api_run_release(m);
     free(m->v2);
     m->v2 = NULL;
 }

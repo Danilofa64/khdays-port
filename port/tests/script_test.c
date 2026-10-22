@@ -155,6 +155,31 @@ int khdays_link_is_player(const void *entity)
     return ((const int *)entity)[2];
 }
 
+/* The hit being dealt's attacker, the game over, the results' rule. */
+static unsigned fake_attacker;
+static int fake_attacker_kind = -1, fake_game_over, fake_cleared;
+
+void khdays_link_hit_from(void *source)
+{
+    (void)source;
+}
+
+int khdays_link_attacker(unsigned *actor)
+{
+    *actor = fake_attacker;
+    return fake_attacker_kind;
+}
+
+int khdays_link_game_over(void)
+{
+    return fake_game_over;
+}
+
+int khdays_link_results_cleared(void)
+{
+    return fake_cleared;
+}
+
 void khdays_link_trace_frame(void) {}
 
 void khdays_link_trace_hp(const void *entity, int before)
@@ -282,6 +307,9 @@ static void reset_game(void)
     fake_sound[0] = fake_notice[0] = 0;
     fake_next_actor = 0;
     fake_removed = 0;
+    fake_attacker = 0;
+    fake_attacker_kind = -1;
+    fake_game_over = fake_cleared = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
 }
@@ -1012,6 +1040,81 @@ static void test_enemies_guest(void)
     end_case();
 }
 
+static void test_defeat(void)
+{
+    int entity[3] = {30, 50, 1}; /* HP 30 of 50, the player */
+    begin_case("defeat");
+    mod_folder_api("A holder", "test.holder", "gameplay", 2,
+                   "print('take', player.take_defeat(true))\n"
+                   "mod.on('defeat', function(e) print('defeat', e.damage, tostring(e.enemy), tostring(e.kind)) end)\n"
+                   "mod.on('mission_end', function(e) print('end', e.ending) end)\n"
+                   "mod.on('frame', function(e) if e.frame == 2 then error('on purpose') end end)\n");
+    mod_folder_api("B second", "test.second", "gameplay", 2,
+                   "print('second', player.take_defeat(true))\n"
+                   "mod.on('defeat', function(e) print('second heard') end)\n");
+    mod_folder("C one", "test.one", "gameplay",
+               "mod.on('mission_end', function(e) print('one', tostring(e.ending)) end)\n");
+    start();
+    CHECK(log_has("test.holder print scripts/main.lua:1 take\ttrue"));
+    CHECK(log_has("test.second print scripts/main.lua:1 second\tnil\ttaken by test.holder"));
+    frames(1);
+    fake_attacker = 0x2000u; /* the mission's Scarlet Tango */
+    fake_attacker_kind = 26;
+    CHECK(khdays_scripts_lethal(entity, -5) == 1);
+    CHECK(log_has("test.holder print scripts/main.lua:2 defeat\t35\tnil\t26"));
+    CHECK(!log_has("second heard"));
+    CHECK(khdays_scripts_lethal(entity, 10) == 10); /* not a defeat */
+    entity[2] = 0;
+    CHECK(khdays_scripts_lethal(entity, 0) == 0); /* not the player */
+    entity[2] = 1;
+    /* the endings */
+    khdays_scripts_field_begins();
+    khdays_scripts_mission_start();
+    fake_cleared = 1;
+    khdays_scripts_mission_end(15, 1, -1);
+    CHECK(log_has("test.holder print scripts/main.lua:3 end\tcleared"));
+    CHECK(log_has("test.one print scripts/main.lua:1 one\tnil")); /* api 1: as before */
+    entity[0] = 0;
+    khdays_scripts_hp(entity, 30); /* the defeat given back: the player falls */
+    entity[0] = 30;
+    fake_game_over = 1;
+    frames(1); /* frame 2: the game over seen; the holder stops on its error */
+    fake_game_over = 0;
+    khdays_link_set_flag(KHDAYS_LINK_GIVEN_UP, 1); /* the game over's give-up */
+    khdays_scripts_mission_end(15, -1, -1);
+    CHECK(mod_by_folder("A holder")->state == KHDAYS_MOD_STOPPED);
+    CHECK(khdays_scripts_lethal(entity, -5) == -5); /* a stopped holder gives the defeat back */
+    end_case();
+}
+
+static void test_endings(void)
+{
+    int entity[3] = {0, 50, 1}; /* the player at 0 HP */
+    begin_case("endings");
+    mod_folder_api("Ends", "test.ends", "gameplay", 2,
+                   "mod.on('mission_end', function(e) print('end', e.ending) end)\n");
+    start();
+    frames(1);
+    khdays_scripts_field_begins();
+    khdays_scripts_mission_start();
+    khdays_scripts_hp(entity, 30); /* a fall, then the game over */
+    fake_game_over = 1;
+    frames(1);
+    fake_game_over = 0;
+    khdays_link_set_flag(KHDAYS_LINK_GIVEN_UP, 1);
+    khdays_scripts_mission_end(15, -1, -1);
+    CHECK(log_has("test.ends print scripts/main.lua:1 end\tlost"));
+    khdays_scripts_field_begins(); /* Retry: the next run, given up from the pause through the same sub-flow */
+    khdays_scripts_mission_start();
+    frames(1);
+    fake_game_over = 1;
+    frames(1);
+    fake_game_over = 0;
+    khdays_scripts_mission_end(15, -1, -1);
+    CHECK(log_has("test.ends print scripts/main.lua:1 end\tabandoned"));
+    end_case();
+}
+
 #define RUN(test) (fprintf(stderr, "%s\n", #test), test())
 
 int main(void)
@@ -1035,6 +1138,8 @@ int main(void)
     RUN(test_api_versions);
     RUN(test_enemies);
     RUN(test_enemies_guest);
+    RUN(test_defeat);
+    RUN(test_endings);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

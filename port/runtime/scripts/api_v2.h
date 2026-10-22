@@ -35,6 +35,15 @@ int khdays_api_v2_may(struct lua_State *L, int where);
 void khdays_api_enemies_open(KhdaysMod *mod);
 void khdays_api_enemies_release(KhdaysMod *mod);
 
+/* The run's end (api_run.c): the player's defeat a mod holds. */
+void khdays_api_run_open(KhdaysMod *mod);
+void khdays_api_run_release(KhdaysMod *mod);
+/* The mod holding the defeat, NULL for none (the game's own). */
+const KhdaysMod *khdays_api_run_holder(void);
+/* Ov022_ActorSetHp's join: the HP `entity` is about to be given; 1 instead of a defeat of the local
+ * player while a mod holds it (the game's own refusal of a defeat), the holder told. */
+int khdays_scripts_lethal(void *entity, int value);
+
 /* The handle `actor` has for `mod` (one it made), 0 without. */
 int khdays_api_enemies_handle(const KhdaysMod *mod, unsigned actor);
 

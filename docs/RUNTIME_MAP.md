@@ -4677,3 +4677,35 @@ second wave of 3 reused the first wave's 2 defeated Shadows and the one sent awa
 mod: HP times 2 gave 150; level + 5 and strength times 2 gave level 6, HP 93, attacks 12 and 36, and
 the player took 18-19 from those Shadows against 8-9 from the mission's own (Yellow Operas: 14-16
 against 6-8).
+
+## 23. The player's defeat and how a run ends (spec 031)
+
+Read in the decompilation, then traced with `KHDAYS_TRACE_MODS=1` (2026-10-22: the play walk opening
+mission 2 with `KHDAYS_TEST_EVENT=2/0` -- Mission Mode, `data_0204c23c` still 94 -- with the test mod
+`port/tests/mods_v2/last-stand`, and the mission walk's give-up).
+
+- **A hit on the player** comes through `Ov022_ReceiveHit(actor, request)` on the host alone: the
+  request's `+0x1c` is its source (an ov107 enemy, its kind at `+0x19c`), `Ov022_ComputeDamageTaken`
+  the amount, then `Ov022_ActorSetHp(actor, HP - amount)`. `Ov022_ActorSetHp` holds the players' HP
+  only (an enemy's is its own, section 22) and is where a lethal value is decided: in Mission Mode the
+  host turns it into 1 for a peer `Ov002_MarkPeerReady` refuses. Seen with the test mod holding the
+  defeat: 6 -> 1 and 1 -> 1 (damage 10 and 23 from its own strength-5 Shadows, the attacker's handle
+  and kind told), no downed state; given back, the next hit took 1 -> 0.
+- **A fall in Mission Mode** (alone): the field revived the player with full HP a few seconds after
+  each fall (0 -> 62 of 62, a blue mark at the top right gone each time); after the third the next fall
+  brought the game over's sub-flow (`Ov002_LoadSubFlowOverlay(9)`: ov027, "PULSA A",
+  `Ov027_PollConfirmAndAdvance` waiting for A) with flag 0x2087 set, 0 -> 62 just before it. A went
+  to the results, the mission "CANCELADA" (cancelled).
+- **A give-up from the pause** goes through the same sub-flow (ov027 up, flag 0x2087), the player's
+  HP never at 0: what tells the two apart is the fall just before.
+- **The results are recorded as the results screen closes** (`Ov005_CloseResultScreen` calls
+  `Ov005_CommitMissionResults` first): after "A / B Salir" and "¿Cerrar el repaso de la misión?" Sí.
+  The defeat's run: rank -1, flag 0x2087; the give-up's: rank -1, flag 0x2087. Mission 2 cleared by
+  attacking alone through its three areas (25,646 VBlanks in the field): the results counted 15
+  mission points with the crown, a reward, rank 0, no flag 0x2087.
+
+A mod's `ending` (`runtime/scripts/scripts.c`): `"lost"` when ov027 came up within 600 game frames of
+the local player falling to 0 HP in that run, `"abandoned"` with flag 0x2087 otherwise, `"cleared"`
+when the results record the mission cleared (`Ov005_CommitMissionResults`' own rule, shared with the
+autosave), `"lost"` otherwise. Seen: the defeat's walk `lost`, the mission walk's give-up `abandoned`,
+mission 2 cleared `cleared`.

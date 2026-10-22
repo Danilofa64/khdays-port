@@ -1460,12 +1460,25 @@ HOOKS = {
             "    struct Ent *pSelf = (struct Ent *)pEnt;\n",
             "    struct Ent *pSelf = (struct Ent *)pEnt;\n    const int khdays_before = pSelf->nHp;\n",
         ),
+        (  # a defeat of the local player a mod holds: 1 instead, as the routine does for a host's peer
+            "    if (nValue != pSelf->nHp) {\n",
+            "    { extern int khdays_scripts_lethal(void *entity, int value); nValue = khdays_scripts_lethal(pEnt, nValue); }\n"
+            "    if (nValue != pSelf->nHp) {\n",
+        ),
         (
             "    Ov002_GetPanelWord0220(pSelf->nId, pSelf->nHp);\n}\n",
             "    Ov002_GetPanelWord0220(pSelf->nId, pSelf->nHp);\n"
             "    { extern void khdays_scripts_hp(void *entity, int before); khdays_scripts_hp(pEnt, khdays_before); }\n"
             "}\n",
         ),
+    ],
+    "ov022@020a08a8": [
+        (  # Ov022_ReceiveHit: the hit's source while its damage is dealt (a defeat's attacker, api_run.c)
+            "        Ov022_ActorSetHp(pActor, pActor->nHp - nAmount);\n",
+            "        { extern void khdays_link_hit_from(void *source); khdays_link_hit_from(pReq->pSrc); }\n"
+            "        Ov022_ActorSetHp(pActor, pActor->nHp - nAmount);\n"
+            "        { extern void khdays_link_hit_from(void *source); khdays_link_hit_from(0); }\n",
+        )
     ],
     # The field's enemies (runtime/scripts/enemies_link.h): the actor a marker row made (a mod's enemy
     # is made that way), every defeat, the area's enemies let go; the class asked for, the spawners and

@@ -19,6 +19,7 @@ enum KhdaysEventId {
     /* version 2's (api_v2.h): an api 1 mod cannot listen to these */
     KHDAYS_EVENT_ENEMY_APPEARED, /* a: the actor, b: its kind; to the mod that made it */
     KHDAYS_EVENT_ENEMY_DEFEATED, /* a: the actor, b: its kind */
+    KHDAYS_EVENT_DEFEAT, /* a: the damage, b: the attacker's actor (0 unknown), c: its kind (-1); to the holder */
     KHDAYS_EVENT_COUNT
 };
 
