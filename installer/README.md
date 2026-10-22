@@ -57,7 +57,12 @@ format and its encryption found by our own reverse engineering of the collection
 the cipher's table is read from the player's own `KINGDOM HEARTS II FINAL MIX.exe`, never kept),
 runs the tools under a folder of their own and puts what they made in place whole. An update
 leaves the pieces already made from the same collections by the same tools as they are (deleting
-their folder makes them again; an installer whose tools or scene map differ makes them again). Either folder may be left empty: a choice whose collection is not given cannot be
+their folder makes them again). `state.json` keeps each menu tool apart, with the files it wrote:
+an installer whose tools differ runs again only the tools that changed (themselves or a tool they
+import) or whose files went missing, with any tool that wrote one of the same files, and keeps the
+others' files. The videos
+already installed are linked into the tools' folder, not copied, so an installer whose scene map
+or video tool differs makes only the missing videos, and the subtitles and music again. Either folder may be left empty: a choice whose collection is not given cannot be
 ticked. The collections are found in Steam's libraries, else in the Epic Games Store's folders (its
 launcher's manifests in `ProgramData/Epic/EpicGamesLauncher/Data/Manifests`), and either store's copy
 is read: Steam's keeps its language's archives in `Image/dt` and Days's videos in
