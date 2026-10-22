@@ -64,6 +64,12 @@ int khdays_link_is_player(const void *entity);
 void khdays_link_hit_from(void *source);
 int khdays_link_attacker(unsigned *actor);
 
+/* The game's language (1-5, the firmware's: English .. Spanish): the one just chosen, else the game's. */
+int khdays_link_language(void);
+
+/* Whether the title's menu waits for the player (its scene object's update Ov000_TickMenuLoop). */
+int khdays_link_title_idle(void);
+
 /* Whether the game over (ov027) is up. */
 int khdays_link_game_over(void);
 

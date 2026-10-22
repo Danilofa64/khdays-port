@@ -12,6 +12,7 @@
 #include "../runtime/scripts/order.h"
 #include "../runtime/scripts/queue.h"
 #include "../runtime/scripts/scripts.h"
+#include "../runtime/scripts/screens.h"
 #include "../runtime/scripts/view.h"
 
 #include <SDL3/SDL.h>
@@ -180,7 +181,17 @@ int khdays_link_results_cleared(void)
     return fake_cleared;
 }
 
-static int fake_left, fake_started;
+static int fake_left, fake_started, fake_title_idle;
+
+int khdays_link_language(void)
+{
+    return 5; /* Spanish */
+}
+
+int khdays_link_title_idle(void)
+{
+    return fake_title_idle;
+}
 
 const char *khdays_link_start_mission(int number)
 {
@@ -332,7 +343,7 @@ static void reset_game(void)
     fake_removed = 0;
     fake_attacker = 0;
     fake_attacker_kind = -1;
-    fake_game_over = fake_cleared = fake_left = fake_started = 0;
+    fake_game_over = fake_cleared = fake_left = fake_started = fake_title_idle = 0;
     memset(fake_items, 0, sizeof(fake_items));
     memset(fake_flags, 0, sizeof(fake_flags));
 }
@@ -1174,6 +1185,75 @@ static void test_endings(void)
     end_case();
 }
 
+static void test_screens(void)
+{
+    begin_case("screens");
+    mod_folder_api(
+        "Menu", "test.menu", "gameplay", 2,
+        "local h\n"
+        "title.entry{ label = { en = 'Endless', es = 'Sin fin' }, on_select = function()\n"
+        "  h = screen.list{ title = 'Pick', entries = { 'One', { es = 'Dos' }, 'Three' },\n"
+        "    on_choose = function(i) print('chose', i)\n"
+        "      screen.result{ title = 'Done', rows = { { 'Waves', 3 }, { label = 'Time', value = '1:00' } },\n"
+        "        on_close = function() print('result closed') end }\n"
+        "    end,\n"
+        "    on_cancel = function() print('cancelled') end }\n"
+        "  print('second', screen.page{ title = 'x' })\n"
+        "end }\n"
+        "mod.on('frame', function(e)\n"
+        "  if e.frame == 2 then print('late', title.entry{ label = 'Late' }) end\n"
+        "end)\n");
+    start();
+    CHECK(khdays_screens_entry_count() == 1);
+    frames(1);
+    /* the title's prompt: Y chooses the one entry */
+    fake_title_idle = 1;
+    CHECK(khdays_scripts_buttons(0) == 0);
+    CHECK(khdays_scripts_buttons(0x0800) == 0); /* Y: the prompt's, not the game's */
+    frames(1);
+    CHECK(log_has("test.menu print scripts/main.lua:12 late\tnil\tonly while loading"));
+    CHECK(log_has("test.menu print scripts/main.lua:9 second\tnil\tanother screen shows"));
+    CHECK(khdays_screens_shown() != 0);
+    khdays_screens_lock();
+    CHECK(khdays_screens_current()->kind == KHDAYS_SCREEN_LIST && khdays_screens_current()->row_count == 3 &&
+          strcmp(khdays_screens_current()->rows[1].label, "Dos") == 0);
+    khdays_screens_unlock();
+    CHECK(khdays_scripts_buttons(0) == 0);
+    CHECK(khdays_scripts_buttons(0x0080) == 0); /* DOWN */
+    CHECK(khdays_scripts_buttons(0) == 0);
+    CHECK(khdays_scripts_buttons(0x0001) == 0); /* A: chosen */
+    CHECK(khdays_scripts_buttons(0x0001) == 0); /* still held: not the game's */
+    frames(1);
+    CHECK(log_has("test.menu print scripts/main.lua:4 chose\t2"));
+    khdays_screens_lock();
+    CHECK(khdays_screens_current()->kind == KHDAYS_SCREEN_RESULT &&
+          strcmp(khdays_screens_current()->rows[0].value, "3") == 0 &&
+          strcmp(khdays_screens_current()->rows[1].label, "Time") == 0);
+    khdays_screens_unlock();
+    CHECK(khdays_scripts_buttons(0) == 0);
+    CHECK(khdays_scripts_buttons(0x0002) == 0); /* B: a result closes */
+    frames(1);
+    CHECK(log_has("result closed") && khdays_screens_shown() == 0);
+    fake_title_idle = 0;
+    CHECK(khdays_scripts_buttons(0x0001) == 0x0001); /* the game's again */
+    end_case();
+    CHECK(khdays_screens_entry_count() == 0); /* gone with the mods */
+}
+
+static void test_screens_stop(void)
+{
+    begin_case("screens_stop");
+    mod_folder_api("Broken", "test.broken", "gameplay", 2,
+                   "screen.page{ title = 'Hello', text = 'A page' }\n"
+                   "mod.on('frame', function() error('on purpose') end)\n");
+    start();
+    CHECK(khdays_screens_shown() != 0);
+    frames(1);
+    CHECK(mod_by_folder("Broken")->state == KHDAYS_MOD_STOPPED);
+    end_case(); /* its screen goes with its state */
+    CHECK(khdays_screens_shown() == 0);
+}
+
 #define RUN(test) (fprintf(stderr, "%s\n", #test), test())
 
 int main(void)
@@ -1201,6 +1281,8 @@ int main(void)
     RUN(test_endings);
     RUN(test_leave);
     RUN(test_start);
+    RUN(test_screens);
+    RUN(test_screens_stop);
     if (failures != 0) {
         fprintf(stderr, "script_test: %d failures\n", failures);
         return 1;

@@ -10,6 +10,7 @@
 #include "game_link.h"
 #include "mod.h"
 #include "mods_log.h"
+#include "screens.h"
 #include "order.h"
 #include "queue.h"
 #include "sandbox.h"
@@ -149,6 +150,7 @@ static void unload(KhdaysMod *m)
 static void load(KhdaysMod *m)
 {
     char note[64];
+    int ran;
     if (!khdays_sandbox_open(m)) {
         khdays_mods_log(name_of(m), "refused", NULL, 0, m->reason);
         return;
@@ -164,7 +166,11 @@ static void load(KhdaysMod *m)
     m->spent = 0;
     m->allowance = khdays_sandbox_frame_allowance;
     khdays_script_events_hold();
-    if (khdays_sandbox_run_main(m)) {
+    ran = khdays_sandbox_run_main(m);
+    if (m->v2 != NULL) {
+        m->v2->loading = 0; /* its title entries made */
+    }
+    if (ran) {
         snprintf(note, sizeof(note), "started, api %d", m->manifest.api);
         khdays_mods_log(m->manifest.id, "loaded", NULL, 0, note);
     }
@@ -647,6 +653,7 @@ void khdays_scripts_frame(void)
         game_over_up = up;
     }
     khdays_enemies_frame();
+    khdays_api_screens_frame();
     if (!started) {
         const char *mods_path, *user;
         khdays_link_folders(&mods_path, &user);
@@ -755,6 +762,14 @@ void khdays_scripts_hp(void *entity, int before)
     e.c = max;
     e.text = khdays_link_is_player(entity) ? "player" : "other";
     khdays_script_events_raise(&e);
+}
+
+uint16_t khdays_scripts_buttons(uint16_t buttons)
+{
+    if (khdays_screens_shown() == 0 && khdays_screens_entry_count() == 0) {
+        return buttons;
+    }
+    return khdays_screens_buttons(buttons, khdays_link_title_idle(), khdays_link_language());
 }
 
 void khdays_scripts_saved(void)

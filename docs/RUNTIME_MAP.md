@@ -4742,3 +4742,27 @@ Read in the decompilation, then traced with `KHDAYS_TRACE_UPDATES` and `KHDAYS_T
   0x20ef; the field's session tick then goes through the game over's sub-flow (ov027, flag 0x2087) to
   the results. A mod's `mission.leave()` does the same: seen 600 frames into the tutorial,
   `abandoned`, the camp again; refused during mission 2's opening (its battle not loaded yet).
+
+## 25. A mod's title entries and screens (spec 031)
+
+Read in the port's own code and seen in a window (2026-10-22, the title walk with the test mod
+`port/tests/mods_v2/menu`, with the HD PACK and without; window captures of the game's window only).
+
+- **The title's menu** is ov000's (scene 1): the port reads its level and row from the scene
+  object's context (section 15.1) and with the HD PACK draws the HD theater's menu as pictures made
+  for each level, count and row (`backdrop {menu}-{count}-{row}`), so a line of the port's own cannot
+  join the pictures' rows. The menu waits for the player while the scene object's update is
+  `Ov000_TickMenuLoop`; it takes UP, DOWN, A and B: Y is free there.
+- **A mod's entry** shows as a prompt in the title's bottom right corner (the HD title's settings key
+  is in its top right): the player's input for Y and the entry's label (several entries: "Mods", a
+  list of them). Y opens it (`runtime/scripts/screens.c` at `Pad_Sample`, the game given no Y).
+- **A mod's screens** are drawn over the window by the port (`host/screens/mod_screen.c`), after the
+  game's presented picture -- the HD shots (`KHDAYS_SHOTS_HD`) do not hold them, only a capture of the
+  window does. Their look: the mod's own layout, else the HD theater's list the room list is drawn in
+  (the HD PACK's `layouts/rooms/<lang>/rooms.txt`: its veil, rows, glove, scroll and help bar), else
+  the game's own font over the game's picture dimmed. While one shows the game gets no button (the
+  presses move it at `Pad_Sample`, as the port's other menus do); the buttons held when it closes stay
+  the port's until let go, so the A that closed it does not reach the title.
+- **Input icons**: in an HD layout an input the player has on the mouse (the keyboard's default Y is
+  the right button, A the left) had neither icon nor name and drew nothing; it now draws Kenney's mouse
+  icons, as the Controls section does (`layout_screen.c`).

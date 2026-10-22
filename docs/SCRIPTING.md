@@ -268,6 +268,29 @@ The results of a mission a mod started count for the camp's mission it went in b
 results screen, its records); a mode of a mod's own shows its own end and leaves with
 `mission.leave()`. A mission file the game made for the story may expect the story's state.
 
+### Title entries and screens
+
+| Name | Does | Returns / refused |
+|---|---|---|
+| `title.entry{label, on_select}` | an entry of the mod's at the title: a prompt in its bottom right corner, the player's input for Y and the label (several mods' entries: a list of them); Y calls `on_select` | a handle; `"only while loading"` (entries are made by the main script) |
+| `screen.list{title, entries, on_choose, on_cancel, layout}` | a list to choose from; `on_choose(index)` (1-based) | a handle; `"another screen shows"` |
+| `screen.page{title, text, picture, on_close, layout}` | a page of text (its lines apart by line breaks) and a picture of the mod's folder (PNG) | a handle; `"another screen shows"` |
+| `screen.result{title, rows, on_close, layout}` | a result: `rows` are `{label, value}` pairs (or `{label = ..., value = ...}`) | a handle; `"another screen shows"` |
+| `screen.close(h)` | closes the screen, no function called | `true`; `"not shown"` |
+
+A title, label, entry, text or value is one text or a table of texts by language (`{en = ..., es =
+...}`), taken in the game's language as the screen shows. One screen shows at a time, whichever mod
+made it. While it shows the keys and the pad move it and the game gets none: UP and DOWN go over a
+list, A chooses (or closes a page or a result), B leaves a list. Any answer closes the screen; the
+mod's function is called at the next frame point, and may show the next screen. A mod that stops
+takes its screens and entries with it.
+
+`layout` names a layout of the mod's own (`layouts/<name>.txt` in its folder, in the port's layout
+lines, docs/HD_SCREENS.md) with the pieces `veil`, `help_bar`, `row`, `row_selected`, `square`,
+`glove`, `trough`, `thumb`, the line `rows TOP PITCH SHOWN`, an optional `art` picture, and the text
+styles `heading`, `message`, `single`, `players` and `help`. Without one, the port draws the screen in
+the HD theater's list when the HD PACK is there, else in the game's own font.
+
 ## Multiplayer
 
 The host's game decides for everyone in a room, so a room takes only players with the same gameplay

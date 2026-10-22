@@ -16,6 +16,7 @@
 #include "../menus/mission_start.h"
 #include "../menus/retry.h"
 #include "../menus/savelist.h"
+#include "../scripts/scripts.h"
 #include "../core/runtime.h"
 #include "sequencers.h"
 #include "../core/window.h"
@@ -388,6 +389,7 @@ void khdays_input_pad_sample(void)
     latched = khdays_charselect_buttons(latched);    /* the port's character select takes the directions */
     latched = khdays_camp_buttons(latched);          /* the port's Preferences page joins the game's tabs */
     latched = khdays_retry_buttons(latched);         /* the pause's Retry line in Mission Mode takes the directions */
+    latched = khdays_scripts_buttons(latched);       /* a mod's screen, the title's mods' prompt */
     latched = khdays_mission_start_buttons(latched); /* a mod's mission.start presses the camp's own way */
     latched_unread = 1;
     ++pad_samples;

@@ -16,9 +16,19 @@ typedef struct KhdaysModEnemy {
     int kind;
 } KhdaysModEnemy;
 
+/* A screen or title entry a mod made, its functions in the mod's registry (LUA_NOREF without). */
+typedef struct KhdaysModCallbacks {
+    int handle;
+    int on_choose, on_cancel, on_close, on_select;
+} KhdaysModCallbacks;
+
 typedef struct KhdaysModV2 {
     KhdaysModEnemy *enemies;
     int enemy_count, enemy_room;
+    int owner;   /* its number among the screens' owners (screens.h) */
+    int loading; /* its main script runs: title entries are made then */
+    KhdaysModCallbacks *callbacks;
+    int callback_count, callback_room;
 } KhdaysModV2;
 
 /* Every part's names, in an api 2 mod's state (scripts.c, as it loads). */
@@ -34,6 +44,11 @@ int khdays_api_v2_may(struct lua_State *L, int where);
 /* The enemies (api_enemies.c). */
 void khdays_api_enemies_open(KhdaysMod *mod);
 void khdays_api_enemies_release(KhdaysMod *mod);
+
+/* The screens and title entries (api_screens.c); the answers delivered at the frame point. */
+void khdays_api_screens_open(KhdaysMod *mod);
+void khdays_api_screens_release(KhdaysMod *mod);
+void khdays_api_screens_frame(void);
 
 /* The run's end (api_run.c): the player's defeat a mod holds. */
 void khdays_api_run_open(KhdaysMod *mod);

@@ -403,6 +403,8 @@ add_executable(khdays-native
     runtime/scripts/api_v2.c           # ... the interface's version 2: a game mode's parts
     runtime/scripts/api_enemies.c      # ... the field's enemies they make
     runtime/scripts/api_run.c          # ... the end of a run: the player's defeat
+    runtime/scripts/api_screens.c      # ... their title entries and screens
+    runtime/scripts/screens.c          # ... shared with the window that draws them
     runtime/scripts/game_link.c        # ... the game's side of their interface
     runtime/scripts/enemies_link.c     # ... the field's enemies, the game's side
     runtime/scripts/enemy_names.c
@@ -441,6 +443,7 @@ add_executable(khdays-native
     host/screens/save_screen.c             # the port's save list on the screen
     host/screens/cine_screen.c             # MODO CINE's list as the HD theater's chapters
     host/screens/room_screen.c             # the port's list of Mission Mode's rooms on the screen
+    host/screens/mod_screen.c              # a mod's screens and the title's mods' prompt
     host/screens/select_screen.c           # Mission Mode's character select on one screen
     host/screens/camp_screen.c             # Mission Mode's camp menu on one screen
     host/screens/movie_pause.cpp           # the DS's scene pause over an HD movie
@@ -689,7 +692,7 @@ add_executable(khdays-script-test tests/script_test.c runtime/scripts/scripts.c 
                runtime/scripts/mods_log.c runtime/scripts/queue.c runtime/scripts/api_events.c
                runtime/scripts/api_mod.c runtime/scripts/api_state.c runtime/scripts/api_menus.c
                runtime/scripts/api_actions.c runtime/scripts/api_v2.c runtime/scripts/api_enemies.c
-               runtime/scripts/api_run.c
+               runtime/scripts/api_run.c runtime/scripts/api_screens.c runtime/scripts/screens.c
                runtime/scripts/view.c runtime/core/sha256.c)
 target_link_libraries(khdays-script-test PRIVATE khdays-lua SDL3::SDL3)
 target_compile_options(khdays-script-test PRIVATE

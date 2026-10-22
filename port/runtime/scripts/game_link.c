@@ -1,6 +1,7 @@
 /* The game's side of the mods' interface (game_link.h), by the decompilation's names. */
 #include "game_link.h"
 
+#include "../core/language.h"
 #include "../core/window.h"
 #include "../core/events.h"
 #include "../../host/app/instance.h"
@@ -23,6 +24,8 @@ extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
 extern void Ov002_ShowNoticeText(KhdaysRef text);
 extern void Ov022_ActorSetHp(KhdaysRef pEnt, int nValue); /* the game's pointers are references (window.h) */
 extern void Ov002_PauseMissionScene(void);
+extern int GetLanguage(void);
+extern void Ov000_TickMenuLoop(void);
 extern void GameState_SetField(unsigned int field, unsigned int bits, unsigned int value);
 int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 
@@ -31,6 +34,8 @@ int khdays_overlay_loaded(int id); /* runtime/core/overlays.c */
 #define STORY_CAMP_SCENE 5u
 #define MISSION_CAMP_SCENE 19u
 #define OV_BATTLE 22
+#define OV_TITLE 0
+#define OBJECT_UPDATE 0x14u /* an object's update (its next state) */
 #define OV_FIELD 2
 #define OV_MISSION_CAMP 8
 #define OV_STORY_CAMP 25
@@ -238,6 +243,18 @@ int khdays_link_attacker(unsigned *actor)
     }
     *actor = hit_source;
     return *(const volatile unsigned char *)KHDAYS_W(hit_source + ENEMY_KIND);
+}
+
+int khdays_link_language(void)
+{
+    return khdays_language_wanted() != 0 ? khdays_language_wanted() : GetLanguage();
+}
+
+int khdays_link_title_idle(void)
+{
+    const unsigned object = rd32(KHDAYS_DS_gSceneCtl); /* the scene's task */
+    return khdays_link_scene(NULL) == TITLE_SCENE && khdays_overlay_loaded(OV_TITLE) && khdays_game_ram(object) &&
+           khdays_function_lookup(rd32(object + OBJECT_UPDATE)) == (khdays_function_pointer)Ov000_TickMenuLoop;
 }
 
 int khdays_link_game_over(void)
