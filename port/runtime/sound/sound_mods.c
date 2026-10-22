@@ -212,6 +212,41 @@ static Entry *entry_for(const char *identifier, const KhdaysOriginalLoop *loop)
     return entry_want(entry_find(identifier), loop);
 }
 
+/* Whether a found file is a folder of its own (not "." or ".."). */
+static int is_folder(const WIN32_FIND_DATAA *found)
+{
+    return (found->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && found->cFileName[0] != '.';
+}
+
+/* A mod's sequence archive's entries (mods/<mod>/sounds/seqarc/<archive>/<entry>.*), queued to decode. */
+static void decode_archive_ahead(const char *mod, const char *archive)
+{
+    char pattern[600];
+    WIN32_FIND_DATAA file;
+    HANDLE found;
+    snprintf(pattern, sizeof(pattern), "mods\\%s\\sounds\\seqarc\\%s\\*", mod, archive);
+    found = FindFirstFileA(pattern, &file);
+    if (found == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    do {
+        char identifier[160];
+        const char *dot = strrchr(file.cFileName, '.');
+        Entry *e;
+        if ((file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || dot == NULL) {
+            continue;
+        }
+        /* the mods' order picks the file (entry_find), whichever mod it was seen in */
+        snprintf(identifier, sizeof(identifier), "seqarc/%s/%.*s", archive, (int)(dot - file.cFileName),
+                 file.cFileName);
+        e = entry_find(identifier);
+        if (e != NULL && e->state == LET_GO) {
+            enqueue(e, 0);
+        }
+    } while (FindNextFileA(found, &file));
+    FindClose(found);
+}
+
 /* The sequence archives' entries the mods have (sounds/seqarc/<archive>/<entry>): the game's sound
  * effects and voices, short, decoded ahead so that even their first play is the mod's (they take no
  * loop of the original's). Once, under the bridge's lock. */
@@ -219,57 +254,35 @@ static void decode_entries_ahead(void)
 {
     static int done;
     WIN32_FIND_DATAA mod;
-    HANDLE hm;
+    HANDLE mods;
     if (done) {
         return;
     }
     done = 1;
-    hm = FindFirstFileA("mods\\*", &mod);
-    if (hm == INVALID_HANDLE_VALUE) {
+    mods = FindFirstFileA("mods\\*", &mod);
+    if (mods == INVALID_HANDLE_VALUE) {
         return;
     }
     do {
         char pattern[600];
         WIN32_FIND_DATAA archive;
-        HANDLE ha;
-        if (!(mod.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || mod.cFileName[0] == '.') {
+        HANDLE archives;
+        if (!is_folder(&mod)) {
             continue;
         }
         snprintf(pattern, sizeof(pattern), "mods\\%s\\sounds\\seqarc\\*", mod.cFileName);
-        ha = FindFirstFileA(pattern, &archive);
-        if (ha == INVALID_HANDLE_VALUE) {
+        archives = FindFirstFileA(pattern, &archive);
+        if (archives == INVALID_HANDLE_VALUE) {
             continue;
         }
         do {
-            WIN32_FIND_DATAA file;
-            HANDLE hf;
-            if (!(archive.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || archive.cFileName[0] == '.') {
-                continue;
+            if (is_folder(&archive)) {
+                decode_archive_ahead(mod.cFileName, archive.cFileName);
             }
-            snprintf(pattern, sizeof(pattern), "mods\\%s\\sounds\\seqarc\\%s\\*", mod.cFileName, archive.cFileName);
-            hf = FindFirstFileA(pattern, &file);
-            if (hf == INVALID_HANDLE_VALUE) {
-                continue;
-            }
-            do {
-                char identifier[160];
-                const char *dot = strrchr(file.cFileName, '.');
-                if ((file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || dot == NULL) {
-                    continue;
-                }
-                /* the mods' order picks the file (entry_find), whichever mod it was seen in */
-                snprintf(identifier, sizeof(identifier), "seqarc/%s/%.*s", archive.cFileName,
-                         (int)(dot - file.cFileName), file.cFileName);
-                Entry *e = entry_find(identifier);
-                if (e != NULL && e->state == LET_GO) {
-                    enqueue(e, 0);
-                }
-            } while (FindNextFileA(hf, &file));
-            FindClose(hf);
-        } while (FindNextFileA(ha, &archive));
-        FindClose(ha);
-    } while (FindNextFileA(hm, &mod));
-    FindClose(hm);
+        } while (FindNextFileA(archives, &archive));
+        FindClose(archives);
+    } while (FindNextFileA(mods, &mod));
+    FindClose(mods);
 }
 
 /* --- The waves --------------------------------------------------------------------- */

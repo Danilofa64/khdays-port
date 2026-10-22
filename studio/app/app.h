@@ -106,15 +106,15 @@ struct App {
     // files chosen in a dialog arrive on another thread
     std::mutex dialog_mutex;
     std::vector<std::string> dialog_files;
-    std::vector<std::string> dialog_clips;          // animation clips
-    std::vector<std::string> dialog_exports;        // where an assembled sheet is exported
-    std::vector<std::string> dialog_grids;          // where its tile grid is exported
-    std::vector<std::string> dialog_room_exports;   // where a room is exported
-    std::vector<std::string> dialog_model_exports;  // where a game model is exported
-    std::vector<std::string> dialog_sheet_folders;  // where every 2D sheet is exported
+    std::vector<std::string> dialog_clips;            // animation clips
+    std::vector<std::string> dialog_exports;          // where an assembled sheet is exported
+    std::vector<std::string> dialog_grids;            // where its tile grid is exported
+    std::vector<std::string> dialog_room_exports;     // where a room is exported
+    std::vector<std::string> dialog_model_exports;    // where a game model is exported
+    std::vector<std::string> dialog_sheet_folders;    // where every 2D sheet is exported
     std::vector<std::string> dialog_texture_exports;  // where a 3D texture is exported
     std::vector<std::string> dialog_texture_folders;  // where every 3D texture is exported
-    std::vector<std::string> dialog_collections;    // the 1.5+2.5 collection's folder (KH2's rooms)
+    std::vector<std::string> dialog_collections;      // the 1.5+2.5 collection's folder (KH2's rooms)
 
     std::string status;
 
