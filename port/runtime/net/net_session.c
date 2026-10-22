@@ -907,7 +907,7 @@ static void announce(int gone)
         return;
     }
     put32(body, net.build);
-    put32(body + 4, 0); /* reserved for a digest of the file mods (T023): 0 for now */
+    put32(body + 4, 0); /* reserved for a digest of the file mods: 0 for now */
     put16(body + 8, khdays_host_udp_port(net.session));
 #pragma warning(suppress : 6386) /* body holds 20 + info_size bytes (size above, in size_t): 12 fit */
     body[10] = (unsigned char)net.open;

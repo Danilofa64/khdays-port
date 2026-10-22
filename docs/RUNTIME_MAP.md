@@ -356,7 +356,7 @@ pressing X". The route there is `port/tools/regress_walks/config.input`
 The save file is a 64 KB raw backup that starts with `KH358DAY` (a player's
 day-357 save, which the game loads, and writes to a new slot and reads back).
 
-**The mission worlds' rooms are KINGDOM HEARTS II's maps** (spec 030, seen
+**The mission worlds' rooms are KINGDOM HEARTS II's maps** (seen
 2026-10-18 in the graphics dump, the player's KH2 copy and each room drawn beside
 its map). Days kept KH2's coordinates: a room lies on its KH2 map at KH2's units
 x 0.01 with the same axes and no move (the Usual Spot: 67% of its floor on the
@@ -430,12 +430,12 @@ The native build prints these to stderr when the variable is set:
 `KHDAYS_HEADLESS=1` runs without a window; `KHDAYS_INPUT` plays a script of
 key presses, touches and stick positions (`port/runtime/input/input.h`).
 
-**No ARM code runs** (since 2026-10-02, specs/006 US5): the port has no ARM
+**No ARM code runs** (since 2026-10-02): the port has no ARM
 interpreter. A call into DS code that no compiled function answers stops
 the game, on stderr and in the session log:
 `khdays-native: a call through a function reference with no native
 function: 0xADDRESS (from CALLER, ...): stopped` (`port/runtime/core/window.c`,
-exit code 5; until specs/010 `ds_calls.c`, exit code 16). Before,
+exit code 5; earlier `ds_calls.c`, exit code 16). Before,
 the interpreter ran it, and `KHDAYS_TRACE_ARM` listed what it ran; on the
 regression walks nothing by the end: the movies' decoder and blit are
 native (section 9), the ITCM's functions run natively when called by
@@ -502,7 +502,7 @@ For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present
 - `KHDAYS_GFX` -- whose 2D the window shows: unset, the port's own
   (`port/gfx`, `port/host/render/gfx_render.c`); `reference`, the 2D engines'
   (`port/gpu/gpu2d.c`) with engine A drawn again at N x by
-  `gpu_raster3d.c`'s composition, as before spec 004; `check`, the port's,
+  `gpu_raster3d.c`'s composition, as before the port drew its own graphics; `check`, the port's,
   read back each frame and compared -- at 1x with the 2D engines' (the
   software's 3D on, under both), at N x with the old composition -- every
   300 frames how many pixels differed.
@@ -617,7 +617,7 @@ For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present
   the 3D list, the texture VRAM, the 2D composition records), as
   `DIR/frame_NNNNN.pkg`, the 3D list's polygons and vertices after it, then
   the same polygons before clipping with their keys, then the port's elements
-  (spec 011: each screen's records, what they stand for left out, and each
+  (each screen's records, what they stand for left out, and each
   image they draw once) (format 13; nothing in it has a fixed size). The packages hold the game's data: record into
   `saves/frames`, which git ignores, never into the repository.
   `khdays-render-test` reads them there.
@@ -678,7 +678,7 @@ For the picture (`port/runtime/display/display.c`, `port/host/render/gpu_present
   chain once, with its first polygon and a count at the end), and every
   polygon drawn in screen space (an orthographic projection: w 1) with its
   own chain.
-- `KHDAYS_UI=PART=MODE,...` -- the port's presentation (spec 011, section
+- `KHDAYS_UI=PART=MODE,...` -- the port's presentation (section
   14): for each part (`text`, `hud`, `pause`, `camp`, `save`, `mission`,
   `shop`, or `all`) `off` (the game's drawing), `check` or `on` (the port's
   elements). Under `check` both screens are composed on the CPU every 60th
@@ -739,7 +739,7 @@ unavailable; the game plays as before.
 
 **The field's HUD** (traced 2026-09-30 with `KHDAYS_TRACE_2D` and
 `KHDAYS_TRACE_3D_CALLERS` in the Mission Mode tutorial's rooms, in the Castle
-and in the pause menu; spec E12):
+and in the pause menu):
 
 | Piece | Drawn by | Where on the DS | In widescreen |
 |---|---|---|---|
@@ -791,7 +791,7 @@ sides.
 ## 6. Sound
 
 How the port plays the game's sound, and what running it showed
-(specs/003, 2026-09-30).
+(2026-09-30).
 
 **The two sides.** The ARM9's sound code -- NitroSDK's (`libs/nitro/snd`),
 NitroSystem's (`libs/nns/snd`) and the game's own sound manager
@@ -815,7 +815,7 @@ sound bridge (`port/runtime/sound/sound_bridge.c`):
 C (`port/sound/snd7_*.c`), each function citing the ARM7 address of the
 routine it is (the map below), its tables read from the ROM's copy of the
 ARM7 binary. It was checked against the binary's own driver, interpreted,
-until the ARM interpreter left the port (2026-10-02, specs/006 US5). **The
+until the ARM interpreter left the port (2026-10-02). **The
 channels and the DS's mixer** are `port/sound`'s (`channels.c`, `mix_ds.c`). **The
 mixer** heard is the PC's by default (`mix_pc.c`: each channel as it is at
 each output sample, at the device's rate, in floats, without the DS's
@@ -1137,7 +1137,7 @@ repository only under its `saves/`):
 ## 7. Graphics
 
 What the game asks of the DS's graphics hardware, as found for the port's
-own graphics (spec 004).
+own graphics.
 
 **What a frame costs and changes today** (gates G1, G3: the play script,
 Release build, with a window, `KHDAYS_PROFILE`, 2026-10-01; per frame drawn,
@@ -1188,7 +1188,7 @@ player's run has met. So one set of registers draws a whole frame.
   not 16; in the dual-3D mode (the global mode's bit 3) the weight goes to the
   dual-3D block instead.
 
-**The port's own 2D** (spec 004, `port/gfx`): each frame both screens'
+**The port's own 2D** (`port/gfx`): each frame both screens'
 display control, layers, sprites, windows and effects are decoded at VBlank
 into a frame description (`frame.h`; the windows' vertical flags carried
 from frame to frame as the 2D engines carry them), and composed per pixel by
@@ -1223,7 +1223,7 @@ and, in widescreen, its HUD's pieces moved to the sides as before. Seen
 
 In these the captured bank is shown (VRAM display, a bitmap BG); a CPU read
 of it is not in their C -- whether any other code reads it: to confirm with
-a trace (spec 004, T016).
+a trace.
 
 **The 3D on both screens** (2026-10-08): the screen engine B shows from a
 captured bank was black every other VBlank -- the mission review (scene 3,
@@ -1387,7 +1387,7 @@ by address, in the game or the libraries. So the joints' matrices have to be
 where the callbacks and `NNS_G3dGetResultMtx` ask for them, as the DS
 computes them, and nothing else of the geometry is read.
 
-**The port's own 3D geometry** (spec 004, `port/gfx/g3d_geometry.c`):
+**The port's own 3D geometry** (`port/gfx/g3d_geometry.c`):
 what the game and NitroSystem send the geometry engine -- packed words to
 GXFIFO, stores to the command ports, display lists by DMA -- is run at once
 by the port's geometry, whose state (the four matrix stacks, the vertex's
@@ -1471,7 +1471,7 @@ now the shadow lies flat on the floor. The render test's packages were recorded 
 walk, two screens): the GPU at 1x and the software agree on every pixel.
 
 **Calls into DS memory** (found on the way, in the 32-bit build the port
-had until specs/010; the rewritten game calls a DS address through its
+had until 2026-10-03; the rewritten game calls a DS address through its
 function reference, section 13): MSVC's linker adds the image
 base to an absolute symbol in a call's fixup, so a native call to a routine
 `absolute.asm` names at its DS address -- code the build had no C for, such
@@ -1509,9 +1509,9 @@ gave:
   a 24 KB block to BG A, each uploaded anew whenever it changes. Their first
   non-zero bytes were looked for in every game file, decompressed or raw:
   a few short ones matched, the large ones none. These are the game's own
-  drawing (spec 004 US3), not files.
+  drawing, not files.
 
-**The 3D's textures by name** (spec 004 US5, `port/runtime/mods/textures.c`,
+**The 3D's textures by name** (`port/runtime/mods/textures.c`,
 `names.cpp`): a polygon's TEXIMAGE_PARAM and PLTT_BASE say where its
 texture and palette sit in the slots; the slots' pages say which bank,
 origin.c which file and offset, and the NitroSystem resources in that
@@ -1530,7 +1530,7 @@ start whenever the window shows HD graphics (the default) or something
 dumps: on the play script that cost the game's thread 624 against 617 ms
 of work a second with them off.
 
-**HD textures from mods** (spec 004 US5): with "HD graphics" on, a texture
+**HD textures from mods**: with "HD graphics" on, a texture
 whose name has a PNG in a mod (`mods/<Mod>/graphics/<name>.png`, the mods'
 order) is drawn from that PNG instead of from the DS's texture memory --
 any size (a whole multiple of the original is expected; another is
@@ -1570,7 +1570,7 @@ The same pass writes 2,912 models as glTF. Roxas's (`ba/ch/ro/def_hb.p.z`,
 biped's bones, `ro_w_tg_R`, `roxas00`, `roxas_tg`), its textures and its
 rest pose: arms lowered, 1.603 units tall.
 
-**HD 2D from mods** (spec 004 US4, `port/runtime/mods/tiles2d.c`,
+**HD 2D from mods** (`port/runtime/mods/tiles2d.c`,
 2026-10-01): with "HD graphics" on, a 2D tile sheet whose name has a PNG in
 a mod (`mods/<Mod>/graphics/<file>[#<entry>]/chr/<n>.png`, the dump's name
 and layout, any whole multiple of the sheet's size) is drawn instead of the
@@ -1601,7 +1601,7 @@ sheet four times larger (Scale2x twice, indices kept) at 4x: the command
 deck's rounded ends smooth where the DS's are steps, in the game's colours;
 the same sheet as a smoothed true-colour PNG: drawn in its own colours.
 
-**Models from mods** (spec 004 US5, `port/runtime/mods/models.cpp`,
+**Models from mods** (`port/runtime/mods/models.cpp`,
 2026-10-01): with "HD graphics" on, a model whose name has a glTF in a mod
 (`mods/<Mod>/graphics/<file>[#<entry>]/mdl/<model>.gltf`, the name the dump
 writes it under) is drawn instead of the game's. The game draws its model
@@ -1641,7 +1641,7 @@ its turn from rest is not his body's (in the combat stance, against
 paired with it, swung up behind his head; paired with nothing (moving with
 the chest), and his neck with `Bip01_Head`, it stays down.
 
-**FBX and `.glb` models** (specs/014; `assets/src/fbx.cpp` with ufbx, `gltf.cpp`,
+**FBX and `.glb` models** (`assets/src/fbx.cpp` with ufbx, `gltf.cpp`,
 `models.cpp`): the mod's model is `<model>.gltf`, else `.glb`, else `.fbx`, the
 same neutral form from each. ufbx scales an FBX's geometry to metres but turns
 its axes in the nodes' transforms, so a skinned FBX mesh's vertices are carried
@@ -1671,7 +1671,7 @@ and move with his head: it does not swing (the game has no cloth for it). An FBX
 has no two-sided flag: its meshes are drawn two-sided (the game's own models
 are, in the dump's glTF).
 
-**The picture at the monitor's rate** (spec 007 US3; `gfx/g3d_interp.c`,
+**The picture at the monitor's rate** (`gfx/g3d_interp.c`,
 `host/render/gpu_present.c`): each 3D list keeps, besides its clipped polygons, the
 same polygons as the game sent them -- before clipping, the culled ones too --
 with a key: the model draw it came from (`NNSi_G3dDrawInternal`'s resource and
@@ -1780,7 +1780,7 @@ bank, waves and data, then starts it, 0.3 ms on the walks, the data already
 loaded) and a first Fire are not on any walk; a player's session log shows
 both.
 
-### 8.1 The game's language (spec 019)
+### 8.1 The game's language
 
 Read in the decomp and seen in the session logs (`read` lines), 2026-10-07.
 
@@ -1940,7 +1940,7 @@ stopping it; the same scenes. A truncated file: the game's movie, said once.
 **Times** (the story walk, Release, the game's thread): interpreted, 2.19 ms
 to decode a frame and 2.34 ms to blit it; native, 0.25 ms and 0.03 ms.
 
-**HD videos in the movies' place** (specs/013; `port/runtime/movies/movie_hd.c`,
+**HD videos in the movies' place** (`port/runtime/movies/movie_hd.c`,
 `port/host/movies/movie_hd_win.c`; the player's `data/cutscenes/cinematics/hd<id>.mp4`,
 `[video] movies = hd`). Read in the decomp for it:
 
@@ -2010,7 +2010,7 @@ identified*; neither decoder on its own is affected (the checks above).
 
 ## 10. Time and interrupts
 
-The game's time is the port's own (specs/007): the PC's clock, counted in the
+The game's time is the port's own: the PC's clock, counted in the
 DS's cycles (33,513,982 a second, `port/runtime/core/clock.c`) -- the unit the
 SDK's tick, the sound driver and the game's data count in -- less the time the
 settings screen pauses.
@@ -2037,7 +2037,7 @@ Alarms on the walks: only the movies' (`Ov024_MobiClip_FrameAlarm`,
 `Ov024_MobiClip_TickSlot`); the frame alarm re-arms itself one tick ahead while
 no frame is primed, so its interrupts count how often one is delivered.
 
-**The pause scene and the time** (spec 007 T010): `Game_EnterPauseScene`
+**The pause scene and the time**: `Game_EnterPauseScene`
 saves the tick and the VBlank count and `Scene_Leave` restores them -- but only
 when `data_0204c240` bit 2 or the session mode's bit 1 is clear. Mission
 Mode's field pause (START; "PAUSA", Continuar / Retirarse) goes through both
@@ -2116,7 +2116,7 @@ sicuro?"; Spanish Continuar, Omitir, Retirarse, Sí, No, PAUSA, "¿Seguro?".
 The pause part reads these (`khdays_pause_view`) to draw a mod's pictures of
 each piece in its place (`ui/pause.cpp`, `tools/hd/hd_pause.py`).
 
-**The display line** (spec 007 research R2): no scan of 263 lines. VCOUNT's
+**The display line**: no scan of 263 lines. VCOUNT's
 readers are two: `Ov024_MobiClip_PresentOnVBlank`, which runs in the VBlank
 interrupt's task list and flips a movie's front buffer only while the line is
 in 0xa0-0x103 -- it is answered 192 while the VBlank handler runs, where the
@@ -2131,7 +2131,7 @@ window: on the story walk 1,959 of the presenter's calls fell outside it, and
 a frame waiting at such a call waited a VBlank more; now none does (1,720 frames shown, the opening
 skipped with START as the walk does).
 
-**Where interrupts are taken** (spec 007 US2): where the game waits
+**Where interrupts are taken**: where the game waits
 (`OS_Halt`, the SDK's waits: `khdays_runtime_wait`), where it unmasks them
 (IME set, the CPSR's I bit cleared), and in the loops that spin on something
 only an interrupt advances, each given a wait point (prepare.py HOOKS,
@@ -2155,9 +2155,9 @@ first not yet taken when the next came) on run07 without the watcher, 3, at
 loads, against 2 with it. The watcher (`async_irq.c`), which suspended the
 game's thread to deliver between two instructions, was off by default from
 then, and has left the port with the models of the DS's timers and display
-scan (spec 007 US4, below).
+scan (below).
 
-**No model of the timers or the scan** (spec 007 US4): `io_regs.c` keeps no
+**No model of the timers or the scan**: `io_regs.c` keeps no
 timer and computes no display line. A game access to a timer register or a
 VCOUNT read is said once with the game's instruction that made it (`io: ...
 by <function> (<address>): no model of it, 0 read`) and reads 0; none on the
@@ -2259,7 +2259,7 @@ makes one). Nothing decodes or carries out an instruction any more.
 
 ## 12. The ARM7's services
 
-What the game asks of the DS's ARM7 (specs/008), as measured on the walks
+What the game asks of the DS's ARM7, as measured on the walks
 (`KHDAYS_TRACE_PXI=1`, the five walks, 2026-10-02) and read from the C.
 
 **What it sends.** Four services, the same messages on every walk:
@@ -2321,7 +2321,7 @@ refused.
 ## 13. The game's memory
 
 Where the game's memory is, the game's C rewritten with references
-(specs/010; every build since, the 64-bit one; until 2026-10-03 also a
+(every build since, the 64-bit one; until 2026-10-03 also a
 32-bit build, with or without them), as measured on the five walks
 (2026-10-03).
 
@@ -2384,14 +2384,14 @@ between them: without references a call through a DS address faults into
 the same, pixel for pixel, in all three (a first 64-bit run differed in the
 arrival portal's particles at one frame, a second matched: not identified).
 
-## 14. The presentation the port draws (spec 011)
+## 14. The presentation the port draws
 
 The port draws the game's presentation itself in parts (`KHDAYS_UI`,
 section 5), each an element standing in one slot of the DS's composition --
 a BG layer, or the sprites at a priority -- with what the part stands for
 left out of that slot: a text layer's map cells, or sprites
-(`port/gfx/elements.h`). What each part draws is read here before its code
-(the spec's gates); the check (`KHDAYS_UI=<part>=check`) composes the game's
+(`port/gfx/elements.h`). What each part draws is read here before its code;
+the check (`KHDAYS_UI=<part>=check`) composes the game's
 picture and the port's in the same frame and says the first difference.
 
 **The text (gate G1).** Read in the C, and seen with `KHDAYS_TRACE_TEXT` on
@@ -2483,7 +2483,7 @@ the five walks every 300 frames (Release, 2026-10-04):
   BG0 the 3D, BG1 (priority 0) the text -- the deck's labels are canvases
   -- BG2 (priority 1) empty in play (the pause menu draws there), BG3
   (priority 2) the HUD's frames. The hearts counter at the top left is no BG
-  cell: the 3D's (spec 004 E1), left to the 3D renderer.
+  cell: the 3D's, left to the 3D renderer.
 - *The pieces*, each where the game lays it out and drawn from its own files
   (`origin.h`):
 
@@ -2532,7 +2532,7 @@ the five walks every 300 frames (Release, 2026-10-04):
   found). Starting a mission is no change of scene: the field stays scene 2
   -- the run07 walk's second `s2` therefore never starts, and its steps for
   challenge 07's play never run (its scenes are still the expected ones).
-- *On one screen* (a layout's `screen upper`, contracts of spec 011): a
+- *On one screen* (a layout's `screen upper`): a
   piece of the lower screen drawn on the upper one in direct colour from
   engine B's palettes; the text in it (engine B's BG0) with it -- an element
   no line places goes with the smallest placed piece holding the middle of
@@ -2631,7 +2631,7 @@ situation the game is in from what the game runs (15.6), and a composition
 places pieces of both screens -- as the port composed them, at the internal
 resolution -- in the picture. From 2026-10-04 to 2026-10-15 the situation and
 most layouts were another project's, read with the maintainer's permission;
-spec 024 replaced each with the port's own, and nothing of it is left. That
+the port replaced each with its own, and nothing of it is left. That
 decision looked at the frames before, so a picture standing still was decided
 again once a VBlank (`khdays_present_refresh_settling`); the port's own reads
 the game's state at each frame and needs no history (`khdays_situation_settling`
@@ -3570,7 +3570,7 @@ The rest of the old decision's states (minimap, target, gauge, info-lower, delet
 name-label, sora-lower, movie-lower, movie-upper) were what its own layouts needed; each layout
 of the port's that needs one names it, and its signal is measured then.
 
-## 16. Mission Mode multiplayer (spec 015)
+## 16. Mission Mode multiplayer
 
 Seen 2026-10-05 with two copies of the Release build on one PC (a host and a
 guest, each in its own directory with a copy of the walks' save, scripted
@@ -3616,7 +3616,7 @@ input, `KHDAYS_TRACE_WM=1`), on the port's wireless layer
   upper screen shows no sprites (DISPCNT A 0x00210f18, OBJ off), so a name
   is drawn in the party's layer (BG3); one in the sprites' slot never
   showed. With three or four players the other labels are at y 96 and 72
-  (spec 017's four-player shots); names on those rows not yet seen.
+  (the four-player shots); names on those rows not yet seen.
 - **Leaving it.** In a session the pause asks "Are you sure?"; yes takes both
   copies to the game-over screen (ov027) in the same frame, which waits until
   both press A; then scene 6, "Mission Review" (ABORTED) on both.
@@ -3681,7 +3681,7 @@ input, `KHDAYS_TRACE_WM=1`), on the port's wireless layer
   relayed by it; both players must go through the same scenes.
   `multiplayer4` plays it with four copies through a server of this PC.
 
-### 16.1 Who runs the battle (spec 017)
+### 16.1 Who runs the battle
 
 Counted 2026-10-06 with the session's census (`KHDAYS_TRACE_WM=1`: each
 message by its gate, the first halfword of the game's packet on port 12):
@@ -4191,7 +4191,7 @@ no save): J1 and J2 on the menu; the host's Holo-Missions, its plate on the
 guest's "Holomisiones" and back; the guest's START to join, its plate on the
 host's "Aceptar" and ringed in red.
 
-## 17. Mission worlds and their rooms (spec 020)
+## 17. Mission worlds and their rooms
 
 Read from the ROM's data over all ten shipped worlds (`mi/wd/wd_{al,aw,bb,eh,he,nm,pp,tt,tw,zz}`)
 with khdays-studio (`--world-info`, `--check-worlds`) and from the decompilation's loaders; the
@@ -4239,7 +4239,7 @@ movement rows in the game (the native build, `KHDAYS_TRACE_PLAYER`).
   play walk's field (`wd_tt` room 0) it had 1,691,284 bytes free in 22 blocks, the largest
   1,636,588; with the room's 7,628-byte collision replaced by one of 2,284 bytes, exactly 5,344
   bytes more -- the collision comes from that heap. The game's largest room collision is 77,624
-  bytes. Since spec 022 that heap lives in the port's region, beyond the DS's 4 MB
+  bytes. That heap now lives in the port's region, beyond the DS's 4 MB
   (section 19); a room's collision is bounded only by its format: 32,767 faces of each kind.
 - **A replaced room in the game** (the play walk's first room, `wd_tt` room 0, "under the
   tracks", replaced by a 12 x 12 test room of 7 grounds and 6 walls made by khdays-studio): the
@@ -4253,7 +4253,7 @@ movement rows in the game (the native build, `KHDAYS_TRACE_PLAYER`).
   cannot climb it: it slides back at its foot (x 0.7 to 1.0) where without the tag it reached
   the platform.
 
-## 18. Missions as the game's script machine reads them (spec 021)
+## 18. Missions as the game's script machine reads them
 
 Read from the shipped data (`mi/mi/`) and the decompilation, every script of the game walked by
 khdays-studio (`--check-missions`, `--mission-commands`).
@@ -4347,7 +4347,7 @@ khdays-studio (`--check-missions`, `--mission-commands`).
   which load every enemy. `Ov002_CreateActorFromMarker` gives the Darkside (0x46) Shadows (id 0) as
   its following kind. The `mi/ch/<hex>.z` files are NOT numbered by this id (`mi/ch/30.z` holds the
   Darkside's model `DS01`; id 0x30 is Lock).
-- **A mission changed by khdays-studio** (spec 021 US2): the mission file rebuilt into the mod as
+- **A mission changed by khdays-studio**: the mission file rebuilt into the mod as
   `files/mi/mi/<number>` (operands changed in place, a longer text written past the script's data and
   its table entry pointed at it), `trbox` / `evi` likewise. Checked in the game (play walk, mission
   0010 from a mod): the player's start moved to X 2.5 (`KHDAYS_TRACE_PLAYER`: (2.50, 0.01, 0.00), was
@@ -4356,7 +4356,7 @@ khdays-studio (`--check-missions`, `--mission-commands`).
   started at 0105's start (0.00, 0.03, -2.30) and showed 0105's opening scene. The Mission Mode
   list and the saved progress are kept by mission index in fixed save areas (`Ov025_DrawMissionRow`:
   status 0x2ca4 + 3 x id, stage 0x2a4c + 3 x id, rewards 0x92b + 4 x id): a mission with a slot of
-  its own needs those kept elsewhere by the port (spec 021 US3, research R9/R10 open).
+  its own needs those kept elsewhere by the port (still open).
 - **A spawner** (`Ov002_ScriptCreateSlotObject`, group 2 command 32; 16 operands): a group of the
   table, a source, a mask, a mode, a gate, a point (20.12), then a radius-like number, a tag, two
   numbers, a second point and a last number. `Ov002_CreateSlotObjectAndStart` makes the slot's object
@@ -4389,9 +4389,9 @@ khdays-studio (`--check-missions`, `--mission-commands`).
   nothing --, 17.1 a box) appear only in 1053, 1351 and 2001, its emblems (17.3) in five missions.
 - **Beside them**: `eid.z` (118 of 24: the drops by enemy class).
 
-## 19. The game's heaps (spec 022)
+## 19. The game's heaps
 
-Read from the decompilation and measured in the port (specs/022 research.md).
+Read from the decompilation and measured in the port.
 
 - **Where the game's memory comes from**: two NitroSystem expanded heaps `Ov001_CreateMainAndSubHeaps`
   (ov001 0x0204ce40, from `Ov001_BootInit` through `func_ov001_0204cf5c`) makes at boot from the
@@ -4406,7 +4406,7 @@ Read from the decompilation and measured in the port (specs/022 research.md).
   32,824 bytes free (24,456 at the least); the sub heap `0x0219f418`..`0x023e0000` (2.25 MB),
   2,134,660 free at the start, 793,408 at the least, current in every sample. The main arena so
   runs from 0x020d7418 (after the code and the overlays' region) to 0x023e0000.
-- **The port's** (since spec 022): main RAM stays the DS's 4 MB with its mirrors -- the code, the
+- **The port's**: main RAM stays the DS's 4 MB with its mirrors -- the code, the
   overlays, the shared area at 0x027ff000, the DTCM over the mirror -- and the two heaps are made
   over a region of the game's memory above the DS's ranges: the main heap `0x20000000`..`0x30000000`,
   the sub heap `0x30000000`..`0x80000000`. The region is reserved without memory; the first access
@@ -4459,7 +4459,7 @@ Read from the decompilation and measured in the port (specs/022 research.md).
 - **Measured** (the maintainer's HD room nm 9 through the boss fight, Release): the main heap at
   most 794,688 bytes used (267 MB free; on the DS 24,456 at the least), the sub heap 1,562,792 (1.34
   GB free; on the DS 793,408); 2,555,904 bytes committed. The same mission with nm room 9's
-  collision split to 8,081,760 bytes (research R10): the sub heap 9,022,564 bytes used, 10,289,152
+  collision split to 8,081,760 bytes: the sub heap 9,022,564 bytes used, 10,289,152
   committed, the character on the floor (y -23.13) through the fight.
 - **The testing knob**: `KHDAYS_DS_MEMORY=1` makes the heaps exactly as the game does on the DS
   (the session log says "as on the DS"); `KHDAYS_TRACE_HEAP=1` writes both heaps (range, size,
@@ -4468,7 +4468,7 @@ Read from the decompilation and measured in the port (specs/022 research.md).
   first face in 16 bits, so a room holds at most 32,767 faces of each kind (khdays-studio refuses
   more); the largest such room made from nm room 9 is 8,081,760 bytes.
 
-## 20. What gameplay mods hear and change (spec 028)
+## 20. What gameplay mods hear and change
 
 The mods' interface (`runtime/scripts`, `docs/SCRIPTING.md`) joins the game at these points, each a
 documented build-time edit (`port/tools/prepare.py` `HOOKS`); read in the running game 2026-10-16
@@ -4496,7 +4496,7 @@ with `KHDAYS_TRACE_MODS=1`, the example mods (`port/mods_examples`) and the walk
   battle actor goes through `Ov022_ActorSetHp` (`Ov022_ReceiveHit`, `Ov022_ApplyDamageAndFlagHit`,
   items, the party's network state).
 
-## 21. Event scenes and their skip (spec 029)
+## 21. Event scenes and their skip
 
 Read in the decompilation and the shipped data, then traced with `KHDAYS_TRACE_SCENES` (2026-10-17,
 the story walk and `KHDAYS_TEST_DAY`).
@@ -4625,7 +4625,7 @@ the story walk and `KHDAYS_TEST_DAY`).
   Seen: hd004 (day 8) played bgm_213 50.4 s from its first frame, the video 1,513 frames; hd818 (the
   prologue's movie) bgm_219 from frame 1038 for 64.6 s, both as their schedules say.
 
-## 22. The field's enemies (spec 031)
+## 22. The field's enemies
 
 Read in the decompilation, then traced with `KHDAYS_TRACE_ENEMIES=1` (2026-10-22: the play walk with
 `KHDAYS_TEST_EVENT=2/0`, which opens mission 2 in place of mission 10, and the test mod
@@ -4708,7 +4708,7 @@ test mod's waves fought, and the mission stayed in its first area.
 already there, and the routine faults). The battle's beginning places the player itself. Seen: moved 3
 units along x, then kept within 6 units of a point while chasing enemies.
 
-## 23. The player's defeat and how a run ends (spec 031)
+## 23. The player's defeat and how a run ends
 
 Read in the decompilation, then traced in the game (2026-10-22: the play walk opening
 mission 2 with `KHDAYS_TEST_EVENT=2/0` -- Mission Mode, `data_0204c23c` still 94 -- with the test mod
@@ -4740,7 +4740,7 @@ when the results record the mission cleared (`Ov005_CommitMissionResults`' own r
 autosave), `"lost"` otherwise. Seen: the defeat's walk `lost`, the mission walk's give-up `abandoned`,
 mission 2 cleared `cleared`.
 
-## 24. Starting and leaving a mission (spec 031)
+## 24. Starting and leaving a mission
 
 Read in the decompilation, then traced with `KHDAYS_TRACE_UPDATES` and `KHDAYS_TRACE_MISSION_START=1`
 (2026-10-22, the play walk's save in Mission Mode's camp).
@@ -4773,7 +4773,7 @@ Read in the decompilation, then traced with `KHDAYS_TRACE_UPDATES` and `KHDAYS_T
   the results. A mod's `mission.leave()` does the same: seen 600 frames into the tutorial,
   `abandoned`, the camp again; refused during mission 2's opening (its battle not loaded yet).
 
-## 25. A mod's title entries and screens (spec 031)
+## 25. A mod's title entries and screens
 
 Read in the port's own code and seen in a window (2026-10-22, the title walk with the test mod
 `port/tests/mods_v2/menu`, with the HD PACK and without; window captures of the game's window only).
@@ -4797,7 +4797,7 @@ Read in the port's own code and seen in a window (2026-10-22, the title walk wit
   the right button, A the left) had neither icon nor name and drew nothing; it now draws Kenney's mouse
   icons, as the Controls section does (`layout_screen.c`).
 
-## 26. The deck (spec 031)
+## 26. The deck
 
 Read in the decompilation, then each panel's record traced as the port reads it and checked against the decks of four saves (2026-10-22: the 100% save and the run07 walk's, 120
 open cells all set; the old save and the play walk's, 96 set of 100); the English names from
@@ -4841,7 +4841,7 @@ open cells all set; the old save and the play walk's, 96 set of 100); the Englis
   1.1.2, mission file 2 started, left 600 frames in, the kept deck restored as it ended; back at the
   camp the deck as kept.
 
-## 27. The game's music (spec 031)
+## 27. The game's music
 
 Read in the decompilation and in the session logs' sound lines (`sound: seq/<name> starts on player
 N`).

@@ -302,8 +302,7 @@ is chosen). It changes at once and is kept in the settings.
    the mod: that slot keeps its place in the Mission Mode list, its name
    there, its unlock and its saved progress (kept by its number); its chests
    and emblems become this mission's when the two sets have as many rows. A
-   mission in a slot of its own needs the port's list made larger (specs/021
-   US3, not done). The names of
+   mission in a slot of its own needs the port's list made larger (not done). The names of
    the enemies are those the decompilation gives the overlay each id loads
    (`studio/tools/enemy_names.py`).
 
@@ -330,7 +329,7 @@ is chosen). It changes at once and is kept in the settings.
     game's movies set to HD. A mod holds one of the two per movie (an
     `.mpg` would win over an `.mp4`).
 
-Sound loops and old-format mods come next (specs/018).
+Sound loops and old-format mods come next.
 
 ## Command line
 

@@ -49,7 +49,7 @@ TOOLS = [
 ]
 # the installer's own (its tests and this script stay in the repository)
 INSTALLER_KEEP = ("build_installer.py", "pinned.json")
-NEVER = ("data", "saves", "mods")  # the game's and the player's: never packed (spec FR-003)
+NEVER = ("data", "saves", "mods")  # the game's and the player's: never packed
 
 
 def sha256(path: Path) -> str:

@@ -1,5 +1,5 @@
 # The native build: the decompilation's C, rewritten with every pointer a
-# reference (specs/010), compiled for Windows x64 and linked with the HAL and
+# reference, compiled for Windows x64 and linked with the HAL and
 # runtime into one executable. Driven by port/build.py, which first runs
 # port/tools/prepare.py to generate KHDAYS_GEN.
 cmake_minimum_required(VERSION 3.25)
@@ -72,7 +72,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cgltf)
 
-# FBX in (a mod's models, specs/014): ufbx's three files, read through
+# FBX in (a mod's models): ufbx's three files, read through
 # assets/src/fbx.cpp.
 include("${CMAKE_CURRENT_SOURCE_DIR}/../assets/fetch_ufbx.cmake")
 
@@ -88,8 +88,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(dr_libs)
 
 # MPEG-1 video and MPEG-1 Layer II sound for the movies a mod puts in the
-# game's place (mods/<Mod>/movies, runtime/movies/video_mod.c; specs/006 research
-# R6): pl_mpeg, one header, at the commit THIRD_PARTY_NOTICES.md records.
+# game's place (mods/<Mod>/movies, runtime/movies/video_mod.c): pl_mpeg, one header, at the commit THIRD_PARTY_NOTICES.md records.
 # Only its source is wanted.
 FetchContent_Declare(
     pl_mpeg
@@ -158,8 +157,7 @@ if(NOT menu_font_old STREQUAL menu_font_text)
     file(WRITE "${KHDAYS_MENU_FONT_DIR}/menu_font.h" "${menu_font_text}")
 endif()
 
-# The gamepads' button icons and pictures in the settings menu (specs/019
-# US5): Kenney's Input Prompts 1.5, CC0 (THIRD_PARTY_NOTICES.md), the
+# The gamepads' button icons and pictures in the settings menu: Kenney's Input Prompts 1.5, CC0 (THIRD_PARTY_NOTICES.md), the
 # 128-pixel PNGs of the buttons the menu names and of the five gamepads, in
 # the executable as the font is.
 FetchContent_Declare(
@@ -250,7 +248,7 @@ endif()
 
 # The DS's 2D display engines and its 3D rendering engine in software, pure
 # (they read the state they are given): the references the port's own
-# graphics are checked against (specs/004), shared by the game and the tests.
+# graphics are checked against, shared by the game and the tests.
 add_library(khdays-gpu STATIC gpu/gpu2d.c gpu/gpu3d.c gpu/texdecode.c gpu/vram_map.c)
 target_compile_options(khdays-gpu PRIVATE /W4 /std:c17)
 
@@ -284,7 +282,7 @@ target_compile_options(khdays-sound PRIVATE /W4 /std:c17)
 target_include_directories(khdays-sound PRIVATE "${stb_SOURCE_DIR}" "${dr_libs_SOURCE_DIR}")
 set_source_files_properties(sound/third_party_decoders.c PROPERTIES COMPILE_OPTIONS "/W0")
 
-# The port's own graphics (specs/004): the frame description made from what
+# The port's own graphics: the frame description made from what
 # the game asks for, and its composition -- shared with the GPU's shaders --
 # and the 3D geometry. Plain C with no SDL and no operating system calls.
 add_library(khdays-gfx STATIC
@@ -303,7 +301,7 @@ add_library(khdays-host-input STATIC
     host/app/profile.c
     host/app/bindings.c
     host/app/devices.c
-    host/settings/settings_model.c        # the settings menu (specs/019): its content,
+    host/settings/settings_model.c        # the settings menu: its content,
     host/settings/settings_menu.cpp       # its screen in Dear ImGui,
     host/settings/settings_skin.cpp       # in the HD menu's pieces where a mod has them,
     host/settings/settings_corner.c       # and what it leaves when closed
@@ -312,7 +310,7 @@ add_library(khdays-host-input STATIC
     runtime/scripts/queue.c          # the Mods page: what it asks of the mods,
     runtime/scripts/view.c           # and what it shows of them
     host/render/png_io.c
-    host/app/instance_win.c          # the player's slot on the PC (specs/015)
+    host/app/instance_win.c          # the player's slot on the PC
     runtime/input/analog.c
     runtime/input/sequencers.c
     ../assets/src/font.cpp       # the port's NFTR decoder
@@ -334,7 +332,7 @@ target_compile_options(khdays-game PRIVATE /W0 /Zp4 /std:c17)
 # The MobiClip frame decoder as the decomp reconstructed it in portable C++
 # (libs/mobiclip/video/portable; not in the DS build, which links the ARM
 # payload): what the port calls for a movie's frame instead of the payload
-# copied to the ITCM (specs/006 research R1).
+# copied to the ITCM.
 set(MOBICLIP_PORTABLE "${DECOMP}/libs/mobiclip/video/portable")
 add_library(khdays-mobiclip OBJECT
     "${MOBICLIP_PORTABLE}/mobiclip_frame_core.cpp"
@@ -377,7 +375,7 @@ add_executable(khdays-native
     runtime/display/display.c
     runtime/core/events.c
     runtime/input/input.c
-    runtime/core/language.c           # the game's language changed while it runs (specs/019)
+    runtime/core/language.c           # the game's language changed while it runs
     runtime/menus/newgame.c            # the new game's dialogs and the port's subtitles question
     runtime/menus/saveslots.c          # the save files beyond the DS's three
     runtime/core/sha1.c               # SHA-1: the saves' signatures, the rooms' passwords
@@ -418,10 +416,10 @@ add_executable(khdays-native
     runtime/core/window.c
     runtime/core/io_guard.c
     runtime/core/memory.c
-    runtime/core/game_heap.c          # the game's two heaps over the port's region (specs/022)
+    runtime/core/game_heap.c          # the game's two heaps over the port's region
     runtime/core/overlays.c
     runtime/core/rom.cpp
-    runtime/core/text_patches.cpp       # the game's DS wording in the port's (specs/015)
+    runtime/core/text_patches.cpp       # the game's DS wording in the port's
     runtime/core/runtime.c
     runtime/sound/sound.c
     runtime/sound/sound_bridge.c
@@ -438,11 +436,11 @@ add_executable(khdays-native
     host/app/context_x64.asm             # the contexts' switch (host/app/context.h)
     host/app/files_win.c
     host/app/sound_output.c
-    host/settings/settings_sample.cpp       # the settings menu's volume samples (specs/019)
+    host/settings/settings_sample.cpp       # the settings menu's volume samples
     host/render/gpu_present.c
     host/render/gpu_raster3d.c
     host/render/gfx_render.c
-    host/render/onescreen.c               # the one picture's situation and composition (specs/012)
+    host/render/onescreen.c               # the one picture's situation and composition
     host/screens/layout_screen.c           # the port's screens drawn from a mod's pieces
     host/screens/save_screen.c             # the port's save list on the screen
     host/screens/cine_screen.c             # MODO CINE's list as the HD theater's chapters
@@ -462,12 +460,12 @@ add_executable(khdays-native
     runtime/mods/models.cpp
     runtime/mods/room_animation.cpp     # a replaced room's own animation (its glTF's)
     runtime/mods/tiles2d.c
-    runtime/mods/sheet_colours.c        # the colours each 2D sheet is drawn with, for the studio (specs/018)
+    runtime/mods/sheet_colours.c        # the colours each 2D sheet is drawn with, for the studio
     runtime/core/files.c
     runtime/core/session_log.c
     runtime/movies/video.c
     runtime/movies/video_mod.c
-    runtime/movies/movie_hd.c             # an HD video in a movie's place (specs/013)
+    runtime/movies/movie_hd.c             # an HD video in a movie's place
     runtime/movies/scene_trace.c          # KHDAYS_TRACE_SCENES: the field's event scripts
     runtime/movies/scene_map.c            # the theater's HD scenes: the map
     runtime/movies/scenes.c               # its files, and the scene the event runs
@@ -475,10 +473,10 @@ add_executable(khdays-native
     host/movies/movie_subtitles.c         # the theater's subtitles over the HD video
     host/movies/theater_music.c           # ... and its music
     host/movies/music_schedule.c
-    runtime/net/net_session.c          # the multiplayer's session (specs/015)
-    runtime/net/mp_predict.c           # a guest's prediction of its own character (specs/017)
+    runtime/net/net_session.c          # the multiplayer's session
+    runtime/net/mp_predict.c           # a guest's prediction of its own character
     host/net/net_win.c                 # ... on Winsock
-    ui/elements.c                  # the port's own presentation (specs/011)
+    ui/elements.c                  # the port's own presentation
     ui/layout.c
     ui/parts.c
     ui/bg.c
@@ -494,7 +492,7 @@ add_executable(khdays-native
     ui/pause.cpp                   # the pause's Retry line in Mission Mode
     ui/text.c
     ui/button_icons.c              # the player's buttons drawn in the HD fonts' text
-    ui/situation.c                 # the one-screen picture (specs/012)
+    ui/situation.c                 # the one-screen picture
     ui/situation_take.c
     ui/situation_decide.c          # what the game shows, from what it runs
     ui/composition.c
@@ -506,7 +504,7 @@ add_executable(khdays-native
     ../assets/src/audio.cpp        # the sound archive's streams and waves, for the menu's samples
     ../assets/src/gltf_export.cpp
     ../assets/src/gltf.cpp         # a mod's models (runtime/mods/models.cpp)
-    ../assets/src/fbx.cpp          # ... as FBX (specs/014)
+    ../assets/src/fbx.cpp          # ... as FBX
     ../assets/src/image.cpp        # their textures in PNG, JPEG, TGA, BMP (its own stb_image)
     ../assets/src/graphics2d.cpp   # the game's 2D sheets, for the rooms' signal
     ../assets/src/cell.cpp         # their cells
@@ -525,8 +523,8 @@ target_compile_options(khdays-native PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
 
-# Media Foundation (host/movies/movie_hd_win.c, specs/013): Windows' own libraries.
-# ufbx (specs/014), as it is: third-party, not held to the port's warnings.
+# Media Foundation (host/movies/movie_hd_win.c): Windows' own libraries.
+# ufbx, as it is: third-party, not held to the port's warnings.
 add_library(khdays-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 target_link_libraries(khdays-native PRIVATE khdays-ufbx)
 target_link_libraries(khdays-native PRIVATE khdays-lua)
@@ -566,7 +564,7 @@ target_compile_options(khdays-input-test PRIVATE
     $<$<COMPILE_LANGUAGE:C>:/W4 /std:c17>
     $<$<COMPILE_LANGUAGE:CXX>:/W4 /std:c++20 /EHsc>)
 add_test(NAME khdays-input COMMAND khdays-input-test)
-# The course of an HD movie (specs/013) against a scripted game and video.
+# The course of an HD movie against a scripted game and video.
 add_executable(khdays-movie-hd-test tests/movie_hd_test.c runtime/movies/movie_hd.c runtime/movies/scene_map.c
                runtime/core/clock.c)
 target_link_libraries(khdays-movie-hd-test PRIVATE winmm)
@@ -595,8 +593,8 @@ add_test(NAME khdays-movie-hd-decode
 # ... a part of it, as the scene map plays a movie's video
 add_test(NAME khdays-movie-hd-part
          COMMAND khdays-movie-hd-decode-test "${CMAKE_CURRENT_SOURCE_DIR}/../data/cutscenes/cinematics/hd808.mp4" 7.19 2.0 5.0)
-# The port's elements in the composition (specs/011): fixed screens composed on the CPU.
-# The multiplayer session's delivery (specs/015): two processes on this
+# The port's elements in the composition: fixed screens composed on the CPU.
+# The multiplayer session's delivery: two processes on this
 # machine, a room found and joined, records through 30% loss.
 add_executable(khdays-net-test tests/net_test.c runtime/net/net_session.c runtime/core/sha1.c host/net/net_win.c runtime/core/session_log.c
                                 host/app/instance_win.c)
@@ -604,8 +602,7 @@ target_link_libraries(khdays-net-test PRIVATE SDL3::SDL3 ws2_32 iphlpapi advapi3
 target_compile_options(khdays-net-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-net COMMAND khdays-net-test)
 
-# The multiplayer's meeting point over the internet (specs/015 US3,
-# server/README.md): a program of its own, next to khdays-native.exe; the
+# The multiplayer's meeting point over the internet (# server/README.md): a program of its own, next to khdays-native.exe; the
 # same sources build on Linux with host/net/net_posix.c. Its test starts it and
 # talks to it as a host and a guest would.
 add_executable(khdays-server server/server.c server/server_core.c server/portmap.c host/net/net_win.c)
@@ -641,7 +638,7 @@ target_compile_definitions(khdays-onescreen-test PRIVATE "KHDAYS_PORT_COMPOSITIO
                            "KHDAYS_TEST_DIR=\"${CMAKE_CURRENT_BINARY_DIR}\"")
 target_compile_options(khdays-onescreen-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-onescreen COMMAND khdays-onescreen-test)
-# The rewrite of the game's C (specs/010): its unit tests, in Python.
+# The rewrite of the game's C: its unit tests, in Python.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME khdays-references
          COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/references_test.py")
@@ -670,7 +667,7 @@ target_compile_options(khdays-thread-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-thread COMMAND khdays-thread-test)
 
 # The save written so that a crash cannot corrupt it (host/app/files.h): a writer
-# stopped at random 100 times, the file whole after each (specs/008 SC-004).
+# stopped at random 100 times, the file whole after each.
 add_executable(khdays-save-test tests/save_test.c host/app/files_win.c)
 target_link_libraries(khdays-save-test PRIVATE SDL3::SDL3)
 target_compile_options(khdays-save-test PRIVATE /W4 /std:c17)
@@ -726,7 +723,7 @@ target_compile_options(khdays-render-test PRIVATE /W4 /std:c17)
 add_test(NAME khdays-render COMMAND khdays-render-test "${CMAKE_CURRENT_SOURCE_DIR}/../saves/frames")
 set_tests_properties(khdays-render PROPERTIES SKIP_RETURN_CODE 77)
 
-# ---- The quality tools (specs/016) -------------------------------------------
+# ---- The quality tools -------------------------------------------
 
 # The fuzzers: libFuzzer through MSVC, with AddressSanitizer, over a reader of
 # what arrives from outside (the server's datagrams, a router's answers, the
@@ -755,7 +752,7 @@ endfunction()
 # The memory-checking build (port/build.py --asan, build/port/obj-asan-x64):
 # AddressSanitizer on the port's own code -- not on the decompilation's
 # rewritten files, whose memory and threads' stacks are the port's mapped
-# window, which it does not track (specs/016 research R3).
+# window, which it does not track.
 option(KHDAYS_ASAN "AddressSanitizer on the port's own code" OFF)
 set(KHDAYS_ASAN_DLL "")
 get_filename_component(KHDAYS_CL_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -820,7 +817,7 @@ endforeach()
 # The HAL as it is compiled: its rewritten copies, whose #line directives
 # name port/hal's own lines. As written its pointers are DS pointers, not
 # the references the build compiles, so a finding there would be about code
-# never built (specs/016 research R2).
+# never built.
 set(KHDAYS_HAL_REWRITTEN ${KHDAYS_REWRITTEN})
 list(FILTER KHDAYS_HAL_REWRITTEN INCLUDE REGEX "/rewritten/native_hal/[^/]+\\.c$")
 if(KHDAYS_HAL_REWRITTEN)

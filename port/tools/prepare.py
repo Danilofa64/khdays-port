@@ -715,7 +715,7 @@ HOOKS = {
             "    khdays_video_blit_begin((u32)pDecoder->blit.pDest, (u32)pDecoder->blit.nStride, pDecoder->nHeight);\n"
             "    Ov024_MobiClip_BlitRows(&pDecoder->blit);\n"
             "    khdays_video_blit_end();\n"
-            "    khdays_video_frame_blitted((u32)&pDecoder->blit); /* the port's picture of it (US2) */\n",
+            "    khdays_video_frame_blitted((u32)&pDecoder->blit); /* the port's picture of it */\n",
         ),
     ],
     # A movie's sound: the channels Ov024_MobiClip_StartAudio locks (mask 3,
