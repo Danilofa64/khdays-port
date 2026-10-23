@@ -79,6 +79,9 @@ static inline int32_t khdays_sound_hw_sample(const KhdaysSoundHw *hw, int n)
     return hw->channels[n].sample;
 }
 
+/* How far channel `n`'s timer is towards its next sample, 0 to 1. */
+float khdays_sound_hw_between(const KhdaysSoundHw *hw, int n);
+
 /* A channel's output now read between its samples, as a PC plays sound rather than holding each sample
  * as the DS does: cubic (Catmull-Rom) from its last four, so two of its samples late; a square wave or
  * noise as it is. */

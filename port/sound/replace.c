@@ -338,7 +338,9 @@ static int load_ogg(KhdaysReplacement *r, const char *path, const KhdaysOriginal
 
 /* --- The replacement ----------------------------------------------------------------- */
 
-/* The filter that brings a file down: a sinc of this many zero crossings each side, under a Blackman window. */
+/* A file above the PC's usual output rate is brought down to it as it loads, through a sinc of this many zero
+ * crossings each side under a Blackman window. */
+#define TOP_RATE 48000u
 #define SINC_ZEROS 16
 #define SINC_PI 3.14159265358979323846
 
@@ -347,11 +349,33 @@ static double blackman(double t) /* t in [-1, 1] */
     return 0.42 + 0.5 * cos(SINC_PI * t) + 0.08 * cos(2.0 * SINC_PI * t);
 }
 
-/* A file above the PC's rate brought down to it through a low-pass filter (a windowed sinc), so that what it
- * holds above half that rate does not fold back as noise, its loop moved with it. 0 without the memory. */
+/* Channel `c` of the file at `x` of its samples through the filter, `half` of them each side. */
+static double filtered(const KhdaysReplacement *r, double x, int64_t half, double ratio, int c)
+{
+    const int64_t center = (int64_t)floor(x);
+    double sum = 0.0, weights = 0.0;
+    for (int64_t k = center - half + 1; k <= center + half; ++k) {
+        if (k < 0 || (uint64_t)k >= r->frames) {
+            continue;
+        }
+        const double d = x - (double)k, u = d / ratio;
+        const double h = (u == 0.0 ? 1.0 : sin(SINC_PI * u) / (SINC_PI * u)) * blackman(d / (double)half);
+        sum += (double)r->samples[(uint64_t)k * (uint64_t)r->channels + (uint64_t)c] * h;
+        weights += h;
+    }
+    return weights != 0.0 ? sum / weights : 0.0;
+}
+
+static int16_t pcm16(double v)
+{
+    return (int16_t)(v > 32767.0 ? 32767 : v < -32768.0 ? -32768 : lrint(v));
+}
+
+/* A file above TOP_RATE brought down to it, so that what it holds above half that rate does not fold back as
+ * noise, its loop moved with it. 0 without the memory. */
 static int bring_down(KhdaysReplacement *r)
 {
-    const double ratio = (double)r->rate / KHDAYS_REPLACEMENT_RATE;
+    const double ratio = (double)r->rate / TOP_RATE;
     const uint64_t frames = (uint64_t)((double)r->frames / ratio);
     const int64_t half = (int64_t)ceil(SINC_ZEROS * ratio); /* the filter's reach each side, in the file's samples */
     const int channels = r->channels;
@@ -360,23 +384,8 @@ static int bring_down(KhdaysReplacement *r)
         return frames == 0;
     }
     for (uint64_t j = 0; j < frames; ++j) {
-        const double x = (double)j * ratio;
-        const int64_t center = (int64_t)floor(x);
         for (int c = 0; c < channels; ++c) {
-            double sum = 0.0, weights = 0.0;
-            for (int64_t k = center - half + 1; k <= center + half; ++k) {
-                if (k < 0 || (uint64_t)k >= r->frames) {
-                    continue;
-                }
-                const double d = x - (double)k, u = d / ratio;
-                const double h = (u == 0.0 ? 1.0 : sin(SINC_PI * u) / (SINC_PI * u)) * blackman(d / (double)half);
-                sum += (double)r->samples[(uint64_t)k * (uint64_t)channels + (uint64_t)c] * h;
-                weights += h;
-            }
-            const double v = weights != 0.0 ? sum / weights : 0.0;
-            out[j * (uint64_t)channels + (uint64_t)c] = (int16_t)(v > 32767.0    ? 32767
-                                                                  : v < -32768.0 ? -32768
-                                                                                 : lrint(v));
+            out[j * (uint64_t)channels + (uint64_t)c] = pcm16(filtered(r, (double)j * ratio, half, ratio, c));
         }
     }
     free(r->samples);
@@ -390,7 +399,7 @@ static int bring_down(KhdaysReplacement *r)
     if (r->looped && r->loop_start >= r->loop_end) {
         r->looped = 0;
     }
-    r->rate = KHDAYS_REPLACEMENT_RATE;
+    r->rate = TOP_RATE;
     return 1;
 }
 
@@ -410,7 +419,7 @@ int khdays_replacement_load(KhdaysReplacement *replacement, const char *path, co
         say(why, why_size, "is not .wav, .flac or .ogg");
         return 0;
     }
-    if (loaded && replacement->rate > KHDAYS_REPLACEMENT_RATE && !bring_down(replacement)) {
+    if (loaded && replacement->rate > TOP_RATE && !bring_down(replacement)) {
         khdays_replacement_free(replacement);
         say(why, why_size, "has no memory to be brought down to the PC's rate");
         return 0;

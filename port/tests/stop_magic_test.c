@@ -162,7 +162,7 @@ static void kept_damage_dealt_once(void)
     CHECK(khdays_stop_hold_store(4, 5) == 5); /* moving again: dealt now */
     CHECK(khdays_stop_hold_due(4, &amount) && amount == 17);
     CHECK(khdays_stop_hold_due(4, &amount) && amount == 17); /* again until dealt (a hit's grace drops it) */
-    khdays_stop_hold_dealt(4);
+    khdays_stop_hold_forget(4);
     CHECK(!khdays_stop_hold_due(4, &amount) && khdays_stop_hold_kept(4) == 0);
 }
 

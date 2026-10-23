@@ -48,6 +48,7 @@ extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
 #define PANEL_KIND 0x6u    /* its parameter (-1 none) */
 #define PANEL_MAGIC 0x18u  /* a magic's index in the battle's tables, 1-18 */
 #define PANEL_PRICE 0x58u
+#define PANEL_TEXT 0x60u    /* its words' number in the strings */
 #define CATEGORY_MATERIAL 2 /* the blank records' */
 #define BLIZZARD 96         /* Blizzard's first level: the record each of Stop's starts from */
 
@@ -177,6 +178,12 @@ static int blank_record(KhdaysRef record)
            rd16(record + PANEL_KIND) == 0xffffu;
 }
 
+/* Which of `count` given strings from `first` string `k` is, or -1. */
+static int given_string(unsigned k, int first, int count)
+{
+    return (int)k >= first && (int)k < first + count ? (int)k - first : -1;
+}
+
 /* The strings' pack of database `db` made again with string `k` replaced by `text[k]` where it is given. */
 static void replace_strings(unsigned db, const char *const *text, int first, int count_given)
 {
@@ -197,7 +204,7 @@ static void replace_strings(unsigned db, const char *const *text, int first, int
         return;
     }
     for (unsigned k = 0; k < count; ++k) {
-        const int ours = (int)k >= first && (int)k < first + count_given ? (int)k - first : -1;
+        const int ours = given_string(k, first, count_given);
         const unsigned start = k == 0 ? 0 : rd32(old + 4u * k);
         lengths[k] = ours >= 0 ? 2u * (unsigned)game_text(text[ours], NULL, 0) : rd32(old + 4u * (k + 1)) - start;
         total += lengths[k];
@@ -212,7 +219,7 @@ static void replace_strings(unsigned db, const char *const *text, int first, int
     unsigned at = 0;
     wr32(made, count);
     for (unsigned k = 0; k < count; ++k) {
-        const int ours = (int)k >= first && (int)k < first + count_given ? (int)k - first : -1;
+        const int ours = given_string(k, first, count_given);
         const KhdaysRef to = made + head + at;
         if (ours >= 0) {
             game_text(text[ours], (unsigned short *)KHDAYS_W(to), (int)(lengths[k] / 2u));
@@ -236,7 +243,7 @@ static void write_panels(const KhdaysStopData *d)
     panels_in = 0;
     for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
         const int id = d->levels[l].id;
-        if (id < 1 || id > count || id - 1 != d->levels[0].id - 1 + l) {
+        if (id < 1 || id > count || id != d->levels[0].id + l) {
             khdays_log("stop: panel %d is not in the panels' table (%d records) or not after the first: no Stop", id,
                        count);
             return;
@@ -250,13 +257,13 @@ static void write_panels(const KhdaysStopData *d)
     for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
         const KhdaysRef record = records + (unsigned)(d->levels[l].id - 1) * PANEL_BYTES;
         const KhdaysRef blizzard = records + (unsigned)(BLIZZARD - 1 + l) * PANEL_BYTES;
-        const unsigned text_id = rd16(record + 0x60u); /* the blank record's own words' number stays */
+        const unsigned text_id = rd16(record + PANEL_TEXT); /* the blank record's own words' number stays */
         memcpy(KHDAYS_W(record), KHDAYS_W(blizzard), PANEL_BYTES);
         wr16(record + PANEL_KIND, 0xffffu); /* no parameter: Stop's casts are the port's (the battle part) */
         *(volatile unsigned char *)KHDAYS_W(record + PANEL_MAGIC) = 0; /* nor a magic of the game's 15 */
         wr32(record + PANEL_PRICE, (unsigned)d->levels[l].price);
         wr16(record + PANEL_PICTURE, PICTURE_CLOCK + 1u);
-        wr16(record + 0x60u, text_id);
+        wr16(record + PANEL_TEXT, text_id);
     }
     /* the words: each panel's name and description, strings 2 (id - 1) and 2 (id - 1) + 1 */
     const int g = data_language();
@@ -528,16 +535,10 @@ void khdays_stop_magic_names(void *record)
 }
 
 /* --- The battle --------------------------------------------------------------------------------------------------
- * An actor's pool of magic slots has 15 places and kept the cast's level animation (its grid entry) in the word after
- * them: the port keeps that word (khdays_magic_track), so the place after the 15 is Stop's, 15. Stop's slot is built
- * with Cure's constructor over Stop's own model and takes Cure's handlers (its effect stands round its caster, as
- * Cure's does), with a kind of its own (15) so Cure's heal does not run. Its three levels are the magic submenu's
- * cells 15-17, whose names the battle's list has; its casts are the port's own (the party record keeps casts only for
- * parameters 1-53, and 16 is Dodge Roll's). Cast, it marks a zone round its caster; each enemy standing in it (not
- * one the area keeps idle), on its next tick, is held as a frozen enemy is (Ov107_ProcessObjectTick) for the level's
- * time less its own resistance to freezing, unless freezing cannot touch it; the damage its hits would have dealt is
- * kept and dealt at once as it moves again, as a burn's timed hit is (flags 0x88/0x80). docs/RUNTIME_MAP.md,
- * "The magic". */
+ * Stop's slot is the 16th place of an actor's pool of magics, built with Cure's constructor over Stop's model; its
+ * levels are the submenu's cells 15-17 and its casts the port's. A cast marks a zone round its caster; the enemies in
+ * it are held as frozen ones are, and the damage they take meanwhile is dealt as they move again.
+ * docs/RUNTIME_MAP.md, "The magic". */
 
 extern int Session_GetLocalPlayerIndex(void);
 extern int Session_IsActive(void);
@@ -553,6 +554,8 @@ extern void Ov002_HudSetSlotValue(int key, int value);
 #define POOL_CAST 0xcu   /* the pool's slot being cast (Ov022_SetRecordValue) */
 #define POOL_SLOTS 0x18u /* the pool's slots (Ov022_InitEntryState) */
 #define POOL_ACTOR 0x58u
+#define SESSION_CELLS 0x32u /* the submenu's cells (Ov002_CreatePanelSession), two bytes each */
+#define SUBMENU_CELLS 15
 #define SLOT_ANIMATION 0x8u   /* a slot's animation state (BindAnimTrack): */
 #define ANIMATION_BOUND 0xcu  /* the 5 animation objects bound, */
 #define ANIMATION_MODEL 0x20u /* its model's NNSG3dRenderObj: anmMat 8, anmJnt 0x10, anmVis 0x18, */
@@ -646,9 +649,14 @@ void khdays_magic_track_set(KhdaysRef pool, int entry)
     t->entry = entry;
 }
 
+static int actor_id(KhdaysRef actor)
+{
+    return *(const volatile unsigned char *)KHDAYS_W(actor + ACTOR_ID);
+}
+
 static int pool_actor(KhdaysRef pool)
 {
-    return *(const volatile unsigned char *)KHDAYS_W(rd32(pool + POOL_ACTOR) + ACTOR_ID);
+    return actor_id(rd32(pool + POOL_ACTOR));
 }
 
 /* The local player's casts and Magic LVs, folded from the deck as the battle builds their magic, by the camp's rule
@@ -725,18 +733,17 @@ static Casts *casts_for(int actor)
 
 int khdays_stop_slot_wanted(int actor, char *path, int *parts, int *template_index)
 {
-    Casts *c;
-    if (stop_data() == NULL || !panels_in) {
-        return 0;
+    const int local = actor == Session_GetLocalPlayerIndex();
+    if (stop_data() == NULL || !panels_in || (!local && !Session_IsActive())) {
+        return 0; /* no Stop, or a partner of one player's game: no deck */
     }
-    if (actor == Session_GetLocalPlayerIndex()) {
+    if (local) {
         fold_casts(actor);
-    } else if (!Session_IsActive()) {
-        return 0; /* a partner of one player's game: no deck */
-    } else if ((c = casts_of(actor)) != NULL) {
+    }
+    Casts *c = casts_of(actor);
+    if (c != NULL && !local) {
         memset(c, 0, sizeof(*c)); /* another player's: from the room (casts_for) */
     }
-    c = casts_of(actor);
     /* in a room every player's actor has the slot, so that a cast another copy sends finds it */
     if (c == NULL || (!Session_IsActive() && c->most[0] + c->most[1] + c->most[2] == 0)) {
         return 0;
@@ -751,8 +758,8 @@ int khdays_stop_slot_wanted(int actor, char *path, int *parts, int *template_ind
 int khdays_stop_cells(void *session, int count)
 {
     const Casts *c = casts_of(Session_GetLocalPlayerIndex());
-    unsigned char *cells = (unsigned char *)session + 0x32;
-    for (int l = 0; c != NULL && l < KHDAYS_STOP_LEVELS && count < 15; ++l) {
+    unsigned char *cells = (unsigned char *)session + SESSION_CELLS;
+    for (int l = 0; c != NULL && l < KHDAYS_STOP_LEVELS && count < SUBMENU_CELLS; ++l) {
         if (c->most[l] > 0) {
             cells[2 * count] = (unsigned char)(STOP_CELL + l);
             ++count;
@@ -913,10 +920,10 @@ int khdays_stop_player_holding(void *actor)
     seen.resist = 0;
     held = khdays_stop_hold_tick(a, &seen, khdays_link_frame(), &taken, &freed);
     if (taken > 0) {
-        khdays_log("stop: player %d held for %d ticks", *(const volatile unsigned char *)KHDAYS_W(a + ACTOR_ID), taken);
+        khdays_log("stop: player %d held for %d ticks", actor_id(a), taken);
     }
     if (freed) {
-        khdays_log("stop: player %d released", *(const volatile unsigned char *)KHDAYS_W(a + ACTOR_ID));
+        khdays_log("stop: player %d released", actor_id(a));
     }
     return held;
 }
@@ -942,7 +949,7 @@ void khdays_stop_released(void *enemy)
     const KhdaysRef e = KHDAYS_REF(enemy);
     if ((short)rd16(e + ENEMY_HP) < release_hp) {
         khdays_log("stop: enemy %#x took its kept %d", e, khdays_stop_hold_kept(e));
-        khdays_stop_hold_dealt(e);
+        khdays_stop_hold_forget(e);
     }
 }
 

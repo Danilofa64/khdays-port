@@ -210,7 +210,7 @@ void khdays_profile_default(KhdaysProfile *p)
     khdays_sound_default(&p->sound);
     khdays_network_default(&p->network);
     khdays_save_default(&p->save);
-    khdays_gameplay_default(&p->gameplay);
+    p->gameplay.stop_magic = 1;
 }
 
 void khdays_sound_default(KhdaysSound *s)
@@ -223,11 +223,6 @@ void khdays_save_default(KhdaysSave *s)
 {
     s->all_files = 1;
     s->autosave = KHDAYS_AUTOSAVE_FILE99;
-}
-
-void khdays_gameplay_default(KhdaysGameplay *g)
-{
-    g->stop_magic = 1;
 }
 
 void khdays_network_default(KhdaysNetwork *n)

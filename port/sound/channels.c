@@ -315,16 +315,20 @@ void khdays_sound_hw_write(KhdaysSoundHw *hw, uint32_t offset, int size, uint32_
     }
 }
 
+float khdays_sound_hw_between(const KhdaysSoundHw *hw, int n)
+{
+    const uint32_t reload = REG16(n * 16 + 8);
+    const float t = (float)((int64_t)hw->channels[n].counter - reload) / (float)(0x10000u - reload);
+    return t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+}
+
 float khdays_sound_hw_smooth_sample(const KhdaysSoundHw *hw, int n)
 {
     const KhdaysSoundChannel *c = &hw->channels[n];
-    const uint32_t reload = REG16(n * 16 + 8);
     if (!c->playing || ((control(hw, n) >> 29) & 3) == PSG) {
         return (float)c->sample;
     }
-    /* how far the timer is towards the next sample */
-    float t = (float)((int64_t)c->counter - reload) / (float)(0x10000u - reload);
-    t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+    const float t = khdays_sound_hw_between(hw, n);
     const float p0 = (float)c->history[2], p1 = (float)c->history[1], p2 = (float)c->history[0];
     const float p3 = (float)c->sample;
     return p1 + 0.5f * t * (p2 - p0 + t * (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3 + t * (3.0f * (p1 - p2) + p3 - p0)));

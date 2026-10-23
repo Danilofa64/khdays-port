@@ -1773,10 +1773,10 @@ for _key, _signature, _field, _type in (
     ("ov022@0208cfbc", "void Ov022_LaunchSlotPartTracked(struct ReactionCtx *pCtx)\n", "pOwner", "void *"),
 ):
     HOOKS[_key] = _magic_track_reads(_signature, _field, _type)
-# The cast's message (kind 0xc, its slot in five bits) carries the cell, Stop's level with it: a copy that receives
-# it takes Stop's place and that level, as the caster's does (Ov022_SetRecordValue).
 # The panels' pictures loaded (the camp's two menus, the results): the clock Stop's panels show, in the magics' purple.
-_STOP_PICTURES = "    {{ extern void khdays_stop_pictures(unsigned int archive); khdays_stop_pictures((unsigned){0}); }}\n"
+_STOP_PICTURES = (
+    "    {{ extern void khdays_stop_pictures(unsigned int archive); khdays_stop_pictures((unsigned){0}); }}\n"
+)
 HOOKS["ov008@0205f98c"] = [  # Ov008_InitGridMenuTextures
     (
         "    Obj_RelocateSections(pCtx->pIconArchive, 0);\n",
@@ -1796,6 +1796,8 @@ HOOKS["ov005@02052a7c"] = [  # Ov005_AllocateResultTextures
         + _STOP_PICTURES.format("context->textureSet.archive"),
     )
 ]
+# The cast's message (kind 0xc, its slot in five bits) carries the cell, Stop's level with it: a copy that receives
+# it takes Stop's place and that level, as the caster's does (Ov022_SetRecordValue).
 HOOKS["ov022@0208a2b4"] = _magic_track_reads("void Ov022_OnEndMessage(struct EndMessage *pMsg)\n", "pTrack", "u8 *") + [
     (  # Ov022_OnEndMessage, a cast begun on another copy: its slot
         "        pCtx->nSlot = pMsg->nSlot;\n",

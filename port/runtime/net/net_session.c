@@ -403,6 +403,14 @@ static void *grow(void *items, int *room, int need, size_t item)
     }
 }
 
+/* The members' Stop forgotten: a room joined or left (the host's pings bring them again). */
+static void forget_stops(void)
+{
+    for (int i = 0; i < net.stop_room; ++i) {
+        net.stops[i] = 0;
+    }
+}
+
 /* A copy of `size` bytes (at least one byte is allocated, so an empty copy is
  * not NULL). Out of memory, the process stops. */
 static unsigned char *copy_of(const void *data, size_t size)
@@ -1464,9 +1472,7 @@ static void on_datagram(const Route *from, const unsigned char *d, long got, u64
         for (int i = 0; i < net.level_room; ++i) {
             net.levels[i] = 0; /* this room's come with the host's pings */
         }
-        for (int i = 0; i < net.stop_room; ++i) {
-            net.stops[i] = 0;
-        }
+        forget_stops();
         mods_forget();
         /* from now on, reach the host the way its welcome came: directly or
          * through the server */
@@ -1878,9 +1884,7 @@ static void ping_levels(Peer *p, const unsigned char *body, unsigned int size)
             net.levels = (int *)grow(net.levels, &net.level_room, (int)aid + 1, sizeof(*net.levels));
             net.levels[aid] = (int)get16(body + 9 + 3 * k + 1);
         }
-        for (int i = 0; i < net.stop_room; ++i) {
-            net.stops[i] = 0;
-        }
+        forget_stops();
         if (at < size) {
             const unsigned int stops = body[at++];
             for (unsigned int k = 0; k < stops && at + 1 + STOP_BYTES <= size; ++k, at += 1 + STOP_BYTES) {
@@ -2132,9 +2136,7 @@ static void leave_locked(void)
     for (int i = 0; i < net.level_room; ++i) {
         net.levels[i] = 0;
     }
-    for (int i = 0; i < net.stop_room; ++i) {
-        net.stops[i] = 0;
-    }
+    forget_stops();
     mods_forget();
     net.role = NONE;
     net.joining = 0;

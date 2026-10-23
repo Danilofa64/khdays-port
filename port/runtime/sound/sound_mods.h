@@ -52,15 +52,10 @@ int khdays_sound_mods_wave_sample(int handle, uint64_t index, int32_t *sample);
 int khdays_sound_mods_replaces_player(int p);
 int khdays_sound_mods_replaces_stream(int s);
 
-/* One output sample at `rate`: the replacements move on and add to `out`
- * (the PC mixer's scale) under their category's volume (`player_gain` per
- * ARM7 player, `stream_gain` per stream player, `channel_gain` per channel
- * for the waves, NULL: none) and SOUNDCNT's master volume -- the overall
- * volume is the caller's. `finished_tag`: the last command list the ARM7
- * has done (the shared work's +0). With the hardware's `smooth` (the PC's
- * output) a file is read at the output's instants, a wave's too; a file
- * longer than its original plays on to its end once the original ends by
- * itself (not when the game stops it). */
+/* One output sample at `rate`: the replacements move on and add to `out` (the PC mixer's scale) under their
+ * category's volume (`player_gain` per ARM7 player, `stream_gain` per stream player, `channel_gain` per channel for
+ * the waves, NULL none) and SOUNDCNT's master volume. `finished_tag`: the last command list the ARM7 has done. A file
+ * longer than its original plays on to its end once the original ends by itself (docs/SOUND.md). */
 void khdays_sound_mods_mix(const KhdaysSoundHw *hw, const KhdaysSnd7Driver *driver, uint32_t rate,
                            uint32_t finished_tag, const float player_gain[16], const float stream_gain[4],
                            const float channel_gain[16], float out[2]);

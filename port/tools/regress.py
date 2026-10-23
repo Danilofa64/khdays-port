@@ -69,8 +69,14 @@ WALKS = [
         player_save=False,
         mods="port/tests/mods_v2/stop",
         window=True,
-        marks=("casts 2 1 1, Magic LV 1 1 2", "stop: Stopga cast", "Magic LV 2 (300 ticks)", "stop: Stopra cast",
-               "stop: Stop cast", "took its kept"),
+        marks=(
+            "casts 2 1 1, Magic LV 1 1 2",
+            "stop: Stopga cast",
+            "Magic LV 2 (300 ticks)",
+            "stop: Stopra cast",
+            "stop: Stop cast",
+            "took its kept",
+        ),
     ),
     # ... in a room of two (port/tests/mods_v2/stop_room): the host's casts and a guest's, on every copy; the room's
     # friendly fire on, each holds the other player
@@ -81,8 +87,13 @@ WALKS = [
         players=2,
         mods="port/tests/mods_v2/stop_room",
         window=True,
-        marks=("Magic LV 1 1 1 (the room's)", "stop: player 1 held for 120 ticks", "stop: player 0 held for 120 ticks",
-               "stop: player 1 held for 240 ticks", "stop: player 0 held for 180 ticks"),
+        marks=(
+            "Magic LV 1 1 1 (the room's)",
+            "stop: player 1 held for 120 ticks",
+            "stop: player 0 held for 120 ticks",
+            "stop: player 1 held for 240 ticks",
+            "stop: player 0 held for 180 ticks",
+        ),
     ),
     # ... at the moogle (port/tests/mods_v2/stop_shop): its recipe listed and Stop synthesised at Mission Mode's camp
     Walk(

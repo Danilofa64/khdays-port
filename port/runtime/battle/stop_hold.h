@@ -35,11 +35,10 @@ int khdays_stop_hold_kept(unsigned enemy);
 int khdays_stop_hold_store(unsigned enemy, int amount);
 
 /* A released enemy's kept damage: 1 with `*amount` to deal now, 0 for none (an enemy released keeping none is
- * forgotten). Dealt, the enemy is forgotten. */
+ * forgotten). */
 int khdays_stop_hold_due(unsigned enemy, int *amount);
-void khdays_stop_hold_dealt(unsigned enemy);
 
-/* An enemy gone (its kept damage with it); every hold and the zone (an area left). */
+/* An enemy dealt its kept damage, or gone; every hold and the zone (an area left). */
 void khdays_stop_hold_forget(unsigned enemy);
 void khdays_stop_hold_clear(void);
 

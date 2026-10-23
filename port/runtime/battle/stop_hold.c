@@ -132,11 +132,6 @@ int khdays_stop_hold_due(unsigned enemy, int *amount)
     return 1;
 }
 
-void khdays_stop_hold_dealt(unsigned enemy)
-{
-    khdays_stop_hold_forget(enemy);
-}
-
 void khdays_stop_hold_forget(unsigned enemy)
 {
     Held *h = held_of(enemy);

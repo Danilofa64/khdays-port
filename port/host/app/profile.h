@@ -238,11 +238,8 @@ void khdays_save_default(KhdaysSave *save);
 /* What the port adds to the game's play ([gameplay] in the settings file): the Stop magic Days left
  * unfinished (runtime/battle/stop_magic.h), read as the game starts. */
 typedef struct KhdaysGameplay {
-    int stop_magic; /* 1: Stop's panels, recipes and casts; 0: the game as the DS's */
+    int stop_magic; /* 1 (the default): Stop's panels, recipes and casts; 0: the game as the DS's */
 } KhdaysGameplay;
-
-/* Stop on. */
-void khdays_gameplay_default(KhdaysGameplay *gameplay);
 
 typedef struct KhdaysProfile {
     int version;         /* 1 */
