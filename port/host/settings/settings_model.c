@@ -454,6 +454,11 @@ static void build_general(Builder *b, KhdaysProfile *w)
     r->note = khdays_text(TXT_SAVE_FILES_NOTE);
     r->apply = KHDAYS_APPLY_RESUME;
     r->takes = TXT_TAKES_RESUME;
+    /* read as the game starts (runtime/battle/stop_magic.h): its records, recipes and casts made then */
+    r = add_switch(b, KHDAYS_SET_STOP_MAGIC, TXT_STOP_MAGIC, &w->gameplay.stop_magic, 1,
+                   khdays_text(TXT_STOP_MAGIC_NOTE));
+    r->apply = KHDAYS_APPLY_NEXT;
+    r->takes = TXT_TAKES_NEXT_START;
     add_switch(b, KHDAYS_SET_SESSION_LOG, TXT_SESSION_LOG, &w->session_log, 1, khdays_text(TXT_SESSION_LOG_NOTE));
     add_command(b, KHDAYS_SET_RESTORE_BOTH, TXT_RESTORE_BOTH, KHDAYS_CMD_RESTORE_BOTH);
 }

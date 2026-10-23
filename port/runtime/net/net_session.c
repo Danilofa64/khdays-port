@@ -335,6 +335,7 @@ static struct {
     unsigned int last_refusal;
     char *refusal_mods;
     int refusal_more;
+    int refusal_stop_off; /* that host plays without the Stop magic */
     /* host only: guests the server introduced, to punch toward until they join */
     struct Introduced {
         unsigned int token;
@@ -516,6 +517,17 @@ void khdays_net_set_mods(unsigned int fingerprint, const unsigned char *list, un
     SDL_UnlockMutex(mods_lock);
 }
 
+/* The Stop magic ([gameplay] stop_magic), set before any session: off, it counts in the fingerprint as
+ * a gameplay mod would, so that a room takes only copies that agree. */
+#define STOP_OFF_NAME "\x01stop"
+#define STOP_OFF_MARK 0x504f5453u
+static int stop_magic = 1;
+
+void khdays_net_set_stop_magic(int on)
+{
+    stop_magic = on != 0;
+}
+
 static unsigned int own_mods_fingerprint(void)
 {
     unsigned int fingerprint;
@@ -523,7 +535,7 @@ static unsigned int own_mods_fingerprint(void)
     SDL_LockMutex(mods_lock);
     fingerprint = mods_fingerprint;
     SDL_UnlockMutex(mods_lock);
-    return fingerprint;
+    return stop_magic ? fingerprint : fingerprint ^ STOP_OFF_MARK;
 }
 
 static void send_kind(const Route *to, int kind, const unsigned char *body, unsigned int size)
@@ -1249,12 +1261,19 @@ static int password_proven(const unsigned char *sender, const unsigned char *bod
 }
 
 /* The refusal for other gameplay mods: the reason, how many the host plays with (u16), then as many of
- * them as one datagram holds, each its name and version as a u8 size and the bytes. */
+ * them as one datagram holds, each its name and version as a u8 size and the bytes; first, a host
+ * without the Stop magic names STOP_OFF_NAME with no version. */
 static void refuse_for_mods(const Route *to)
 {
     unsigned char body[DATAGRAM_RECORDS];
     unsigned int at = 3, read = 0, listed = 0;
     body[0] = KHDAYS_NET_REFUSE_MODS;
+    if (!stop_magic) {
+        body[at++] = (unsigned char)(sizeof(STOP_OFF_NAME) - 1);
+        memcpy(body + at, STOP_OFF_NAME, sizeof(STOP_OFF_NAME) - 1);
+        at += (unsigned int)sizeof(STOP_OFF_NAME) - 1;
+        body[at++] = 0;
+    }
     mods_ready();
     SDL_LockMutex(mods_lock);
     while (listed < mods_count && read < mods_size) {
@@ -1270,31 +1289,41 @@ static void refuse_for_mods(const Route *to)
         read += entry;
         ++listed;
     }
-    put16(body + 1, (unsigned short)mods_count);
+    put16(body + 1, (unsigned short)(mods_count + !stop_magic));
     SDL_UnlockMutex(mods_lock);
     send_kind(to, REFUSE, body, at);
 }
 
-/* A guest's reading of that refusal: "name version, ..." and how many were left out. */
+/* A guest's reading of that refusal: "name version, ..." and how many were left out; the host's being
+ * without Stop apart (khdays_net_last_refusal_stop_off). */
 static void take_refusal_mods(const unsigned char *body, unsigned int size)
 {
     const unsigned int count = size >= 3 ? get16(body + 1) : 0;
-    unsigned int at = 3, shown = 0, length = 0;
+    unsigned int at = 3, shown = 0, written = 0, length = 0;
     char *text = (char *)malloc(size * 2 + 1);
     free(net.refusal_mods);
     net.refusal_mods = text;
     net.refusal_more = 0;
+    net.refusal_stop_off = 0;
     if (text == NULL) {
         return;
     }
     while (at < size && shown < count) {
+        const unsigned int name = body[at];
+        if (name == sizeof(STOP_OFF_NAME) - 1 && at + 2 + name <= size &&
+            memcmp(body + at + 1, STOP_OFF_NAME, name) == 0 && body[at + 1 + name] == 0) {
+            net.refusal_stop_off = 1;
+            at += 2 + name;
+            ++shown;
+            continue;
+        }
         for (int part = 0; part < 2; ++part) {
             const unsigned int n = at < size ? body[at] : 0;
             if (at + 1 + n > size) {
                 at = size;
                 break;
             }
-            if (part == 0 && shown > 0) {
+            if (part == 0 && written > 0) {
                 text[length++] = ',';
                 text[length++] = ' ';
             } else if (part == 1) {
@@ -1305,6 +1334,7 @@ static void take_refusal_mods(const unsigned char *body, unsigned int size)
             at += 1 + n;
         }
         ++shown;
+        ++written;
     }
     text[length] = 0;
     net.refusal_more = (int)(count - shown);
@@ -3217,6 +3247,18 @@ void khdays_net_last_refusal_mods(char *text, int room, int *more)
         *more = net.refusal_more;
     }
     SDL_UnlockMutex(net.lock);
+}
+
+int khdays_net_last_refusal_stop_off(void)
+{
+    int off;
+    if (!net.started) {
+        return 0;
+    }
+    SDL_LockMutex(net.lock);
+    off = net.refusal_stop_off;
+    SDL_UnlockMutex(net.lock);
+    return off;
 }
 
 int khdays_net_own_aid(void)

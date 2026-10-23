@@ -204,9 +204,15 @@ int khdays_net_last_refusal(void);
  * copied. */
 void khdays_net_set_mods(unsigned int fingerprint, const unsigned char *list, unsigned int size, unsigned int count);
 
+/* Whether this copy plays with the Stop magic ([gameplay] stop_magic, set before any session): rooms
+ * take only copies that agree, its being off counting as a gameplay mod in the fingerprint. */
+void khdays_net_set_stop_magic(int on);
+
 /* After a KHDAYS_NET_REFUSE_MODS: the host's gameplay mods as "name version, name version" (cut to
- * `room` bytes, ended), and how many of them the host's answer could not hold. */
+ * `room` bytes, ended), and how many of them the host's answer could not hold; and whether that host
+ * plays without the Stop magic (not in the text: the guest says it in its own language). */
 void khdays_net_last_refusal_mods(char *text, int room, int *more);
+int khdays_net_last_refusal_stop_off(void);
 
 /* How many rooms of the group being scanned are known now. */
 int khdays_net_room_count(void);

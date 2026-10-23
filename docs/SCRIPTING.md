@@ -317,7 +317,7 @@ the HD theater's list when the HD PACK is there, else in the game's own font.
 A panel is an item the camp's Panels list (items, magic, Level Up and its doublers, gears, abilities,
 links, rings and charms; not the synthesis materials, the Slot Releaser or the badges), by its item
 number; the port's Stop magic adds three, 628 Stop, 629 Stopra and 630 Stopga, magic panels as the
-game's. The deck holds as the camp lets the player set it: a multi-cell panel within its page, on open
+game's (`"unknown panel"` while the player has Stop turned off). The deck holds as the camp lets the player set it: a multi-cell panel within its page, on open
 cells and over no other; a link (marked Ｌ) on a cell of a multi-cell panel of its category; one gear,
 one ring or charm, one multi-cell ability of a kind. A change that would break that, or more copies set
 than owned, is refused whole, nothing changed. The player's stats come from the deck as the camp

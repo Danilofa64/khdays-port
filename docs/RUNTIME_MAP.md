@@ -5065,9 +5065,18 @@ the port restores it (`runtime/battle/`).
   player's actor Stop's slot in a room, sends the level as Stop's cells 15-17 in that message, and each copy's casts
   and Magic LVs in its pings (every 250 ms; the host's list everyone's). On every copy a cast marks its zone and the
   enemies' ticks are held there; an enemy's copy on a guest (`+0x50` 2) counts as set going while the host's state
-  has it active (`+0x60` bit 0). Rooms take only copies of the same build, so every member reads the same Stop.
+  has it active (`+0x60` bit 0). Rooms take only copies of the same build, so every member reads the same Stop, and
+  only copies that agree on Stop being on (below).
   With the room's friendly fire on (`data_0204c240` bit 2 and `data_0204c248`: 1 low, 2 high), a cast holds the other
   players its zone reaches, never its caster: the host keeps a held player's input, state and motion
   (`Ov022_ActorUpdate`), and every copy its animation. Seen on two copies (the walks `stop_room_1`, `stop_room_2`,
   the test mod `port/tests/mods_v2/stop_room`): each of the six Stops held the other player for 120 ticks, Stopga
   for 240 and Stopra for 180, taken on both copies within two frames of each other and released together.
+- **Stop turned off** (`[gameplay] stop_magic = off`, Settings > General, read as the game starts): every part of
+  it answers as without Stop (`khdays_stop_set_enabled`): no records written over the blank ones, no words, no
+  recipes, no names in the battle's list, no slot, cells or holds; the game is the DS's. A save's Stop panels stay
+  as items 628-630 and on their cells, unseen, as an older port keeps them. Its being off counts in the room's
+  fingerprint as a gameplay mod would, so a room takes only copies that agree; a refused guest is told the host
+  plays without it, or, its own off, that the host plays with it. Seen on the walk `stop` with it off: the session
+  log's `stop: off`, the test mod's three panels refused (`unknown panel`), mission 94 played to its time with no
+  fault.

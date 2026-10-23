@@ -7,6 +7,12 @@
 extern "C" {
 #endif
 
+/* Whether Stop is in the game ([gameplay] stop_magic, host/app/profile.h): set before the game starts. Off, every
+ * function below does nothing and answers as without Stop, the game as the DS's (a save's Stop panels kept unseen, as
+ * an older port keeps them). */
+void khdays_stop_set_enabled(int on);
+int khdays_stop_enabled(void);
+
 /* Whether `id` is one of Stop's panels, in the game (its records written). Called from the game's C. */
 int khdays_stop_panel(int id);
 

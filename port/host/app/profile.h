@@ -235,6 +235,15 @@ typedef struct KhdaysSave {
 /* The 99 files, the autosave into file 99. */
 void khdays_save_default(KhdaysSave *save);
 
+/* What the port adds to the game's play ([gameplay] in the settings file): the Stop magic Days left
+ * unfinished (runtime/battle/stop_magic.h), read as the game starts. */
+typedef struct KhdaysGameplay {
+    int stop_magic; /* 1: Stop's panels, recipes and casts; 0: the game as the DS's */
+} KhdaysGameplay;
+
+/* Stop on. */
+void khdays_gameplay_default(KhdaysGameplay *gameplay);
+
 typedef struct KhdaysProfile {
     int version;         /* 1 */
     int language;        /* the game's and this screen's language: 0 the system's, else 1..5 (ui_text.h) */
@@ -248,6 +257,7 @@ typedef struct KhdaysProfile {
     KhdaysSound sound;
     KhdaysNetwork network;
     KhdaysSave save;
+    KhdaysGameplay gameplay;
 } KhdaysProfile;
 
 /* The faithful default: today's keyboard layout, the DS layout on the

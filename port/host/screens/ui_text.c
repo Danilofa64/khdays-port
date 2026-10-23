@@ -913,6 +913,31 @@ static const char *const texts[TXT_COUNT][5] = {
                              "pagine da tre, o i tre file del DS.",
                              "Las listas de guardado del propio juego (sin las pantallas HD): los 99 archivos del port "
                              "en páginas de tres, o los tres archivos de la DS."},
+    [TXT_STOP_MAGIC] = {"Stop magic", "Magie Stop", "Stopp-Magie", "Magia Stop", "Magia Paro"},
+    [TXT_STOP_MAGIC_NOTE] = {"The magic Days left unfinished, restored: its panels, its recipes at the moogle's and "
+                             "its casts. Off, the game is the DS's; a save's Stop panels are kept, unseen. In a room, "
+                             "every player must have it the same.",
+                             "La magie que Days a laissée inachevée, restaurée : ses panneaux, ses recettes chez le "
+                             "Mog et ses sorts. Désactivée, le jeu est celui de la DS ; les panneaux Stop d'une "
+                             "sauvegarde sont gardés, invisibles. Dans un salon, tous les joueurs doivent l'avoir "
+                             "pareil.",
+                             "Die Magie, die Days unvollendet ließ, wiederhergestellt: ihre Felder, ihre Rezepte beim "
+                             "Mogry und ihre Zauber. Aus ist das Spiel das des DS; Stopp-Felder eines Spielstands "
+                             "bleiben erhalten, unsichtbar. In einem Raum müssen es alle Spieler gleich haben.",
+                             "La magia che Days ha lasciato incompiuta, ripristinata: i suoi pannelli, le sue ricette "
+                             "dal moguri e i suoi incantesimi. Disattivata, il gioco è quello del DS; i pannelli Stop "
+                             "di un salvataggio restano, nascosti. In una stanza tutti i giocatori devono averla "
+                             "uguale.",
+                             "La magia que Days dejó sin terminar, restaurada: sus paneles, sus recetas en el moguri y "
+                             "sus lanzamientos. Desactivada, el juego es el de la DS; los paneles de Paro de una "
+                             "partida se conservan, ocultos. En una sala todos los jugadores deben tenerla igual."},
+    [TXT_STOP_MAGIC_ON] = {"Stop magic on", "Magie Stop activée", "Stopp-Magie an", "Magia Stop attiva",
+                           "Magia Paro activada"},
+    [TXT_STOP_MAGIC_OFF] = {"Stop magic off", "Magie Stop désactivée", "Stopp-Magie aus", "Magia Stop disattivata",
+                            "Magia Paro desactivada"},
+    [TXT_TAKES_NEXT_START] = {"Takes effect the next time the game starts.", "S'applique au prochain lancement du jeu.",
+                              "Gilt beim nächsten Start des Spiels.", "Vale al prossimo avvio del gioco.",
+                              "Se aplica la próxima vez que se inicie el juego."},
     [TXT_AUTOSAVE_DONE] = {"Autosaved: file %d", "Sauvegarde auto : fichier %d", "Automatisch gespeichert: Datei %d",
                            "Salvataggio automatico: file %d", "Autoguardado: archivo %d"},
     [TXT_AUTOSAVE_FAILED] = {"Autosave failed: file %d", "Échec de la sauvegarde auto : fichier %d",

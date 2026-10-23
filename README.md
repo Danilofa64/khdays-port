@@ -76,6 +76,10 @@ are made at the moogle's shop (dearer than any other magic) and work in
 multiplayer, where with friendly fire on Stop also holds the other players.
 Its numbers, prices, recipes and words are in an open file,
 [`port/runtime/battle/stop_magic.txt`](port/runtime/battle/stop_magic.txt).
+It is on unless turned off in **Settings → General → Stop magic** (`[gameplay]
+stop_magic = off`, read as the game starts): the game is then the DS's, and a
+save's Stop panels stay in it, unseen, until it is on again. In a room every
+player must have it the same.
 
 Planned: the port on other systems -- Linux first, then, from one ARM64
 build, macOS, Windows on ARM and the Nintendo Switch.

@@ -99,9 +99,28 @@ static void wr16(KhdaysRef at, unsigned value)
 static KhdaysStopData data;
 static int data_state; /* 0 not read yet, 1 read, -1 not usable */
 static int panels_in;  /* Stop's records are in the loaded panels' table */
+static int enabled = 1;
+
+void khdays_stop_set_enabled(int on)
+{
+    enabled = on != 0;
+    khdays_net_set_stop_magic(enabled); /* a room's copies must agree on it */
+}
+
+int khdays_stop_enabled(void)
+{
+    return enabled;
+}
 
 static const KhdaysStopData *stop_data(void)
 {
+    if (!enabled) {
+        if (data_state == 0) {
+            data_state = -1;
+            khdays_log("stop: off ([gameplay] stop_magic): no Stop");
+        }
+        return NULL;
+    }
     if (data_state == 0) {
         char why[200];
         data_state = -1;
