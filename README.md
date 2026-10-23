@@ -724,9 +724,11 @@ ffmpeg -i source.mp4 -c:v mpeg1video -q:v 2 -c:a mp2 -b:a 256k -f mpeg mods/MyMo
 Besides content, a mod can carry Lua scripts that change how the game plays: they hear what
 happens (each frame, scenes, missions, HP, items, munny, the menus, saving), read and change the
 game's state by name (munny, items, flags, the player's HP and position), add their own options
-to the settings menu's Mods page, and ask the game to act (items, sounds, the field's notice). Each
+to the settings menu's Mods page, and ask the game to act (items, sounds, the field's notice). For
+what the names do not cover, a script reads the game's memory by address, as the decompilation
+describes it, and writes it if its mod declares so (the Mods page tells the player). Each
 runs in its own sandbox: an error or an endless loop stops that mod only, and scripts reach no file
-outside their own folder. `docs/SCRIPTING.md` describes it all; `port/mods_examples/` (installed
+outside their own folder, nor any memory but the game's. `docs/SCRIPTING.md` describes it all; `port/mods_examples/` (installed
 as `mods-examples/`) has examples to copy into `mods/`; khdays-studio's Console shows what the
 mods print and reloads them while the game runs.
 

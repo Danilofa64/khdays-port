@@ -871,6 +871,15 @@ static const char *const texts[TXT_COUNT][5] = {
                            "In einem Raum gelten die Optionen des Hosts.",
                            "In una stanza contano le opzioni dell'host.",
                            "En una sala cuentan las opciones del anfitrión."},
+    [TXT_MOD_WRITES_MEMORY] = {"Writes in the game's memory: a mistake of its own can stop the game or reach a save.",
+                               "Écrit dans la mémoire du jeu : une erreur de sa part peut arrêter le jeu ou "
+                               "atteindre une sauvegarde.",
+                               "Schreibt in den Speicher des Spiels: ein Fehler darin kann das Spiel anhalten "
+                               "oder einen Spielstand erreichen.",
+                               "Scrive nella memoria del gioco: un suo errore può fermare il gioco o finire in un "
+                               "salvataggio.",
+                               "Escribe en la memoria del juego: un error suyo puede detener el juego o llegar a una "
+                               "partida guardada."},
     [TXT_AUTOSAVE] = {"Autosave", "Sauvegarde auto", "Automatisch speichern", "Salvataggio automatico", "Autoguardado"},
     [TXT_AUTOSAVE_FILE99] = {"In file 99", "Dans le fichier 99", "In Datei 99", "Nel file 99", "En el archivo 99"},
     [TXT_AUTOSAVE_PLAYED] = {"In the file being played", "Dans le fichier en cours", "In der gespielten Datei",

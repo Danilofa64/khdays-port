@@ -544,6 +544,10 @@ static void build_mods(Builder *b)
         r->layer = i;
         r = add(b, KHDAYS_ROW_LINE, KHDAYS_SET_MOD_STATE, mod_lines[i]);
         r->layer = i;
+        if (v->memory_write) {
+            r = add(b, KHDAYS_ROW_LINE, KHDAYS_SET_MOD_STATE, khdays_text(TXT_MOD_WRITES_MEMORY));
+            r->layer = i;
+        }
         r = add(b, KHDAYS_ROW_SWITCH, KHDAYS_SET_MOD_ENABLED, khdays_text(TXT_MOD_ENABLED));
         r->value = &mod_enabled[i];
         r->high = 1;
