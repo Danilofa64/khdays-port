@@ -4669,11 +4669,22 @@ Read in the decompilation, then traced with `KHDAYS_TRACE_ENEMIES=1` (2026-10-22
   spawner's op 1 when the player leaves it): the Shadow left in 67 frames.
 - **A Shadow starts flat** (ov114): made, its height scale (`+0x390`, 0x1000 whole) is 1, a dark
   shape on the ground (`Ov114_InitNodeAndRegisterHandlers`), and it waits for its +0x60 bit 0
-  (`Ov114_SetVisFlagsEnterState`); then its stored action (`+0x1c9`, the spawner's slot mode, 1 when
-  none: `func_ov107_020c6624`) is queued and any action but 0 gives it its whole height
-  (`Ov114_DispatchSubStateByte`). Seen with a mod's three Shadows (the maintainer saw them as
-  invisible at first): flat as they were made, half risen half a second later, up in a second. Held
-  by Stop while rising, a Shadow stays flat for the hold (its tasks stand still).
+  (`Ov114_SetVisFlagsEnterState`); then its stored action, its entry (`+0x1c9`, the spawner's slot's
+  `+3`; 1 as it is made, `func_ov107_020c6624`), is queued and any action but 0 gives it its whole
+  height (`Ov114_DispatchSubStateByte`). Entry 1 makes it flat again and lets it rise in about a
+  second (`Ov114_AiTargetAndFace`, `Ov114_AiFadeInTick`), 2 sidestep at its height
+  (`Ov114_StartSidestep`), 6 a dark shape that bounces out (7, `Ov114_BounceEntry`). While flat or sunk
+  its body is away: `+0x1ae` bit 0 set and its hit shape (`+0x388`) off. Mission 94's spawner gives its
+  three Shadows entry 2 (traced: `entries 2 2 2`): they come standing. Seen with a mod's three Shadows
+  when a mod's enemy kept the made actor's entry, 1: flat as they were made, half risen half a second
+  later, up in a second; held by Stop while rising, a Shadow stayed flat for the hold (its tasks stand
+  still).
+- **A source shows its enemies** (`Ov107_Region_SetVisible`): its `+0x40` bit 0, and each enemy linked
+  to it (its list at `+0x44`) told through its own `+0x18` (`Ov107_BroadcastValueToChildren`,
+  `Ov107_AiState_SetVisible`: its model drawn, its `+0x40` bit 0). An enemy made after the source was
+  shown is never told: it stands, strikes and is targeted, undrawn. Seen with a mod's three Shadows
+  (the maintainer saw them as invisible, the lock-on ring on the floor): none drawn by either
+  rasterizer while the mission's own were, their state whole (height 0x1000, hit shape on).
 - **An area's end** releases them all (`Ov002_ReleaseResources`: the actor manager's node destroyed,
   ov107 unloaded, the tables freed). Mission 2 moves to its next area once its enemies there are
   defeated: Shadows (row 0) in the first, Yellow Operas (row 1) in the next, then another.
@@ -4681,7 +4692,10 @@ Read in the decompilation, then traced with `KHDAYS_TRACE_ENEMIES=1` (2026-10-22
 **A mod's enemy** (`runtime/scripts/enemies_link.c`) is made the way the area makes its own --
 `Ov002_CreateActorFromMarker` with a row of the kind the area placed and the source of the room shown
 -- then set going as op 0 does, without a spawner: its spawner word holds its source so that no
-mission spawner takes it while it stands, and it gives none of the mission's tallies or drops. The
+mission spawner takes it while it stands, and it gives none of the mission's tallies or drops. It
+enters as the area's spawners let its kind enter (their slots' entry, learnt as they run), the made
+actor's own when none of them has its kind, and is shown as its source is (above). Seen with the Stop
+walk's three Shadows: drawn, coming standing and striking at once as the mission's own. The
 id table is made again after each new actor: one made after it has an id past the table, and the
 first message to it read beyond (seen: a fault in `Ov107_DispatchMessage`). An idle actor a mod made
 before is reused for the next of its kind (its level's stats loaded again first): the test mod's
