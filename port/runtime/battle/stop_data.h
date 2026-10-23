@@ -1,5 +1,5 @@
 /* The Stop magic's data (stop_data.c): what the game left unmade of its sixth magic -- the levels' numbers, the
- * battle's templates, the moogle's recipes and the words -- read from the port's own file, stop_magic.txt.
+ * moogle's recipes and the words -- read from the port's own file, stop_magic.txt.
  * docs/RUNTIME_MAP.md, "The magic". Plain C: no game, no system calls. */
 #ifndef KHDAYS_STOP_DATA_H
 #define KHDAYS_STOP_DATA_H
@@ -9,8 +9,6 @@ extern "C" {
 #endif
 
 #define KHDAYS_STOP_LEVELS 3    /* Stop, Stopra, Stopga: the three places the battle's tables left */
-#define KHDAYS_STOP_COUNTS 5    /* a magic's templates: one for each count of its panels, 1 to 5 (mp.z) */
-#define KHDAYS_STOP_TEMPLATE 36 /* a template's bytes (0x24) */
 #define KHDAYS_STOP_LANGUAGES 5 /* the game's: en, es, fr, de, it */
 
 typedef struct KhdaysStopLevel {
@@ -19,8 +17,6 @@ typedef struct KhdaysStopLevel {
     int ticks;    /* how long it holds an enemy, in battle ticks (30 a second) */
     double reach; /* how far from its caster it holds enemies, in the game's units */
     int price;    /* its panel's price */
-    int template_set[KHDAYS_STOP_COUNTS];
-    unsigned char templates[KHDAYS_STOP_COUNTS][KHDAYS_STOP_TEMPLATE];
 } KhdaysStopLevel;
 
 typedef struct KhdaysStopMaterial {
@@ -44,6 +40,7 @@ typedef struct KhdaysStopWords {
 
 typedef struct KhdaysStopData {
     KhdaysStopLevel levels[KHDAYS_STOP_LEVELS];
+    int magic_lv; /* how much longer each Magic LV above 1 makes the hold, in hundredths */
     KhdaysStopRecipe recipes[KHDAYS_STOP_LEVELS];
     KhdaysStopWords words[KHDAYS_STOP_LANGUAGES][KHDAYS_STOP_LEVELS];
 } KhdaysStopData;
@@ -54,10 +51,9 @@ extern const char *const khdays_stop_languages[KHDAYS_STOP_LANGUAGES];
 /* Reads `text` (`size` bytes) into `out`. Returns 0, or the first bad line's number with the reason in `why`. */
 int khdays_stop_data_read(const char *text, unsigned size, KhdaysStopData *out, char *why, int why_size);
 
-/* Whether each part is whole: the panels (every level and every word), the battle (every template), the shop
- * (every recipe). A part missing anything is left out whole. */
+/* Whether each part is whole: the panels (every level and every word), the shop (every recipe). A part missing
+ * anything is left out whole. */
 int khdays_stop_data_panels_whole(const KhdaysStopData *d);
-int khdays_stop_data_battle_whole(const KhdaysStopData *d);
 int khdays_stop_data_shop_whole(const KhdaysStopData *d);
 
 void khdays_stop_data_free(KhdaysStopData *d);

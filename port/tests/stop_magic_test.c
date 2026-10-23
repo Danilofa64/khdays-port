@@ -29,8 +29,9 @@ static void the_compiled_file(void)
     }
     CHECK(bad == 0);
     CHECK(khdays_stop_data_panels_whole(&d));
-    CHECK(d.levels[0].id == 513 && d.levels[1].id == 514 && d.levels[2].id == 515);
+    CHECK(d.levels[0].id == 628 && d.levels[1].id == 629 && d.levels[2].id == 630);
     CHECK(d.levels[0].ticks < d.levels[1].ticks && d.levels[1].ticks < d.levels[2].ticks);
+    CHECK(d.magic_lv == 25);
     /* the game's own names where it has them (UI/btl/<lang>/magic.s.z), the port's where it left them empty */
     CHECK(strcmp(d.words[0][0].name, "Stop") == 0 && strcmp(d.words[0][2].name, "Stopga") == 0);
     CHECK(strcmp(d.words[2][1].name, "Stop +") == 0 && strcmp(d.words[2][2].name, "Stop X") == 0);
@@ -43,14 +44,14 @@ static void the_compiled_file(void)
 
 static void a_part_missing(void)
 {
-    static const char text[] = "level 1 513 120 5 300\nlevel 2 514 180 5.5 400\nlevel 3 515 240 6 500\n"
+    static const char text[] = "level 1 628 120 5 300\nlevel 2 629 180 5.5 400\nlevel 3 630 240 6 500\n"
                                "name en 1 Stop\n";
-    static const char bad[] = "level 1 513 120 5 300\nlevel 4 516 1 1 1\n";
+    static const char bad[] = "level 1 628 120 5 300\nlevel 4 631 1 1 1\n";
     KhdaysStopData d;
     char why[160];
     CHECK(khdays_stop_data_read(text, sizeof(text) - 1, &d, why, sizeof(why)) == 0);
     CHECK(!khdays_stop_data_panels_whole(&d)); /* words missing: no panels */
-    CHECK(!khdays_stop_data_battle_whole(&d) && !khdays_stop_data_shop_whole(&d));
+    CHECK(!khdays_stop_data_shop_whole(&d) && d.magic_lv == 0);
     khdays_stop_data_free(&d);
     CHECK(khdays_stop_data_read(bad, sizeof(bad) - 1, &d, why, sizeof(why)) == 2); /* no fourth level */
     khdays_stop_data_free(&d);
@@ -86,7 +87,7 @@ static void each_level_holds_its_ticks(void)
     for (int l = 0; l < 3; ++l) {
         const KhdaysStopEnemy e = standing_at(2 * UNIT, 0);
         khdays_stop_hold_clear();
-        khdays_stop_hold_cast(0, 0, 5 * UNIT, ticks[l], 100);
+        khdays_stop_hold_cast(0, 0, 5 * UNIT, ticks[l], 100, 0xcafe);
         CHECK(ticks_held(7, &e, 100) == ticks[l]);
         CHECK(!khdays_stop_hold_held(7));
     }
@@ -102,12 +103,14 @@ static void who_is_held(void)
     tough.resist = 0x800; /* half */
     whole.resist = 0x1000;
     khdays_stop_hold_clear();
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 10);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 10, 0xcafe);
     CHECK(!khdays_stop_hold_tick(1, &far, 10, &taken, &freed) && taken == 0);
     CHECK(!khdays_stop_hold_tick(2, &idle, 10, &taken, &freed));
     CHECK(!khdays_stop_hold_tick(3, &immune, 10, &taken, &freed));
     CHECK(!khdays_stop_hold_tick(5, &whole, 10, &taken, &freed));
     CHECK(khdays_stop_hold_tick(4, &tough, 10, &taken, &freed) && taken == 60);
+    /* never its caster */
+    CHECK(!khdays_stop_hold_tick(0xcafe, &tough, 10, &taken, &freed));
     /* the zone is gone two ticks after the cast */
     const KhdaysStopEnemy near = standing_at(0, 0);
     CHECK(!khdays_stop_hold_tick(6, &near, 10 + KHDAYS_STOP_ZONE_FRAMES + 1, &taken, &freed));
@@ -118,12 +121,12 @@ static void a_second_cast_restarts(void)
     int taken, freed;
     const KhdaysStopEnemy e = standing_at(0, 0);
     khdays_stop_hold_clear();
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 0);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 0, 0xcafe);
     CHECK(khdays_stop_hold_tick(9, &e, 0, &taken, &freed) && taken == 120);
     for (unsigned f = 2; f < 200; f += 2) {
         khdays_stop_hold_tick(9, &e, f, &taken, &freed); /* 100 ticks gone, 20 left */
     }
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 200);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 200, 0xcafe);
     CHECK(khdays_stop_hold_tick(9, &e, 200, &taken, &freed) && taken == 120); /* again 120, not 140 */
     CHECK(ticks_held(9, &e, 202) == 119);
 }
@@ -134,7 +137,7 @@ static void kept_damage_dealt_once(void)
     const KhdaysStopEnemy e = standing_at(0, 0);
     khdays_stop_hold_clear();
     CHECK(khdays_stop_hold_store(4, 8) == 8); /* not held: dealt now */
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 3, 0);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 3, 0, 0xcafe);
     CHECK(khdays_stop_hold_tick(4, &e, 0, &taken, &freed));
     CHECK(khdays_stop_hold_store(4, 8) == 0 && khdays_stop_hold_store(4, 9) == 0 && khdays_stop_hold_store(4, 0) == 0);
     CHECK(khdays_stop_hold_kept(4) == 17);
@@ -153,7 +156,7 @@ static void gone_enemies_drop_their_damage(void)
     int taken, freed, amount;
     const KhdaysStopEnemy e = standing_at(0, 0);
     khdays_stop_hold_clear();
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 0);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 120, 0, 0xcafe);
     CHECK(khdays_stop_hold_tick(1, &e, 0, &taken, &freed) && khdays_stop_hold_tick(2, &e, 0, &taken, &freed));
     khdays_stop_hold_store(1, 30);
     khdays_stop_hold_store(2, 40);
@@ -162,7 +165,7 @@ static void gone_enemies_drop_their_damage(void)
     khdays_stop_hold_clear(); /* the area left */
     CHECK(!khdays_stop_hold_held(2) && !khdays_stop_hold_due(2, &amount));
     /* released with nothing kept: forgotten */
-    khdays_stop_hold_cast(0, 0, 5 * UNIT, 1, 0);
+    khdays_stop_hold_cast(0, 0, 5 * UNIT, 1, 0, 0xcafe);
     CHECK(khdays_stop_hold_tick(3, &e, 0, &taken, &freed) && freed);
     CHECK(!khdays_stop_hold_due(3, &amount) && !khdays_stop_hold_held(3));
 }

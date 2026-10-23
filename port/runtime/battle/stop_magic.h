@@ -27,10 +27,14 @@ void khdays_stop_area_left(void);
  * Stop's place: read (0 for none) and set (0 forgets it). */
 int khdays_magic_track(unsigned int pool);
 void khdays_magic_track_set(unsigned int pool, int entry);
-/* Stop's slot: whether the actor gets one and from which model and template (Ov022_BuildSlotPool); a cast's slot
- * (Ov022_SetRecordValue): each of Stop's levels, cells 15-17, casts Stop's slot, 15, its level kept. */
+/* Stop's slot: whether the actor gets one and from which model and template (Ov022_BuildSlotPool: the local player
+ * with Stop's panels set; in a room every player); a cast's slot (Ov022_SetRecordValue): each of Stop's levels, cells
+ * 15-17, casts Stop's slot, 15, its level kept. */
 int khdays_stop_slot_wanted(int actor, char *path, int *parts, int *template_index);
 int khdays_stop_record(unsigned int pool, int value);
+/* The slot the cast's message names (Ov022_MarshalStateHalf12): Stop's as its level's cell, which the copies that
+ * receive it take with khdays_stop_record (Ov022_OnEndMessage). */
+int khdays_stop_message_slot(unsigned int pool, int slot);
 /* The submenu: its cells and their mask (Ov002_CreatePanelSession), each level's casts on the HUD
  * (Ov022_UpdateCommandInput), the casts a level has left (Ov022_IsSlotActionAllowed). */
 int khdays_stop_cells(void *session, int count);
@@ -45,6 +49,8 @@ void khdays_stop_animation(unsigned int pool, char *path);
 /* An enemy's tick (Ov107_ProcessObjectTick): whether it is held now (and the zone takes it), whether it is held,
  * whether its kept damage is to be dealt now (and how much) and that the hit was made. */
 int khdays_stop_holding(void *enemy);
+/* A player's tick (Ov022_ActorUpdate): whether another's Stop holds it now, the room's friendly fire on. */
+int khdays_stop_player_holding(void *actor);
 int khdays_stop_held(void *enemy);
 int khdays_stop_release(void *enemy, int *amount);
 void khdays_stop_released(void *enemy);

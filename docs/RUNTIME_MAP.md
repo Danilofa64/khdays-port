@@ -4912,20 +4912,38 @@ the port restores it (`runtime/battle/`).
   75, 15 magics x 5), no code that casts it.
 - **The panels' table** (message database 0x15, `db.p2` entry 0x15: 630 records of 0x64 bytes from id 1): `+0` the
   category (1 magic), `+4` a number of the panel's own, `+6` its kind (a parameter, below: Fire 2 ... Curaga 16),
-  `+8` its shape, `+0x18` a magic's index in the battle (Fire 1 ... Curaga 15), `+0x58` its price, `+0x60` the number
-  of its words. Records 513-630 are blank (category 2, number 0, kind -1, no words) and the camp leaves them out
-  (`Ov008_IsGridItemEligible`, `Ov025_IsGridItemEligible`). The words of database `id` are a pack of their own
+  `+8` its shape, from `+0x18` its magics, four of three bytes (`MsgDb_LoadRecord15` widens them to `+0x34`-`+0x53`
+  of the record it makes): a magic's index in the battle (Fire 1 ... Curaga 15; 0 none), a level and casts (Fire's
+  1, 1, 1; Magic LV2-LV4 0, 2-4, 1; Doublecast, Triplecast, Quadcast 0, 0, 2-4); `+0x58` its price, `+0x60` the
+  number of its words. Records 513-630 are blank (category 2, number 0, kind -1, no words here) and the camp leaves
+  them out (`Ov008_IsGridItemEligible`, `Ov025_IsGridItemEligible`), but 513-627 are items a game gives: each has
+  words of its own (its `+0x60`, 8000 on), and the maintainer's 100% save owns one of each of them (its counts at
+  `gGameState`+0x810), the older save most; 628-630 no save at hand owns and no table of `db.p2` names. Database
+  0x16's decoder walks 630 entries (`MsgDb_DecodeDb16`), one an item: the table is not to be grown. The words of
+  database `id` are a pack of their own
   (`MsgDb_LoadDb` loads it beside the records, `+4` of the database's row): a count, each string's end, then the
   strings (`P2_ExtractString`), two per panel (its name, its description). A database is loaded from its pack into a
   fresh block of the current heap each time (`Archive_LoadFile`) and freed with the current heap's free
-  (`ResSlot_Release_2`). Seen: the port writes Stop's three panels over 513-515 as the table loads (`stop: panels
-  513-515 written (es)`, once at each load: seven loads from the camp to the field), and the camp sets them (the
-  scripting interface's `deck.give(513, true)`: `true`, cells 1.1.1-1.1.3, category 1).
+  (`ResSlot_Release_2`). Seen: the port writes Stop's three panels over 628-630 as the table loads (`stop: panels
+  628-630 written (es)`, once at each load: seven loads from the camp to the field), and the camp sets them (the
+  scripting interface's `deck.give(628, true)`: `true`, cells 1.1.1-1.1.3, category 1).
 - **Parameters**: message database 0x13 names 115 kinds (two words each: Fire ... Curaga 1-15, Dodge Roll 16, every
   one used); `Params_BuildIndex` gives each a field of the party member's bit array (`gPartyMembers`, 0x104 bytes a
   player, from `+0x28`), the battle reading a kind's count with `Slot_EvalPackedParam(player, kind)`. A panel's kind
   `+6` is its parameter plus one. A magic's casts are a pair {left, most} at `+0x9a + 2 x kind`
   (`ClampAndStoreLevelEntry`, `Load2DArrayU8` through `data_0204c714`): the record holds them for kinds 1-53 only.
+  The database's records are 4 bytes from 1 (`MsgDb_DecodeDb13`), the third a parameter's highest level: 5 for each
+  of the 15 magics, 3 for Dodge Roll.
+- **A magic's casts and level from the deck**, as the camp folds the deck for a mission (`Ov008_BuildMenuGrid`,
+  `Ov008_RebuildViewAndCountCells`, `PlayRecord_FoldFrame`): the panels of several cells are laid out first
+  (`Ov008_LayoutPanelEntry`; a panel of one cell is none of them), each one of magic giving every magic panel set on
+  its other cells its own first magic's level and casts (`Ov008_TallySlots`); the panels on cells of their own then
+  give each of their magics a cast and no level (`Ov008_FoldPanelIntoTally`); a magic panel on a panel of another
+  category, none. Each magic's sums (`Ov008_AddToSecondaryTally`) are held to its parameter's highest level and 99
+  casts, a 0 made 1; the casts are added to its pair and the level becomes its parameter (`StoreBytePairKeepMin`,
+  `Slot_EvalPackedParamWith`): the parts the battle builds for it (`Ov022_BuildSlotPool`, its templates 1-5). So
+  Fire on a Magic LV3 is a cast at level 3, on a Doublecast two casts at level 1, and two Fires on one Magic LV3 two
+  casts at level 5.
 - **The battle's magic** (ov022): `Ov022_BuildSlotPool` walks 15 kinds, slot kind `k` from parameter `k + 1`, at
   most 5 parts, one constructor each (`data_ov022_020b29e4[15]`). The pool (the actor's `+0x2288`, 0x70 bytes,
   cleared by `Ov022_InitEntryState`) keeps 15 slot places from `+0x18`; the word after them, `+0x54`, holds the cast's
@@ -4991,8 +5009,26 @@ the port restores it (`runtime/battle/`).
   15-17, their casts the port's. It holds only enemies standing (set going, `+0x60` 0x100): the first casts also
   held three of the mission's own still idle in the area's table. The other magics, with the level animation's word
   the port's, cast as before (seen: Fire, Blizzard, Thunder, Aero and Cure, each to its last state). Seen on the
-  walk (`port/tools/regress_walks/stop.input` with the test mod `port/tests/mods_v2/stop`: mission 94, its own
-  enemies held back, three Shadows made four units from Roxas): Stopga held the three for 240 ticks (reach 6
-  units); Stopra, cast while they were held, held them again for 180, not added to the 42 left; Stop, cast as that
+  walk (`port/tools/regress_walks/stop.input` with the test mod `port/tests/mods_v2/stop`: mission 94, its own enemies
+  held back, three Shadows made four units from Roxas): Stopga (on a Magic LV2) held the three for 300 ticks (reach 6
+  units); Stopra, cast while they were held, held them again for 180, not added to the 102 left; Stop, cast as that
   hold ended, for 120; Roxas's hits during the last hold were kept (13, 22, 13) and each Shadow took its sum at once
   as it was released.
+- **Stop's casts and Magic LV** are folded from the deck by the camp's rule for the other magics (above): a Stop panel
+  on a cell of its own gives its level a cast, on a Magic LV or a Doublecast that panel's level and casts, its
+  highest level Blizzard's (5). The game has no part for Stop's levels above 1 (its slot is Cure's first), so a
+  Magic LV lengthens the hold instead: by `stop_magic.txt`'s `magic_lv` hundredths (25) for each level above 1.
+  Seen on the walk with Stop on a Doublecast and Stopga on a Magic LV2: `casts 2 1 1, Magic LV 1 1 2`, Stopga's hold
+  300 ticks.
+- **Stop in a room**: the battle is the host's (an enemy takes hits only on its owner's copy, `+0x50` 1, in
+  `Ov107_AiState_ApplyHit`), and every copy plays every player's casts (the cast's message 0xc carries the slot in 5
+  bits, `Ov022_MarshalStateHalf12`; `Ov022_OnEndMessage` makes it the receiver's cast slot), so the port gives every
+  player's actor Stop's slot in a room, sends the level as Stop's cells 15-17 in that message, and each copy's casts
+  and Magic LVs in its pings (every 250 ms; the host's list everyone's). On every copy a cast marks its zone and the
+  enemies' ticks are held there; an enemy's copy on a guest (`+0x50` 2) counts as set going while the host's state
+  has it active (`+0x60` bit 0). Rooms take only copies of the same build, so every member reads the same Stop.
+  With the room's friendly fire on (`data_0204c240` bit 2 and `data_0204c248`: 1 low, 2 high), a cast holds the other
+  players its zone reaches, never its caster: the host keeps a held player's input, state and motion
+  (`Ov022_ActorUpdate`), and every copy its animation. Seen on two copies (the walks `stop_room_1`, `stop_room_2`,
+  the test mod `port/tests/mods_v2/stop_room`): each of the six Stops held the other player for 120 ticks, Stopga
+  for 240 and Stopra for 180, taken on both copies within two frames of each other and released together.

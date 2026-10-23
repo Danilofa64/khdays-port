@@ -1,7 +1,6 @@
 /* The Stop magic's data (stop_data.h): stop_magic.txt read line by line. */
 #include "stop_data.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -108,30 +107,6 @@ static int read_level(const char *p, const char *end, KhdaysStopData *d)
     return l->set;
 }
 
-static int read_template(const char *p, const char *end, KhdaysStopData *d)
-{
-    int level, count, length;
-    if (!level_of(next_word(&p, end, &length), length, &level) ||
-        !word_int(next_word(&p, end, &length), length, &count) || count < 1 || count > KHDAYS_STOP_COUNTS) {
-        return 0;
-    }
-    const char *hex = next_word(&p, end, &length);
-    if (hex == NULL || length != 2 * KHDAYS_STOP_TEMPLATE) {
-        return 0;
-    }
-    KhdaysStopLevel *l = &d->levels[level - 1];
-    for (int i = 0; i < KHDAYS_STOP_TEMPLATE; ++i) {
-        unsigned byte;
-        char pair[3] = {hex[2 * i], hex[2 * i + 1], '\0'};
-        if (!isxdigit((unsigned char)pair[0]) || !isxdigit((unsigned char)pair[1]) || sscanf(pair, "%x", &byte) != 1) {
-            return 0;
-        }
-        l->templates[count - 1][i] = (unsigned char)byte;
-    }
-    l->template_set[count - 1] = 1;
-    return 1;
-}
-
 static int read_recipe(const char *p, const char *end, KhdaysStopData *d)
 {
     int level, length;
@@ -213,8 +188,8 @@ int khdays_stop_data_read(const char *text, unsigned size, KhdaysStopData *out, 
             /* an empty line or a comment */
         } else if (length == 5 && memcmp(key, "level", 5) == 0) {
             ok = read_level(at, stop, out);
-        } else if (length == 8 && memcmp(key, "template", 8) == 0) {
-            ok = read_template(at, stop, out);
+        } else if (length == 8 && memcmp(key, "magic_lv", 8) == 0) {
+            ok = word_int(next_word(&at, stop, &length), length, &out->magic_lv) && out->magic_lv >= 0;
         } else if (length == 6 && memcmp(key, "recipe", 6) == 0) {
             ok = read_recipe(at, stop, out);
         } else if ((length == 4 && memcmp(key, "name", 4) == 0) || (length == 5 && memcmp(key, "panel", 5) == 0) ||
@@ -246,18 +221,6 @@ int khdays_stop_data_panels_whole(const KhdaysStopData *d)
         }
     }
     return 1;
-}
-
-int khdays_stop_data_battle_whole(const KhdaysStopData *d)
-{
-    for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
-        for (int c = 0; c < KHDAYS_STOP_COUNTS; ++c) {
-            if (!d->levels[l].template_set[c]) {
-                return 0;
-            }
-        }
-    }
-    return khdays_stop_data_panels_whole(d);
 }
 
 int khdays_stop_data_shop_whole(const KhdaysStopData *d)

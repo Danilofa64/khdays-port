@@ -14,7 +14,7 @@ typedef struct Held {
 static Held *held;
 static int held_count, held_room;
 static int zone_x, zone_z, zone_reach, zone_ticks, zone_on;
-static unsigned zone_frame, zone_cast;
+static unsigned zone_frame, zone_cast, zone_caster;
 
 static Held *held_of(unsigned enemy)
 {
@@ -48,8 +48,9 @@ static void hold_drop(Held *h)
     *h = held[--held_count];
 }
 
-void khdays_stop_hold_cast(int x, int z, int reach, int ticks, unsigned frame)
+void khdays_stop_hold_cast(int x, int z, int reach, int ticks, unsigned frame, unsigned caster)
 {
+    zone_caster = caster;
     zone_x = x;
     zone_z = z;
     zone_reach = reach;
@@ -79,7 +80,7 @@ int khdays_stop_hold_tick(unsigned enemy, const KhdaysStopEnemy *e, unsigned fra
         zone_on = 0;
     }
     if (zone_on) {
-        const int ticks = zone_ticks_for(e);
+        const int ticks = enemy != zone_caster ? zone_ticks_for(e) : 0;
         if (ticks > 0 && (h != NULL || (h = hold_new(enemy)) != NULL) && h->cast != zone_cast) {
             h->cast = zone_cast;
             if (h->ticks < ticks) {

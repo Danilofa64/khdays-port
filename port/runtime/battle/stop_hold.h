@@ -18,11 +18,13 @@ typedef struct KhdaysStopEnemy {
 /* A zone stays this many frames (two battle ticks), so every enemy ticks once in it. */
 #define KHDAYS_STOP_ZONE_FRAMES 4
 
-/* A cast: the zone round (x, z), `reach` far (20.12), holding for `ticks` the enemies its next ticks find in it. */
-void khdays_stop_hold_cast(int x, int z, int reach, int ticks, unsigned frame);
+/* A cast by `caster`: the zone round (x, z), `reach` far (20.12), holding for `ticks` what its next ticks find in it
+ * but the caster. */
+void khdays_stop_hold_cast(int x, int z, int reach, int ticks, unsigned frame, unsigned caster);
 
-/* An enemy's tick at `frame`: 1 while it is held. `*taken` the ticks it was just held for (0 when not just taken; a
- * second cast holds it again for the longer of the two, never their sum), `*freed` 1 when its hold ran out. */
+/* An enemy's tick at `frame` (or another player's, `enemy` its own number): 1 while it is held. `*taken` the ticks it
+ * was just held for (0 when not just taken; a second cast holds it again for the longer of the two, never their sum),
+ * `*freed` 1 when its hold ran out. */
 int khdays_stop_hold_tick(unsigned enemy, const KhdaysStopEnemy *e, unsigned frame, int *taken, int *freed);
 
 /* Whether the enemy is held; the damage it keeps. */

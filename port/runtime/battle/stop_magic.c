@@ -10,6 +10,7 @@
 #include "../core/session_log.h"
 #include "../core/utf8.h"
 #include "../core/window.h"
+#include "../net/net_session.h"
 #include "../../hal/hal.h"
 #include "../scripts/deck_link.h"
 #include "../scripts/game_link.h"
@@ -313,14 +314,18 @@ void khdays_stop_magic_names(void *record)
  * "The magic". */
 
 extern int Session_GetLocalPlayerIndex(void);
+extern int Session_IsActive(void);
 extern void Ov002_HudSetSlotValue(int key, int value);
 
 #define STOP_SLOT 15            /* the pool's place after the 15 magics' */
 #define STOP_CELL 15            /* the submenu's cells (and names) 15-17 */
 #define CURE_TEMPLATES (12 * 5) /* ba/ch/mp.z: Cure's templates, count 1 first */
-#define DECK_CELLS (3 * 8 * 5)  /* deck_link.h */
-#define POOL_CAST 0xcu          /* the pool's slot being cast (Ov022_SetRecordValue) */
-#define POOL_SLOTS 0x18u        /* the pool's slots (Ov022_InitEntryState) */
+#define DECK_CELLS KHDAYS_LINK_DECK_CELLS
+#define CATEGORY_MAGIC 1
+#define CASTS_MOST 99    /* a magic's casts, at most (Ov008_AddToSecondaryTally) */
+#define BLIZZARD_MAGIC 4 /* Blizzard's battle index: Stop takes its levels' highest Magic LV */
+#define POOL_CAST 0xcu   /* the pool's slot being cast (Ov022_SetRecordValue) */
+#define POOL_SLOTS 0x18u /* the pool's slots (Ov022_InitEntryState) */
 #define POOL_ACTOR 0x58u
 #define SLOT_ANIMATION 0x8u   /* a slot's animation state (BindAnimTrack): */
 #define ANIMATION_BOUND 0xcu  /* the 5 animation objects bound, */
@@ -329,7 +334,8 @@ extern void Ov002_HudSetSlotValue(int key, int value);
 #define ACTOR_ID 9u
 #define ACTOR_PLACE 0x48cu         /* an actor's place, VecFx32 (Ov022_EnterBlockReaction) */
 #define ENEMY_PLACE 0x74u          /* an enemy's place, VecFx32 (Ov107_ProcessObjectTick) */
-#define ENEMY_FLAGS 0x60u          /* 0x100 standing: set going, not idle in the area's table */
+#define ENEMY_FLAGS 0x60u          /* 0x100 standing: set going, not idle in the area's table; 1 active */
+#define ENEMY_OWNER 0x50u          /* 1 this copy's (the host's), 2 another's copy (Ov107_InitActorNode) */
 #define ENEMY_HP 0x21au            /* s16, its most at 0x218 (Ov107_AiState_ApplyHit) */
 #define ENEMY_STATUS 0x1c4u        /* 1 burning, 2 frozen, 4 jolted, 8 air-tossed, 0x10 not to be hit */
 #define ENEMY_IMMUNE 0x1b0u        /* bit 3: freezing cannot touch it (Ov107_AiState_ApplyHit's masks 7, 3, 11, 2) */
@@ -337,7 +343,9 @@ extern void Ov002_HudSetSlotValue(int key, int value);
 
 typedef struct Casts {
     int most[KHDAYS_STOP_LEVELS], left[KHDAYS_STOP_LEVELS];
-    int level; /* the level its last cast chose */
+    int lv[KHDAYS_STOP_LEVELS]; /* each level's Magic LV, 1 up */
+    int level;                  /* the level its last cast chose */
+    int known;                  /* its counts known: this copy's player's from its deck, another's from the room */
 } Casts;
 
 static Casts *casts; /* by player */
@@ -417,13 +425,16 @@ static int pool_actor(KhdaysRef pool)
     return *(const volatile unsigned char *)KHDAYS_W(rd32(pool + POOL_ACTOR) + ACTOR_ID);
 }
 
-/* The local player's casts, folded from the deck as the battle builds their magic: a cast for each Stop panel set,
- * as each magic panel gives its magic one. */
+/* The local player's casts and Magic LVs, folded from the deck as the battle builds their magic, by the camp's rule
+ * for the others (Ov008_LayoutPanelEntry, Ov008_FoldPanelIntoTally): a Stop panel on a cell of its own gives its level
+ * a cast; on a magic panel of several cells, that panel's casts and Magic LV (Doublecast's 2 casts, Magic LV2's level
+ * 2), on another kind's none; a level's Magic LV is 1 when none gave it one, its highest Blizzard's. */
 static void fold_casts(int player)
 {
     const KhdaysStopData *d = stop_data();
     Casts *c = casts_of(player);
     unsigned short cells[DECK_CELLS];
+    short host[DECK_CELLS];
     if (d == NULL || c == NULL || !panels_in) {
         return;
     }
@@ -432,26 +443,76 @@ static void fold_casts(int player)
         return;
     }
     for (int i = 0; i < DECK_CELLS; ++i) {
-        const int l = level_of_panel(d, cells[i]);
-        if (l >= 0) {
-            ++c->most[l];
+        host[i] = -1;
+    }
+    for (int i = 0; i < DECK_CELLS; ++i) {
+        KhdaysLinkPanel p;
+        if (cells[i] != 0 && khdays_link_panel(cells[i], &p) && p.shape >= 0) {
+            khdays_link_cover(&p, i, DECK_CELLS, host);
         }
     }
-    for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
-        c->left[l] = c->most[l];
+    for (int i = 0; i < DECK_CELLS; ++i) {
+        const int l = level_of_panel(d, cells[i]);
+        KhdaysLinkPanel p;
+        if (l < 0) {
+            continue;
+        }
+        if (host[i] < 0) {
+            ++c->most[l];
+        } else if (khdays_link_panel(cells[host[i]], &p) && p.category == CATEGORY_MAGIC) {
+            c->most[l] += p.casts;
+            c->lv[l] += p.level;
+        }
     }
-    khdays_log("stop: player %d casts %d %d %d", player, c->most[0], c->most[1], c->most[2]);
+    unsigned char shared[KHDAYS_STOP_LEVELS], shared_lv[KHDAYS_STOP_LEVELS];
+    for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
+        const int cap = khdays_link_magic_cap(BLIZZARD_MAGIC + l);
+        c->most[l] = c->most[l] < CASTS_MOST ? c->most[l] : CASTS_MOST;
+        c->lv[l] = c->lv[l] < 1 ? 1 : cap > 0 && c->lv[l] > cap ? cap : c->lv[l];
+        c->left[l] = c->most[l];
+        shared[l] = (unsigned char)c->most[l];
+        shared_lv[l] = (unsigned char)(c->lv[l] < 0xff ? c->lv[l] : 0xff);
+    }
+    c->known = 1;
+    khdays_net_set_stop_casts(shared, shared_lv);
+    khdays_log("stop: player %d casts %d %d %d, Magic LV %d %d %d", player, c->most[0], c->most[1], c->most[2],
+               c->lv[0], c->lv[1], c->lv[2]);
+}
+
+/* Player `actor`'s casts: another player's (a room's) as the room tells them, once they are known. */
+static Casts *casts_for(int actor)
+{
+    Casts *c = casts_of(actor);
+    unsigned char most[KHDAYS_STOP_LEVELS], lv[KHDAYS_STOP_LEVELS];
+    if (c != NULL && !c->known && actor != Session_GetLocalPlayerIndex() &&
+        khdays_net_stop_casts((unsigned)actor, most, lv)) {
+        for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
+            c->most[l] = c->left[l] = most[l];
+            c->lv[l] = lv[l] > 0 ? lv[l] : 1;
+        }
+        c->known = 1;
+        khdays_log("stop: player %d casts %d %d %d, Magic LV %d %d %d (the room's)", actor, c->most[0], c->most[1],
+                   c->most[2], c->lv[0], c->lv[1], c->lv[2]);
+    }
+    return c;
 }
 
 int khdays_stop_slot_wanted(int actor, char *path, int *parts, int *template_index)
 {
-    const Casts *c;
-    if (actor != Session_GetLocalPlayerIndex() || stop_data() == NULL || !panels_in) {
+    Casts *c;
+    if (stop_data() == NULL || !panels_in) {
         return 0;
     }
-    fold_casts(actor);
+    if (actor == Session_GetLocalPlayerIndex()) {
+        fold_casts(actor);
+    } else if (!Session_IsActive()) {
+        return 0; /* a partner of one player's game: no deck */
+    } else if ((c = casts_of(actor)) != NULL) {
+        memset(c, 0, sizeof(*c)); /* another player's: from the room (casts_for) */
+    }
     c = casts_of(actor);
-    if (c == NULL || c->most[0] + c->most[1] + c->most[2] == 0) {
+    /* in a room every player's actor has the slot, so that a cast another copy sends finds it */
+    if (c == NULL || (!Session_IsActive() && c->most[0] + c->most[1] + c->most[2] == 0)) {
         return 0;
     }
     strcpy(path, "ba/ma/st.p.z");
@@ -501,8 +562,14 @@ void khdays_stop_hud(int actor, int *mask)
 
 int khdays_stop_casts_left(KhdaysRef pool, int level)
 {
-    const Casts *c = casts_of(pool_actor(pool));
+    const Casts *c = casts_for(pool_actor(pool));
     return c != NULL && level >= 0 && level < KHDAYS_STOP_LEVELS ? c->left[level] : 0;
+}
+
+int khdays_stop_message_slot(KhdaysRef pool, int slot)
+{
+    const Casts *c = slot == STOP_SLOT ? casts_of(pool_actor(pool)) : NULL;
+    return c != NULL ? STOP_CELL + c->level : slot;
 }
 
 int khdays_stop_record(KhdaysRef pool, int value)
@@ -557,7 +624,7 @@ int khdays_stop_cast(KhdaysRef pool)
         return 0;
     }
     const int actor = pool_actor(pool);
-    Casts *c = casts_of(actor);
+    Casts *c = casts_for(actor);
     if (c == NULL) {
         return 0;
     }
@@ -568,9 +635,11 @@ int khdays_stop_cast(KhdaysRef pool)
     }
     const int x = (int)rd32(caster + ACTOR_PLACE), z = (int)rd32(caster + ACTOR_PLACE + 8u);
     const int reach = (int)(d->levels[l].reach * 4096.0);
-    khdays_stop_hold_cast(x, z, reach, d->levels[l].ticks, khdays_link_frame());
-    khdays_log("stop: %s cast by actor %d at %d %d, reach %d, %d left", d->words[0][l].name, actor, x, z, reach,
-               c->left[l]);
+    const int lv = c->lv[l] > 1 ? c->lv[l] : 1;
+    const int ticks = (int)((long long)d->levels[l].ticks * (100 + (long long)d->magic_lv * (lv - 1)) / 100);
+    khdays_stop_hold_cast(x, z, reach, ticks, khdays_link_frame(), caster);
+    khdays_log("stop: %s cast by actor %d at %d %d, reach %d, Magic LV %d (%d ticks), %d left", d->words[0][l].name,
+               actor, x, z, reach, lv, ticks, c->left[l]);
     return 1;
 }
 
@@ -582,7 +651,8 @@ int khdays_stop_holding(void *enemy)
     int taken, freed, held;
     seen.x = (int)rd32(e + ENEMY_PLACE);
     seen.z = (int)rd32(e + ENEMY_PLACE + 8u);
-    seen.standing = (rd16(e + ENEMY_FLAGS) & 0x100u) != 0;
+    /* another's copy of an enemy (a room's guest) is active as the host's state says (its +0x60's low byte) */
+    seen.standing = (rd16(e + ENEMY_FLAGS) & (rd32(e + ENEMY_OWNER) == 2 ? 1u : 0x100u)) != 0;
     seen.untouchable = (status & 0x10u) != 0 || (rd32(e + ENEMY_IMMUNE) & (1u << 3)) != 0;
     seen.resist = (int)rd32(e + ENEMY_FREEZE_RESIST);
     held = khdays_stop_hold_tick(e, &seen, khdays_link_frame(), &taken, &freed);
@@ -591,6 +661,36 @@ int khdays_stop_holding(void *enemy)
     }
     if (freed) {
         khdays_log("stop: enemy %#x released, %d damage kept", e, khdays_stop_hold_kept(e));
+    }
+    return held;
+}
+
+/* A room's friendly fire (its rules, data_0204c248: 0 none, 1 low, 2 high), Mission Mode's with others. */
+static int friendly_fire(void)
+{
+    return (*(const volatile unsigned char *)KHDAYS_W(KHDAYS_DS_data_0204c240) & 4u) != 0 &&
+           *(const volatile unsigned char *)KHDAYS_W(KHDAYS_DS_data_0204c248) != 0;
+}
+
+int khdays_stop_player_holding(void *actor)
+{
+    const KhdaysRef a = KHDAYS_REF(actor);
+    KhdaysStopEnemy seen;
+    int taken, freed, held;
+    if (!friendly_fire()) {
+        return 0;
+    }
+    seen.x = (int)rd32(a + ACTOR_PLACE);
+    seen.z = (int)rd32(a + ACTOR_PLACE + 8u);
+    seen.standing = 1;
+    seen.untouchable = 0;
+    seen.resist = 0;
+    held = khdays_stop_hold_tick(a, &seen, khdays_link_frame(), &taken, &freed);
+    if (taken > 0) {
+        khdays_log("stop: player %d held for %d ticks", *(const volatile unsigned char *)KHDAYS_W(a + ACTOR_ID), taken);
+    }
+    if (freed) {
+        khdays_log("stop: player %d released", *(const volatile unsigned char *)KHDAYS_W(a + ACTOR_ID));
     }
     return held;
 }

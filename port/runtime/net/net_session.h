@@ -100,6 +100,11 @@ void khdays_net_set_level(int level);
 /* The members' levels known, this copy's too (the host's pings give a guest everyone's): up to `room`
  * aids and levels. Returns how many are known. */
 int khdays_net_levels(unsigned int *aids, int *levels, int room);
+/* The game's thread: this copy's Stop casts (the most of each of its three levels and each one's Magic LV, from
+ * its deck; `most` NULL: none known), which its pings carry to the room; and member `aid`'s as the room knows
+ * them (the host's pings give a guest everyone's): 1 with `most` and `level` set when known. */
+void khdays_net_set_stop_casts(const unsigned char most[3], const unsigned char level[3]);
+int khdays_net_stop_casts(unsigned int aid, unsigned char most[3], unsigned char level[3]);
 
 /* The mods' records (runtime/scripts), never the game's. The room's seed: chosen as the room opens,
  * changed by the host (khdays_net_set_seed; a guest's call does nothing), sent to each member, as it
