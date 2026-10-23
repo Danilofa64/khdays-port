@@ -24,6 +24,9 @@ typedef struct KhdaysOriginalLoop {
     uint64_t start, end;
 } KhdaysOriginalLoop;
 
+/* The PC's output's rate: a file above it is brought down to it as it loads, filtered. */
+#define KHDAYS_REPLACEMENT_RATE 48000u
+
 /* Decodes `path` by its extension. 0 when it cannot, `why` saying so. */
 int khdays_replacement_load(KhdaysReplacement *replacement, const char *path, const KhdaysOriginalLoop *original,
                             char *why, int why_size);

@@ -595,11 +595,16 @@ static const char *const texts[TXT_COUNT][5] = {
                                "La música y las voces de los vídeos."},
     [TXT_SOUND_DS_EXACT] = {"DS-exact sound", "Son exact de la DS", "Ton genau wie der DS", "Audio esatto del DS",
                             "Sonido exacto de la DS"},
-    [TXT_SOUND_DS_EXACT_NOTE] = {"The DS's own output: 32,728 Hz and 10 bits, as the handheld made it.",
-                                 "La sortie de la DS : 32 728 Hz et 10 bits, comme la console la produisait.",
-                                 "Die Ausgabe des DS: 32.728 Hz und 10 Bit, wie das Handheld sie erzeugte.",
-                                 "L'uscita del DS: 32.728 Hz e 10 bit, come la produceva la console.",
-                                 "La salida de la DS: 32.728 Hz y 10 bits, tal como la producía la consola."},
+    [TXT_SOUND_DS_EXACT_NOTE] = {"The DS's own output: 32,728 Hz and 10 bits, each sample held, as the handheld made "
+                                 "it. Off: the PC's, smoothed between the samples.",
+                                 "La sortie de la DS : 32 728 Hz et 10 bits, chaque échantillon maintenu, comme la "
+                                 "console la produisait. Désactivé : celle du PC, lissée entre les échantillons.",
+                                 "Die Ausgabe des DS: 32.728 Hz und 10 Bit, jedes Sample gehalten, wie das Handheld "
+                                 "sie erzeugte. Aus: die des PCs, zwischen den Samples geglättet.",
+                                 "L'uscita del DS: 32.728 Hz e 10 bit, ogni campione mantenuto, come la produceva la "
+                                 "console. Disattivato: quella del PC, levigata tra i campioni.",
+                                 "La salida de la DS: 32.728 Hz y 10 bits, cada muestra mantenida, tal como la "
+                                 "producía la consola. Desactivado: la del PC, suavizada entre las muestras."},
     [TXT_RESTORE_SOUND] = {"Restore the sound settings", "Rétablir le son", "Ton zurücksetzen", "Ripristina l'audio",
                            "Restablecer el sonido"},
     /* %d: the internal resolution asked for; %s: why it cannot be made. */

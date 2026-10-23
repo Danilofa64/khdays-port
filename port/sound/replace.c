@@ -338,22 +338,84 @@ static int load_ogg(KhdaysReplacement *r, const char *path, const KhdaysOriginal
 
 /* --- The replacement ----------------------------------------------------------------- */
 
+/* The filter that brings a file down: a sinc of this many zero crossings each side, under a Blackman window. */
+#define SINC_ZEROS 16
+#define SINC_PI 3.14159265358979323846
+
+static double blackman(double t) /* t in [-1, 1] */
+{
+    return 0.42 + 0.5 * cos(SINC_PI * t) + 0.08 * cos(2.0 * SINC_PI * t);
+}
+
+/* A file above the PC's rate brought down to it through a low-pass filter (a windowed sinc), so that what it
+ * holds above half that rate does not fold back as noise, its loop moved with it. 0 without the memory. */
+static int bring_down(KhdaysReplacement *r)
+{
+    const double ratio = (double)r->rate / KHDAYS_REPLACEMENT_RATE;
+    const uint64_t frames = (uint64_t)((double)r->frames / ratio);
+    const int64_t half = (int64_t)ceil(SINC_ZEROS * ratio); /* the filter's reach each side, in the file's samples */
+    const int channels = r->channels;
+    int16_t *out = frames > 0 ? malloc((size_t)(frames * (uint64_t)channels * sizeof(*out))) : NULL;
+    if (out == NULL) {
+        return frames == 0;
+    }
+    for (uint64_t j = 0; j < frames; ++j) {
+        const double x = (double)j * ratio;
+        const int64_t center = (int64_t)floor(x);
+        for (int c = 0; c < channels; ++c) {
+            double sum = 0.0, weights = 0.0;
+            for (int64_t k = center - half + 1; k <= center + half; ++k) {
+                if (k < 0 || (uint64_t)k >= r->frames) {
+                    continue;
+                }
+                const double d = x - (double)k, u = d / ratio;
+                const double h = (u == 0.0 ? 1.0 : sin(SINC_PI * u) / (SINC_PI * u)) * blackman(d / (double)half);
+                sum += (double)r->samples[(uint64_t)k * (uint64_t)channels + (uint64_t)c] * h;
+                weights += h;
+            }
+            const double v = weights != 0.0 ? sum / weights : 0.0;
+            out[j * (uint64_t)channels + (uint64_t)c] = (int16_t)(v > 32767.0    ? 32767
+                                                                  : v < -32768.0 ? -32768
+                                                                                 : lrint(v));
+        }
+    }
+    free(r->samples);
+    r->samples = out;
+    r->frames = frames;
+    r->loop_start = (uint64_t)((double)r->loop_start / ratio + 0.5);
+    r->loop_end = (uint64_t)((double)r->loop_end / ratio + 0.5);
+    if (r->loop_end > frames) {
+        r->loop_end = frames;
+    }
+    if (r->looped && r->loop_start >= r->loop_end) {
+        r->looped = 0;
+    }
+    r->rate = KHDAYS_REPLACEMENT_RATE;
+    return 1;
+}
+
 int khdays_replacement_load(KhdaysReplacement *replacement, const char *path, const KhdaysOriginalLoop *original,
                             char *why, int why_size)
 {
     const char *dot = strrchr(path, '.');
+    int loaded;
     memset(replacement, 0, sizeof(*replacement));
     if (dot != NULL && strcmp(dot, ".wav") == 0) {
-        return load_wav(replacement, path, original, why, why_size);
+        loaded = load_wav(replacement, path, original, why, why_size);
+    } else if (dot != NULL && strcmp(dot, ".flac") == 0) {
+        loaded = load_flac(replacement, path, original, why, why_size);
+    } else if (dot != NULL && strcmp(dot, ".ogg") == 0) {
+        loaded = load_ogg(replacement, path, original, why, why_size);
+    } else {
+        say(why, why_size, "is not .wav, .flac or .ogg");
+        return 0;
     }
-    if (dot != NULL && strcmp(dot, ".flac") == 0) {
-        return load_flac(replacement, path, original, why, why_size);
+    if (loaded && replacement->rate > KHDAYS_REPLACEMENT_RATE && !bring_down(replacement)) {
+        khdays_replacement_free(replacement);
+        say(why, why_size, "has no memory to be brought down to the PC's rate");
+        return 0;
     }
-    if (dot != NULL && strcmp(dot, ".ogg") == 0) {
-        return load_ogg(replacement, path, original, why, why_size);
-    }
-    say(why, why_size, "is not .wav, .flac or .ogg");
-    return 0;
+    return loaded;
 }
 
 void khdays_replacement_free(KhdaysReplacement *replacement)

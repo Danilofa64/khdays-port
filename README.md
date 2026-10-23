@@ -597,7 +597,10 @@ The port plays the game's sound itself: the DS's sound driver, which the
 game's ARM7 binary carries, written in C and run on a thread of its own, so
 loading and busy frames no longer cut it; the music streams read by the
 port as the game's stream player would; and the channels mixed at the PC's
-output rate in floating point, without the DS's 10 bits.
+output rate in floating point, without the DS's 10 bits, each read between its
+samples where the DS holds each one until the next (DS-exact sound keeps the
+DS's way), and a mix louder than full scale turned down for a moment rather
+than clipped.
 
 **Settings → Sound** sets the overall volume and those of the music, the
 effects, the voices (what each sound is comes from the name of the
@@ -629,7 +632,13 @@ mods/<Mod>/sounds/
 The loop is a WAV's `smpl` loop, else the Vorbis comments `LOOPSTART` and
 `LOOPLENGTH`, else the original's. The original keeps running unheard, so
 the game waits for it and reads it as before; a file that cannot be read is
-named once and the original plays.
+named once and the original plays. A file plays at the PC's output rate,
+between its own samples, a wave's too (not at the rate of the DS channel
+that plays it); one above 48,000 Hz is brought down to it as it loads,
+filtered; one longer than its original plays on to its end once the original
+ends by itself (not when the game stops it); the voices' streams are decoded
+ahead, so even their first line is the mod's. Best: 48,000 Hz, 16 bits, about
+as loud as the original (a dumped one shows how loud).
 
 **The originals** to make them from: `khdays-native --dump-sounds [DIR]`
 writes every wave, stream, sequence and sequence-archive entry as WAV under
