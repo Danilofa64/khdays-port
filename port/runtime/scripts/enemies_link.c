@@ -4,6 +4,8 @@
  * once idle again, the next one of its kind reuses it. docs/RUNTIME_MAP.md, "The field's enemies". */
 #include "enemies_link.h"
 
+#include "../battle/stop_magic.h"
+
 #include "api_v2.h"
 #include "../core/window.h"
 
@@ -552,6 +554,7 @@ int khdays_enemies_spawner_run(void *spawner, int op)
 
 void khdays_enemies_retired(void *actor)
 {
+    khdays_stop_enemy_gone(actor);
     if (traced()) {
         fprintf(stderr, "enemies: f%u actor %08x retired\n", khdays_link_frame(), ref_of(actor));
     }
@@ -579,6 +582,7 @@ static void forget(void)
 
 void khdays_enemies_area_left(void)
 {
+    khdays_stop_area_left();
     forget();
 }
 

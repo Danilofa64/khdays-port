@@ -4667,6 +4667,13 @@ Read in the decompilation, then traced with `KHDAYS_TRACE_ENEMIES=1` (2026-10-22
   `Ov107_StoreHitInfo`), moved (`Ov107_MoveNodeAndRelayout`) and its event 0 (`+0x1cc`): its +0x60
   word gains 0x300; 0x100 is cleared at the defeat and once sent away. Event 1 sends it away (the
   spawner's op 1 when the player leaves it): the Shadow left in 67 frames.
+- **A Shadow starts flat** (ov114): made, its height scale (`+0x390`, 0x1000 whole) is 1, a dark
+  shape on the ground (`Ov114_InitNodeAndRegisterHandlers`), and it waits for its +0x60 bit 0
+  (`Ov114_SetVisFlagsEnterState`); then its stored action (`+0x1c9`, the spawner's slot mode, 1 when
+  none: `func_ov107_020c6624`) is queued and any action but 0 gives it its whole height
+  (`Ov114_DispatchSubStateByte`). Seen with a mod's three Shadows (the maintainer saw them as
+  invisible at first): flat as they were made, half risen half a second later, up in a second. Held
+  by Stop while rising, a Shadow stays flat for the hold (its tasks stand still).
 - **An area's end** releases them all (`Ov002_ReleaseResources`: the actor manager's node destroyed,
   ov107 unloaded, the tables freed). Mission 2 moves to its next area once its enemies there are
   defeated: Shadows (row 0) in the first, Yellow Operas (row 1) in the next, then another.
@@ -4873,3 +4880,105 @@ N`).
 - **A mod's track** (`music.play`) is asked for the game's way (`SoundMgr_SwitchBgm`); meanwhile the
   four routines keep the game's requests back (prepare.py's joins, `khdays_link_music_request`), and
   the last of them is made as the mod's track ends.
+
+## 28. The magic
+
+Read in the decompilation and traced with research knobs the port had for it (`KHDAYS_TRACE_STOP`,
+`KHDAYS_TEST_HOLD`, `KHDAYS_TEST_STOP_EFFECT`, removed once this was written) on Mission Mode's first mission (94,
+Twilight Town's square, "learn the basics of combat"), the panels set and three Shadows made at the player by a
+research mod, 2026-10-22 and 23. Days began a sixth magic, Stop, and left it unfinished;
+the port restores it (`runtime/battle/`).
+
+- **What the game left of Stop**: its effect, `ba/ma/st.p.z` (a model) and `s0_mo`-`s2_mo` (one animation each
+  level), beside the other magics' (`fi` and `f0`-`f2` Fire, `bl`/`b` Blizzard, `th`/`t` Thunder, `ae`/`a` Aero,
+  `cu`/`c` Cure); its places in ov022's name tables, 18 for six magics of three levels (`data_ov022_020b2394` the
+  level animations `f0`...`s2`, `data_ov022_020b23dc` the models, Stop's three a filler, `noting`); and its names in
+  the battle's list (`UI/btl/<lang>/magic.s.z`, 18 names): English Stop, Stopra, Stopga, French Stop, Stop +, Stop X,
+  the other languages empty. No panel, no description in any file or language, no battle templates (`ba/ch/mp.z`:
+  75, 15 magics x 5), no code that casts it.
+- **The panels' table** (message database 0x15, `db.p2` entry 0x15: 630 records of 0x64 bytes from id 1): `+0` the
+  category (1 magic), `+4` a number of the panel's own, `+6` its kind (a parameter, below: Fire 2 ... Curaga 16),
+  `+8` its shape, `+0x18` a magic's index in the battle (Fire 1 ... Curaga 15), `+0x58` its price, `+0x60` the number
+  of its words. Records 513-630 are blank (category 2, number 0, kind -1, no words) and the camp leaves them out
+  (`Ov008_IsGridItemEligible`, `Ov025_IsGridItemEligible`). The words of database `id` are a pack of their own
+  (`MsgDb_LoadDb` loads it beside the records, `+4` of the database's row): a count, each string's end, then the
+  strings (`P2_ExtractString`), two per panel (its name, its description). A database is loaded from its pack into a
+  fresh block of the current heap each time (`Archive_LoadFile`) and freed with the current heap's free
+  (`ResSlot_Release_2`). Seen: the port writes Stop's three panels over 513-515 as the table loads (`stop: panels
+  513-515 written (es)`, once at each load: seven loads from the camp to the field), and the camp sets them (the
+  scripting interface's `deck.give(513, true)`: `true`, cells 1.1.1-1.1.3, category 1).
+- **Parameters**: message database 0x13 names 115 kinds (two words each: Fire ... Curaga 1-15, Dodge Roll 16, every
+  one used); `Params_BuildIndex` gives each a field of the party member's bit array (`gPartyMembers`, 0x104 bytes a
+  player, from `+0x28`), the battle reading a kind's count with `Slot_EvalPackedParam(player, kind)`. A panel's kind
+  `+6` is its parameter plus one. A magic's casts are a pair {left, most} at `+0x9a + 2 x kind`
+  (`ClampAndStoreLevelEntry`, `Load2DArrayU8` through `data_0204c714`): the record holds them for kinds 1-53 only.
+- **The battle's magic** (ov022): `Ov022_BuildSlotPool` walks 15 kinds, slot kind `k` from parameter `k + 1`, at
+  most 5 parts, one constructor each (`data_ov022_020b29e4[15]`). The pool (the actor's `+0x2288`, 0x70 bytes,
+  cleared by `Ov022_InitEntryState`) keeps 15 slot places from `+0x18`; the word after them, `+0x54`, holds the cast's
+  level animation (its grid entry, `Ov022_BuildEntryLabelText`), which 12 handlers bind (`Ov022_BindBlockAnimations`,
+  `func_ov022_020b15a4`) and `Ov022_StepReactionState` waits on; the actor follows (`+0x58`). `+0xc` is the slot
+  being cast (`Ov022_SetRecordValue`), and only that slot is stepped and drawn (`func_ov022_0209093c`). Seen: Fire
+  and Fira set gave slot kinds 0 and 1 one part each, the other 13 none; a 16th slot written at `+0x54` was
+  overwritten as the level animation loaded, and its draw ran a byte no SBC handler takes (`NNSi_G3dDrawInternal`
+  called a null). The
+  field's HUD (`Ov002_CreateAndRestoreHud`) enables the magic submenu's rows from parameters 1-15 and shows each
+  row's casts (`Ov002_HudSetSlotValue`); its panel session keeps 18 rows (`Ov002_CreatePanelSession`, the 18 names
+  of `magic.s.z`), a row's {index, count} at `+0x32` and the enabled mask at `+0x4a8` (`Ov002_Panel_IsSlotUsable`).
+  So the submenu was made for 18 magics and the battle for 15. Seen: the submenu MAGIA listing Piro and Piro+ (the
+  Spanish game), a cast greying the Magic command once its casts were spent.
+- **An enemy's tick** is `Ov107_ProcessObjectTick(self, delta)`, 30 a second (seen: 120 of them in 238 frames). A
+  frozen enemy (status `+0x1c4` 2, Blizzard's) or one in the air (8) has its tasks (`+0x3c`) updated with no time
+  (`ObjList_Update(list, 0)`) and its motion zeroed in the contacts' pass. An AI task's `stop` field is not a hold:
+  `ObjList_Update` tears down a task whose `stop` is set. Seen with the port holding a Shadow through that frozen
+  path for 120 ticks (`KHDAYS_TEST_HOLD=120`): it stood, but bodies touching it still pushed it a little
+  (`Ov107_AiState_ResolveContacts`: 0.6 units over the four seconds, Roxas attacking it), its action changed with
+  the hit it took (2 to 5) and the hits during the hold lowered its health (67 to 58).
+- **A hit on an enemy** (`Ov107_AiState_ApplyHit`): dropped during a hit's grace (`+0x2e4`), with `+0x1ac` bit 0 or
+  status 0x10; its damage from `Ov107_CalcHitDamage`, the enemy's own handler (`+0x1d0`) lowering its health
+  (`+0x21a`, most `+0x218`). A hit may give a status by its flags (`+2`'s byte, mask 0x88c): 1 burning (time
+  0xc000, timed damage), 2 frozen (0x5000), 4 jolted (0xf000), 8 air-tossed (0x6000); each chance scaled by the
+  enemy's resistance `+0x1b4[i]`, none where its immunity bits `+0x1b0` say so; pending in `+0x1c5` until it holds
+  in `+0x1c4`. The five records `Ov107_AiState_LoadResistances` loads at `+0x314` are health thresholds, each a
+  chance and an amount of drops when a hit crosses it (message kind 11), not resistances. Seen: Roxas's attack
+  `04 00 00 40 ...` 8-9 damage to two Shadows at once (75 health), Fire `08 00 80 00 ...` 66.
+- **A magic's cast**, traced: the submenu's A gives the actor command 8 with the row's magic index
+  (`Ov022_UpdateCommandInput`, `Ov002_Panel_GetSelectedCellArg`), made a pending action 4
+  (`Ov022_TranslateCommandToAction`); the cast starts in `Ov022_BeginSubStateDispatch`, which calls the magic's
+  handler (`data_ov022_020b2a20[index]`, 15 of them; the step and update tables `data_ov022_020b2a5c`,
+  `data_ov022_020b2a98` too; `data_ov022_020b2ad4` has 18 places, Stop's three empty), then spends a cast (seen:
+  `Load2DArrayU8` 1, `ClampAndStoreLevelEntry` 0 of 1). Between them the pending action is allowed
+  (`Ov022_IsSlotActionAllowed`: the pool's kind bit and the casts left), the actor takes the magic's pose
+  (`Ov022_GetSlotMoveMode`, 15 indexes) and the index becomes the pool's cast slot (`Ov022_SetRecordValue`, from
+  `Ov022_SetAnimState` or the player overlays' `ApplyModeChange` with the command's own argument); the pool's states
+  then run (`Ov022_StepReactionState`: 1 and 2 a message, 3 the level animation loaded and waited on, 6, 5 the
+  begin, 6, 8, 9, back to no slot). The level's animation is loaded as the cast starts
+  (`Ov022_BuildEntryLabelText`, `ba/ma/<level>_mo.p.z`) into a buffer of the actor's own (`data_ov022_020b2eb8`,
+  `FileLoader_LoadInto` at the entry's `+0x2c`), and its animation objects are bound to the slot's model
+  (`Ov022_BindBlockAnimations`, `BindAnimTrack`), which first removes the ones bound before by walking the model's
+  list (`NNS_G3dRenderObjRemoveAnmObj`). That walk holds only because each slot always loads the same animation into
+  the same buffer, its objects landing where the last ones were: seen with one slot binding Stop's `s0_mo` and then
+  `s1_mo`, the walk ran through `s1_mo`'s bytes and faulted (`removeLink_`). The actor's state sent to the other
+  players carries the magic's index (`Ov022_SendActorStatePacket`, 10 bits). The submenu's cursor starts at its
+  first row, then stays where the last cast left it, a row with no casts left included; down from the last row in
+  use goes back to the first (seen with Stop's three rows). Seen too: with Shadows striking Roxas, the submenu's A
+  on a magic cast nothing, the submenu left open, until they stopped.
+- **Stop's effect** is a clock (`ef_stop_0`: number1-number12, needle1-needle4, rings and lines), each level's
+  animation moving one object (`ef_stop_0`, `ef_stpr_0`, `ef_stpg_0`), as Cure's and Cura's do (Fire's, Blizzard's
+  and Thunder's move two to four: a cast, a flight, a hit). Seen with the port's test knob
+  (`KHDAYS_TEST_STOP_EFFECT=<magic>`, that magic loading Stop's model and first animation): with Fire's handlers a
+  purple clock with gold numerals stood round the target, then the game stopped (frame 7560, no frame after);
+  with Aeroga's and with Cure's the cast went on and nothing of the clock showed. Seen with Stop's slot in a place
+  of its own taking Cure's handlers (below): the purple clock with its gold numerals stood on the ground round Roxas
+  for a moment as the cast began; Stopga's is wider, with four crystal hands and red numerals.
+- **Stop in the port's battle** (`runtime/battle/stop_magic.c`, prepare.py's joins): the pool's level animation
+  word is the port's, so `+0x54` is Stop's place, 15; its slot is Cure's constructor over `st.p.z` with a kind of
+  its own (15, so `Ov022_ApplyReactionHit` heals no one), Cure's begin, step and update handlers, its level's
+  animation `s<level>_mo` with the animations bound before forgotten as it loads; its levels are the submenu's cells
+  15-17, their casts the port's. It holds only enemies standing (set going, `+0x60` 0x100): the first casts also
+  held three of the mission's own still idle in the area's table. The other magics, with the level animation's word
+  the port's, cast as before (seen: Fire, Blizzard, Thunder, Aero and Cure, each to its last state). Seen on the
+  walk (`port/tools/regress_walks/stop.input` with the test mod `port/tests/mods_v2/stop`: mission 94, its own
+  enemies held back, three Shadows made four units from Roxas): Stopga held the three for 240 ticks (reach 6
+  units); Stopra, cast while they were held, held them again for 180, not added to the 42 left; Stop, cast as that
+  hold ended, for 120; Roxas's hits during the last hold were kept (13, 22, 13) and each Shadow took its sum at once
+  as it was released.

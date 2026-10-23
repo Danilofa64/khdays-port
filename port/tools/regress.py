@@ -95,7 +95,15 @@ def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | N
     # A junction, not a copy: data/ is gigabytes. `mklink /J` needs no
     # administrator rights.
     subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(ROOT / "data")], check=True, capture_output=True)
-    if mods is not None:
+    if mods is not None and (mods / "mod.ini").exists():
+        # one mod's own folder: alone in a mods/ of the run's
+        (work / "mods").mkdir()
+        subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(work / "mods" / mods.resolve().name), str(mods.resolve())],
+            check=True,
+            capture_output=True,
+        )
+    elif mods is not None:
         subprocess.run(
             ["cmd", "/c", "mklink", "/J", str(work / "mods"), str(mods.resolve())], check=True, capture_output=True
         )
@@ -111,10 +119,22 @@ def make_workdir(save: Path | None, mods: Path | None = None, settings: Path | N
 def remove_workdir(work: Path) -> None:
     """Delete the directory, removing the data/ and mods/ links first so that
     nothing they point to can ever be deleted with it."""
-    for link in (work / "data", work / "mods"):
+    mods = work / "mods"
+    for link in (work / "data", mods):
         if link.exists() or os.path.lexists(link):
+            if link == mods and not _is_link(mods):
+                for one in mods.iterdir():
+                    os.rmdir(one)  # one mod's link alone in mods/ (make_workdir)
             os.rmdir(link)  # removes the junction itself, never its target
     shutil.rmtree(work)
+
+
+def _is_link(path: Path) -> bool:
+    """Whether `path` is a junction or a symbolic link (not a folder of its own)."""
+    try:
+        return bool(os.lstat(path).st_file_attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    except (OSError, AttributeError):
+        return os.path.islink(path)
 
 
 def keep_session_log(work: Path, to: Path) -> None:
@@ -393,7 +413,10 @@ def main() -> int:
     )
     walks.add_argument("--logs", type=Path, help="keep each walk's log in this directory")
     parser.add_argument(
-        "--mods", type=Path, help="a mods folder to play with, linked in as mods/ (the walks or the script)"
+        "--mods",
+        type=Path,
+        help="a mods folder to play with, linked in as mods/, or one mod's own folder, alone in mods/ (the walks or the "
+        "script)",
     )
     parser.add_argument(
         "--settings",
