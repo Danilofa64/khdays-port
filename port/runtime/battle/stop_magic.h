@@ -12,6 +12,11 @@ int khdays_stop_panel(int id);
 
 /* Message database `id` loaded (MsgDb_LoadDb): Stop's records and words written into it. Called from the game's C. */
 void khdays_stop_db_loaded(int id);
+/* The panels' pictures loaded (ui/pnl/3d_&.pak.z, its archive relocated): the clock Stop's panels show takes the
+ * magic panels' ground. */
+void khdays_stop_pictures(unsigned int archive);
+/* A game file loaded (Archive_LoadFile: its place in the ROM, its bytes): the shop's 2D pictures' clock the same. */
+void khdays_stop_file_loaded(unsigned top, void *buffer, unsigned size);
 
 /* The battle's list of magic names loaded (Ov002_CreatePanelSession, its record at `record`): the names the game
  * left empty filled. Called from the game's C. */

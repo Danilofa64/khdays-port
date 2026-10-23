@@ -7,6 +7,7 @@
 #include "stop_data.h"
 #include "stop_hold.h"
 
+#include "../core/rom.h"
 #include "../core/session_log.h"
 #include "../core/utf8.h"
 #include "../core/window.h"
@@ -16,6 +17,7 @@
 #include "../scripts/game_link.h"
 #include "khdays_ds_symbols.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,19 +29,36 @@ extern KhdaysRef NNSi_FndAllocFromDefaultExpHeap(unsigned int size);
 extern void NNSi_FndFreeFromDefaultHeap(KhdaysRef block);
 
 #define DB_ROW 0x14u    /* data_0204c238's rows (MsgDb_LoadDb): +0 the records' pack, +4 the strings' */
+#define DB_PACK 0x0u    /* the records' pack: a count, then the records (MsgDb_LoadDb) */
 #define DB_STRINGS 0x4u /* the strings' pack: a count, each string's end, then the strings (P2_ExtractString) */
 #define DB_RECORDS 0x8u
 #define DB_COUNT 0xcu
 #define DB_PANELS 0x15
+#define DB_RECIPES 0x1f /* the moogle's recipes (Ov026_CreateParamTable) */
+
+/* A recipe's record: its product, 1, the munny, then its ingredients, each an item and a count (none: 0); the moogle
+ * marks each recipe made by its place in the table (Ov026_QueryRecordUnlock: a bit of gGameState +0x1060). */
+#define RECIPE_BYTES 0x2cu
+#define RECIPE_MUNNY 0x8u
+#define RECIPE_INGREDIENTS 0xcu
 
 #define PANEL_BYTES 0x64u /* a panel's record (MsgDb_LoadRecord15) */
 #define PANEL_CATEGORY 0x0u
-#define PANEL_NUMBER 0x4u /* a number of its own (0 for the blank records) */
-#define PANEL_KIND 0x6u   /* its parameter (-1 none) */
-#define PANEL_MAGIC 0x18u /* a magic's index in the battle's tables, 1-18 */
+#define PANEL_PICTURE 0x4u /* its picture in PICTURES + 1 (0 none: the blank records) */
+#define PANEL_KIND 0x6u    /* its parameter (-1 none) */
+#define PANEL_MAGIC 0x18u  /* a magic's index in the battle's tables, 1-18 */
 #define PANEL_PRICE 0x58u
 #define CATEGORY_MATERIAL 2 /* the blank records' */
 #define BLIZZARD 96         /* Blizzard's first level: the record each of Stop's starts from */
+
+/* The panels' pictures (ui/pnl/3d_&.pak.z, Ov008_InitGridMenuTextures): the archive's member 7, a BTX0 each, a 16x16
+ * picture of 8 colours whose 2-4 are its edges and ground (the magics' purple). The game's clock is no panel's: Stop's,
+ * with the magics' ground. */
+#define PICTURES 7u
+#define PICTURE_CLOCK 0x1bu
+#define PICTURE_BLIZZARD 0x25u
+#define PICTURE_GROUND 2u /* the first of the 3 colours of the edges and ground */
+#define PICTURE_GROUND_COLOURS 3u
 
 #define NAMES_HEAD 0x0u /* the names' file (Ov002_InitResourceRecord): its header's size, then the count */
 #define NAMES_FIRST_STOP 15
@@ -132,10 +151,10 @@ static int game_text(const char *words, unsigned short *out, int room)
     return n + 1;
 }
 
-/* Whether panel record `record` is one of the table's blank ones: a material with no number and no kind. */
+/* Whether panel record `record` is one of the table's blank ones: a material with no picture and no kind. */
 static int blank_record(KhdaysRef record)
 {
-    return rd16(record + PANEL_CATEGORY) == CATEGORY_MATERIAL && rd16(record + PANEL_NUMBER) == 0 &&
+    return rd16(record + PANEL_CATEGORY) == CATEGORY_MATERIAL && rd16(record + PANEL_PICTURE) == 0 &&
            rd16(record + PANEL_KIND) == 0xffffu;
 }
 
@@ -217,6 +236,7 @@ static void write_panels(const KhdaysStopData *d)
         wr16(record + PANEL_KIND, 0xffffu); /* no parameter: Stop's casts are the port's (the battle part) */
         *(volatile unsigned char *)KHDAYS_W(record + PANEL_MAGIC) = 0; /* nor a magic of the game's 15 */
         wr32(record + PANEL_PRICE, (unsigned)d->levels[l].price);
+        wr16(record + PANEL_PICTURE, PICTURE_CLOCK + 1u);
         wr16(record + 0x60u, text_id);
     }
     /* the words: each panel's name and description, strings 2 (id - 1) and 2 (id - 1) + 1 */
@@ -232,11 +252,198 @@ static void write_panels(const KhdaysStopData *d)
                khdays_stop_languages[g]);
 }
 
+/* Picture `index` of the loaded pictures' archive: its palette (0 none). */
+static KhdaysRef picture_palette(KhdaysRef archive, unsigned index)
+{
+    const KhdaysRef table = rd32(archive + 8u + 4u * PICTURES);
+    if (table == 0 || index >= rd32(table)) {
+        return 0;
+    }
+    const KhdaysRef btx = rd32(table + 4u + 4u * index);
+    const KhdaysRef tex = btx != 0 ? btx + rd32(btx + 0x10u) : 0; /* its TEX0 section */
+    return tex != 0 ? tex + rd32(tex + 0x38u) : 0;
+}
+
+void khdays_stop_pictures(KhdaysRef archive)
+{
+    const KhdaysRef clock = picture_palette(archive, PICTURE_CLOCK);
+    const KhdaysRef blizzard = picture_palette(archive, PICTURE_BLIZZARD);
+    if (stop_data() == NULL || clock == 0 || blizzard == 0) {
+        return;
+    }
+    for (unsigned c = PICTURE_GROUND; c < PICTURE_GROUND + PICTURE_GROUND_COLOURS; ++c) {
+        wr16(clock + 2u * c, rd16(blizzard + 2u * c));
+    }
+}
+
+/* The shop's pictures (ui/shop/res.p2, res_i18n.p2: Ov026_InitPanelSlotManagers, Ov008_InitPanelSlotManagers) are
+ * 2D: a D2KP pack whose cell bank (NCER) has a cell per picture, one OAM of 16x16 at 8 bits each on one 256-colour
+ * palette, its tiles in the pack's characters (NCGR), the OAM's tile x (32 << the mapping's boundary) bytes in. Its
+ * clock is the 3D one, the same orange: its edges and ground take the indices of Blizzard's, the magics' purple. */
+#define SHOP_PICTURES "ui/shop/res"
+#define PICTURE_SIDE 16u
+
+static u32 le16(const unsigned char *p)
+{
+    return (u32)p[0] | (u32)p[1] << 8;
+}
+
+static u32 le32(const unsigned char *p)
+{
+    return le16(p) | le16(p + 2) << 16;
+}
+
+/* The pack's first block whose magic is `magic` (its size in `*bytes`), or NULL. */
+static unsigned char *pack_block(unsigned char *pack, u32 size, const char *magic, u32 *bytes)
+{
+    for (u32 s = 0; s < 8u; ++s) {
+        const u32 at = le32(pack + 8u + 4u * s);
+        if (at == 0 || at > size - 4u) {
+            continue;
+        }
+        const u32 count = le32(pack + at);
+        if (count > (size - at - 4u) / 8u) {
+            continue;
+        }
+        for (u32 k = 0; k < count; ++k) {
+            const u32 off = le32(pack + at + 4u + 4u * k), len = le32(pack + at + 4u + 4u * (count + k));
+            if (off < size && len >= 4u && len <= size - off && memcmp(pack + off, magic, 4) == 0) {
+                *bytes = len;
+                return pack + off;
+            }
+        }
+    }
+    return NULL;
+}
+
+/* Where cell `cell`'s picture starts in the characters (the NCER's cells from +0x18, their OAMs after them); 0 when
+ * it is not one OAM of 16x16 at 8 bits. */
+static int cell_picture(const unsigned char *ncer, u32 size, u32 cell, u32 unit, u32 *offset)
+{
+    if (size < 0x20u) {
+        return 0;
+    }
+    const u32 count = le16(ncer + 0x18u), entry = le16(ncer + 0x1au) == 1 ? 16u : 8u;
+    const u32 cells = 0x18u + le32(ncer + 0x1cu);
+    if (cell >= count || cells > size || count * entry > size - cells) {
+        return 0;
+    }
+    const unsigned char *e = ncer + cells + cell * entry;
+    const u32 oam = cells + count * entry + le32(e + 4);
+    if (le16(e) != 1 || oam > size - 6u) {
+        return 0;
+    }
+    const u32 a0 = le16(ncer + oam), a1 = le16(ncer + oam + 2u), a2 = le16(ncer + oam + 4u);
+    if (!(a0 & 0x2000u) || a0 >> 14 != 0 || a1 >> 14 != 1) {
+        return 0; /* not 8 bits, square, 16x16 */
+    }
+    *offset = (a2 & 0x3ffu) * unit;
+    return 1;
+}
+
+/* Whether `path` starts with `start`, whatever the letters' case (the FNT has "UI/shop/..."). */
+static int starts_with_folded(const char *path, const char *start)
+{
+    for (; *start != '\0'; ++path, ++start) {
+        if (tolower((unsigned char)*path) != tolower((unsigned char)*start)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* A 16x16 picture of 8 bits' pixel (x, y): four 8x8 tiles of 64 bytes, in rows. */
+static unsigned char *picture_pixel(unsigned char *chars, u32 x, u32 y)
+{
+    return chars + (y / 8u * 2u + x / 8u) * 64u + y % 8u * 8u + x % 8u;
+}
+
+void khdays_stop_file_loaded(unsigned top, void *buffer, unsigned size)
+{
+    unsigned char *pack = buffer;
+    char path[112];
+    u32 within, ncer_size, ncgr_size, clock, blizzard;
+    if (size < 0x28u || memcmp(pack, "D2KP", 4) != 0 || stop_data() == NULL ||
+        !khdays_rom_file_at(top, path, (int)sizeof(path), &within) || !starts_with_folded(path, SHOP_PICTURES)) {
+        return;
+    }
+    const unsigned char *ncer = pack_block(pack, size, "RECN", &ncer_size);
+    unsigned char *ncgr = pack_block(pack, size, "RGCN", &ncgr_size);
+    if (ncer == NULL || ncgr == NULL || ncgr_size < 0x30u || le32(ncgr + 0x1cu) != 4u) {
+        return; /* no pictures, or not 8 bits */
+    }
+    const u32 unit = 32u << (le32(ncgr + 0x20u) >> 20 & 3u);
+    const u32 chars = 0x18u + le32(ncgr + 0x2cu), bytes = le32(ncgr + 0x28u);
+    const u32 picture = PICTURE_SIDE * PICTURE_SIDE;
+    if (chars > ncgr_size || bytes > ncgr_size - chars || !cell_picture(ncer, ncer_size, PICTURE_CLOCK, unit, &clock) ||
+        !cell_picture(ncer, ncer_size, PICTURE_BLIZZARD, unit, &blizzard) || clock > bytes - picture ||
+        blizzard > bytes - picture) {
+        return;
+    }
+    /* the edges and ground where the 3D pictures have them: the top edge, the ground, the bottom edge */
+    static const u32 at[3][2] = {{2, 1}, {2, 2}, {2, 14}};
+    unsigned char from[3], to[3];
+    for (int i = 0; i < 3; ++i) {
+        from[i] = *picture_pixel(ncgr + chars + clock, at[i][0], at[i][1]);
+        to[i] = *picture_pixel(ncgr + chars + blizzard, at[i][0], at[i][1]);
+    }
+    for (u32 y = 0; y < PICTURE_SIDE; ++y) {
+        for (u32 x = 0; x < PICTURE_SIDE; ++x) {
+            unsigned char *p = picture_pixel(ncgr + chars + clock, x, y);
+            for (int i = 0; i < 3; ++i) {
+                if (*p == from[i]) {
+                    *p = to[i];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/* Stop's recipes after the game's own, the table loaded anew (Archive_LoadFile): a pack of their own, the game's then
+ * freed, so the moogle lists them and the game's release frees them. */
+static void append_recipes(const KhdaysStopData *d)
+{
+    const KhdaysRef row = rd32(KHDAYS_DS_data_0204c238) + DB_RECIPES * DB_ROW;
+    const KhdaysRef old = rd32(row + DB_PACK);
+    if (!khdays_game_ram(old) || !panels_in) {
+        return;
+    }
+    const unsigned count = rd32(old);
+    const unsigned size = 4u + (count + KHDAYS_STOP_LEVELS) * RECIPE_BYTES;
+    const KhdaysRef made = NNSi_FndAllocFromDefaultExpHeap(size);
+    if (!khdays_game_ram(made)) {
+        khdays_log("stop: no room in the game's heap for the recipes (%u bytes)", size);
+        return;
+    }
+    memcpy(KHDAYS_W(made), KHDAYS_W(old), 4u + count * RECIPE_BYTES);
+    memset(KHDAYS_W(made + 4u + count * RECIPE_BYTES), 0, KHDAYS_STOP_LEVELS * RECIPE_BYTES);
+    for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
+        const KhdaysStopRecipe *r = &d->recipes[l];
+        const KhdaysRef record = made + 4u + (count + (unsigned)l) * RECIPE_BYTES;
+        wr32(record, (unsigned)d->levels[l].id);
+        wr32(record + 4u, 1);
+        wr32(record + RECIPE_MUNNY, (unsigned)r->munny);
+        for (int i = 0; i < r->material_count; ++i) {
+            wr32(record + RECIPE_INGREDIENTS + 8u * (unsigned)i, (unsigned)r->materials[i].id);
+            wr32(record + RECIPE_INGREDIENTS + 8u * (unsigned)i + 4u, (unsigned)r->materials[i].count);
+        }
+    }
+    wr32(made, count + KHDAYS_STOP_LEVELS);
+    wr32(row + DB_PACK, made);
+    wr32(row + DB_RECORDS, made + 4u);
+    wr16(row + DB_COUNT, count + KHDAYS_STOP_LEVELS);
+    NNSi_FndFreeFromDefaultHeap(old); /* the same heap it was just loaded from (Archive_LoadFile) */
+    khdays_log("stop: recipes %u-%u added after the game's %u", count, count + KHDAYS_STOP_LEVELS - 1, count);
+}
+
 void khdays_stop_db_loaded(int id)
 {
     const KhdaysStopData *d = stop_data();
     if (d != NULL && id == DB_PANELS) {
         write_panels(d);
+    } else if (d != NULL && id == DB_RECIPES && khdays_stop_data_shop_whole(d)) {
+        append_recipes(d);
     }
 }
 

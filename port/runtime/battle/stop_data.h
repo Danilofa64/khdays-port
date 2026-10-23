@@ -8,8 +8,9 @@
 extern "C" {
 #endif
 
-#define KHDAYS_STOP_LEVELS 3    /* Stop, Stopra, Stopga: the three places the battle's tables left */
-#define KHDAYS_STOP_LANGUAGES 5 /* the game's: en, es, fr, de, it */
+#define KHDAYS_STOP_LEVELS 3      /* Stop, Stopra, Stopga: the three places the battle's tables left */
+#define KHDAYS_STOP_LANGUAGES 5   /* the game's: en, es, fr, de, it */
+#define KHDAYS_STOP_INGREDIENTS 4 /* a recipe's, as the game's recipes' records hold them (database 0x1f) */
 
 typedef struct KhdaysStopLevel {
     int set;      /* given in the file */
@@ -23,12 +24,12 @@ typedef struct KhdaysStopMaterial {
     int id, count;
 } KhdaysStopMaterial;
 
+/* A recipe: the moogle lists it once its first two ingredients have been owned (Ov026_IsRecipeListed). */
 typedef struct KhdaysStopRecipe {
     int set;
-    KhdaysStopMaterial *materials; /* as many as the line names */
-    int material_count;
     int munny;
-    char condition[64]; /* when the moogle shows it */
+    KhdaysStopMaterial materials[KHDAYS_STOP_INGREDIENTS];
+    int material_count;
 } KhdaysStopRecipe;
 
 /* One language's words for a level, UTF-8, with the game's highlight (\x02 ... \x01) and line breaks. */

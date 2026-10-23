@@ -110,43 +110,28 @@ static int read_level(const char *p, const char *end, KhdaysStopData *d)
 static int read_recipe(const char *p, const char *end, KhdaysStopData *d)
 {
     int level, length;
+    const char *w;
     if (!level_of(next_word(&p, end, &length), length, &level)) {
         return 0;
     }
     KhdaysStopRecipe *r = &d->recipes[level - 1];
-    const char *w;
-    free(r->materials);
     memset(r, 0, sizeof(*r));
-    /* materials (<id>x<count>) until the munny, then the condition: the materials counted, then read */
-    const char *first = p;
-    int count = 0;
-    while ((w = next_word(&p, end, &length)) != NULL && memchr(w, 'x', (size_t)length) != NULL) {
-        ++count;
-    }
-    if (count == 0 || (r->materials = calloc((size_t)count, sizeof(*r->materials))) == NULL) {
+    if (!word_int(next_word(&p, end, &length), length, &r->munny) || r->munny < 0) {
         return 0;
     }
-    p = first;
-    for (int i = 0; i < count; ++i) {
-        KhdaysStopMaterial *m = &r->materials[i];
-        w = next_word(&p, end, &length);
+    while ((w = next_word(&p, end, &length)) != NULL) {
         const char *x = memchr(w, 'x', (size_t)length);
-        if (!word_int(w, (int)(x - w), &m->id) || !word_int(x + 1, length - (int)(x - w) - 1, &m->count) ||
-            m->count <= 0) {
+        if (x == NULL || r->material_count == KHDAYS_STOP_INGREDIENTS) {
             return 0;
         }
-        ++r->material_count;
+        KhdaysStopMaterial *m = &r->materials[r->material_count++];
+        if (!word_int(w, (int)(x - w), &m->id) || !word_int(x + 1, length - (int)(x - w) - 1, &m->count) ||
+            m->id <= 0 || m->count <= 0) {
+            return 0;
+        }
     }
-    if ((w = next_word(&p, end, &length)) == NULL || !word_int(w, length, &r->munny)) {
-        return 0;
-    }
-    if ((w = next_word(&p, end, &length)) == NULL || length >= (int)sizeof(r->condition)) {
-        return 0;
-    }
-    memcpy(r->condition, w, (size_t)length);
-    r->condition[length] = '\0';
-    r->set = 1;
-    return 1;
+    r->set = r->material_count > 0;
+    return r->set;
 }
 
 static int read_words(const char *key, int key_length, const char *p, const char *end, KhdaysStopData *d)
@@ -233,11 +218,6 @@ int khdays_stop_data_shop_whole(const KhdaysStopData *d)
     return khdays_stop_data_panels_whole(d);
 }
 
-static void free_recipe(KhdaysStopRecipe *r)
-{
-    free(r->materials);
-}
-
 static void free_words(KhdaysStopWords *w)
 {
     free(w->name);
@@ -247,9 +227,6 @@ static void free_words(KhdaysStopWords *w)
 
 void khdays_stop_data_free(KhdaysStopData *d)
 {
-    for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
-        free_recipe(&d->recipes[l]);
-    }
     for (int g = 0; g < KHDAYS_STOP_LANGUAGES; ++g) {
         for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
             free_words(&d->words[g][l]);

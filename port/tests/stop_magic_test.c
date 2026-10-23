@@ -32,10 +32,22 @@ static void the_compiled_file(void)
     CHECK(d.levels[0].id == 628 && d.levels[1].id == 629 && d.levels[2].id == 630);
     CHECK(d.levels[0].ticks < d.levels[1].ticks && d.levels[1].ticks < d.levels[2].ticks);
     CHECK(d.magic_lv == 25);
+    /* the recipes: dearer than every other magic's (Cure's 1600, 2000, 2600), each level after the one before */
+    CHECK(khdays_stop_data_shop_whole(&d));
+    CHECK(d.recipes[0].munny > 1600 && d.recipes[1].munny > 2000 && d.recipes[2].munny > 2600);
+    CHECK(d.recipes[1].materials[0].id == d.levels[0].id && d.recipes[2].materials[0].id == d.levels[1].id);
+    CHECK(d.recipes[2].material_count == KHDAYS_STOP_INGREDIENTS);
     /* the game's own names where it has them (UI/btl/<lang>/magic.s.z), the port's where it left them empty */
     CHECK(strcmp(d.words[0][0].name, "Stop") == 0 && strcmp(d.words[0][2].name, "Stopga") == 0);
     CHECK(strcmp(d.words[2][1].name, "Stop +") == 0 && strcmp(d.words[2][2].name, "Stop X") == 0);
     CHECK(strcmp(d.words[1][0].name, "Paro") == 0 && strcmp(d.words[1][2].name, "Paro++") == 0);
+    /* every language's words, none empty */
+    for (int g = 0; g < KHDAYS_STOP_LANGUAGES; ++g) {
+        for (int l = 0; l < KHDAYS_STOP_LEVELS; ++l) {
+            const KhdaysStopWords *w = &d.words[g][l];
+            CHECK(w->name[0] != '\0' && w->panel[0] != '\0' && w->magic[0] != '\0');
+        }
+    }
     /* the game's highlight and line breaks */
     CHECK(strchr(d.words[1][0].panel, '\x02') != NULL && strchr(d.words[1][0].panel, '\x01') != NULL);
     CHECK(strchr(d.words[0][0].magic, '\n') != NULL && strstr(d.words[0][0].magic, "\\n") == NULL);
@@ -54,6 +66,9 @@ static void a_part_missing(void)
     CHECK(!khdays_stop_data_shop_whole(&d) && d.magic_lv == 0);
     khdays_stop_data_free(&d);
     CHECK(khdays_stop_data_read(bad, sizeof(bad) - 1, &d, why, sizeof(why)) == 2); /* no fourth level */
+    khdays_stop_data_free(&d);
+    static const char five[] = "recipe 1 100 1x1 2x1 3x1 4x1 5x1\n"; /* a recipe's record holds four ingredients */
+    CHECK(khdays_stop_data_read(five, sizeof(five) - 1, &d, why, sizeof(why)) == 1);
     khdays_stop_data_free(&d);
 }
 

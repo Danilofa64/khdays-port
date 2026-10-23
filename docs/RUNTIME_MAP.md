@@ -4911,7 +4911,7 @@ the port restores it (`runtime/battle/`).
   the other languages empty. No panel, no description in any file or language, no battle templates (`ba/ch/mp.z`:
   75, 15 magics x 5), no code that casts it.
 - **The panels' table** (message database 0x15, `db.p2` entry 0x15: 630 records of 0x64 bytes from id 1): `+0` the
-  category (1 magic), `+4` a number of the panel's own, `+6` its kind (a parameter, below: Fire 2 ... Curaga 16),
+  category (1 magic), `+4` its picture + 1 (below; 0 none), `+6` its kind (a parameter, below: Fire 2 ... Curaga 16),
   `+8` its shape, from `+0x18` its magics, four of three bytes (`MsgDb_LoadRecord15` widens them to `+0x34`-`+0x53`
   of the record it makes): a magic's index in the battle (Fire 1 ... Curaga 15; 0 none), a level and casts (Fire's
   1, 1, 1; Magic LV2-LV4 0, 2-4, 1; Doublecast, Triplecast, Quadcast 0, 0, 2-4); `+0x58` its price, `+0x60` the
@@ -5014,6 +5014,45 @@ the port restores it (`runtime/battle/`).
   units); Stopra, cast while they were held, held them again for 180, not added to the 102 left; Stop, cast as that
   hold ended, for 120; Roxas's hits during the last hold were kept (13, 22, 13) and each Shadow took its sum at once
   as it was released.
+- **The panels' pictures** (`ui/pnl/3d_&.pak.z`, a KAPH archive: its member 7 a table of 213 BTX0 files, each a 16x16
+  picture of 4 bits and a palette of 8 colours) are loaded by the camp's two menus and the results
+  (`Ov008_InitGridMenuTextures`, `Ov025_InitGridMenuTextures`, `Ov005_AllocateResultTextures`), the first 0xd1 of them
+  into VRAM; a panel shows picture `+4` - 1 (Fire's 0x22 ... Curaga's 0x30, Magic LV2-4 0x31-0x33). The pictures'
+  palettes keep their edges and ground in colours 2-4: the magics' purple (0x1c47, 0x342a, 0x5031), the Level Up's
+  orange. Pictures 0x0d-0x1f are no panel's: orbs, a leaf, a flower, crosses, an eye, a sun, a moon, a lamp, a clock
+  (0x1b), "ES x2", "ES x3", all on orange. Database 0x1b is `db.p2`'s entry 0x1a: a database above 0x15 is its pack's
+  entry `id` - 1 (`MsgDb_LoadDb`).
+- **Stop's panels' picture** is that clock, its edges and ground made the magics' (colours 2-4 of Blizzard's, 0x25)
+  as the archive loads (`khdays_stop_pictures`). Seen in the camp's Panels: the three in the deck and in the magic tab
+  (Paro, Paro+, Paro++ after Magic LV2 and Doublecast, as `Nv. mágico +2` and `Conjuro x2`), the panel's description
+  with its status word highlighted.
+- **The shop's pictures** are 2D (`ui/shop/res.p2` and `res_i18n.p2`, loaded by `Ov026_InitPanelSlotManagers` and
+  `Ov008_InitPanelSlotManagers`): D2KP packs whose cell bank has 208 cells, the same pictures as the 3D ones, each one
+  OAM of 16x16 at 8 bits on one 256-colour palette; a row shows cell `+4` - 1 (`Ov026_DrawShopRowMarks`). The clock
+  there keeps its orange edges and ground as indices of its own (0x74, 0x2a, 0x0f; the magics' 0x15, 0x05, 0x02);
+  the port gives it the magics' as such a pack loads (`Archive_LoadFile`, `khdays_stop_file_loaded`).
+- **The moogle's recipes** (database 0x1f, `db.p2` entry 0x1e: 101 records of 0x2c bytes) are each a product, 1, the
+  munny, then four ingredients {item, count} (`Ov026_BuildSlotPacketB`). A magic's: its recipe item (Blizzard Recipe
+  ... Curaga Recipe, items 251-265), the level before, two of its element's pebble, gem or crystal; 700 to 2600 munny,
+  Cure's the dearest (1600, 2000, 2600). The moogle lists a recipe once its first two ingredients have been owned (the
+  owned flags, 0x4db + id) and its product is not one held back (`Ov026_IsRecipeListed`, `Ov026_IsRewardItemShown`);
+  a recipe made is marked by its place in the table (a bit of `gGameState` + 0x1060, `Ov026_QueryRecordUnlock`,
+  `Ov026_CommitSynthesisOrder`). Database 0x20 (`db.p2` entry 0x1f, 106 records of 0x1c bytes) is the items the
+  moogle sells: an item, its munny, and a last word from 26 to 357.
+- **Stop's recipes** are added after the game's when the table loads (`stop_magic.txt`'s `recipe` lines; places
+  101-103, bits no save sets and the DS's game never reads): the ice and thunder materials a grade above the other
+  magics' same level, the level before, Stopga a Diamond too, and more munny than any magic (2400, 3200, 4200), Stop
+  being strong; no recipe item, the game having none for Stop and no item id left for one.
+  Seen at Mission Mode's camp (the test mod `port/tests/mods_v2/stop_shop`, the walk `stop_shop`): with the two gems
+  given, the Synthesise list showed Stop at 2400 after the save's three recipes, its ingredients and its description;
+  Yes made it (OBTAIN Stop), the platines down from 2600 to 200, the gems spent, Stop owned.
+- **A save with Stop in an older port**: Stop's panels are items 628-630 of the save's own arrays (their counts at
+  `+0x810`, their owned flags, the deck's cells at `+0xee0`), so the DS's format holds them and an older port reads
+  them as blank records. Seen: the full save with Stop, Stopra and Stopga on three of its Cure cells (the scripting
+  interface's `deck.restore`) loaded by the copy of the port installed on 2026-10-22, which has no Stop, played into
+  the field and saved again: no fault, the save whole, the three still owned and in the deck. A walk's anchors by
+  name (`uOv000_TickMenuLoop`) need the build's symbols, which an installed copy has not: the same presses counted
+  from boot do.
 - **Stop's casts and Magic LV** are folded from the deck by the camp's rule for the other magics (above): a Stop panel
   on a cell of its own gives its level a cast, on a Magic LV or a Doublecast that panel's level and casts, its
   highest level Blizzard's (5). The game has no part for Stop's levels above 1 (its slot is Cure's first), so a

@@ -5,7 +5,8 @@
 #
 #   level <level> <panel id> <hold, battle ticks (30 a second)> <reach from the caster, the game's units> <price>
 #   magic_lv <hundredths>   how much longer the hold, for each Magic LV above 1 under a Stop panel
-#   recipe <level> <material id>x<count> ... <munny> <condition>
+#   recipe <level> <munny> <ingredient id>x<count> ...   (up to 4, in order: the moogle lists a recipe once its
+#                                                          first two ingredients have been owned)
 #   name|panel|magic <language> <level> <words>   (\n a line break, [...] highlighted as the game highlights)
 #
 # Each part is left out whole if anything of it is missing (the log says which): the panels and their words, the
@@ -14,10 +15,11 @@
 # The panels: the last three of the panels' table's blank records (513-630: no name, no kind, left out of the camp),
 # the only ones no save owns (513-627 are items a game gives, named elsewhere). The hold grows by level like the
 # series' Stop, each enemy's own resistance to freezing shortening it; the reach is the clock's round its caster (the
-# game made its effect to stand round the one who casts it). Prices: Blizzard's + 100.
-level 1 628 120 5.0 300
-level 2 629 180 5.5 400
-level 3 630 240 6.0 500
+# game made its effect to stand round the one who casts it). Prices: above every other magic's (theirs 200, 300,
+# 400 by level), Stop being strong.
+level 1 628 120 5.0 500
+level 2 629 180 5.5 700
+level 3 630 240 6.0 900
 # A Stop panel set on a Magic LV panel's cell holds longer, a quarter of its time for each level above 1, as a
 # Magic LV makes the other magics stronger; on a Doublecast, Triplecast or Quadcast it gives two, three or four
 # casts, as theirs (the panels' records, +0x19 and +0x1a).
@@ -77,4 +79,11 @@ panel it 1 Magia che ferma il tempo attorno a un nemico.\nI nemici [fermati] sub
 panel it 2 Magia che ferma il tempo più a lungo.\nI nemici [fermati] subiscono i danni alla fine.
 panel it 3 Magia che ferma il tempo molto a lungo.\nI nemici [fermati] subiscono i danni alla fine.
 
-# The moogle's recipes come with the shop.
+# The moogle's recipes, added after the game's own (database 0x1f). Stop is strong, so it costs more than every other
+# magic (the dearest, Cure's: 1600, 2000 and 2600 munny, a pebble, gem or crystal of its element): the ice and thunder
+# materials a grade rarer than the other magics' same level (Stop has no element of its own), the level before, and
+# Stopga a Diamond too. The game's other magics also take a recipe item (Blizzard Recipe ...), which the game has none
+# of for Stop and no free item id is left for.
+recipe 1 2400 19x2 23x2
+recipe 2 3200 628x1 20x2 24x2
+recipe 3 4200 629x1 20x3 24x3 319x1

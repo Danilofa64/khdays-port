@@ -1371,6 +1371,8 @@ HOOKS = {
             "    { extern void khdays_origin_loaded(unsigned top, unsigned bottom, const void *buffer, unsigned size,\n"
             "                                       int compressed);\n"
             "      khdays_origin_loaded(file.top, file.bottom, buf, buf != 0 ? size : 0, compressed != 0); }\n"
+            "    { extern void khdays_stop_file_loaded(unsigned top, void *buffer, unsigned size);\n"
+            "      if (buf != 0) khdays_stop_file_loaded(file.top, buf, size); }\n"
             "    gFileLoader[5] = 0;\n    FS_CloseFile(&file);\n    return buf;\n",
         )
     ],
@@ -1773,6 +1775,27 @@ for _key, _signature, _field, _type in (
     HOOKS[_key] = _magic_track_reads(_signature, _field, _type)
 # The cast's message (kind 0xc, its slot in five bits) carries the cell, Stop's level with it: a copy that receives
 # it takes Stop's place and that level, as the caster's does (Ov022_SetRecordValue).
+# The panels' pictures loaded (the camp's two menus, the results): the clock Stop's panels show, in the magics' purple.
+_STOP_PICTURES = "    {{ extern void khdays_stop_pictures(unsigned int archive); khdays_stop_pictures((unsigned){0}); }}\n"
+HOOKS["ov008@0205f98c"] = [  # Ov008_InitGridMenuTextures
+    (
+        "    Obj_RelocateSections(pCtx->pIconArchive, 0);\n",
+        "    Obj_RelocateSections(pCtx->pIconArchive, 0);\n" + _STOP_PICTURES.format("pCtx->pIconArchive"),
+    )
+]
+HOOKS["ov025@02091edc"] = [  # Ov025_InitGridMenuTextures
+    (
+        "    Obj_RelocateSections(pCtx->pIconArchive, 0);\n",
+        "    Obj_RelocateSections(pCtx->pIconArchive, 0);\n" + _STOP_PICTURES.format("pCtx->pIconArchive"),
+    )
+]
+HOOKS["ov005@02052a7c"] = [  # Ov005_AllocateResultTextures
+    (
+        "    Obj_RelocateSections(context->textureSet.archive,0);\n",
+        "    Obj_RelocateSections(context->textureSet.archive,0);\n"
+        + _STOP_PICTURES.format("context->textureSet.archive"),
+    )
+]
 HOOKS["ov022@0208a2b4"] = _magic_track_reads("void Ov022_OnEndMessage(struct EndMessage *pMsg)\n", "pTrack", "u8 *") + [
     (  # Ov022_OnEndMessage, a cast begun on another copy: its slot
         "        pCtx->nSlot = pMsg->nSlot;\n",
