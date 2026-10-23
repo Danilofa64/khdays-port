@@ -64,6 +64,19 @@ On top of the game, a new edition from content the user provides: HD
 textures, models and 2D graphics, new rooms, sounds and videos, a
 single-screen mode, and Mission Mode's multiplayer.
 
+Restored from what the game left unfinished: **Stop**, its sixth magic
+(Stop, Stopra and Stopga; in Spanish Paro, Paro+ and Paro++). Days kept its
+effect, its animations and its names in two languages, but no panels, no
+words and no code that casts it; the port casts it with the game's own
+pieces and makes the rest: enemies in its reach stand still for a time that
+grows with its level, and the damage they take meanwhile lands at once as
+it ends. Its panels show in the deck and the camp with an unused clock
+picture of the game's, take Magic LV and Doublecast like the other magics,
+are made at the moogle's shop (dearer than any other magic) and work in
+multiplayer, where with friendly fire on Stop also holds the other players.
+Its numbers, prices, recipes and words are in an open file,
+[`port/runtime/battle/stop_magic.txt`](port/runtime/battle/stop_magic.txt).
+
 Planned: the port on other systems -- Linux first, then, from one ARM64
 build, macOS, Windows on ARM and the Nintendo Switch.
 
