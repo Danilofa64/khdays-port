@@ -71,9 +71,18 @@ static char *game_words(const char *p, const char *end)
     return out;
 }
 
-static int level_of(const char *word, int length, int *level)
+/* The line's next word as a number: 0 when there is none or it is not one. */
+static int next_int(const char **at, const char *end, int *out)
 {
-    return word_int(word, length, level) && *level >= 1 && *level <= KHDAYS_STOP_LEVELS;
+    int length;
+    const char *word = next_word(at, end, &length);
+    return word_int(word, length, out);
+}
+
+/* The line's next word as a level, 1 to KHDAYS_STOP_LEVELS. */
+static int next_level(const char **at, const char *end, int *level)
+{
+    return next_int(at, end, level) && *level >= 1 && *level <= KHDAYS_STOP_LEVELS;
 }
 
 static int language_of(const char *word, int length)
@@ -88,16 +97,15 @@ static int language_of(const char *word, int length)
 
 static int read_level(const char *p, const char *end, KhdaysStopData *d)
 {
-    int n, level, length;
-    const char *w = next_word(&p, end, &length);
-    if (!level_of(w, length, &level)) {
+    int n, level;
+    const char *w;
+    if (!next_level(&p, end, &level)) {
         return 0;
     }
     KhdaysStopLevel *l = &d->levels[level - 1];
     char reach[24];
-    if (!word_int(next_word(&p, end, &length), length, &l->id) ||
-        !word_int(next_word(&p, end, &length), length, &l->ticks) || (w = next_word(&p, end, &n)) == NULL ||
-        n >= (int)sizeof(reach) || !word_int(next_word(&p, end, &length), length, &l->price)) {
+    if (!next_int(&p, end, &l->id) || !next_int(&p, end, &l->ticks) || (w = next_word(&p, end, &n)) == NULL ||
+        n >= (int)sizeof(reach) || !next_int(&p, end, &l->price)) {
         return 0;
     }
     memcpy(reach, w, (size_t)n);
@@ -111,12 +119,12 @@ static int read_recipe(const char *p, const char *end, KhdaysStopData *d)
 {
     int level, length;
     const char *w;
-    if (!level_of(next_word(&p, end, &length), length, &level)) {
+    if (!next_level(&p, end, &level)) {
         return 0;
     }
     KhdaysStopRecipe *r = &d->recipes[level - 1];
     memset(r, 0, sizeof(*r));
-    if (!word_int(next_word(&p, end, &length), length, &r->munny) || r->munny < 0) {
+    if (!next_int(&p, end, &r->munny) || r->munny < 0) {
         return 0;
     }
     while ((w = next_word(&p, end, &length)) != NULL) {
@@ -137,8 +145,9 @@ static int read_recipe(const char *p, const char *end, KhdaysStopData *d)
 static int read_words(const char *key, int key_length, const char *p, const char *end, KhdaysStopData *d)
 {
     int level, length;
-    const int language = language_of(next_word(&p, end, &length), length);
-    if (language < 0 || !level_of(next_word(&p, end, &length), length, &level)) {
+    const char *word = next_word(&p, end, &length);
+    const int language = language_of(word, length);
+    if (language < 0 || !next_level(&p, end, &level)) {
         return 0;
     }
     KhdaysStopWords *w = &d->words[language][level - 1];
@@ -174,7 +183,7 @@ int khdays_stop_data_read(const char *text, unsigned size, KhdaysStopData *out, 
         } else if (length == 5 && memcmp(key, "level", 5) == 0) {
             ok = read_level(at, stop, out);
         } else if (length == 8 && memcmp(key, "magic_lv", 8) == 0) {
-            ok = word_int(next_word(&at, stop, &length), length, &out->magic_lv) && out->magic_lv >= 0;
+            ok = next_int(&at, stop, &out->magic_lv) && out->magic_lv >= 0;
         } else if (length == 6 && memcmp(key, "recipe", 6) == 0) {
             ok = read_recipe(at, stop, out);
         } else if ((length == 4 && memcmp(key, "name", 4) == 0) || (length == 5 && memcmp(key, "panel", 5) == 0) ||
