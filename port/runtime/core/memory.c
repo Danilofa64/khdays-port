@@ -54,6 +54,13 @@ static int fail(const char *what, unsigned address)
  * replaced. */
 static int carve(const char *what, unsigned address, unsigned size)
 {
+    if (virtual_alloc2 == NULL) {
+        /* no placeholder APIs: the window is one plain reservation, with nothing to split off */
+        (void)what;
+        (void)address;
+        (void)size;
+        return 1;
+    }
     MEMORY_BASIC_INFORMATION info;
     if (VirtualQuery(at(address), &info, sizeof(info)) != 0 && info.AllocationBase == at(address) &&
         info.RegionSize == size) {
@@ -75,8 +82,10 @@ static int plain(const char *what, unsigned address, unsigned size)
     if (!carve(what, base, end - base)) {
         return 0;
     }
-    if (virtual_alloc2(GetCurrentProcess(), at(base), end - base, MEM_RESERVE | MEM_COMMIT | MEM_REPLACE_PLACEHOLDER,
-                       PAGE_READWRITE, NULL, 0) != at(base)) {
+    if ((virtual_alloc2 != NULL
+             ? virtual_alloc2(GetCurrentProcess(), at(base), end - base,
+                              MEM_RESERVE | MEM_COMMIT | MEM_REPLACE_PLACEHOLDER, PAGE_READWRITE, NULL, 0)
+             : VirtualAlloc(at(base), end - base, MEM_COMMIT, PAGE_READWRITE)) != at(base)) {
         return fail(what, base);
     }
     return 1;
@@ -87,8 +96,11 @@ static int view(HANDLE section, const char *what, unsigned address, unsigned off
     if (!carve(what, address, size)) {
         return 0;
     }
-    if (map_view_of_file3(section, GetCurrentProcess(), at(address), offset, size, MEM_REPLACE_PLACEHOLDER,
-                          PAGE_READWRITE, NULL, 0) != at(address)) {
+    if ((map_view_of_file3 != NULL
+             ? map_view_of_file3(section, GetCurrentProcess(), at(address), offset, size, MEM_REPLACE_PLACEHOLDER,
+                                 PAGE_READWRITE, NULL, 0)
+             : MapViewOfFileEx(section, FILE_MAP_ALL_ACCESS, (DWORD)((unsigned long long)offset >> 32), (DWORD)offset,
+                               size, at(address))) != at(address)) {
         return fail(what, address);
     }
     return 1;
@@ -301,8 +313,11 @@ static int reserve_heaps(void)
     if (heaps_touched == NULL || !carve("the game's heaps", KHDAYS_HEAPS_BASE, KHDAYS_HEAPS_END - KHDAYS_HEAPS_BASE)) {
         return 0;
     }
-    if (virtual_alloc2(GetCurrentProcess(), at(KHDAYS_HEAPS_BASE), KHDAYS_HEAPS_END - KHDAYS_HEAPS_BASE,
-                       MEM_RESERVE | MEM_REPLACE_PLACEHOLDER, PAGE_NOACCESS, NULL, 0) != at(KHDAYS_HEAPS_BASE)) {
+    if ((virtual_alloc2 != NULL
+             ? virtual_alloc2(GetCurrentProcess(), at(KHDAYS_HEAPS_BASE), KHDAYS_HEAPS_END - KHDAYS_HEAPS_BASE,
+                              MEM_RESERVE | MEM_REPLACE_PLACEHOLDER, PAGE_NOACCESS, NULL, 0)
+             : VirtualAlloc(at(KHDAYS_HEAPS_BASE), KHDAYS_HEAPS_END - KHDAYS_HEAPS_BASE, MEM_RESERVE,
+                            PAGE_NOACCESS)) != at(KHDAYS_HEAPS_BASE)) {
         return fail("the game's heaps", KHDAYS_HEAPS_BASE);
     }
     /* first: ahead of the handlers that stop the game on an access fault */
@@ -310,20 +325,26 @@ static int reserve_heaps(void)
     return 1;
 }
 
-/* The window: the DS's own addresses held first, then the window reserved as one placeholder. */
+/* The window: the DS's own addresses held first, then the window reserved as one placeholder. Where
+ * the placeholder APIs are missing (an older Windows, or a UWP build whose AppContainer refuses
+ * them), the window is one plain reservation: the game's own regions are committed in place, and
+ * each mirrored region is mapped with MapViewOfFileEx, which needs its address free -- if the
+ * system will not map into the reservation, the game says so and stops. */
 static int reserve_window(void)
 {
     HMODULE kernelbase = GetModuleHandleA("kernelbase.dll");
     virtual_alloc2 = kernelbase ? (VirtualAlloc2Fn)(void *)GetProcAddress(kernelbase, "VirtualAlloc2") : NULL;
     map_view_of_file3 = kernelbase ? (MapViewOfFile3Fn)(void *)GetProcAddress(kernelbase, "MapViewOfFile3") : NULL;
     if (virtual_alloc2 == NULL || map_view_of_file3 == NULL) {
-        fprintf(stderr, "memory map: this Windows cannot hold the game's memory as one range "
-                        "(VirtualAlloc2 and MapViewOfFile3: Windows 10 1803 and later)\n");
-        return 0;
+        fprintf(stderr, "memory map: no placeholder APIs (VirtualAlloc2 and MapViewOfFile3, Windows 10 1803 "
+                        "and later): the game's memory is held as one plain reservation instead\n");
     }
     keep_free(0x01ff0000, 0x0b010000);
-    khdays_window = (unsigned char *)virtual_alloc2(NULL, NULL, WINDOW_SIZE, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER,
-                                                    PAGE_NOACCESS, NULL, 0);
+    khdays_window =
+        virtual_alloc2 != NULL
+            ? (unsigned char *)virtual_alloc2(NULL, NULL, WINDOW_SIZE, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER,
+                                              PAGE_NOACCESS, NULL, 0)
+            : (unsigned char *)VirtualAlloc(NULL, WINDOW_SIZE, MEM_RESERVE, PAGE_NOACCESS);
     if (khdays_window == NULL) {
         fprintf(stderr, "memory map: no room for the game's memory (0x%llx bytes, error %lu)\n",
                 (unsigned long long)WINDOW_SIZE, GetLastError());

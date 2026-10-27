@@ -76,6 +76,10 @@ const char *khdays_host_user_folder(void)
 
 int khdays_host_other_copies(void)
 {
+#ifdef KHDAYS_UWP
+    /* UWP cannot enumerate processes: on the Xbox, each app instance is alone. */
+    return 0;
+#else
     /* count the processes of the same executable, other than this one */
     wchar_t own[MAX_PATH];
     const wchar_t *own_name;
@@ -101,6 +105,7 @@ int khdays_host_other_copies(void)
     }
     CloseHandle(snapshot);
     return others > 0;
+#endif /* KHDAYS_UWP */
 }
 
 /* "Player" and four digits from this machine: a hash of the computer's name

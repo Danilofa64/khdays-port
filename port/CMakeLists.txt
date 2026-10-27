@@ -5,6 +5,18 @@
 cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)  # /Z7: no shared PDB to contend on
 project(khdays_native C CXX ASM_MASM)
+
+# UWP / Xbox Dev Mode build (port/uwp/README.md): configure with
+#   cmake -B build/port/obj-uwp -G "Visual Studio 17 2022" -A x64 \
+#         -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION=10.0 \
+#         -DKHDAYS_UWP=ON -DKHDAYS_SDL3_PREFIX=<SDL3-UWP install prefix>
+option(KHDAYS_UWP "Build as a UWP app (Xbox Dev Mode / Windows Store)" OFF)
+set(KHDAYS_SDL3_PREFIX "" CACHE PATH "SDL3-UWP (github.com/SternXD/SDL3-uwp, branch uwp-3.4.8) install prefix")
+if(KHDAYS_UWP)
+    add_compile_definitions(KHDAYS_UWP)
+    # the static CRT: the app package then needs no VCLibs dependency
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 if(WIN32)
     enable_language(RC)  # the executable icon (resources/game.rc)
 endif()
@@ -35,21 +47,27 @@ add_compile_options($<$<AND:$<CONFIG:Release>,$<NOT:$<COMPILE_LANGUAGE:ASM_MASM>
 # The C library's portable functions (getenv, fopen, sscanf...), not MSVC's _s versions of them.
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
-# The window: SDL3, static.
+# The window: SDL3 (static on the desktop build; on UWP the prebuilt SDL3-UWP from
+# github.com/SternXD/SDL3-uwp, branch uwp-3.4.8, installed at KHDAYS_SDL3_PREFIX).
 include(FetchContent)
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-    SDL3
-    URL
-        https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
-    URL_HASH
-        SHA256=f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(SDL3)
+if(KHDAYS_UWP)
+    find_package(SDL3 CONFIG REQUIRED
+                 HINTS "${KHDAYS_SDL3_PREFIX}" "${KHDAYS_SDL3_PREFIX}/lib/cmake/SDL3")
+else()
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        SDL3
+        URL
+            https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
+        URL_HASH
+            SHA256=f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(SDL3)
+endif()
 
 # PNG in and out (the HD replacements and the graphics dump): stb, at the
 # commit THIRD_PARTY_NOTICES.md records (stb has no release tags; a shallow
@@ -373,7 +391,8 @@ add_executable(khdays-native
     runtime/core/data_init.c
     runtime/core/clock.c
     runtime/input/controls_hooks.c
-    runtime/core/diag.c
+    $<$<NOT:$<BOOL:${KHDAYS_UWP}>>:runtime/core/diag.c>   # DbgHelp: desktop only
+    $<$<BOOL:${KHDAYS_UWP}>:runtime/core/diag_uwp.c>      # the UWP stand-in (diag.c's API, without symbols)
     runtime/display/display.c
     runtime/core/events.c
     runtime/input/input.c
@@ -432,12 +451,14 @@ add_executable(khdays-native
     runtime/sound/sound_dump.c
     runtime/sound/sound_mods.c
     runtime/core/start.c
+    $<$<BOOL:${KHDAYS_UWP}>:uwp/main_uwp.cpp>   # the UWP entry (SDL3-UWP's WinRT main) over khdays_main
     runtime/core/vram.c
     host/app/window.c
     host/app/updates.c                 # a newer release, told of on the title,
     host/app/release_version.c
-    host/app/update_install_win.c      # its installer run to update this copy
-    host/net/https_win.c               # ... asked of GitHub through WinHTTP
+    $<$<NOT:$<BOOL:${KHDAYS_UWP}>>:host/app/update_install_win.c>  # its installer run: no installers on UWP
+    $<$<NOT:$<BOOL:${KHDAYS_UWP}>>:host/net/https_win.c>           # ... asked of GitHub through WinHTTP
+    $<$<BOOL:${KHDAYS_UWP}>:host/net/https_uwp.cpp>                # ... through IXMLHTTPRequest2 on UWP
     host/app/context_win.c
     host/app/context_x64.asm             # the contexts' switch (host/app/context.h)
     host/app/files_win.c
@@ -535,25 +556,39 @@ target_compile_options(khdays-native PRIVATE
 add_library(khdays-ufbx STATIC "${ufbx_SOURCE_DIR}/ufbx.c")
 target_link_libraries(khdays-native PRIVATE khdays-ufbx)
 target_link_libraries(khdays-native PRIVATE khdays-lua)
-target_link_libraries(khdays-native PRIVATE khdays-gfx khdays-gpu khdays-sound khdays-host-input SDL3::SDL3 dbghelp winmm delayimp
-                      mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi advapi32 winhttp)
+if(KHDAYS_UWP)
+    # UWP: no dbghelp, winmm or winhttp, and no delayimp; BCrypt in the place of RtlGenRandom.
+    target_link_libraries(khdays-native PRIVATE khdays-gfx khdays-gpu khdays-sound khdays-host-input SDL3::SDL3
+                          mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi bcrypt)
+else()
+    target_link_libraries(khdays-native PRIVATE khdays-gfx khdays-gpu khdays-sound khdays-host-input SDL3::SDL3 dbghelp winmm delayimp
+                          mfplat mfreadwrite mfuuid ole32 ws2_32 iphlpapi advapi32 winhttp)
+endif()
+if(KHDAYS_UWP)
+    set_target_properties(khdays-native PROPERTIES WIN32_EXECUTABLE FALSE)
+endif()
 # The DS's own addresses are held, inaccessible, first thing in main
 # (memory.c), so that an access at one stops the game. DLLs loaded with the
 # process could take them first: user32 maps the 20 MB desktop heap at the
 # lowest free address, right over main RAM's. So SDL's system DLLs (and
 # everything that pulls in user32) load on first use.
+if(NOT KHDAYS_UWP)
 foreach(dll user32 gdi32 imm32 ole32 oleaut32 version setupapi shell32 winmm dbghelp mfplat mfreadwrite ws2_32
             iphlpapi winhttp)
     target_link_options(khdays-native PRIVATE /DELAYLOAD:${dll}.dll)
 endforeach()
+endif()
 
 target_link_options(khdays-native PRIVATE
     /DEBUG
-    /INCREMENTAL:NO            # no padding between .khdi entries (data_init.c walks them)
+    /INCREMENTAL:NO)           # no padding between .khdi entries (data_init.c walks them)
+if(NOT KHDAYS_UWP)
+target_link_options(khdays-native PRIVATE
     # a windowed program (no console window when started from Explorer or Steam); main() stays the
     # entry point, and start.c attaches to a terminal's console when it was started from one
     /SUBSYSTEM:WINDOWS
     /ENTRY:mainCRTStartup)
+endif()
 
 # Renders a DeSmuME savestate's display state and compares it with what
 # DeSmuME showed (port/tools/savestate_gpu.py extracts the input).

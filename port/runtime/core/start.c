@@ -26,7 +26,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
-#ifdef _WIN32
+#ifdef KHDAYS_UWP
+/* the UWP's CRT has no _chdir: the working folder is set with Win32 */
+static int change_folder_uwp(const char *utf8)
+{
+    wchar_t wide[MAX_PATH];
+    const int n = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, MAX_PATH);
+    return n > 0 && SetCurrentDirectoryW(wide) ? 0 : -1;
+}
+#define change_folder change_folder_uwp
+#elif defined(_WIN32)
 #include <direct.h>
 #define change_folder _chdir
 #else
@@ -134,14 +143,111 @@ void khdays_reset_system(u32 parameter)
     khdays_hal_unimplemented("a thread of the game that reset ran again");
 }
 
+#ifdef KHDAYS_UWP
+/* UWP: the package's own folder is read-only, so everything the port writes (saves/, mods/, the
+ * settings) goes in the app's LocalState (SDL_GetPrefPath). The extracted game data is copied there
+ * from the package on the first run, unless it was already put there another way (the Device Portal). */
+static int copy_file(const wchar_t *from, const wchar_t *to)
+{
+    HANDLE in = CreateFileW(from, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE out;
+    char chunk[65536];
+    DWORD got, put;
+    int ok = 1;
+    if (in == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    out = CreateFileW(to, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+    if (out == INVALID_HANDLE_VALUE) {
+        CloseHandle(in);
+        return 0;
+    }
+    while (ok && ReadFile(in, chunk, sizeof(chunk), &got, NULL) && got > 0) {
+        ok = WriteFile(out, chunk, got, &put, NULL) && put == got;
+    }
+    CloseHandle(in);
+    CloseHandle(out);
+    return ok;
+}
+
+static int copy_tree(const wchar_t *from, const wchar_t *to)
+{
+    wchar_t pattern[MAX_PATH];
+    WIN32_FIND_DATAW entry;
+    HANDLE walk;
+    int ok = 1;
+    if (!CreateDirectoryW(to, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+        return 0;
+    }
+    _snwprintf(pattern, MAX_PATH, L"%ls\\*", from);
+    walk = FindFirstFileW(pattern, &entry);
+    if (walk == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    do {
+        wchar_t source[MAX_PATH], target[MAX_PATH];
+        if (wcscmp(entry.cFileName, L".") == 0 || wcscmp(entry.cFileName, L"..") == 0) {
+            continue;
+        }
+        _snwprintf(source, MAX_PATH, L"%ls\\%ls", from, entry.cFileName);
+        _snwprintf(target, MAX_PATH, L"%ls\\%ls", to, entry.cFileName);
+        if (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            ok = copy_tree(source, target);
+        } else {
+            ok = copy_file(source, target);
+        }
+    } while (ok && FindNextFileW(walk, &entry));
+    FindClose(walk);
+    return ok;
+}
+#endif /* KHDAYS_UWP */
+
 /* Which folder the port works in, said again in the session log once it is open. */
 static char working_folder_note[1024];
 
 /* An installed copy started from elsewhere (a shortcut, the collection's launcher): when the folder it
  * was started in has no game data, the executable's own folder is the working folder -- data/, mods/
- * and saves/ lie beside it. Started where data/extracted is (the repository's root), nothing changes. */
+ * and saves/ lie beside it. Started where data/extracted is (the repository's root), nothing changes.
+ * On UWP the working folder is the app's LocalState, and the package's data/extracted is copied there
+ * on the first run. */
 static void take_working_folder(void)
 {
+#ifdef KHDAYS_UWP
+    char *user = SDL_GetPrefPath("khdays", "port");
+    if (user == NULL || change_folder(user) != 0) {
+        snprintf(working_folder_note, sizeof(working_folder_note),
+                 "working folder: none (SDL_GetPrefPath failed: the game cannot save)");
+        fprintf(stderr, "khdays-native: %s\n", working_folder_note);
+        SDL_free(user);
+        return;
+    }
+    if (SDL_GetPathInfo("data/extracted", NULL)) {
+        snprintf(working_folder_note, sizeof(working_folder_note),
+                 "working folder: the app's LocalState (it has data/extracted)");
+    } else {
+        const char *own = SDL_GetBasePath();
+        wchar_t wown[MAX_PATH], wuser[MAX_PATH];
+        if (own != NULL && MultiByteToWideChar(CP_UTF8, 0, own, -1, wown, MAX_PATH) > 0 &&
+            MultiByteToWideChar(CP_UTF8, 0, user, -1, wuser, MAX_PATH) > 0) {
+            wchar_t from[MAX_PATH], to[MAX_PATH];
+            _snwprintf(from, MAX_PATH, L"%lsdata\\extracted", wown);
+            _snwprintf(to, MAX_PATH, L"%lsdata\\extracted", wuser);
+            if (copy_tree(from, to)) {
+                snprintf(working_folder_note, sizeof(working_folder_note),
+                         "working folder: the app's LocalState (the package's data/extracted was copied there)");
+            } else {
+                snprintf(working_folder_note, sizeof(working_folder_note),
+                         "working folder: the app's LocalState, without data/extracted (the package has none: "
+                         "copy your own there, through the Device Portal)");
+            }
+        } else {
+            snprintf(working_folder_note, sizeof(working_folder_note),
+                     "working folder: the app's LocalState, without data/extracted");
+        }
+    }
+    fprintf(stderr, "khdays-native: %s\n", working_folder_note);
+    SDL_free(user);
+#else
     const char *own = SDL_GetBasePath();
     if (SDL_GetPathInfo("data/extracted", NULL)) {
         snprintf(working_folder_note, sizeof(working_folder_note),
@@ -154,8 +260,10 @@ static void take_working_folder(void)
                  "working folder: the one it was started in, without data/extracted (its own could not be taken)");
     }
     fprintf(stderr, "khdays-native: %s\n", working_folder_note);
+#endif
 }
 
+#ifndef KHDAYS_UWP
 /* Whether a standard handle is unset (nothing given to the process for that stream). */
 static int std_handle_free(DWORD which)
 {
@@ -180,15 +288,22 @@ static void attach_parent_console(void)
             (void)freopen_s(&f, "CONIN$", "r", stdin);
     }
 }
+#endif /* KHDAYS_UWP */
 
+#ifdef KHDAYS_UWP
+int khdays_main(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
     /* first: claim the DS's address ranges before anything else (the symbol handler, SDL) allocates
      * there */
     if (!khdays_memory_map()) {
         return 1;
     }
+#ifndef KHDAYS_UWP
     attach_parent_console();
+#endif
     take_working_folder();
     khdays_diag_init();
     if (argc >= 2 && strcmp(argv[1], "--dump-sounds") == 0) {

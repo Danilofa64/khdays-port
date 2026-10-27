@@ -8,7 +8,7 @@
 #ifdef KHDAYS_SERVER_COMMIT
 #define KHDAYS_SERVER_VERSION KHDAYS_SERVER_COMMIT
 #else
-#define KHDAYS_SERVER_VERSION "$Format:%h$"
+#define KHDAYS_SERVER_VERSION "b396547"
 #endif
 
 #endif

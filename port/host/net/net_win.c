@@ -11,13 +11,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef KHDAYS_UWP
+#include <bcrypt.h> /* the random bytes (advapi32's RtlGenRandom is not in the UWP's API set) */
+#endif
 
 #ifndef SIO_UDP_CONNRESET
 #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
 #endif
 
+#ifndef KHDAYS_UWP
 /* RtlGenRandom, as advapi32 exports it */
 BOOLEAN NTAPI SystemFunction036(PVOID buffer, ULONG length);
+#endif
 
 struct KhdaysUdp {
     SOCKET socket;
@@ -261,7 +266,11 @@ unsigned int khdays_host_build_identity(void)
 
 void khdays_host_random(void *data, size_t size)
 {
+#ifdef KHDAYS_UWP
+    if (BCryptGenRandom(NULL, (PUCHAR)data, (ULONG)size, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != STATUS_SUCCESS) {
+#else
     if (!SystemFunction036(data, (ULONG)size)) {
+#endif
         unsigned char *bytes = (unsigned char *)data;
         unsigned long long x = GetTickCount64() ^ ((unsigned long long)GetCurrentProcessId() << 32);
         for (size_t i = 0; i < size; ++i) {
@@ -352,6 +361,12 @@ unsigned long long khdays_host_physical_memory(void)
 
 int khdays_host_net_gateway(unsigned int *ip)
 {
+#ifdef KHDAYS_UWP
+    /* GetBestRoute is not in the UWP's API set: the multiplayer's gateway guess
+     * is off, and the room's host address has to be given by hand. */
+    (void)ip;
+    return 0;
+#else
     MIB_IPFORWARDROW route;
     /* the route the system would use to reach an internet address */
     if (GetBestRoute(htonl(0x08080808u), 0, &route) != NO_ERROR || route.dwForwardNextHop == 0) {
@@ -359,6 +374,7 @@ int khdays_host_net_gateway(unsigned int *ip)
     }
     *ip = ntohl(route.dwForwardNextHop);
     return 1;
+#endif
 }
 
 int khdays_host_net_resolve(const char *text, unsigned short port, KhdaysNetAddress *out)
