@@ -1,0 +1,331 @@
+# Builds the UWP (Xbox One Dev Mode) package of the native port on a Windows
+# runner and publishes it as a downloadable artifact. Read port/uwp/README.md.
+#
+# Optional repository secrets (Settings -> Secrets and variables -> Actions):
+#   KHDAYS_CERT_PFX_BASE64  the signing certificate (.pfx) as base64
+#   KHDAYS_CERT_PASSWORD    its password
+# Without them each run signs with a new temporary certificate.
+#
+# No game data (ROM, data/extracted) is used or produced here: the package holds
+# only the executable; the game data is copied to the console separately.
+
+name: Build UWP (Xbox One)
+
+on:
+  push:
+    branches: [main, development, uwp]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-uwp-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # the decomp commit the upstream port pins (Yokimitsuro/khdays-port, external/khdays-decomp)
+  DECOMP_REPO: Yokimitsuro/khdays-decomp
+  DECOMP_COMMIT: a2b0478b87e3102732094c34f6ca89595f98ab93
+  # SDL3 for UWP, the same SDL release (3.4.12) the desktop build pins
+  SDL3_UWP_REPO: https://github.com/SternXD/SDL3-uwp.git
+  SDL3_UWP_BRANCH: uwp-3.4.12
+  LOGS: ${{ github.workspace }}\build\logs
+
+jobs:
+  uwp:
+    name: UWP x64 (Xbox One)
+    # windows-2022: Visual Studio 2022 with the Universal Windows Platform workload in the image
+    runs-on: windows-2022
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Make the log folder
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force $env:LOGS | Out-Null
+
+      - name: Get the decomp (external/khdays-decomp)
+        shell: pwsh
+        run: |
+          $dir = "external/khdays-decomp"
+          if ((Test-Path "$dir/config/arm9") -and (Test-Path "$dir/src")) {
+            Write-Host "Submodule present:"; git -C $dir log -1 --format="%H %cd" 2>$null
+          } else {
+            Write-Host "external/khdays-decomp is empty (no submodule link in this repository): downloading $env:DECOMP_COMMIT"
+            if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
+            $tar = "$env:RUNNER_TEMP\decomp.tar.gz"
+            Invoke-WebRequest "https://codeload.github.com/$env:DECOMP_REPO/tar.gz/$env:DECOMP_COMMIT" -OutFile $tar
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            tar -xzf $tar -C $dir --strip-components=1
+            if ($LASTEXITCODE -ne 0) { throw "could not extract the decomp" }
+          }
+          foreach ($need in "config/arm9", "src", "include", "libs", "tools/configure.py") {
+            if (-not (Test-Path "$dir/$need")) { throw "the decomp has no $need" }
+          }
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies (pycparser)
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pycparser
+          python -c "import pycparser; print('pycparser', pycparser.__version__)"
+
+      - name: Check the build tools (Visual Studio, MSVC, UWP, Windows SDK)
+        id: tools
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "No Visual Studio with MSVC x64 on this runner" }
+          Write-Host "Visual Studio: $vs"
+          $msvc = Get-ChildItem "$vs\VC\Tools\MSVC" | Sort-Object Name -Descending | Select-Object -First 1
+          Write-Host "MSVC: $($msvc.Name)"
+          # the UWP C++ pieces: the store CRT libraries and vccorlib (C++/CX, SDL3-UWP)
+          if (-not (Test-Path "$($msvc.FullName)\lib\x64\store\msvcrt.lib")) {
+            Write-Host "UWP C++ support missing: installing Microsoft.VisualStudio.ComponentGroup.UWP.VC"
+            $installer = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+            $p = Start-Process $installer -Wait -PassThru -ArgumentList @("modify", "--installPath", "`"$vs`"",
+              "--add", "Microsoft.VisualStudio.ComponentGroup.UWP.VC", "--add", "Microsoft.VisualStudio.Component.UWP.VC.ARM64",
+              "--quiet", "--norestart", "--nocache")
+            Write-Host "vs_installer exit code: $($p.ExitCode)"
+            if (-not (Test-Path "$($msvc.FullName)\lib\x64\store\msvcrt.lib")) { throw "UWP C++ support still missing after the install" }
+          }
+          Write-Host "UWP store CRT: OK"
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+          $sdk = Get-ChildItem "$kits\Lib" -Directory | Where-Object { Test-Path "$($_.FullName)\um\x64\WindowsApp.lib" } |
+            Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $sdk) { throw "No Windows 10/11 SDK with WindowsApp.lib" }
+          Write-Host "Windows SDK: $($sdk.Name)"
+          foreach ($lib in "onecoreuap.lib", "msxml6.lib", "bcrypt.lib") {
+            if (-not (Test-Path "$($sdk.FullName)\um\x64\$lib")) { throw "Windows SDK $($sdk.Name) has no $lib" }
+          }
+          foreach ($tool in "makeappx.exe", "signtool.exe") {
+            if (-not (Test-Path "$kits\bin\$($sdk.Name)\x64\$tool")) { throw "Windows SDK $($sdk.Name) has no $tool" }
+          }
+          $vclibs = "${env:ProgramFiles(x86)}\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\Appx\Retail\x64\Microsoft.VCLibs.x64.14.00.appx"
+          if (Test-Path $vclibs) { Write-Host "VCLibs framework: $vclibs" } else { throw "No VCLibs framework package at $vclibs" }
+          "sdk=$($sdk.Name)" >> $env:GITHUB_OUTPUT
+          "vclibs=$vclibs" >> $env:GITHUB_OUTPUT
+          cmake --version; ninja --version
+
+      - name: MSVC environment for UWP (store libraries)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          uwp: true
+          sdk: ${{ steps.tools.outputs.sdk }}
+
+      - name: Cache SDL3-UWP
+        id: sdl-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\sdl3-uwp-install
+          key: sdl3-uwp-${{ env.SDL3_UWP_BRANCH }}-${{ steps.tools.outputs.sdk }}-v1
+
+      - name: Build SDL3-UWP
+        if: steps.sdl-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $src = "$env:RUNNER_TEMP\SDL3-uwp"
+          git clone --depth 1 -b $env:SDL3_UWP_BRANCH $env:SDL3_UWP_REPO $src
+          git -C $src log -1 --format="SDL3-UWP %H %cd" | Tee-Object "$env:LOGS\sdl3-commit.txt"
+          cmake -S $src -B "$src\build" -G Ninja `
+            -DCMAKE_SYSTEM_NAME=WindowsStore "-DCMAKE_SYSTEM_VERSION=10.0" `
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
+            "-DCMAKE_INSTALL_PREFIX=$env:RUNNER_TEMP\sdl3-uwp-install" `
+            -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF 2>&1 | Tee-Object "$env:LOGS\sdl3-configure.log"
+          if ($LASTEXITCODE -ne 0) { throw "SDL3-UWP configure failed (build/logs/sdl3-configure.log)" }
+          cmake --build "$src\build" --parallel 2>&1 | Tee-Object "$env:LOGS\sdl3-build.log"
+          if ($LASTEXITCODE -ne 0) { throw "SDL3-UWP build failed (build/logs/sdl3-build.log)" }
+          cmake --install "$src\build" 2>&1 | Tee-Object "$env:LOGS\sdl3-install.log"
+          if ($LASTEXITCODE -ne 0) { throw "SDL3-UWP install failed" }
+
+      - name: Check SDL3-UWP
+        shell: pwsh
+        run: |
+          $p = "$env:RUNNER_TEMP\sdl3-uwp-install"
+          $required = @("bin\SDL3.dll", "lib\SDL3.lib", "include\SDL3\SDL_main.h")
+          foreach ($f in $required) {
+            if (-not (Test-Path "$p\$f")) {
+              Write-Host "SDL3-UWP install tree:"
+              Get-ChildItem $p -Recurse -File -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host $_.FullName }
+              throw "SDL3-UWP install has no required file: $f"
+            }
+          }
+
+          # Locate the package config instead of assuming the install layout.
+          $configs = @(Get-ChildItem $p -Recurse -File -Filter "SDL3Config.cmake" -ErrorAction SilentlyContinue)
+          if ($configs.Count -eq 0) {
+            Write-Host "SDL3Config.cmake was not installed. CMake files found:"
+            Get-ChildItem $p -Recurse -File -Filter "*.cmake" -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host $_.FullName }
+            throw "SDL3-UWP has its binary/header files but no SDL3Config.cmake; inspect the SDL3 install log and source CMake install rules."
+          }
+          Write-Host "SDL3-UWP package config: $($configs[0].FullName)"
+          Write-Host "SDL3-UWP required binary/header files OK"
+
+      - name: Prepare the game's sources (port/tools/prepare.py)
+        shell: pwsh
+        run: |
+          python port/tools/prepare.py --out build/port/gen-x64 2>&1 | Tee-Object "$env:LOGS\prepare.log"
+          if ($LASTEXITCODE -ne 0) { throw "prepare.py failed (build/logs/prepare.log)" }
+          if (-not (Test-Path build/port/gen-x64/sources.cmake)) { throw "prepare.py made no sources.cmake" }
+
+      - name: Get Kenney Input Prompts (kenney.nl blocks CMake's download with 403)
+        shell: pwsh
+        run: |
+          $sha = "ac2fcf599080b0f3ba2d174c9474db6df1a0e96ff0662580e2da79a122ab78a1"
+          $url = "https://kenney.nl/media/pages/assets/input-prompts/8de120163f-1783763952/kenney_input-prompts_1.5.zip"
+          $zip = "$env:RUNNER_TEMP\kenney.zip"
+          $dest = "$env:RUNNER_TEMP\kenney_input_prompts"
+          $local = Get-ChildItem -Path . -Recurse -Filter "kenney_input-prompts*.zip" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($local) {
+            Write-Host "Using the zip committed in the repository: $($local.FullName)"
+            Copy-Item $local.FullName $zip -Force
+          } else {
+            Write-Host "No zip in the repository: downloading from kenney.nl with browser headers"
+            $headers = @{
+              "User-Agent"      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+              "Referer"         = "https://kenney.nl/assets/input-prompts"
+              "Accept"          = "application/zip,application/octet-stream,*/*"
+              "Accept-Language" = "en-US,en;q=0.9"
+            }
+            $ok = $false
+            foreach ($try in 1..3) {
+              try { Invoke-WebRequest $url -Headers $headers -OutFile $zip -MaximumRedirection 5; $ok = $true; break }
+              catch { Write-Host "attempt ${try}: $($_.Exception.Message)"; Start-Sleep 5 }
+            }
+            if (-not $ok) { throw "kenney.nl refused the download. Commit kenney_input-prompts_1.5.zip to the repository (e.g. port/third_party/); this step will use it." }
+          }
+          $got = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($got -ne $sha) { Write-Host "::warning::Kenney zip SHA256 is $got (the CMake file pins $sha)" }
+          if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+          Expand-Archive $zip -DestinationPath $dest -Force
+          # CMake's URL download strips a single top-level folder: do the same, so "Xbox Series/Double/..." sits right under $dest
+          if (-not (Test-Path "$dest\Xbox Series")) {
+            $subs = @(Get-ChildItem $dest -Directory)
+            if ($subs.Count -eq 1) {
+              Get-ChildItem $subs[0].FullName | Move-Item -Destination $dest
+              Remove-Item $subs[0].FullName -Recurse -Force
+            }
+          }
+          if (-not (Test-Path "$dest\Xbox Series\Double")) {
+            Get-ChildItem $dest | ForEach-Object { Write-Host $_.FullName }
+            throw "Kenney zip has an unexpected layout (no 'Xbox Series\Double')"
+          }
+          Write-Host "Kenney Input Prompts OK: $dest"
+
+      - name: Configure the game (CMake, UWP)
+        shell: pwsh
+        run: |
+          cmake -S port -B build/port/obj-uwp -G Ninja `
+            -DCMAKE_SYSTEM_NAME=WindowsStore "-DCMAKE_SYSTEM_VERSION=10.0" `
+            -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
+            -DKHDAYS_UWP=ON "-DKHDAYS_SDL3_PREFIX=$env:RUNNER_TEMP\sdl3-uwp-install" `
+            "-DFETCHCONTENT_SOURCE_DIR_KENNEY_INPUT_PROMPTS=$env:RUNNER_TEMP\kenney_input_prompts" `
+            "-DKHDAYS_GEN=$((Resolve-Path build/port/gen-x64).Path)" 2>&1 | Tee-Object "$env:LOGS\configure.log"
+          if ($LASTEXITCODE -ne 0) { throw "CMake configure failed (build/logs/configure.log)" }
+
+      - name: Build the game
+        shell: pwsh
+        run: |
+          # -k 0: every failing file reported at once
+          cmake --build build/port/obj-uwp --target khdays-native --parallel -- -k 0 2>&1 | Tee-Object "$env:LOGS\build.log"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::group::First errors"
+            Select-String -Path "$env:LOGS\build.log" -Pattern "error|LNK\d{4}" | Select-Object -First 80 | ForEach-Object { $_.Line }
+            Write-Host "::endgroup::"
+            throw "The build failed (build/logs/build.log)"
+          }
+
+      - name: Check the executable's imports
+        shell: pwsh
+        run: |
+          $exe = "build/port/obj-uwp/khdays-native.exe"
+          if (-not (Test-Path $exe)) { throw "No khdays-native.exe" }
+          dumpbin /headers $exe | Select-String "AppContainer|subsystem" | Tee-Object "$env:LOGS\exe-headers.txt"
+          dumpbin /dependents $exe | Tee-Object "$env:LOGS\exe-dependents.txt"
+
+      - name: Make the APPX
+        shell: pwsh
+        env:
+          CERT_B64: ${{ secrets.KHDAYS_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.KHDAYS_CERT_PASSWORD }}
+        run: |
+          $v = (Get-Content VERSION -TotalCount 1).Trim()
+          $version = "$v.$([Math]::Min([int]$env:GITHUB_RUN_NUMBER, 65535))"
+          $pkg = @{
+            BuildDir = "build/port/obj-uwp"
+            Sdl3Dll  = "$env:RUNNER_TEMP\sdl3-uwp-install\bin\SDL3.dll"
+            Out      = "build/port/uwp/khdays-port.appx"
+            Version  = $version
+          }
+          if ($env:CERT_B64) {
+            $pfx = "$env:RUNNER_TEMP\khdays-signing.pfx"
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERT_B64))
+            $pkg.CertPfx = $pfx
+            $pkg.CertPassword = $env:CERT_PASSWORD
+            $subject = (New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pfx, $env:CERT_PASSWORD)).Subject
+            $pkg.Publisher = $subject
+            Write-Host "Signing with the repository's certificate ($subject)"
+          } else {
+            Write-Host "::warning::No KHDAYS_CERT_PFX_BASE64 secret: signing with a temporary certificate (see port/uwp/README.md)"
+          }
+          & ./port/uwp/make_package.ps1 @args 2>&1 | Tee-Object "$env:LOGS\package.log"
+          if (-not $?) { throw "make_package.ps1 failed (build/logs/package.log)" }
+          if ($pfx) { Remove-Item $pfx -Force }
+          Copy-Item "${{ steps.tools.outputs.vclibs }}" build/port/uwp/Dependencies-Microsoft.VCLibs.x64.14.00.appx
+
+      - name: Check the package
+        shell: pwsh
+        run: |
+          $out = "build/port/uwp"
+          foreach ($f in "khdays-port.appx", "khdays-port.cer", "Dependencies-Microsoft.VCLibs.x64.14.00.appx") {
+            if (-not (Test-Path "$out/$f")) { throw "missing $out/$f" }
+          }
+          if (Get-ChildItem $out -Filter *.pfx) { throw "a private key is in the output" }
+          $check = "$env:RUNNER_TEMP\appx-check"
+          if (Test-Path $check) { Remove-Item $check -Recurse -Force }
+          makeappx unpack /p "$out/khdays-port.appx" /d $check /o | Out-Null
+          foreach ($f in "AppxManifest.xml", "khdays-native.exe", "SDL3.dll", "AppxSignature.p7x", "Assets\SplashScreen.png") {
+            if (-not (Test-Path "$check\$f")) { throw "the package has no $f" }
+          }
+          signtool verify /pa /v "$out/khdays-port.appx" 2>&1 | Tee-Object "$env:LOGS\signature.txt"
+          # self-signed: "verify" fails on trust, not on the signature's presence
+          Get-ChildItem $out | Format-Table Name, Length | Out-String | Tee-Object "$env:LOGS\package-files.txt"
+
+      - name: Upload the APPX
+        uses: actions/upload-artifact@v4
+        with:
+          name: khdays-port-uwp-x64
+          path: |
+            build/port/uwp/khdays-port.appx
+            build/port/uwp/khdays-port.cer
+            build/port/uwp/Dependencies-Microsoft.VCLibs.x64.14.00.appx
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build/logs/
+            build/port/obj-uwp/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 30
