@@ -15,7 +15,7 @@ set(KHDAYS_SDL3_PREFIX "" CACHE PATH "SDL3-UWP (github.com/SternXD/SDL3-uwp, bra
 if(KHDAYS_UWP)
     add_compile_definitions(KHDAYS_UWP)
     # the static CRT: the app package then needs no VCLibs dependency
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 if(WIN32)
     enable_language(RC)  # the executable icon (resources/game.rc)
