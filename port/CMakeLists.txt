@@ -759,8 +759,12 @@ target_compile_options(khdays-sound-test PRIVATE /W4 /std:c17)
 # The native driver's part reads its tables from the ROM's ARM7 binary
 # (the player's, extracted into data/; skipped without it).
 file(GLOB KHDAYS_ARM7_BIN "${CMAKE_CURRENT_SOURCE_DIR}/../data/extracted/*/system/arm7.bin")
-list(GET KHDAYS_ARM7_BIN 0 KHDAYS_ARM7_BIN_FIRST)
-add_test(NAME khdays-sound COMMAND khdays-sound-test "${KHDAYS_ARM7_BIN_FIRST}")
+if(KHDAYS_ARM7_BIN)
+    list(GET KHDAYS_ARM7_BIN 0 KHDAYS_ARM7_BIN_FIRST)
+    add_test(NAME khdays-sound COMMAND khdays-sound-test "${KHDAYS_ARM7_BIN_FIRST}")
+else()
+    add_test(NAME khdays-sound COMMAND khdays-sound-test)
+endif()
 
 # Recorded frame packages (KHDAYS_RECORD_FRAMES, in saves/frames: the
 # player's game data, never in the repository) checked against the pictures
